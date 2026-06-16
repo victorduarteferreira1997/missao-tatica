@@ -119,7 +119,15 @@
             { id: 'home_architect', icon: 'home', color: 'text-emerald-500', title: 'Arquiteto do Lar', desc: 'Concluiu 3 tarefas de Casa/Limpeza.' },
             { id: 'hydro_god', icon: 'glass-water', color: 'text-sky-400', title: 'Divindade Líquida', desc: 'Bebeu água 10 vezes. HP sob controle absoluto.' },
             { id: 'deep_focus', icon: 'brain', color: 'text-violet-400', title: 'Foco Absoluto', desc: 'Completou 4 ciclos Pomodoro de trabalho.' },
-            { id: 'perfect_day', icon: 'check-check', color: 'text-teal-400', title: 'Dia Impecável', desc: 'Concluiu 100% de todas as tarefas de um único dia.' }
+            { id: 'perfect_day', icon: 'check-check', color: 'text-teal-400', title: 'Dia Impecável', desc: 'Concluiu 100% de todas as tarefas de um único dia.' },
+            { id: 'estudante_tatico', icon: 'graduation-cap', color: 'text-cyan-400', title: 'Estudante Tático', desc: 'Registrou a primeira sessão de estudo.' },
+            { id: 'operador_1_7_30', icon: 'calendar-check', color: 'text-fuchsia-400', title: 'Operador 1-7-30', desc: 'Criou revisões espaçadas no ciclo 1-7-30.' },
+            { id: 'memoria_em_dia', icon: 'brain', color: 'text-emerald-400', title: 'Memória em Dia', desc: 'Concluiu 3 revisões.' },
+            { id: 'arquivo_organizado', icon: 'archive', color: 'text-slate-300', title: 'Arquivo Organizado', desc: 'Arquivou a primeira revisão concluída.' },
+            { id: 'corpo_em_movimento', icon: 'dumbbell', color: 'text-rose-400', title: 'Corpo em Movimento', desc: 'Registrou o primeiro treino.' },
+            { id: 'tesoureiro_tatico', icon: 'wallet', color: 'text-yellow-400', title: 'Tesoureiro Tático', desc: 'Registrou o primeiro dado financeiro.' },
+            { id: 'blindagem_financeira', icon: 'shield-check', color: 'text-emerald-500', title: 'Blindagem Financeira', desc: 'Usou uma defesa contra compra impulsiva.' },
+            { id: 'comandante_integrado', icon: 'medal', color: 'text-indigo-400', title: 'Comandante Integrado', desc: 'Usou estudos, físico e finanças no mesmo sistema.' }
         ];
 
         const REWARDS_SHOP = [
@@ -203,6 +211,14 @@
             if (!state.tasks) state.tasks = []; 
             if (!state.currentFilter) state.currentFilter = 'all';
             
+            if (!state.customRewards) state.customRewards = [];
+            if (!state.rewardPurchases) state.rewardPurchases = [];
+
+            // Validação Módulo Rituais
+            if (!state.routineData) state.routineData = {};
+            if (!state.routineData.rituals) state.routineData.rituals = [];
+            if (!state.routineData.logs) state.routineData.logs = [];
+
             // Validação Módulo de Estudos
             if (!state.studyData) state.studyData = {};
             if (!state.studyData.subjects) state.studyData.subjects = [];
@@ -360,6 +376,11 @@
             return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
         };
 
+        window.getLocalDateKey = function(date = new Date()) {
+            const d = new Date(date);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        };
+
         window.spawnFloatingText = function(e, text, colorClass = 'text-indigo-400') {
             if(!e || !e.clientX) return; 
             const el = document.createElement('div'); el.className = `float-text text-xl ${colorClass}`; el.innerText = text;
@@ -406,6 +427,17 @@
             let perfectDayCompleted = false;
             daysOfWeek.forEach(day => { const dayTasks = state.tasks.filter(t => t.day === day.id); if (dayTasks.length > 0 && dayTasks.every(t => t.completed)) perfectDayCompleted = true; });
             if (perfectDayCompleted) activeBadges.push('perfect_day');
+
+            if (state.studyData?.sessions?.length >= 1) activeBadges.push('estudante_tatico');
+            if (state.studyData?.reviews?.length >= 3) activeBadges.push('operador_1_7_30');
+            if (state.studyData?.reviews?.filter(r => r.status === 'completed' || r.status === 'archived').length >= 3) activeBadges.push('memoria_em_dia');
+            if (state.studyData?.reviews?.filter(r => r.status === 'archived').length >= 1) activeBadges.push('arquivo_organizado');
+            if (state.healthData?.workouts?.length >= 1) activeBadges.push('corpo_em_movimento');
+            
+            const hasFinanceData = (state.financeData?.incomes?.length > 0 || state.financeData?.fixedExpenses?.length > 0 || state.financeData?.variableExpenses?.length > 0 || state.financeData?.moneyJournal?.length > 0);
+            if (hasFinanceData) activeBadges.push('tesoureiro_tatico');
+            if (state.financeData?.moneyJournal?.some(m => m.action && (m.action.includes('Adiou') || m.action.includes('Cancelou')))) activeBadges.push('blindagem_financeira');
+            if ((state.studyData?.sessions?.length >= 1) && (state.healthData?.workouts?.length >= 1) && hasFinanceData) activeBadges.push('comandante_integrado');
 
             const toUnlock = activeBadges.filter(b => !state.unlockedBadges.includes(b));
             toUnlock.forEach(badgeId => window.unlockBadge(badgeId));
@@ -458,8 +490,61 @@
             const r = REWARDS_SHOP.find(x => x.id === rewardId);
             if (state.coins >= r.cost) {
                 state.coins -= r.cost; window.changeEnergy(20); state.stats.rewardsBought = (state.stats.rewardsBought || 0) + 1;
+                
+                state.rewardPurchases.push({
+                    id: Date.now(), rewardId: r.id, title: r.title, cost: r.cost, type: "default", date: new Date().toISOString()
+                });
+                
+                window.checkGameTriggers();
                 window.unlockBadge('shopaholic'); window.showToast('Recompensa Resgatada!', `Aproveite seu: ${r.title}`, 'gift', 'text-emerald-400'); window.saveState();
             } else { window.showAlertModal(`Saldo insuficiente. Faltam ${r.cost - state.coins} MT.`); }
+        };
+        
+        window.addCustomReward = function() {
+            const title = document.getElementById('custom-reward-title')?.value.trim();
+            const cost = parseInt(document.getElementById('custom-reward-cost')?.value);
+            const desc = document.getElementById('custom-reward-desc')?.value.trim() || '';
+            
+            if (!title) { window.showAlertModal("Título é obrigatório."); return; }
+            if (!cost || cost <= 0) { window.showAlertModal("Custo deve ser maior que zero."); return; }
+            
+            state.customRewards.push({
+                id: Date.now(), title, cost, desc, icon: "gift", createdAt: new Date().toISOString(), active: true
+            });
+            window.saveState();
+            window.showToast("Recompensa criada", "Nova opção adicionada ao Mercado Negro.", "gift", "text-emerald-400");
+        };
+
+        window.deleteCustomReward = function(id) {
+            window.showConfirmModal("Deseja remover esta recompensa personalizada?", () => {
+                const reward = state.customRewards.find(r => r.id === id);
+                if (reward) {
+                    reward.active = false;
+                    window.saveState();
+                    window.showToast("Recompensa removida", "Removida do mercado.", "trash-2", "text-slate-400");
+                }
+            });
+        };
+
+        window.buyCustomReward = function(id) {
+            const reward = state.customRewards.find(r => r.id === id && r.active);
+            if (!reward) { window.showAlertModal("Recompensa não encontrada ou inativa."); return; }
+            
+            if (state.coins >= reward.cost) {
+                state.coins -= reward.cost;
+                window.changeEnergy(20);
+                state.stats.rewardsBought = (state.stats.rewardsBought || 0) + 1;
+                
+                state.rewardPurchases.push({
+                    id: Date.now(), rewardId: reward.id, title: reward.title, cost: reward.cost, type: "custom", date: new Date().toISOString()
+                });
+                
+                window.checkGameTriggers();
+                window.showToast("Recompensa resgatada", reward.title, "gift", "text-emerald-400");
+                window.saveState();
+            } else {
+                window.showAlertModal(`Saldo insuficiente. Faltam ${reward.cost - state.coins} MT.`);
+            }
         };
 
         window.endDay = function() {
@@ -509,9 +594,10 @@
                 state.xp += Math.round(earnedXP); state.coins += earnedCoins; state.stats.pomodorosCompleted = (state.stats.pomodorosCompleted || 0) + 1; window.changeEnergy(-5); 
                 window.showToast('Foco Concluído!', `+${Math.round(earnedXP)} XP`, 'target', 'text-yellow-400'); window.checkGameTriggers(); window.checkLevelUp();
             } else {
+                const wasLongBreak = pomodoro.mode === 'longBreak';
                 pomodoro.mode = 'focus'; pomodoro.timeLeft = s.focus * 60;
-                if (pomodoro.mode === 'longBreak') pomodoro.cycle = 1; else pomodoro.cycle++;
-                window.changeEnergy(pomodoro.mode === 'longBreak' ? 20 : 5);
+                if (wasLongBreak) pomodoro.cycle = 1; else pomodoro.cycle++;
+                window.changeEnergy(wasLongBreak ? 20 : 5);
             }
             window.saveState();
         };
@@ -563,6 +649,86 @@
                 state.tasks = []; state.quickTasks = []; state.combo = 0; state.waterCount = 0; state.energy = 100; state.activeTab = 'monday'; state.currentFilter = 'all';
                 window.saveState(); window.showToast("Quartel General: Nova Semana!", "Quadro limpo.", "sparkles", "text-yellow-400");
             }); 
+        };
+
+
+        // ==========================================
+        // MÓDULO: RITUAIS OPERACIONAIS
+        // ==========================================
+        window.addRitual = function() {
+            const title = document.getElementById('ritual-title')?.value.trim();
+            const period = document.getElementById('ritual-period')?.value || 'morning';
+            let xp = parseInt(document.getElementById('ritual-xp')?.value, 10);
+            let energyDelta = parseInt(document.getElementById('ritual-energy')?.value, 10);
+
+            if (!title) { window.showAlertModal('Nome do ritual é obrigatório.'); return; }
+            if (!['morning', 'night'].includes(period)) { window.showAlertModal('Período inválido.'); return; }
+            if (Number.isNaN(xp)) xp = 10;
+            if (Number.isNaN(energyDelta)) energyDelta = 0;
+
+            state.routineData.rituals.push({
+                id: Date.now(),
+                title,
+                period,
+                xp,
+                energyDelta,
+                active: true,
+                createdAt: new Date().toISOString()
+            });
+
+            if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
+            window.showToast('Ritual criado', 'Protocolo operacional adicionado.', 'clipboard-check', 'text-emerald-400');
+            window.saveState();
+        };
+
+        window.completeRitual = function(ritualId) {
+            const ritual = state.routineData.rituals.find(r => r.id === ritualId && r.active);
+            if (!ritual) { window.showAlertModal('Ritual não encontrado.'); return; }
+
+            const todayKey = window.getLocalDateKey();
+            const alreadyDone = state.routineData.logs.some(log => log.ritualId === ritualId && window.getLocalDateKey(log.date) === todayKey);
+            if (alreadyDone) { window.showAlertModal('Este ritual já foi concluído hoje.'); return; }
+
+            const xpAwarded = Number.isFinite(Number(ritual.xp)) ? Number(ritual.xp) : 10;
+            const energyDeltaApplied = Number.isFinite(Number(ritual.energyDelta)) ? Number(ritual.energyDelta) : 0;
+
+            state.routineData.logs.push({
+                id: Date.now(),
+                ritualId,
+                date: new Date().toISOString(),
+                completedAt: new Date().toISOString(),
+                xpAwarded,
+                energyDeltaApplied
+            });
+
+            state.xp += xpAwarded;
+            window.changeEnergy(energyDeltaApplied);
+            window.checkLevelUp();
+            if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
+            window.showToast('Ritual concluído', `+${xpAwarded} XP. Consistência operacional registrada.`, 'check-circle', 'text-emerald-400');
+            window.saveState();
+        };
+
+        window.deleteRitual = function(ritualId) {
+            window.showConfirmModal('Deseja arquivar este ritual? O histórico será preservado.', () => {
+                const ritual = state.routineData.rituals.find(r => r.id === ritualId);
+                if (!ritual) { window.showAlertModal('Ritual não encontrado.'); return; }
+                ritual.active = false;
+                if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
+                window.showToast('Ritual arquivado', 'Histórico preservado.', 'archive', 'text-slate-300');
+                window.saveState();
+            });
+        };
+
+        window.fillRitualSuggestion = function(title, period, xp, energyDelta) {
+            const titleEl = document.getElementById('ritual-title');
+            const periodEl = document.getElementById('ritual-period');
+            const xpEl = document.getElementById('ritual-xp');
+            const energyEl = document.getElementById('ritual-energy');
+            if (titleEl) titleEl.value = title;
+            if (periodEl) periodEl.value = period;
+            if (xpEl) xpEl.value = xp;
+            if (energyEl) energyEl.value = energyDelta;
         };
 
         // ==========================================
@@ -637,22 +803,43 @@
             if (qCorrect > qTotal) { window.showAlertModal('Acertos > Total.'); return; }
 
             const sessionId = Date.now();
-            state.studyData.sessions.push({
-                id: sessionId, subjectId, type, duration, qTotal, qCorrect, topic, 
-                date: new Date().toISOString(), confBefore, confAfter, barriers
-            });
-
             const typeData = SESSION_TYPES[type] || SESSION_TYPES['leitura'];
             const xpEarned = Math.round(((duration * 1.5) + (qCorrect * 3)) * typeData.mult);
-            state.xp += xpEarned; window.changeEnergy(-typeData.hp);
-            window.checkLevelUp();
+            const energyDelta = -typeData.hp;
+
+            let generatedReviewIds = [];
 
             // Adicionar repetição espaçada se for teoria ou leitura
             if (['teoria', 'leitura'].includes(type)) {
                 [1, 7, 30].forEach(days => {
+                    const reviewId = Date.now() + Math.random();
+                    generatedReviewIds.push(reviewId);
                     const dueDate = new Date(); dueDate.setDate(dueDate.getDate() + days);
-                    state.studyData.reviews.push({ id: Date.now() + Math.random(), sourceSessionId: sessionId, subjectId: subjectId, topic: topic || 'Revisão Geral', dueDate: dueDate.toISOString(), intervalDays: days, status: 'pending' });
+                    state.studyData.reviews.push({ 
+                        id: reviewId, 
+                        sourceSessionId: sessionId, 
+                        subjectId: subjectId, 
+                        topic: topic || 'Revisão Geral', 
+                        dueDate: dueDate.toISOString(), 
+                        intervalDays: days, 
+                        status: 'pending',
+                        phase: 'initial',
+                        cycleStep: days,
+                        xpAwarded: 0
+                    });
                 });
+            }
+
+            state.studyData.sessions.push({
+                id: sessionId, subjectId, type, duration, qTotal, qCorrect, topic, 
+                date: new Date().toISOString(), confBefore, confAfter, barriers,
+                xpAwarded: xpEarned, energyDeltaApplied: energyDelta, generatedReviewIds: generatedReviewIds, createdAt: new Date().toISOString()
+            });
+
+            state.xp += xpEarned; window.changeEnergy(energyDelta);
+            window.checkLevelUp();
+
+            if (generatedReviewIds.length > 0) {
                 window.showToast('Sessão Registrada!', `+${xpEarned} XP. Revisão programada.`, 'brain', 'text-fuchsia-400');
             } else {
                 window.showToast('Sessão Registrada!', `+${xpEarned} XP consolidados.`, 'target', 'text-cyan-400');
@@ -661,7 +848,84 @@
             if(state.energy < 20) {
                 setTimeout(() => window.showAlertModal("Bateria Executiva Crítica (<20 HP). O sistema recomenda transição para atividades passivas ou encerramento."), 1000);
             }
+            if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
             window.saveState();
+        };
+
+        window.recalculateLevelFromXp = function() {
+            if (state.xp < 0) state.xp = 0;
+            state.level = getCorrectLevel(state.xp);
+        };
+
+        window.deleteStudySession = function(sessionId) {
+            const sessionIndex = state.studyData.sessions.findIndex(s => s.id === sessionId);
+            if (sessionIndex === -1) {
+                window.showAlertModal("Sessão não encontrada.");
+                return;
+            }
+            const session = state.studyData.sessions[sessionIndex];
+
+            window.showConfirmModal("Tem certeza que deseja excluir esta sessão? O XP, energia e revisões ligadas a ela serão recalculados.", () => {
+                state.studyData.sessions.splice(sessionIndex, 1);
+
+                let xpToDeduct = session.xpAwarded;
+                if (typeof xpToDeduct === 'undefined') {
+                    const typeData = SESSION_TYPES[session.type] || SESSION_TYPES['leitura'];
+                    xpToDeduct = Math.round(((session.duration * 1.5) + (session.qCorrect * 3)) * typeData.mult);
+                }
+                state.xp -= xpToDeduct;
+
+                let energyToRevert = session.energyDeltaApplied;
+                if (typeof energyToRevert === 'undefined') {
+                    const typeData = SESSION_TYPES[session.type] || SESSION_TYPES['leitura'];
+                    energyToRevert = -typeData.hp; 
+                }
+                state.energy -= energyToRevert; 
+
+                const reviewsToRemove = state.studyData.reviews.filter(r => 
+                    r.sourceSessionId === sessionId || 
+                    (session.generatedReviewIds && session.generatedReviewIds.includes(r.id))
+                );
+                
+                reviewsToRemove.forEach(r => {
+                    if (r.xpAwarded) {
+                        state.xp -= r.xpAwarded;
+                    }
+                });
+
+                state.studyData.reviews = state.studyData.reviews.filter(r => 
+                    r.sourceSessionId !== sessionId && 
+                    !(session.generatedReviewIds && session.generatedReviewIds.includes(r.id))
+                );
+
+                if (state.xp < 0) state.xp = 0;
+                if (state.energy < 0) state.energy = 0;
+                if (state.energy > 100) state.energy = 100;
+
+                window.recalculateLevelFromXp();
+
+                window.showToast("Sessão excluída", "XP, energia e revisões foram recalculados.", "trash-2", "text-red-400");
+                window.saveState();
+            });
+        };
+        
+        window.archiveReview = function(reviewId) {
+            const review = state.studyData.reviews.find(r => r.id === reviewId);
+            if (!review) {
+                window.showAlertModal("Revisão não encontrada.");
+                return;
+            }
+            if (review.status !== "completed") {
+                window.showAlertModal("Somente revisões concluídas podem ser arquivadas.");
+                return;
+            }
+            window.showConfirmModal("Deseja arquivar esta revisão concluída? Ela continuará no histórico, mas sairá da lista principal.", () => {
+                review.status = "archived";
+                review.archivedAt = new Date().toISOString();
+                if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
+                window.saveState();
+                window.showToast("Revisão arquivada", "Histórico preservado.", "archive", "text-slate-300");
+            });
         };
 
         window.showReviewPrompt = function(reviewId) { uiState.customPrompt = { show: true, type: 'reviewDifficulty', reviewId: reviewId }; render(); };
@@ -670,20 +934,78 @@
         window.processReviewDifficulty = function(diffStr) {
             const review = state.studyData.reviews.find(r => r.id === uiState.customPrompt.reviewId);
             if(review) {
-                review.status = 'completed'; review.completedAt = new Date().toISOString();
-                let nextDays = 0, xp = 0;
-                if(diffStr === 'easy') { nextDays = 15; xp = 20; }
-                else if(diffStr === 'medium') { nextDays = 7; xp = 35; }
-                else if(diffStr === 'hard') { nextDays = 3; xp = 50; }
-                else { nextDays = 1; xp = 60; }
+                let xp = 0;
+                if(diffStr === 'easy') { xp = 20; }
+                else if(diffStr === 'medium') { xp = 35; }
+                else if(diffStr === 'hard') { xp = 50; }
+                else { xp = 60; }
+                
+                review.status = 'completed'; 
+                review.completedAt = new Date().toISOString();
+                review.xpAwarded = xp;
+                review.difficultyOrigin = diffStr;
                 
                 state.xp += xp; window.checkLevelUp();
                 
-                const dueDate = new Date(); dueDate.setDate(dueDate.getDate() + nextDays);
-                state.studyData.reviews.push({ id: Date.now(), sourceSessionId: review.sourceSessionId, subjectId: review.subjectId, topic: review.topic, dueDate: dueDate.toISOString(), intervalDays: nextDays, status: 'pending', difficultyOrigin: diffStr });
+                const phase = review.phase || "initial";
+                const step = review.cycleStep || review.intervalDays;
                 
-                window.showToast('Revisão Calibrada', `+${xp} XP. Nova revisão em ${nextDays} dias.`, 'check-circle', 'text-emerald-400');
-                window.closeCustomPrompt(); window.saveState();
+                let createNew = false;
+                let nextDays = 0;
+                let nextPhase = phase;
+                let nextCycleStep = 0;
+
+                if (phase === "initial") {
+                    if (step === 1 || step === 7) {
+                        createNew = false;
+                    } else {
+                        createNew = true;
+                        if(diffStr === 'easy') { nextDays = 60; nextPhase = "maintenance"; nextCycleStep = 60; }
+                        else if(diffStr === 'medium') { nextDays = 30; nextPhase = "initial"; nextCycleStep = 30; }
+                        else if(diffStr === 'hard') { nextDays = 7; nextPhase = "initial"; nextCycleStep = 7; }
+                        else { nextDays = 1; nextPhase = "initial"; nextCycleStep = 1; }
+                    }
+                } else if (phase === "maintenance") {
+                    createNew = true;
+                    if(diffStr === 'easy') { nextDays = 90; nextPhase = "maintenance"; nextCycleStep = 90; }
+                    else if(diffStr === 'medium') { nextDays = 60; nextPhase = "maintenance"; nextCycleStep = 60; }
+                    else if(diffStr === 'hard') { nextDays = 15; nextPhase = "maintenance"; nextCycleStep = 15; }
+                    else { nextDays = 3; nextPhase = "maintenance"; nextCycleStep = 3; }
+                }
+
+                if (createNew) {
+                    const newReviewId = Date.now() + Math.random();
+                    review.nextReviewId = newReviewId;
+                    
+                    const dueDate = new Date(); dueDate.setDate(dueDate.getDate() + nextDays);
+                    
+                    const session = state.studyData.sessions.find(s => s.id === review.sourceSessionId);
+                    if (session && session.generatedReviewIds) {
+                        session.generatedReviewIds.push(newReviewId);
+                    }
+
+                    state.studyData.reviews.push({ 
+                        id: newReviewId, 
+                        sourceSessionId: review.sourceSessionId, 
+                        subjectId: review.subjectId, 
+                        topic: review.topic, 
+                        dueDate: dueDate.toISOString(), 
+                        intervalDays: nextDays, 
+                        status: 'pending', 
+                        difficultyOrigin: diffStr,
+                        phase: nextPhase,
+                        cycleStep: nextCycleStep,
+                        xpAwarded: 0
+                    });
+                    
+                    window.showToast('Revisão Calibrada', `+${xp} XP. Nova revisão em ${nextDays} dias.`, 'check-circle', 'text-emerald-400');
+                } else {
+                    window.showToast('Revisão Concluída', `+${xp} XP. Próxima etapa já estava programada.`, 'check-circle', 'text-emerald-400');
+                }
+                
+                window.closeCustomPrompt(); 
+                if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
+                window.saveState();
             }
         };
 
@@ -747,6 +1069,7 @@
             state.healthData.workouts.push({ id: Date.now(), date: new Date().toISOString(), type, duration, intensity, notes });
             state.xp += intData.xp; window.changeEnergy(-finalHpCost); window.checkLevelUp();
             window.showToast('Treino Validado', `+${intData.xp} XP consolidados.`, 'dumbbell', 'text-rose-400');
+            if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
             window.saveState();
         };
         window.deleteWorkout = function(id) { state.healthData.workouts = state.healthData.workouts.filter(w => w.id !== id); window.saveState(); };
@@ -765,7 +1088,7 @@
             const mood = document.getElementById('habit-mood').value;
             const fatigue = document.getElementById('habit-fatigue').value;
             state.healthData.habits.push({ id: Date.now(), date: new Date().toISOString(), sleep, water, mood, fatigue });
-            state.xp += 20; window.checkLevelUp(); window.showToast('Rotina Salva', '+20 XP', 'heart', 'text-emerald-400'); window.saveState();
+            state.xp += 20; window.checkLevelUp(); window.showToast('Rotina Salva', '+20 XP', 'heart', 'text-emerald-400'); if (typeof window.checkGameTriggers === "function") window.checkGameTriggers(); window.saveState();
         };
 
         // ==========================================
@@ -778,6 +1101,7 @@
             const desc = document.getElementById('inc-desc').value.trim(); const amt = parseFloat(document.getElementById('inc-amount').value);
             if(!desc || !amt) return;
             state.financeData.incomes.push({ id: Date.now(), date: new Date().toISOString(), description: desc, amount: amt, category: document.getElementById('inc-cat').value });
+            if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
             window.saveState();
         };
         window.deleteIncome = function(id) { state.financeData.incomes = state.financeData.incomes.filter(i => i.id !== id); window.saveState(); };
@@ -786,6 +1110,7 @@
             const desc = document.getElementById('fix-desc').value.trim(); const amt = parseFloat(document.getElementById('fix-amount').value);
             if(!desc || !amt) return;
             state.financeData.fixedExpenses.push({ id: Date.now(), description: desc, amount: amt, category: document.getElementById('fix-cat').value, paid: false });
+            if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
             window.saveState();
         };
         window.toggleFixedPaid = function(id) {
@@ -811,7 +1136,7 @@
 
         window.confirmAddVariable = function(data) {
             state.financeData.variableExpenses.push(data || uiState.financeGuardianData);
-            window.closeCustomPrompt(); uiState.financeGuardianData = null; window.showToast('Gasto Registrado', 'Saída consolidada no orçamento.', 'arrow-down-circle', 'text-red-400'); window.saveState();
+            window.closeCustomPrompt(); uiState.financeGuardianData = null; window.showToast('Gasto Registrado', 'Saída consolidada no orçamento.', 'arrow-down-circle', 'text-red-400'); if (typeof window.checkGameTriggers === "function") window.checkGameTriggers(); window.saveState();
         };
         window.delayPurchase = function() {
             if(uiState.financeGuardianData) {
@@ -819,6 +1144,7 @@
                 state.xp += 50; window.checkLevelUp();
                 window.showToast('Pausa Tática Ativada', 'Excelente comando! +50 XP. Avalie amanhã.', 'shield', 'text-emerald-400');
             }
+            if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
             window.closeCustomPrompt(); uiState.financeGuardianData = null; window.saveState();
         };
         window.cancelPurchase = function() {
@@ -827,6 +1153,7 @@
                 state.xp += 80; window.checkLevelUp();
                 window.showToast('Defesa Perfeita!', 'Ataque ao orçamento neutralizado. +80 XP.', 'shield-check', 'text-emerald-500');
             }
+            if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
             window.closeCustomPrompt(); uiState.financeGuardianData = null; window.saveState();
         }
         window.deleteVariable = function(id) { state.financeData.variableExpenses = state.financeData.variableExpenses.filter(i => i.id !== id); window.saveState(); };
@@ -835,7 +1162,7 @@
             const mood = document.getElementById('mj-mood').value; const event = document.getElementById('mj-event').value.trim(); const thought = document.getElementById('mj-thought').value.trim();
             if(!event) return;
             state.financeData.moneyJournal.push({ id: Date.now(), date: new Date().toISOString(), mood, event, thought });
-            state.xp += 15; window.checkLevelUp(); window.showToast('Diário Salvo', 'Autoconsciência melhora o bolso. +15 XP.', 'book-open', 'text-yellow-400'); window.saveState();
+            state.xp += 15; window.checkLevelUp(); window.showToast('Diário Salvo', 'Autoconsciência melhora o bolso. +15 XP.', 'book-open', 'text-yellow-400'); if (typeof window.checkGameTriggers === "function") window.checkGameTriggers(); window.saveState();
         };
 
         // ==========================================
@@ -883,12 +1210,12 @@
                         <div class="bg-slate-900 border border-fuchsia-900/50 rounded-2xl p-6 max-w-md w-full shadow-2xl modal-enter text-center">
                             <i data-lucide="brain-circuit" class="text-fuchsia-500 w-12 h-12 mx-auto mb-4"></i>
                             <h3 class="text-lg font-bold text-white mb-2">Calibração Neural</h3>
-                            <p class="text-slate-400 text-sm mb-6">Qual foi o nível de esforço para recuperar esta informação?</p>
+                            <p class="text-slate-400 text-sm mb-6">Como foi recuperar essa informação agora?</p>
                             <div class="grid grid-cols-2 gap-3 mb-4">
-                                <button onclick="window.processReviewDifficulty('easy')" class="bg-slate-800 border border-emerald-900 hover:bg-emerald-900/50 text-emerald-400 p-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-all"><span class="text-xs uppercase">Fácil</span><span class="text-[10px] text-slate-500">+15 Dias | +20 XP</span></button>
-                                <button onclick="window.processReviewDifficulty('medium')" class="bg-slate-800 border border-yellow-900 hover:bg-yellow-900/50 text-yellow-400 p-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-all"><span class="text-xs uppercase">Médio</span><span class="text-[10px] text-slate-500">+7 Dias | +35 XP</span></button>
-                                <button onclick="window.processReviewDifficulty('hard')" class="bg-slate-800 border border-orange-900 hover:bg-orange-900/50 text-orange-400 p-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-all"><span class="text-xs uppercase">Difícil</span><span class="text-[10px] text-slate-500">+3 Dias | +50 XP</span></button>
-                                <button onclick="window.processReviewDifficulty('forgot')" class="bg-slate-800 border border-red-900 hover:bg-red-900/50 text-red-400 p-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-all"><span class="text-xs uppercase">Esqueci</span><span class="text-[10px] text-slate-500">+1 Dia | +60 XP</span></button>
+                                <button onclick="window.processReviewDifficulty('easy')" class="bg-slate-800 border border-emerald-900 hover:bg-emerald-900/50 text-emerald-400 p-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-all"><span class="text-xs uppercase">Fácil</span><span class="text-[10px] text-slate-500">+20 XP</span></button>
+                                <button onclick="window.processReviewDifficulty('medium')" class="bg-slate-800 border border-yellow-900 hover:bg-yellow-900/50 text-yellow-400 p-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-all"><span class="text-xs uppercase">Médio</span><span class="text-[10px] text-slate-500">+35 XP</span></button>
+                                <button onclick="window.processReviewDifficulty('hard')" class="bg-slate-800 border border-orange-900 hover:bg-orange-900/50 text-orange-400 p-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-all"><span class="text-xs uppercase">Difícil</span><span class="text-[10px] text-slate-500">+50 XP</span></button>
+                                <button onclick="window.processReviewDifficulty('forgot')" class="bg-slate-800 border border-red-900 hover:bg-red-900/50 text-red-400 p-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-all"><span class="text-xs uppercase">Não lembrei</span><span class="text-[10px] text-slate-500">+60 XP</span></button>
                             </div>
                             <button onclick="window.closeCustomPrompt()" class="text-slate-500 hover:text-white text-xs underline">Cancelar fechamento</button>
                         </div>
@@ -954,7 +1281,7 @@
                             <i data-lucide="shield" class="w-5 h-5 text-white"></i>
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
-                        <div class="hidden sm:block font-black tracking-widest text-sm text-slate-200 whitespace-nowrap">MISSÃO TÁTICA</div>
+                        <div class="hidden sm:block font-black tracking-widest text-sm text-slate-200 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-2 align-middle font-bold uppercase tracking-widest">Versão 1.0 — Estável</span></div>
                     </div>
                     <div id="sync-status" class="xl:hidden flex items-center gap-1.5 px-2 py-1 bg-slate-950 rounded-md text-[10px] font-bold text-slate-400 uppercase tracking-wider border border-slate-800 shrink-0">
                         <span class="w-2 h-2 rounded-full shrink-0" id="sync-indicator"></span><span id="sync-text"></span>
@@ -1068,6 +1395,9 @@
             // MODO FOCO
             const focusClass = state.focusMode ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' : 'bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800';
             html += `<button onclick="window.toggleFocusMode()" class="mb-4 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold text-sm transition-all border w-full ${focusClass} font-mono"><i data-lucide="crosshair" class="w-4 h-4"></i> ${state.focusMode ? 'Desativar Estação de Foco' : 'Estação de Foco (Pomodoro)'}</button>`;
+
+            // RITUAIS OPERACIONAIS
+            html += renderRitualSection();
 
             if (state.focusMode) {
                 const targetTasks = state.currentFilter === 'all' ? dailyTasks : dailyTasks.filter(t => t.category === state.currentFilter);
@@ -1252,9 +1582,9 @@
                                 <div class="bg-cyan-950 p-3 rounded-xl border border-cyan-800/50 shadow-inner"><i data-lucide="brain" class="text-cyan-400 w-8 h-8"></i></div>
                                 <div><h2 class="text-2xl font-black text-white tracking-wide">Centro de Inteligência</h2><p class="text-xs text-cyan-500 font-bold uppercase tracking-widest mt-1">Neuro-otimização</p></div>
                             </div>
-                            <div class="flex overflow-x-auto scrollbar-hide gap-2 mb-6 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+                            <div class="flex flex-nowrap overflow-x-auto scrollbar-hide gap-2 mb-6 bg-slate-950 p-1.5 pr-4 rounded-xl border border-slate-800">
                                 ${[{id: 'plano', icon: 'crosshair', label: 'Plano de Hoje'}, {id: 'dashboard', icon: 'line-chart', label: 'Radar'}, {id: 'subjects', icon: 'layers', label: 'Arsenal'}, {id: 'log', icon: 'zap', label: 'Registrar'}, {id: 'reviews', icon: 'rotate-cw', label: '1-7-30'}, {id: 'erros', icon: 'microscope', label: 'Erros'}, {id: 'ciclos', icon: 'refresh-cw', label: 'Ciclos'}].map(tab => `
-                                    <button onclick="window.setStudyTab('${tab.id}')" class="flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all whitespace-nowrap ${uiState.studyTab === tab.id ? 'bg-cyan-900/40 text-cyan-300 border border-cyan-700/50 shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-transparent'}">
+                                    <button onclick="window.setStudyTab('${tab.id}')" class="shrink-0 flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all whitespace-nowrap ${uiState.studyTab === tab.id ? 'bg-cyan-900/40 text-cyan-300 border border-cyan-700/50 shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-transparent'}">
                                         <i data-lucide="${tab.icon}" class="w-4 h-4"></i> ${tab.label}
                                     </button>
                                 `).join('')}
@@ -1315,10 +1645,11 @@
 
             // RODAPÉ: BACKUP E REINICIAR
             html += `
-            <div class="flex flex-wrap justify-center gap-4 pb-8 pt-4 border-t border-slate-800/50 mt-8">
+            <div class="flex flex-wrap justify-center gap-4 pb-8 pt-4 border-t border-slate-800/50 mt-8 relative">
                 <button onclick="window.exportData()" class="text-xs text-slate-500 hover:text-emerald-400 font-bold uppercase tracking-widest transition-colors font-mono flex items-center gap-1"><i data-lucide="download" class="w-3 h-3"></i> Exportar JSON</button>
                 <button onclick="window.triggerImport()" class="text-xs text-slate-500 hover:text-blue-400 font-bold uppercase tracking-widest transition-colors font-mono flex items-center gap-1"><i data-lucide="upload" class="w-3 h-3"></i> Importar JSON</button>
                 <button onclick="window.resetSystem()" class="text-xs text-slate-500 hover:text-red-400 font-bold uppercase tracking-widest transition-colors font-mono flex items-center gap-1"><i data-lucide="alert-triangle" class="w-3 h-3"></i> Reiniciar Semana Total</button>
+                <p class="text-[10px] text-slate-500 text-center w-full mt-4 font-mono">Ambiente oficial de rotina. Novas funções devem ser testadas primeiro no arquivo teste_novos_modulos.html.</p>
             </div>`;
 
             appDiv.innerHTML = html;
@@ -1327,6 +1658,112 @@
             // Render specific components that require external DOM access safely
             if(!clockInterval && currentUser) startClock();
             window.updateSyncStatus(currentSyncStatus);
+        }
+
+
+        function renderRitualSection() {
+            const rituals = (state.routineData?.rituals || []).filter(r => r.active !== false);
+            const logs = state.routineData?.logs || [];
+            const todayKey = window.getLocalDateKey();
+            const isDoneToday = (ritualId) => logs.some(log => log.ritualId === ritualId && window.getLocalDateKey(log.date) === todayKey);
+
+            const renderRitualList = (period) => {
+                const items = rituals.filter(r => r.period === period);
+                if (items.length === 0) {
+                    return `<p class="text-xs text-slate-600 italic bg-slate-950/50 border border-slate-800 rounded-lg p-3">Nenhum ritual ativo. Crie um protocolo matinal ou noturno.</p>`;
+                }
+                return `<div class="space-y-2">${items.map(r => {
+                    const done = isDoneToday(r.id);
+                    const xp = Number.isFinite(Number(r.xp)) ? Number(r.xp) : 10;
+                    const hp = Number.isFinite(Number(r.energyDelta)) ? Number(r.energyDelta) : 0;
+                    const hpText = hp === 0 ? '0 HP' : `${hp > 0 ? '+' : ''}${hp} HP`;
+                    const hpColor = hp > 0 ? 'text-emerald-400' : hp < 0 ? 'text-red-400' : 'text-slate-500';
+                    return `
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-3">
+                        <div class="min-w-0 flex-1">
+                            <div class="font-bold text-sm text-white truncate">${r.title}</div>
+                            <div class="flex flex-wrap gap-2 mt-1 text-[10px] font-bold uppercase tracking-wider">
+                                <span class="text-indigo-400 bg-indigo-950/30 border border-indigo-900/40 px-1.5 py-0.5 rounded">+${xp} XP</span>
+                                <span class="${hpColor} bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">${hpText}</span>
+                                ${done ? `<span class="text-emerald-400 bg-emerald-950/30 border border-emerald-900/40 px-1.5 py-0.5 rounded">Concluído hoje</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            ${done ? `<button disabled class="bg-emerald-950/30 text-emerald-700 p-2 rounded-lg cursor-not-allowed" title="Concluído hoje"><i data-lucide="check-circle" class="w-4 h-4"></i></button>` : `<button onclick="window.completeRitual(${r.id})" class="bg-emerald-900/40 hover:bg-emerald-600 text-emerald-400 hover:text-white p-2 rounded-lg transition-colors" title="Concluir hoje"><i data-lucide="check" class="w-4 h-4"></i></button>`}
+                            <button onclick="window.deleteRitual(${r.id})" class="bg-slate-900 hover:bg-slate-800 text-slate-500 hover:text-slate-300 p-2 rounded-lg transition-colors" title="Arquivar ritual"><i data-lucide="archive" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>`;
+                }).join('')}</div>`;
+            };
+
+            return `
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg mb-4 font-mono">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4 border-b border-slate-800 pb-3">
+                    <div>
+                        <h2 class="text-sm font-black uppercase tracking-widest text-slate-200 flex items-center gap-2"><i data-lucide="sun-moon" class="w-4 h-4 text-indigo-400"></i> Rituais Operacionais</h2>
+                        <p class="text-[11px] text-slate-500 mt-1">Protocolos matinais e noturnos integrados à gamificação.</p>
+                    </div>
+                    <span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest bg-slate-950 border border-slate-800 px-2 py-1 rounded">${logs.filter(l => window.getLocalDateKey(l.date) === todayKey).length} feitos hoje</span>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
+                    <div class="bg-slate-950/40 border border-slate-800 rounded-xl p-3">
+                        <h3 class="text-xs font-bold uppercase tracking-widest text-yellow-400 mb-3 flex items-center gap-2"><i data-lucide="sunrise" class="w-4 h-4"></i> Ritual Matinal</h3>
+                        ${renderRitualList('morning')}
+                    </div>
+                    <div class="bg-slate-950/40 border border-slate-800 rounded-xl p-3">
+                        <h3 class="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-3 flex items-center gap-2"><i data-lucide="moon" class="w-4 h-4"></i> Ritual Noturno</h3>
+                        ${renderRitualList('night')}
+                    </div>
+                </div>
+
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 sm:p-4">
+                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-widest mb-3 flex items-center gap-2"><i data-lucide="plus-circle" class="w-4 h-4 text-emerald-400"></i> Criar Ritual</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-3">
+                        <input id="ritual-title" type="text" placeholder="Nome do ritual" class="sm:col-span-2 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                        <select id="ritual-period" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                            <option value="morning">Manhã</option>
+                            <option value="night">Noite</option>
+                        </select>
+                        <button onclick="window.addRitual()" class="bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg px-3 py-2 text-xs font-black uppercase tracking-widest transition-colors">Criar Ritual</button>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">XP</label>
+                            <input id="ritual-xp" type="number" value="10" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">HP</label>
+                            <input id="ritual-energy" type="number" value="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                        </div>
+                        <div class="col-span-2 flex items-end">
+                            <p class="text-[10px] text-slate-500 leading-relaxed">Use HP positivo para rituais restauradores e HP negativo para rituais exigentes.</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <div>
+                            <span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mr-2">Sugestões matinais:</span>
+                            ${[
+                                ['Beber água','morning',10,5],
+                                ['Luz natural por alguns minutos','morning',10,5],
+                                ['Alongamento leve','morning',10,5],
+                                ['Planejar 3 prioridades','morning',15,0],
+                                ['Medicação prescrita','morning',10,0]
+                            ].map(s => `<button onclick="window.fillRitualSuggestion('${s[0]}','${s[1]}',${s[2]},${s[3]})" class="text-[10px] bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 px-2 py-1 rounded-full mr-1 mb-1 transition-colors">${s[0]}</button>`).join('')}
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mr-2">Sugestões noturnas:</span>
+                            ${[
+                                ['Desligar telas','night',15,5],
+                                ['Separar roupa do dia seguinte','night',10,0],
+                                ['Higiene do sono','night',15,5],
+                                ['Diário rápido','night',10,0],
+                                ['Medicação prescrita','night',10,0]
+                            ].map(s => `<button onclick="window.fillRitualSuggestion('${s[0]}','${s[1]}',${s[2]},${s[3]})" class="text-[10px] bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 px-2 py-1 rounded-full mr-1 mb-1 transition-colors">${s[0]}</button>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>`;
         }
 
         // --- Q.G. ---
@@ -1368,7 +1805,11 @@
                 <div class="bg-yellow-950/20 border border-yellow-900/50 p-4 rounded-xl mb-6 flex justify-between items-center">
                     <div><h3 class="text-yellow-500 font-black uppercase text-sm">Seu Saldo</h3><p class="text-xs text-slate-400">Pague pelo seu merecido lazer acumulando moedas!</p></div>
                     <div class="text-3xl font-black text-yellow-400 flex items-center gap-2"><i data-lucide="coins"></i> ${state.coins}</div>
-                </div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4">`;
+                </div>
+                
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 mt-6 flex items-center gap-2"><i data-lucide="star" class="w-4 h-4 text-yellow-500"></i> Oficiais</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">`;
+                
                 REWARDS_SHOP.forEach(r => {
                     const canAfford = state.coins >= r.cost;
                     html += `
@@ -1380,7 +1821,56 @@
                         <button onclick="window.buyReward('${r.id}')" class="mt-4 w-full py-2 rounded-lg text-xs font-bold transition-colors ${canAfford ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-slate-900 text-slate-500 cursor-not-allowed'}">${canAfford ? 'Resgatar' : 'Faltam Moedas'}</button>
                     </div>`;
                 });
-                return html + `</div>`;
+                html += `</div>`;
+
+                html += `<h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-8 mb-3 flex items-center gap-2"><i data-lucide="package" class="w-4 h-4 text-indigo-400"></i> Personalizadas</h3>`;
+                html += `<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">`;
+                if (state.customRewards) {
+                    state.customRewards.filter(r => r.active !== false).forEach(r => {
+                        const canAfford = state.coins >= r.cost;
+                        html += `
+                        <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col justify-between hover:border-slate-500 transition-colors relative group">
+                            <button onclick="window.deleteCustomReward(${r.id})" class="absolute top-2 right-2 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="x" class="w-4 h-4"></i></button>
+                            <div>
+                                <div class="flex justify-between items-start mb-2"><i data-lucide="${r.icon}" class="text-white w-6 h-6"></i><span class="bg-slate-950 text-yellow-400 text-xs font-bold px-2 py-1 rounded border border-yellow-900/50">${r.cost} MT</span></div>
+                                <h4 class="font-bold text-white text-sm">${r.title}</h4><p class="text-xs text-slate-400 mt-1 leading-tight">${r.desc}</p>
+                            </div>
+                            <button onclick="window.buyCustomReward(${r.id})" class="mt-4 w-full py-2 rounded-lg text-xs font-bold transition-colors ${canAfford ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-slate-900 text-slate-500 cursor-not-allowed'}">${canAfford ? 'Resgatar' : 'Faltam Moedas'}</button>
+                        </div>`;
+                    });
+                }
+                html += `</div>`;
+
+                html += `
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 mb-8">
+                    <h4 class="text-sm font-bold text-slate-300 mb-3">Criar Nova Recompensa</h4>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <input type="text" id="custom-reward-title" placeholder="Título (ex: Pedir Pizza)" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none">
+                        <input type="number" id="custom-reward-cost" placeholder="Custo (MT)" min="1" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none">
+                    </div>
+                    <input type="text" id="custom-reward-desc" placeholder="Descrição opcional..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white mb-3 outline-none">
+                    <button onclick="window.addCustomReward()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2 rounded-lg border border-slate-600 text-xs transition-colors">Criar Recompensa</button>
+                </div>`;
+
+                html += `<h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><i data-lucide="history" class="w-4 h-4 text-emerald-500"></i> Histórico de Resgates</h3>`;
+                html += `<div class="space-y-2">`;
+                if (!state.rewardPurchases || state.rewardPurchases.length === 0) {
+                    html += `<p class="text-xs text-slate-500 italic">Nenhum resgate registrado ainda.</p>`;
+                } else {
+                    state.rewardPurchases.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 10).forEach(rp => {
+                        html += `
+                        <div class="bg-slate-950 border border-slate-800 p-3 rounded-lg flex justify-between items-center">
+                            <div class="flex flex-col">
+                                <span class="text-[9px] uppercase font-bold text-slate-500 mb-0.5">${new Date(rp.date).toLocaleDateString('pt-BR', {hour: '2-digit', minute:'2-digit'})} | ${rp.type === 'custom' ? 'Pessoal' : 'Oficial'}</span>
+                                <span class="text-sm font-bold text-white">${rp.title}</span>
+                            </div>
+                            <span class="text-xs text-yellow-400 font-bold bg-yellow-950/30 px-2 py-1 rounded border border-yellow-900/50">${rp.cost} MT</span>
+                        </div>`;
+                    });
+                }
+                html += `</div>`;
+
+                return html;
             }
             return '';
         }
@@ -1434,11 +1924,91 @@
                     <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center justify-center text-center"><i data-lucide="brain" class="text-fuchsia-400 mb-2 w-6 h-6"></i><span class="text-2xl font-black text-white">${confBeforeAvg} > ${confAfterAvg}</span><span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Confiança Média</span></div>
                 </div>
 
-                <h3 class="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2 uppercase tracking-widest"><i data-lucide="bar-chart-2" class="text-cyan-500 w-4 h-4"></i> Radar de Retenção</h3>
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-8 mb-3 flex items-center gap-2"><i data-lucide="bar-chart" class="w-4 h-4 text-indigo-400"></i> Painel de Desempenho</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                `;
+
+                // --- Gráfico 1: Estudos - Últimos 7 dias ---
+                const todayForChart = new Date();
+                todayForChart.setHours(0,0,0,0);
+                const last7Days = [];
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date(todayForChart);
+                    d.setDate(d.getDate() - i);
+                    last7Days.push(d);
+                }
+                const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+                let maxMins = 0;
+                const studyChartData = last7Days.map(dateObj => {
+                    let totalMins = 0;
+                    const sessions = state.studyData?.sessions || [];
+                    sessions.forEach(s => {
+                        if (s.date) {
+                            const sd = new Date(s.date);
+                            if (sd.getFullYear() === dateObj.getFullYear() && sd.getMonth() === dateObj.getMonth() && sd.getDate() === dateObj.getDate()) {
+                                totalMins += (s.duration || 0);
+                            }
+                        }
+                    });
+                    if (totalMins > maxMins) maxMins = totalMins;
+                    return { label: dayNames[dateObj.getDay()], mins: totalMins };
+                });
+
+                html += `<div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col">
+                            <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Estudos — Últimos 7 dias</h4>`;
+                
+                if (maxMins === 0) {
+                    html += `<div class="flex-1 flex items-center justify-center text-xs text-slate-600 italic">Nenhuma sessão registrada nos últimos 7 dias.</div>`;
+                } else {
+                    html += `<div class="flex items-end justify-between h-32 mt-auto px-1 sm:px-2 gap-1 sm:gap-2">`;
+                    studyChartData.forEach(c => {
+                        const heightPercent = maxMins > 0 ? (c.mins / maxMins) * 100 : 0;
+                        html += `
+                        <div class="flex flex-col items-center gap-1.5 w-full">
+                            <span class="text-[9px] font-bold text-cyan-400">${c.mins > 0 ? c.mins + 'm' : ''}</span>
+                            <div class="w-full max-w-[20px] bg-cyan-600 rounded-t-sm transition-all relative group" style="height: ${Math.max(heightPercent, 2)}%;">
+                                ${c.mins > 0 ? `<div class="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white text-[9px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity">${c.mins} min</div>` : ''}
+                            </div>
+                            <span class="text-[9px] text-slate-500 uppercase font-bold">${c.label}</span>
+                        </div>`;
+                    });
+                    html += `</div>`;
+                }
+                html += `</div>`;
+
+                // --- Gráfico 2: Eficiência da Semana ---
+                const efficiencyChartData = daysOfWeek.map(day => {
+                    const dayTasks = (state.tasks || []).filter(t => t.day === day.id);
+                    const total = dayTasks.length;
+                    const completed = dayTasks.filter(t => t.completed).length;
+                    const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+                    return { label: day.label.substring(0,3), total, completed, percent };
+                });
+
+                html += `<div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col">
+                            <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Eficiência da Semana</h4>
+                            <div class="space-y-2.5 overflow-y-auto pr-1">`;
+                
+                efficiencyChartData.forEach(c => {
+                    const barColor = c.percent === 100 ? 'bg-emerald-500' : (c.percent > 0 ? 'bg-indigo-500' : 'bg-slate-700');
+                    const textColor = c.percent === 100 ? 'text-emerald-400' : (c.percent > 0 ? 'text-indigo-400' : 'text-slate-600');
+                    html += `
+                    <div>
+                        <div class="flex justify-between text-[9px] font-bold mb-1 uppercase tracking-wider">
+                            <span class="text-slate-400">${c.label} <span class="text-slate-600 ml-1">(${c.completed}/${c.total})</span></span>
+                            <span class="${textColor}">${c.percent}%</span>
+                        </div>
+                        <div class="w-full bg-slate-900 rounded-full h-1.5">
+                            <div class="${barColor} h-1.5 rounded-full transition-all" style="width: ${c.percent}%"></div>
+                        </div>
+                    </div>`;
+                });
+                html += `</div></div></div>`;
+
+                html += `<h3 class="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2 uppercase tracking-widest"><i data-lucide="bar-chart-2" class="text-cyan-500 w-4 h-4"></i> Radar de Retenção</h3>
                 <div class="space-y-4">`;
 
                 if (state.studyData.subjects.length === 0) html += `<p class="text-slate-500 text-sm italic text-center p-8 bg-slate-950 rounded-xl border border-slate-800">Arsenal vazio.</p>`;
-                const now = new Date();
                 state.studyData.subjects.forEach(sub => {
                     const stats = window.getSubjectStats(sub.id);
                     let radarStatus = "Esquecida", color = "bg-slate-600";
@@ -1460,7 +2030,40 @@
                         </div>
                     </div>`;
                 });
-                return html + `</div>`;
+                html += `</div>`;
+
+                html += `<h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-8 mb-3 flex items-center gap-2"><i data-lucide="history" class="w-4 h-4 text-cyan-500"></i> Histórico de Sessões</h3>`;
+                html += `<div class="space-y-3">`;
+                const recentSessions = state.studyData.sessions.slice().sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
+                if (recentSessions.length === 0) {
+                    html += `<p class="text-slate-500 text-sm italic text-center p-4 bg-slate-950 rounded-xl border border-slate-800">Nenhuma sessão registrada.</p>`;
+                } else {
+                    recentSessions.forEach(s => {
+                        const sub = state.studyData.subjects.find(sub => sub.id === s.subjectId) || { name: 'Deletada', color: 'bg-slate-500' };
+                        const typeLabel = SESSION_TYPES[s.type]?.label || s.type;
+                        const xpText = s.xpAwarded ? `<span class="text-[9px] text-indigo-400 font-bold bg-indigo-950/50 px-1.5 py-0.5 rounded border border-indigo-900/50">+${s.xpAwarded} XP</span>` : '';
+                        
+                        html += `
+                        <div class="bg-slate-950 border border-slate-800 p-3 rounded-lg flex justify-between items-center group">
+                            <div class="flex flex-col">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-[9px] uppercase font-bold text-slate-500">${new Date(s.date).toLocaleDateString('pt-BR')} | ${typeLabel} | ${s.duration}m</span>
+                                    ${xpText}
+                                </div>
+                                <span class="text-sm font-bold text-white flex items-center gap-1.5">
+                                    <div class="w-2 h-2 rounded-full ${sub.color}"></div> ${sub.name}
+                                    ${s.topic ? `<span class="text-xs text-slate-400 font-normal truncate max-w-[120px] sm:max-w-xs">- ${s.topic}</span>` : ''}
+                                </span>
+                            </div>
+                            <button onclick="window.deleteStudySession(${s.id})" class="text-slate-600 hover:text-red-400 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-2 transition-all" title="Excluir Sessão">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>`;
+                    });
+                }
+                html += `</div>`;
+
+                return html;
             } 
             else if (uiState.studyTab === 'subjects') {
                 let html = `
@@ -1534,42 +2137,213 @@
                 return html;
             }
             else if (uiState.studyTab === 'reviews') {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                let countPending = 0;
+                let countToday = 0;
+                let countLate = 0;
+                let countFuture = 0;
+                let countCompleted = 0;
+                let countMaintenance = 0;
+                let countArchived = 0;
+
+                const validSubjectIds = new Set((state.studyData?.subjects || []).map(s => s.id));
+                const allReviews = (state.studyData?.reviews || []).filter(r => validSubjectIds.has(r.subjectId));
+
+                allReviews.forEach(r => {
+                    const status = r.status || 'pending';
+                    const phase = r.phase || 'initial';
+                    const dueDateStr = r.dueDate || new Date().toISOString();
+                    
+                    const due = new Date(dueDateStr);
+                    due.setHours(0, 0, 0, 0);
+
+                    if (status === 'archived') {
+                        countArchived++;
+                    } else if (status === 'completed') {
+                        countCompleted++;
+                    } else {
+                        countPending++;
+                        if (due < today) countLate++;
+                        else if (due.getTime() === today.getTime()) countToday++;
+                        else countFuture++;
+                    }
+
+                    if (status !== 'archived' && phase === 'maintenance') {
+                        countMaintenance++;
+                    }
+                });
+
+                let radarMsg = "";
+                let radarMsgColor = "";
+                let radarMsgIcon = "";
+                if (countLate > 0) {
+                    radarMsg = "Há revisões atrasadas. Priorize uma recuperação curta hoje.";
+                    radarMsgColor = "text-red-400";
+                    radarMsgIcon = "alert-triangle";
+                } else if (countToday > 0) {
+                    radarMsg = "Há revisões para hoje. Execute antes de abrir novos conteúdos.";
+                    radarMsgColor = "text-yellow-400";
+                    radarMsgIcon = "clock";
+                } else {
+                    radarMsg = "Radar limpo. Nenhuma revisão crítica para agora.";
+                    radarMsgColor = "text-emerald-400";
+                    radarMsgIcon = "check-circle";
+                }
+
+                let html = `
+                <div class="mb-6">
+                    <h3 class="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2"><i data-lucide="bar-chart-2" class="text-cyan-400 w-4 h-4"></i> Radar de Revisões</h3>
+                    <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2 mb-3">
+                        <div class="bg-cyan-950/40 border border-cyan-900/50 p-2 rounded-lg text-center flex flex-col items-center justify-center">
+                            <span class="text-lg font-black text-cyan-400">${countPending}</span>
+                            <span class="text-[9px] text-slate-400 uppercase font-bold tracking-widest mt-0.5">Pendentes</span>
+                        </div>
+                        <div class="bg-yellow-950/40 border border-yellow-900/50 p-2 rounded-lg text-center flex flex-col items-center justify-center">
+                            <span class="text-lg font-black text-yellow-400">${countToday}</span>
+                            <span class="text-[9px] text-slate-400 uppercase font-bold tracking-widest mt-0.5">Hoje</span>
+                        </div>
+                        <div class="bg-red-950/40 border border-red-900/50 p-2 rounded-lg text-center flex flex-col items-center justify-center">
+                            <span class="text-lg font-black text-red-400">${countLate}</span>
+                            <span class="text-[9px] text-slate-400 uppercase font-bold tracking-widest mt-0.5">Atrasadas</span>
+                        </div>
+                        <div class="bg-slate-900 border border-slate-800 p-2 rounded-lg text-center flex flex-col items-center justify-center">
+                            <span class="text-lg font-black text-slate-400">${countFuture}</span>
+                            <span class="text-[9px] text-slate-500 uppercase font-bold tracking-widest mt-0.5">Programadas</span>
+                        </div>
+                        <div class="bg-emerald-950/40 border border-emerald-900/50 p-2 rounded-lg text-center flex flex-col items-center justify-center">
+                            <span class="text-lg font-black text-emerald-500">${countCompleted}</span>
+                            <span class="text-[9px] text-slate-400 uppercase font-bold tracking-widest mt-0.5">Concluídas</span>
+                        </div>
+                        <div class="bg-fuchsia-950/40 border border-fuchsia-900/50 p-2 rounded-lg text-center flex flex-col items-center justify-center">
+                            <span class="text-lg font-black text-fuchsia-400">${countMaintenance}</span>
+                            <span class="text-[9px] text-slate-400 uppercase font-bold tracking-widest mt-0.5">Manutenção</span>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 p-2 rounded-lg text-center flex flex-col items-center justify-center">
+                            <span class="text-lg font-black text-slate-500">${countArchived}</span>
+                            <span class="text-[9px] text-slate-600 uppercase font-bold tracking-widest mt-0.5">Arquivadas</span>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-800 px-4 py-3 rounded-lg flex items-center gap-3">
+                        <i data-lucide="${radarMsgIcon}" class="${radarMsgColor} w-5 h-5 shrink-0"></i>
+                        <p class="text-xs font-medium text-slate-300">${radarMsg}</p>
+                    </div>
+                </div>`;
+
                 const now = new Date();
-                state.studyData.reviews = state.studyData.reviews.filter(r => state.studyData.subjects.some(s => s.id === r.subjectId));
-                const pending = state.studyData.reviews.filter(r => r.status === 'pending').sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+                const pending = allReviews.filter(r => r.status === 'pending').sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+                const completed = allReviews.filter(r => r.status === 'completed').sort((a, b) => new Date(b.completedAt || b.dueDate) - new Date(a.completedAt || a.dueDate)).slice(0, 5);
+                const archived = allReviews.filter(r => r.status === 'archived').sort((a, b) => new Date(b.archivedAt || b.completedAt || b.dueDate) - new Date(a.archivedAt || a.completedAt || a.dueDate)).slice(0, 10);
+
                 const dueToday = pending.filter(r => new Date(r.dueDate) <= now);
                 const upcoming = pending.filter(r => new Date(r.dueDate) > now).slice(0, 10);
 
-                let html = `<div class="grid grid-cols-1 md:grid-cols-2 gap-6">`;
+                const renderReviewCard = (r) => {
+                    const sub = state.studyData.subjects.find(s => s.id === r.subjectId) || { name: 'Deletada', color: 'bg-slate-500' };
+                    const phase = r.phase || 'initial';
+                    const phaseLabel = phase === 'maintenance' ? 'Manutenção' : 'Inicial';
+                    const phaseColor = phase === 'maintenance' ? 'bg-emerald-950 text-emerald-400 border-emerald-900/50' : 'bg-cyan-950 text-cyan-400 border-cyan-900/50';
+                    
+                    const step = r.cycleStep || r.intervalDays || 1;
+                    const stepLabel = 'D+' + step;
+                    
+                    let statusLabel = 'Programada';
+                    let statusColor = 'bg-slate-800 text-slate-400 border-slate-700';
+                    const dueDateObj = new Date(r.dueDate);
+                    const todayDate = new Date();
+                    todayDate.setHours(0,0,0,0);
+                    const due = new Date(dueDateObj);
+                    due.setHours(0,0,0,0);
+                    
+                    const isCompleted = r.status === 'completed';
+                    const isArchived = r.status === 'archived';
+                    
+                    if (isArchived) {
+                        statusLabel = 'Arquivada';
+                        statusColor = 'bg-slate-900 text-slate-600 border-slate-800';
+                    } else if (isCompleted) {
+                        statusLabel = 'Concluída';
+                        statusColor = 'bg-emerald-900/20 text-emerald-500 border-emerald-900/50';
+                    } else if (due < todayDate) {
+                        statusLabel = 'Atrasada';
+                        statusColor = 'bg-red-950 text-red-400 border-red-900/50';
+                    } else if (due.getTime() === todayDate.getTime()) {
+                        statusLabel = 'Hoje';
+                        statusColor = 'bg-yellow-950 text-yellow-400 border-yellow-900/50';
+                    }
+
+                    const diffMap = { easy: 'Fácil', medium: 'Médio', hard: 'Difícil', forgot: 'Não lembrei' };
+                    const diffText = r.difficultyOrigin ? diffMap[r.difficultyOrigin] || r.difficultyOrigin : null;
+                    const completedAtText = r.completedAt ? new Date(r.completedAt).toLocaleDateString('pt-BR') : null;
+                    const archivedAtText = r.archivedAt ? new Date(r.archivedAt).toLocaleDateString('pt-BR') : null;
+
+                    return `
+                    <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl flex justify-between items-center group hover:border-slate-700 transition-colors">
+                        <div class="flex-1 min-w-0 pr-3">
+                            <div class="flex flex-wrap items-center gap-1.5 mb-1.5">
+                                <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${phaseColor}">${phaseLabel}</span>
+                                <span class="text-[9px] uppercase font-bold bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700">${stepLabel}</span>
+                                <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${statusColor}">${statusLabel}</span>
+                            </div>
+                            <div class="font-bold text-sm text-white flex items-center gap-1.5 truncate">
+                                <div class="w-2 h-2 rounded-full ${sub.color} shrink-0"></div> <span class="truncate">${sub.name}</span>
+                            </div>
+                            <div class="text-xs text-slate-400 truncate mt-0.5">${r.topic || 'Revisão Geral'}</div>
+                            <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+                                <span class="text-[10px] text-slate-500 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i>${dueDateObj.toLocaleDateString('pt-BR')}</span>
+                                ${diffText ? `<span class="text-[10px] text-slate-500 border-l border-slate-800 pl-2">Última: ${diffText}</span>` : ''}
+                                ${(isCompleted || isArchived) && completedAtText ? `<span class="text-[10px] text-emerald-600/80 border-l border-slate-800 pl-2">Feita: ${completedAtText}</span>` : ''}
+                                ${isArchived && archivedAtText ? `<span class="text-[10px] text-slate-500 border-l border-slate-800 pl-2">Arq: ${archivedAtText}</span>` : ''}
+                            </div>
+                        </div>
+                        ${!isCompleted && !isArchived ? `
+                        <button onclick="window.showReviewPrompt(${r.id})" class="bg-emerald-900/30 hover:bg-emerald-600 text-emerald-500 hover:text-white p-2.5 rounded-lg transition-all shrink-0" title="Concluir Revisão">
+                            <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                        </button>
+                        ` : ''}
+                        ${isCompleted ? `
+                        <button onclick="window.archiveReview(${r.id})" class="bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white p-2.5 rounded-lg transition-all shrink-0" title="Arquivar Revisão">
+                            <i data-lucide="archive" class="w-4 h-4"></i>
+                        </button>
+                        ` : ''}
+                        ${isArchived ? `
+                        <div class="p-2.5 text-slate-600 shrink-0">
+                            <i data-lucide="archive" class="w-4 h-4"></i>
+                        </div>
+                        ` : ''}
+                    </div>`;
+                };
+
+                html += `<div class="grid grid-cols-1 md:grid-cols-2 gap-6">`;
                 
+                // Primeira coluna
                 html += `<div><h4 class="text-xs font-bold text-red-400 uppercase tracking-widest mb-3 flex items-center gap-2"><i data-lucide="alert-circle" class="w-4 h-4"></i> Ação Imediata (${dueToday.length})</h4><div class="space-y-3">`;
                 if (dueToday.length === 0) html += `<p class="text-xs text-slate-600 italic">Limpo.</p>`;
-                dueToday.forEach(r => {
-                    const sub = state.studyData.subjects.find(s => s.id === r.subjectId);
-                    html += `
-                    <div class="bg-slate-950 border border-red-900/30 p-3 rounded-lg flex justify-between items-center group">
-                        <div>
-                            <div class="flex items-center gap-2 mb-1"><span class="text-[9px] uppercase font-bold bg-red-950 text-red-400 px-1.5 py-0.5 rounded">Hoje/Atrasado</span><span class="text-[9px] uppercase font-bold bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded">+${r.intervalDays} Dias</span></div>
-                            <div class="font-bold text-sm text-white flex items-center gap-1.5"><div class="w-2 h-2 rounded-full ${sub.color}"></div> ${sub.name}</div>
-                            <div class="text-xs text-slate-400 truncate max-w-[200px] mt-0.5">${r.topic}</div>
-                        </div>
-                        <button onclick="window.showReviewPrompt(${r.id})" class="bg-emerald-900/30 hover:bg-emerald-600 text-emerald-500 hover:text-white p-2 rounded-lg transition-all" title="Concluir Revisão"><i data-lucide="check-circle-2" class="w-5 h-5"></i></button>
-                    </div>`;
-                });
+                dueToday.forEach(r => html += renderReviewCard(r));
                 html += `</div></div>`;
 
-                html += `<div><h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><i data-lucide="calendar" class="w-4 h-4"></i> Radar (${upcoming.length})</h4><div class="space-y-3">`;
+                // Segunda coluna
+                html += `<div>`;
+                
+                html += `<h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><i data-lucide="calendar" class="w-4 h-4"></i> Radar (${upcoming.length})</h4><div class="space-y-3 mb-6">`;
                 if (upcoming.length === 0) html += `<p class="text-xs text-slate-600 italic">Vazio.</p>`;
-                upcoming.forEach(r => {
-                    const sub = state.studyData.subjects.find(s => s.id === r.subjectId);
-                    html += `
-                    <div class="bg-slate-950/50 border border-slate-800/50 p-3 rounded-lg opacity-70">
-                        <div class="flex items-center gap-2 mb-1"><span class="text-[9px] uppercase font-bold bg-slate-900 text-slate-500 px-1.5 py-0.5 rounded border border-slate-800">Para: ${new Date(r.dueDate).toLocaleDateString('pt-BR')}</span></div>
-                        <div class="font-bold text-sm text-slate-300 flex items-center gap-1.5"><div class="w-2 h-2 rounded-full ${sub.color}"></div> ${sub.name}</div>
-                        <div class="text-xs text-slate-500 truncate mt-0.5">${r.topic}</div>
-                    </div>`;
-                });
-                html += `</div></div></div>`;
+                upcoming.forEach(r => html += renderReviewCard(r));
+                html += `</div>`;
+
+                if (completed.length > 0) {
+                    html += `<h4 class="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-3 flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i> Últimas Concluídas</h4><div class="space-y-3 opacity-70 hover:opacity-100 transition-opacity">`;
+                    completed.forEach(r => html += renderReviewCard(r));
+                    html += `</div>`;
+                }
+
+                if (archived.length > 0) {
+                    html += `<h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-6 mb-3 flex items-center gap-2"><i data-lucide="archive" class="w-4 h-4"></i> Revisões Arquivadas</h4><div class="space-y-3 opacity-50 hover:opacity-100 transition-opacity grayscale hover:grayscale-0">`;
+                    archived.forEach(r => html += renderReviewCard(r));
+                    html += `</div>`;
+                }
+
+                html += `</div></div>`;
                 return html;
             }
             else if (uiState.studyTab === 'erros') {
@@ -1637,7 +2411,7 @@
                         </div>
                         <h4 class="font-bold text-white text-sm mb-1">${c.name}</h4>
                         <p class="text-xs text-slate-400 mb-1">Meta: ${c.weeklyHoursGoal}h semanais</p>
-                        <p class="text-[10px] text-slate-500 leading-tight">Materérias: ${subs}</p>
+                        <p class="text-[10px] text-slate-500 leading-tight">Matérias: ${subs}</p>
                     </div>`;
                 });
                 return html + `</div>`;
