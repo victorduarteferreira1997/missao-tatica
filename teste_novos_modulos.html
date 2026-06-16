@@ -60,7 +60,7 @@
     </div>
 
     <!-- Aplicação Principal (Oculta até o login) -->
-    <div id="app-wrapper" class="hidden max-w-4xl mx-auto space-y-4 sm:space-y-6">
+    <div id="app-wrapper" class="hidden max-w-4xl mx-auto space-y-4 sm:space-y-6 relative">
         <div id="app"></div>
     </div>
 
@@ -129,6 +129,31 @@
             { id: 'r4', icon: 'cookie', title: 'Comer um Doce/Junk Food', cost: 80, desc: 'Recompensa de glicose tática.' }
         ];
 
+        const SESSION_TYPES = {
+            'leitura': { label: 'Leitura passiva', mult: 0.7, hp: 8 },
+            'teoria': { label: 'Teoria ativa', mult: 1.0, hp: 15 },
+            'resumo': { label: 'Resumo', mult: 1.0, hp: 12 },
+            'flashcards': { label: 'Flashcards', mult: 1.2, hp: 8 },
+            'questoes': { label: 'Questões', mult: 1.4, hp: 15 },
+            'simulado': { label: 'Simulado', mult: 1.6, hp: 25 },
+            'erros': { label: 'Correção de erros', mult: 1.5, hp: 10 },
+            'ensinar': { label: 'Ensinar em voz alta', mult: 1.5, hp: 12 },
+            'revisao': { label: 'Revisão geral', mult: 1.3, hp: 8 }
+        };
+
+        const WORKOUT_TYPES = {
+            'Musculação': { hpMod: 1.0 }, 'Cardio': { hpMod: 1.2 }, 'Mobilidade': { hpMod: 0.5 },
+            'Caminhada': { hpMod: 0.6 }, 'Corrida': { hpMod: 1.3 }, 'Alongamento': { hpMod: 0.3 },
+            'Funcional': { hpMod: 1.1 }, 'Descanso ativo': { hpMod: -0.5 }, 'Outro': { hpMod: 1.0 }
+        };
+
+        const WORKOUT_INTENSITIES = {
+            'Leve': { xp: 40, hp: 10 },
+            'Moderado': { xp: 70, hp: 20 },
+            'Intenso': { xp: 100, hp: 30 },
+            'Muito intenso': { xp: 130, hp: 40 }
+        };
+
         // ==========================================
         // GESTÃO DE ESTADO & CLOUD SYNC
         // ==========================================
@@ -136,16 +161,19 @@
         let saveTimeout;
         let currentSyncStatus = 'Desconectado';
 
-        // Carrega estado local inicial
         let state = JSON.parse(localStorage.getItem('planeamento_semanal_v11'));
         
         let uiState = {
             showPanic: false, breathingStep: 0, breathingInterval: null,
             showLevelUp: false, showStatsModal: false, statsTab: 'roadmap',
             showCreateTaskModal: false,
-            showStudyModal: false, studyTab: 'dashboard',
+            showStudyModal: false, studyTab: 'plano',
+            showHealthModal: false, healthTab: 'dashboard',
+            showFinanceModal: false, financeTab: 'dashboard',
+            financeGuardianData: null,
             confirm: { show: false, message: '', onConfirm: null },
-            alert: { show: false, message: '' }
+            alert: { show: false, message: '' },
+            customPrompt: { show: false, type: '', reviewId: null }
         };
 
         let pomodoro = { isRunning: false, timeLeft: 25 * 60, mode: 'focus', cycle: 1, intervalId: null };
@@ -160,34 +188,46 @@
         }
 
         window.validateState = function() {
-            // ESTADO INICIAL ZERADO SE NÃO HOUVER DADOS
             if (!state) {
                 state = {
                     activeTab: 'monday', focusMode: false, focusedTaskId: null,
                     xp: 0, level: 1, energy: 100, waterCount: 0, coins: 0, combo: 0,
                     unlockedBadges: [], tasks: [], quickTasks: [], currentFilter: 'all',
                     pomodoroSettings: { focus: 25, shortBreak: 5, longBreak: 15, cycles: 4 },
-                    stats: { pomodorosCompleted: 0, tasksMoved: 0, maxComboReached: 0, rewardsBought: 0 },
-                    studyData: { subjects: [], sessions: [], reviews: [] }
+                    stats: { pomodorosCompleted: 0, tasksMoved: 0, maxComboReached: 0, rewardsBought: 0 }
                 };
             }
             if (!state.stats) state.stats = { pomodorosCompleted: 0, tasksMoved: 0, maxComboReached: 0, rewardsBought: 0 };
-            if (typeof state.stats.tasksMoved === 'undefined') state.stats.tasksMoved = 0;
-            if (typeof state.stats.pomodorosCompleted === 'undefined') state.stats.pomodorosCompleted = 0;
-            if (typeof state.stats.maxComboReached === 'undefined') state.stats.maxComboReached = state.combo || 0;
-            if (typeof state.stats.rewardsBought === 'undefined') state.stats.rewardsBought = 0;
             if (!state.quickTasks) state.quickTasks = [];
             if (!state.unlockedBadges) state.unlockedBadges = [];
             if (!state.tasks) state.tasks = []; 
             if (!state.currentFilter) state.currentFilter = 'all';
             
-            // Validação do novo módulo de estudos
-            if (!state.studyData) state.studyData = { subjects: [], sessions: [], reviews: [] };
+            // Validação Módulo de Estudos
+            if (!state.studyData) state.studyData = {};
             if (!state.studyData.subjects) state.studyData.subjects = [];
             if (!state.studyData.sessions) state.studyData.sessions = [];
             if (!state.studyData.reviews) state.studyData.reviews = [];
+            if (!state.studyData.errorLog) state.studyData.errorLog = [];
+            if (!state.studyData.cycles) state.studyData.cycles = [];
             
-            // Garantir que pomodoro herda tempo se recém carregado
+            // Validação Módulo Físico
+            if (!state.healthData) state.healthData = {};
+            if (!state.healthData.workouts) state.healthData.workouts = [];
+            if (!state.healthData.bodyMetrics) state.healthData.bodyMetrics = [];
+            if (!state.healthData.habits) state.healthData.habits = [];
+            if (!state.healthData.goals) state.healthData.goals = [];
+
+            // Validação Módulo Financeiro
+            if (!state.financeData) state.financeData = {};
+            if (!state.financeData.incomes) state.financeData.incomes = [];
+            if (!state.financeData.fixedExpenses) state.financeData.fixedExpenses = [];
+            if (!state.financeData.variableExpenses) state.financeData.variableExpenses = [];
+            if (!state.financeData.debts) state.financeData.debts = [];
+            if (!state.financeData.goals) state.financeData.goals = [];
+            if (!state.financeData.moneyJournal) state.financeData.moneyJournal = [];
+            if (!state.financeData.categoryBudgets) state.financeData.categoryBudgets = [];
+
             if(!pomodoro.isRunning) pomodoro.timeLeft = state.pomodoroSettings.focus * 60;
         };
 
@@ -218,7 +258,7 @@
             } catch (error) {
                 console.error("Erro no login", error);
                 if (error.code === 'auth/unauthorized-domain') {
-                    window.showAlertModal("⚠️ Domínio bloqueado pelo Firebase.<br><br>Para testar o login com Google neste ambiente de visualização, acesse o <b>Firebase Console > Authentication > Settings > Authorized domains</b> e adicione o domínio <b>googleusercontent.com</b>.<br><br>O login continuará funcionando normalmente no seu localhost.");
+                    window.showAlertModal("⚠️ Domínio bloqueado pelo Firebase.<br><br>Para testar o login com Google neste ambiente de visualização, acesse o <b>Firebase Console > Authentication > Settings > Authorized domains</b> e adicione o domínio <b>googleusercontent.com</b>.");
                 } else {
                     window.showAlertModal("Falha ao entrar com Google: " + error.message);
                 }
@@ -226,11 +266,7 @@
         };
 
         window.logout = async function() {
-            try {
-                await signOut(auth);
-            } catch (error) {
-                console.error("Erro no logout", error);
-            }
+            try { await signOut(auth); } catch (error) { console.error("Erro no logout", error); }
         };
 
         async function loadFromFirestore(uid) {
@@ -238,22 +274,16 @@
             try {
                 const docRef = doc(db, 'users', uid, 'state', 'main');
                 const docSnap = await getDoc(docRef);
-                
                 if (docSnap.exists()) {
                     const cloudState = JSON.parse(docSnap.data().data);
-                    state = { ...state, ...cloudState }; // Merge base config com cloud config
+                    state = { ...state, ...cloudState };
                     window.validateState();
                     localStorage.setItem('planeamento_semanal_v11', JSON.stringify(state));
                     window.updateSyncStatus('Conectado');
                 } else {
-                    // Primeira vez, salva o local na nuvem
-                    window.validateState();
-                    window.saveToFirestore();
+                    window.validateState(); window.saveToFirestore();
                 }
-            } catch(e) {
-                console.error("Erro ao carregar do Firestore", e);
-                window.updateSyncStatus('Erro de conexão');
-            }
+            } catch(e) { window.updateSyncStatus('Erro de conexão'); }
             render();
         }
 
@@ -261,31 +291,14 @@
             if (!currentUser) return;
             window.updateSyncStatus('Salvando...');
             clearTimeout(saveTimeout);
-            
-            // Usando debounce para não estourar a cota do Firebase
             saveTimeout = setTimeout(async () => {
                 try {
-                    // 1. Criar/atualizar o documento pai do usuário para visibilidade no console
                     const userRef = doc(db, 'users', currentUser.uid);
-                    await setDoc(userRef, {
-                        email: currentUser.email,
-                        displayName: currentUser.displayName || '',
-                        updatedAt: new Date().toISOString(),
-                        app: 'missao-tatica'
-                    }, { merge: true });
-
-                    // 2. Salvar o estado na subcoleção state/main
+                    await setDoc(userRef, { email: currentUser.email, displayName: currentUser.displayName || '', updatedAt: new Date().toISOString(), app: 'missao-tatica' }, { merge: true });
                     const stateRef = doc(db, 'users', currentUser.uid, 'state', 'main');
-                    await setDoc(stateRef, { 
-                        data: JSON.stringify(state),
-                        updatedAt: new Date().toISOString()
-                    }, { merge: true });
-
+                    await setDoc(stateRef, { data: JSON.stringify(state), updatedAt: new Date().toISOString() }, { merge: true });
                     window.updateSyncStatus('Salvo na nuvem');
-                } catch (e) {
-                    console.error("Erro no save do Firestore:", e);
-                    window.updateSyncStatus('Erro ao salvar');
-                }
+                } catch (e) { window.updateSyncStatus('Erro ao salvar'); }
             }, 1000);
         };
 
@@ -295,23 +308,18 @@
             if(!skipRender) render();
         };
 
-        // Observador Global de Auth
         onAuthStateChanged(auth, async (user) => {
             const overlay = document.getElementById('auth-overlay');
             const wrapper = document.getElementById('app-wrapper');
             if (user) {
-                currentUser = user;
-                window.updateSyncStatus('Conectado');
-                overlay.style.opacity = '0';
-                setTimeout(() => { overlay.style.display = 'none'; }, 300);
+                currentUser = user; window.updateSyncStatus('Conectado');
+                overlay.style.opacity = '0'; setTimeout(() => { overlay.style.display = 'none'; }, 300);
                 wrapper.style.display = 'block';
                 await loadFromFirestore(user.uid);
+                startClock();
             } else {
-                currentUser = null;
-                window.updateSyncStatus('Desconectado');
-                overlay.style.display = 'flex';
-                overlay.style.opacity = '1';
-                wrapper.style.display = 'none';
+                currentUser = null; window.updateSyncStatus('Desconectado');
+                overlay.style.display = 'flex'; overlay.style.opacity = '1'; wrapper.style.display = 'none';
             }
         });
 
@@ -326,9 +334,7 @@
             dlAnchorElem.click();
         };
 
-        window.triggerImport = function() {
-            document.getElementById('import-file').click();
-        };
+        window.triggerImport = function() { document.getElementById('import-file').click(); };
 
         window.importData = function(event) {
             const file = event.target.files[0];
@@ -338,90 +344,48 @@
                 try {
                     const importedState = JSON.parse(e.target.result);
                     if (importedState && importedState.tasks) {
-                        state = importedState;
-                        window.validateState();
-                        window.saveState();
+                        state = importedState; window.validateState(); window.saveState();
                         window.showToast("Importação Concluída", "Os seus dados foram recuperados com sucesso.", "upload-cloud", "text-emerald-400");
-                    } else {
-                        window.showAlertModal("Arquivo JSON inválido para esta aplicação.");
-                    }
-                } catch(err) {
-                    window.showAlertModal("Erro ao processar o arquivo.");
-                }
+                    } else { window.showAlertModal("Arquivo JSON inválido para esta aplicação."); }
+                } catch(err) { window.showAlertModal("Erro ao processar o arquivo."); }
             };
-            reader.readAsText(file);
-            event.target.value = ''; // Reset do input
+            reader.readAsText(file); event.target.value = '';
         };
 
         // ==========================================
-        // LÓGICA DE NEGÓCIO E JOGO (GLOBALIZADAS)
+        // LÓGICA DE NEGÓCIO E JOGO 
         // ==========================================
         window.formatTime = function(seconds) {
-            const m = Math.floor(seconds / 60);
-            const s = seconds % 60;
+            const m = Math.floor(seconds / 60); const s = seconds % 60;
             return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
         };
 
         window.spawnFloatingText = function(e, text, colorClass = 'text-indigo-400') {
             if(!e || !e.clientX) return; 
-            const el = document.createElement('div');
-            el.className = `float-text text-xl ${colorClass}`;
-            el.innerText = text;
-            const offsetX = (Math.random() - 0.5) * 40;
-            el.style.left = `${e.clientX + offsetX}px`;
-            el.style.top = `${e.clientY - 20}px`;
-            document.body.appendChild(el);
-            setTimeout(() => el.remove(), 1200);
+            const el = document.createElement('div'); el.className = `float-text text-xl ${colorClass}`; el.innerText = text;
+            const offsetX = (Math.random() - 0.5) * 40; el.style.left = `${e.clientX + offsetX}px`; el.style.top = `${e.clientY - 20}px`;
+            document.body.appendChild(el); setTimeout(() => el.remove(), 1200);
         };
 
         window.showConfirmModal = function(message, onConfirmCallback) {
-            uiState.confirm.show = true;
-            uiState.confirm.message = message;
-            uiState.confirm.onConfirm = onConfirmCallback;
-            render();
+            uiState.confirm.show = true; uiState.confirm.message = message; uiState.confirm.onConfirm = onConfirmCallback; render();
         };
-
         window.handleConfirmResult = function(accepted) {
-            uiState.confirm.show = false;
-            if (accepted && uiState.confirm.onConfirm) uiState.confirm.onConfirm();
-            uiState.confirm.onConfirm = null;
-            render();
+            uiState.confirm.show = false; if (accepted && uiState.confirm.onConfirm) uiState.confirm.onConfirm(); uiState.confirm.onConfirm = null; render();
         };
-
-        window.showAlertModal = function(message) {
-            uiState.alert.show = true;
-            uiState.alert.message = message;
-            render();
-        };
-
-        window.closeAlertModal = function() {
-            uiState.alert.show = false;
-            render();
-        };
-
+        window.showAlertModal = function(message) { uiState.alert.show = true; uiState.alert.message = message; render(); };
+        window.closeAlertModal = function() { uiState.alert.show = false; render(); };
         window.togglePanicModal = function(show) {
             uiState.showPanic = show;
             if (show) {
-                uiState.breathingStep = 0;
-                uiState.breathingInterval = setInterval(() => {
-                    uiState.breathingStep = (uiState.breathingStep + 1) % 4;
-                    render();
-                }, 4000);
-            } else {
-                clearInterval(uiState.breathingInterval);
-            }
+                uiState.breathingStep = 0; uiState.breathingInterval = setInterval(() => { uiState.breathingStep = (uiState.breathingStep + 1) % 4; render(); }, 4000);
+            } else { clearInterval(uiState.breathingInterval); }
             render();
         };
-
         window.unlockBadge = function(badgeId) {
             if (!state.unlockedBadges.includes(badgeId)) {
-                state.unlockedBadges.push(badgeId);
-                const b = BADGES_DB.find(x => x.id === badgeId);
-                if (b) {
-                    window.showToast(`Conquista Desbloqueada!`, b.title, b.icon, b.color);
-                    state.xp += 100;
-                    state.coins += 50;
-                }
+                state.unlockedBadges.push(badgeId); const b = BADGES_DB.find(x => x.id === badgeId);
+                if (b) { window.showToast(`Conquista Desbloqueada!`, b.title, b.icon, b.color); state.xp += 100; state.coins += 50; }
             }
         };
 
@@ -440,89 +404,52 @@
             if (state.stats.pomodorosCompleted >= 4) activeBadges.push('deep_focus');
 
             let perfectDayCompleted = false;
-            daysOfWeek.forEach(day => {
-                const dayTasks = state.tasks.filter(t => t.day === day.id);
-                if (dayTasks.length > 0 && dayTasks.every(t => t.completed)) perfectDayCompleted = true;
-            });
+            daysOfWeek.forEach(day => { const dayTasks = state.tasks.filter(t => t.day === day.id); if (dayTasks.length > 0 && dayTasks.every(t => t.completed)) perfectDayCompleted = true; });
             if (perfectDayCompleted) activeBadges.push('perfect_day');
 
             const toUnlock = activeBadges.filter(b => !state.unlockedBadges.includes(b));
             toUnlock.forEach(badgeId => window.unlockBadge(badgeId));
-
-            const toLock = state.unlockedBadges.filter(b => !activeBadges.includes(b));
-            toLock.forEach(badgeId => {
-                state.unlockedBadges = state.unlockedBadges.filter(b => b !== badgeId);
-                const b = BADGES_DB.find(x => x.id === badgeId);
-                if (b) {
-                    window.showToast(`Conquista Revogada`, `Vulnerabilidade evitada: ${b.title}`, 'lock', 'text-slate-500');
-                    state.xp = Math.max(0, state.xp - 100);
-                    state.coins = Math.max(0, state.coins - 50);
-                }
-            });
-
             if (state.combo > (state.stats.maxComboReached || 0)) state.stats.maxComboReached = state.combo;
         };
 
         window.getComboMultiplier = function() { return state.combo === 0 ? 1 : 1 + (state.combo * 0.1); };
-        window.breakCombo = function() {
-            if (state.combo > 0) {
-                state.combo = 0;
-                window.showToast('Frenesi Quebrado', 'Combo zerado, mas a integridade continua ativa.', 'activity', 'text-slate-500');
-            }
-        };
-
+        window.breakCombo = function() { if (state.combo > 0) { state.combo = 0; window.showToast('Frenesi Quebrado', 'Combo zerado, mas a integridade continua ativa.', 'activity', 'text-slate-500'); } };
         window.getXpForCurrentLevel = function() { return (RANKS.find(r => r.level === state.level) || RANKS[RANKS.length - 1]).max; };
         window.getRankName = function(lvl = state.level) { return (RANKS.find(r => r.level === lvl) || RANKS[RANKS.length - 1]).name; };
 
         window.checkLevelUp = function() {
-            let nextMax = window.getXpForCurrentLevel();
-            let levelChanged = false;
-            while (state.xp >= nextMax && state.level < RANKS.length) {
-                state.level += 1; nextMax = window.getXpForCurrentLevel(); levelChanged = true;
-            }
-            if (levelChanged) {
-                state.energy = Math.min(100, state.energy + 50); 
-                uiState.showLevelUp = true;
-                setTimeout(() => { uiState.showLevelUp = false; render(); }, 4000);
-            }
+            let nextMax = window.getXpForCurrentLevel(); let levelChanged = false;
+            while (state.xp >= nextMax && state.level < RANKS.length) { state.level += 1; nextMax = window.getXpForCurrentLevel(); levelChanged = true; }
+            if (levelChanged) { state.energy = Math.min(100, state.energy + 50); uiState.showLevelUp = true; setTimeout(() => { uiState.showLevelUp = false; render(); }, 4000); }
         };
+
+        window.changeEnergy = function(amount) {
+            state.energy = Math.min(100, Math.max(0, state.energy + amount));
+        }
 
         window.toggleTask = function(taskId, event) {
             const task = state.tasks.find(t => t.id == taskId);
             if (task.completed) {
                 task.completed = false; task.skipped = false;
-                const deductedXp = task.rewardedXp || task.xp;
-                const deductedCoins = task.rewardedCoins || Math.round(task.xp * 0.2);
-                state.xp = Math.max(0, state.xp - deductedXp);
-                state.coins = Math.max(0, state.coins - deductedCoins);
-                state.energy = Math.min(100, Math.max(0, state.energy + task.energyCost));
-                state.combo = Math.max(0, state.combo - 1);
+                const deductedXp = task.rewardedXp || task.xp; const deductedCoins = task.rewardedCoins || Math.round(task.xp * 0.2);
+                state.xp = Math.max(0, state.xp - deductedXp); state.coins = Math.max(0, state.coins - deductedCoins);
+                window.changeEnergy(task.energyCost); state.combo = Math.max(0, state.combo - 1);
                 window.spawnFloatingText(event, `-${deductedXp} XP`, 'text-red-400');
-                setTimeout(() => window.spawnFloatingText(event, `-${deductedCoins} MT`, 'text-red-300'), 200);
             } else {
-                if (task.subtasks && task.subtasks.some(st => !st.done)) return;
-                const multiplier = window.getComboMultiplier();
-                const finalXp = Math.round(task.xp * multiplier);
-                const earnedCoins = Math.round(finalXp * 0.2); 
+                const multiplier = window.getComboMultiplier(); const finalXp = Math.round(task.xp * multiplier); const earnedCoins = Math.round(finalXp * 0.2); 
                 task.completed = true; task.rewardedXp = finalXp; task.rewardedCoins = earnedCoins; 
-                state.xp += finalXp; state.coins += earnedCoins;
-                state.energy = Math.min(100, Math.max(0, state.energy - task.energyCost));
-                state.combo += 1;
+                state.xp += finalXp; state.coins += earnedCoins; window.changeEnergy(-task.energyCost); state.combo += 1;
                 window.spawnFloatingText(event, `+${finalXp} XP`, 'text-indigo-400');
-                setTimeout(() => window.spawnFloatingText(event, `+${earnedCoins} MT`, 'text-yellow-400'), 200);
-                if(state.combo > 1) setTimeout(() => window.spawnFloatingText(event, `Combo x${multiplier.toFixed(1)}!`, 'text-orange-500'), 400);
             }
             window.checkGameTriggers(); window.checkLevelUp(); window.saveState();
         };
 
         window.showToast = function(title, desc, iconName, colorClass) {
-            const container = document.getElementById('toast-container');
-            if (!container) return;
+            const container = document.getElementById('toast-container'); if (!container) return;
             const toast = document.createElement('div');
             toast.className = `bg-slate-900 border border-slate-700 rounded-lg p-3 shadow-2xl flex items-center gap-3 toast-enter max-w-xs pointer-events-auto`;
             toast.innerHTML = `<div class="bg-slate-950 p-2 rounded-full border border-slate-800 shrink-0"><i data-lucide="${iconName}" class="${colorClass} w-6 h-6"></i></div><div><h4 class="text-sm font-bold text-white">${title}</h4><p class="text-xs text-slate-400 leading-tight">${desc}</p></div>`;
-            container.appendChild(toast);
-            lucide.createIcons({root: toast});
+            container.appendChild(toast); lucide.createIcons({root: toast});
             try { new Audio('https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3').play(); } catch(e) {}
             setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 4000);
         };
@@ -530,111 +457,67 @@
         window.buyReward = function(rewardId) {
             const r = REWARDS_SHOP.find(x => x.id === rewardId);
             if (state.coins >= r.cost) {
-                state.coins -= r.cost; state.energy = Math.min(100, state.energy + 20); 
-                state.stats.rewardsBought = (state.stats.rewardsBought || 0) + 1;
-                window.unlockBadge('shopaholic');
-                window.showToast('Recompensa Resgatada!', `Aproveite seu: ${r.title}`, 'gift', 'text-emerald-400');
-                window.saveState();
-            } else { 
-                window.showAlertModal(`Saldo insuficiente. Faltam ${r.cost - state.coins} Moedas Táticas para este resgate.`); 
-            }
+                state.coins -= r.cost; window.changeEnergy(20); state.stats.rewardsBought = (state.stats.rewardsBought || 0) + 1;
+                window.unlockBadge('shopaholic'); window.showToast('Recompensa Resgatada!', `Aproveite seu: ${r.title}`, 'gift', 'text-emerald-400'); window.saveState();
+            } else { window.showAlertModal(`Saldo insuficiente. Faltam ${r.cost - state.coins} MT.`); }
         };
 
         window.endDay = function() {
-            window.showConfirmModal("Deseja encerrar o dia de hoje e ir dormir? Isso irá redefinir e carregar a sua Bateria Executiva (HP) para 100% no dia seguinte.", () => {
-                state.energy = 100;
-                const currentIndex = daysOfWeek.findIndex(d => d.id === state.activeTab);
+            window.showConfirmModal("Deseja encerrar o dia e ir dormir? Isso irá recarregar sua Bateria (HP) para 100%.", () => {
+                state.energy = 100; const currentIndex = daysOfWeek.findIndex(d => d.id === state.activeTab);
                 if(currentIndex < daysOfWeek.length - 1) state.activeTab = daysOfWeek[currentIndex + 1].id;
-                window.showToast('Hibernação Concluída', 'Cérebro descansado e bateria restaurada para 100%.', 'moon', 'text-indigo-400');
-                window.saveState();
+                window.showToast('Hibernação Concluída', 'Bateria restaurada para 100%.', 'moon', 'text-indigo-400'); window.saveState();
             });
         };
 
         window.moveTaskFromSelect = function(taskId, event, selectEl) {
             if (event) { if (typeof event.stopPropagation === 'function') event.stopPropagation(); if (typeof event.preventDefault === 'function') event.preventDefault(); }
-            const targetDay = selectEl.value;
-            if (!targetDay) return;
+            const targetDay = selectEl.value; if (!targetDay) return;
             const task = state.tasks.find(t => t.id == taskId);
-            if (task) { 
-                task.day = targetDay; state.energy = Math.min(100, state.energy + 10);
-                state.stats.tasksMoved = (state.stats.tasksMoved || 0) + 1;
-                window.unlockBadge('estrategista');
-                window.spawnFloatingText(event, `+10 HP (Agência)`, 'text-emerald-400');
-                window.breakCombo(); window.saveState(); 
-            }
+            if (task) { task.day = targetDay; window.changeEnergy(10); state.stats.tasksMoved = (state.stats.tasksMoved || 0) + 1; window.unlockBadge('estrategista'); window.spawnFloatingText(event, `+10 HP`, 'text-emerald-400'); window.breakCombo(); window.saveState(); }
             selectEl.value = "";
         };
 
         window.deleteMainTask = function(taskId, event) {
             if (event) event.stopPropagation();
-            window.showConfirmModal("Tem certeza que deseja excluir esta missão permanentemente? Ela será deletada.", () => {
-                state.tasks = state.tasks.filter(t => t.id != taskId); window.breakCombo(); window.saveState();
-            });
+            window.showConfirmModal("Tem certeza que deseja excluir esta missão?", () => { state.tasks = state.tasks.filter(t => t.id != taskId); window.breakCombo(); window.saveState(); });
         };
 
         window.addQuickTask = function() {
-            const input = document.getElementById('quick-task-input');
-            if(!input) return;
-            const text = input.value.trim();
-            if (!text) return;
-            state.quickTasks.push({ id: Date.now(), text: text, done: false });
-            window.saveState();
+            const text = document.getElementById('quick-task-input')?.value.trim(); if (!text) return;
+            state.quickTasks.push({ id: Date.now(), text: text, done: false }); window.saveState();
             setTimeout(() => { const el = document.getElementById('quick-task-input'); if (el) el.focus(); }, 10);
         };
-
         window.toggleQuickTask = function(id) {
             const qt = state.quickTasks.find(q => q.id === id);
-            if(qt) {
-                qt.done = !qt.done;
-                if (qt.done) { state.xp += 10; window.checkLevelUp(); } else { state.xp = Math.max(0, state.xp - 10); }
-                window.saveState();
-            }
+            if(qt) { qt.done = !qt.done; if (qt.done) { state.xp += 10; window.checkLevelUp(); } else { state.xp = Math.max(0, state.xp - 10); } window.saveState(); }
         };
-
         window.deleteQuickTask = function(id) { state.quickTasks = state.quickTasks.filter(q => q.id !== id); window.saveState(); };
-        window.toggleSubtask = function(taskId, subtaskId) {
-            const task = state.tasks.find(t => t.id == taskId);
-            if (task && task.subtasks) {
-                const subtask = task.subtasks.find(st => st.id === subtaskId);
-                if (subtask) { subtask.done = !subtask.done; window.saveState(); }
-            }
-        };
 
         window.togglePomodoro = function() {
             if (pomodoro.isRunning) { clearInterval(pomodoro.intervalId); pomodoro.isRunning = false; } 
-            else {
-                pomodoro.isRunning = true;
-                pomodoro.intervalId = setInterval(() => {
-                    if (pomodoro.timeLeft > 0) { pomodoro.timeLeft--; const display = document.getElementById('pomodoro-display'); if (display) display.innerText = window.formatTime(pomodoro.timeLeft); } 
-                    else { window.handlePomodoroEnd(); }
-                }, 1000);
-            }
+            else { pomodoro.isRunning = true; pomodoro.intervalId = setInterval(() => { if (pomodoro.timeLeft > 0) { pomodoro.timeLeft--; const display = document.getElementById('pomodoro-display'); if (display) display.innerText = window.formatTime(pomodoro.timeLeft); } else { window.handlePomodoroEnd(); } }, 1000); }
             render();
         };
 
         window.handlePomodoroEnd = function() {
-            clearInterval(pomodoro.intervalId); pomodoro.isRunning = false;
-            try { new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play(); } catch(e) {}
+            clearInterval(pomodoro.intervalId); pomodoro.isRunning = false; try { new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play(); } catch(e) {}
             const s = state.pomodoroSettings;
             if (pomodoro.mode === 'focus') {
-                if (pomodoro.cycle % s.cycles === 0) { pomodoro.mode = 'longBreak'; pomodoro.timeLeft = s.longBreak * 60; } 
-                else { pomodoro.mode = 'shortBreak'; pomodoro.timeLeft = s.shortBreak * 60; }
+                if (pomodoro.cycle % s.cycles === 0) { pomodoro.mode = 'longBreak'; pomodoro.timeLeft = s.longBreak * 60; } else { pomodoro.mode = 'shortBreak'; pomodoro.timeLeft = s.shortBreak * 60; }
                 const earnedXP = 30 * window.getComboMultiplier(); const earnedCoins = 10;
-                state.xp += Math.round(earnedXP); state.coins += earnedCoins; 
-                state.stats.pomodorosCompleted = (state.stats.pomodorosCompleted || 0) + 1;
-                state.energy = Math.max(0, state.energy - 5); 
-                window.showToast('Foco Concluído!', `+${Math.round(earnedXP)} XP, +${earnedCoins} MT`, 'target', 'text-yellow-400');
-                window.checkGameTriggers(); window.checkLevelUp();
+                state.xp += Math.round(earnedXP); state.coins += earnedCoins; state.stats.pomodorosCompleted = (state.stats.pomodorosCompleted || 0) + 1; window.changeEnergy(-5); 
+                window.showToast('Foco Concluído!', `+${Math.round(earnedXP)} XP`, 'target', 'text-yellow-400'); window.checkGameTriggers(); window.checkLevelUp();
             } else {
                 pomodoro.mode = 'focus'; pomodoro.timeLeft = s.focus * 60;
                 if (pomodoro.mode === 'longBreak') pomodoro.cycle = 1; else pomodoro.cycle++;
-                state.energy = Math.min(100, state.energy + (pomodoro.mode === 'longBreak' ? 20 : 5));
+                window.changeEnergy(pomodoro.mode === 'longBreak' ? 20 : 5);
             }
             window.saveState();
         };
 
         window.resetPomodoro = function() { clearInterval(pomodoro.intervalId); pomodoro.isRunning = false; pomodoro.mode = 'focus'; pomodoro.cycle = 1; pomodoro.timeLeft = state.pomodoroSettings.focus * 60; render(); };
-        window.drinkWater = function(event) { state.waterCount++; state.energy = Math.min(100, state.energy + 10); state.xp += 15; window.spawnFloatingText(event, `+10 HP`, 'text-emerald-400'); window.checkGameTriggers(); window.checkLevelUp(); window.saveState(); }
+        window.drinkWater = function(event) { state.waterCount++; window.changeEnergy(10); state.xp += 15; window.spawnFloatingText(event, `+10 HP`, 'text-emerald-400'); window.checkGameTriggers(); window.checkLevelUp(); window.saveState(); }
         window.toggleCreateTaskModal = function() { uiState.showCreateTaskModal = !uiState.showCreateTaskModal; render(); };
         
         window.calculateTaskCost = function(priority, complexity, time, impactType) {
@@ -644,19 +527,15 @@
             let calcHp = Math.round((compVal * 5) + (timeVal * 0.4));
             if(priority === 'essencial') calcHp = Math.round(calcHp * 0.8);
             if(priority === 'baixa') calcHp = Math.round(calcHp * 1.2); 
-            calcHp = Math.min(calcHp, 60);
-            if (impactType === 'recharge') calcHp = -Math.round(calcHp * 0.8); 
+            calcHp = Math.min(calcHp, 60); if (impactType === 'recharge') calcHp = -Math.round(calcHp * 0.8); 
             return { xp: calcXp, hp: calcHp };
         };
 
         window.updatePreviewCalc = function() {
-            const prio = document.getElementById('ct-priority')?.value || 'media';
-            const comp = document.getElementById('ct-complexity')?.value || 1;
-            const time = document.getElementById('ct-time')?.value || 30;
-            const impactType = document.getElementById('ct-impact-type')?.value || 'drain';
+            const prio = document.getElementById('ct-priority')?.value || 'media'; const comp = document.getElementById('ct-complexity')?.value || 1;
+            const time = document.getElementById('ct-time')?.value || 30; const impactType = document.getElementById('ct-impact-type')?.value || 'drain';
             const cost = window.calculateTaskCost(prio, comp, time, impactType);
-            const xpPreview = document.getElementById('ct-xp-preview');
-            const hpPreview = document.getElementById('ct-hp-preview');
+            const xpPreview = document.getElementById('ct-xp-preview'); const hpPreview = document.getElementById('ct-hp-preview');
             if(xpPreview) xpPreview.innerText = `+${cost.xp} XP`;
             if(hpPreview) {
                 if (cost.hp < 0) { hpPreview.innerText = `+${Math.abs(cost.hp)} HP (Recarga)`; hpPreview.className = "bg-emerald-900/50 text-emerald-400 px-3 py-1 rounded-md text-xs font-bold"; } 
@@ -665,20 +544,10 @@
         };
 
         window.saveNewTask = function() {
-            const text = document.getElementById('ct-text').value.trim();
-            if (!text) { window.showAlertModal('O título da missão não pode estar vazio.'); return; }
-            const day = document.getElementById('ct-day').value;
-            const category = document.getElementById('ct-category').value;
-            const priority = document.getElementById('ct-priority').value;
-            const complexity = document.getElementById('ct-complexity').value;
-            const time = document.getElementById('ct-time').value;
-            const impactType = document.getElementById('ct-impact-type').value;
-            const cost = window.calculateTaskCost(priority, complexity, time, impactType);
-            
-            state.tasks.push({ id: Date.now(), day: day, category: category, text: text, xp: cost.xp, energyCost: cost.hp, completed: false, priority: priority, time: time + ' min' });
-            uiState.showCreateTaskModal = false;
-            window.showToast('Missão Alistada!', 'A sua nova missão foi adicionada com sucesso ao quadro tático.', 'crosshair', 'text-emerald-400');
-            window.saveState();
+            const text = document.getElementById('ct-text').value.trim(); if (!text) { window.showAlertModal('Título vazio.'); return; }
+            const cost = window.calculateTaskCost(document.getElementById('ct-priority').value, document.getElementById('ct-complexity').value, document.getElementById('ct-time').value, document.getElementById('ct-impact-type').value);
+            state.tasks.push({ id: Date.now(), day: document.getElementById('ct-day').value, category: document.getElementById('ct-category').value, text: text, xp: cost.xp, energyCost: cost.hp, completed: false, priority: document.getElementById('ct-priority').value, time: document.getElementById('ct-time').value + ' min' });
+            uiState.showCreateTaskModal = false; window.showToast('Missão Alistada!', 'Adicionada ao quadro.', 'crosshair', 'text-emerald-400'); window.saveState();
         };
 
         window.setCategoryFilter = function(filterId) { state.currentFilter = filterId; window.saveState(); };
@@ -690,44 +559,65 @@
         window.healEnergy = function() { state.energy = 100; window.togglePanicModal(false); window.saveState(); };
         
         window.resetSystem = function() { 
-            window.showConfirmModal(
-                "Tem certeza que deseja fechar este ciclo? Isto irá APAGAR permanentemente todas as tarefas atuais e rápidas para que você inicie uma semana 100% limpa do zero. XP, Patente e Medalhas não serão zerados para que seu progresso continue!", 
-                () => { 
-                    state.tasks = []; state.quickTasks = []; state.combo = 0; state.waterCount = 0; state.energy = 100; state.activeTab = 'monday'; state.currentFilter = 'all';
-                    window.saveState();
-                    window.showToast("Quartel General: Nova Semana Iniciada!", "Seu quadro está limpo. Use o criador de missões no topo para mapear seus alvos.", "sparkles", "text-yellow-400");
-                }
-            ); 
+            window.showConfirmModal("Deseja APAGAR tarefas para iniciar semana limpa? XP/Patente não serão zerados.", () => { 
+                state.tasks = []; state.quickTasks = []; state.combo = 0; state.waterCount = 0; state.energy = 100; state.activeTab = 'monday'; state.currentFilter = 'all';
+                window.saveState(); window.showToast("Quartel General: Nova Semana!", "Quadro limpo.", "sparkles", "text-yellow-400");
+            }); 
         };
 
         // ==========================================
-        // LÓGICA DO MÓDULO DE ESTUDOS (CENTRO DE INTELIGÊNCIA)
+        // MÓDULO: TEMPO OPERACIONAL (RELÓGIO)
+        // ==========================================
+        let clockInterval;
+        function startClock() {
+            if(clockInterval) clearInterval(clockInterval);
+            clockInterval = setInterval(() => {
+                const el = document.getElementById('time-operational-widget');
+                if(el) {
+                    const now = new Date();
+                    const time = now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+                    const date = now.toLocaleDateString('pt-BR', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'});
+                    const hour = now.getHours();
+                    let greeting = "Boa noite", contextMsg = "Feche ciclos e reduza carga.";
+                    if(hour >= 0 && hour < 5) { greeting = "Boa madrugada"; contextMsg = "Modo vigília. Priorize descanso se possível."; }
+                    else if(hour >= 5 && hour < 12) { greeting = "Bom dia"; contextMsg = "Inicie com uma missão essencial."; }
+                    else if(hour >= 12 && hour < 18) { greeting = "Boa tarde"; contextMsg = "Mantenha cadência."; }
+                    
+                    el.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <i data-lucide="clock" class="w-8 h-8 text-indigo-500 opacity-80"></i>
+                            <div>
+                                <div class="text-2xl font-black text-white leading-none tabular-nums tracking-wider">${time}</div>
+                                <div class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mt-1">${date}</div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-indigo-300 mt-3 border-t border-slate-800 pt-2 font-medium">
+                            <strong class="text-white">${greeting}, Comandante.</strong> <span class="text-slate-500">${contextMsg}</span>
+                        </div>
+                    `;
+                    // Refresh icon only if needed, but since it's static we can skip re-creating lucide inside setInterval usually.
+                }
+            }, 1000);
+        }
+
+        // ==========================================
+        // MÓDULO 1: CENTRO DE INTELIGÊNCIA (ESTUDOS)
         // ==========================================
         window.toggleStudyModal = function() { uiState.showStudyModal = !uiState.showStudyModal; render(); };
         window.setStudyTab = function(tab) { uiState.studyTab = tab; render(); };
 
         window.addSubject = function() {
-            const nameInput = document.getElementById('new-subject-name');
-            const colorInput = document.getElementById('new-subject-color');
-            const name = nameInput.value.trim();
-            if (!name) { window.showAlertModal('O nome da disciplina é obrigatório.'); return; }
-            
-            state.studyData.subjects.push({
-                id: Date.now(),
-                name: name,
-                color: colorInput.value || 'bg-cyan-500',
-                createdAt: new Date().toISOString()
-            });
-            
-            window.showToast('Disciplina Adicionada', `${name} foi incluída no seu plano tático.`, 'book', 'text-cyan-400');
-            window.saveState();
+            const name = document.getElementById('new-subject-name')?.value.trim();
+            if (!name) { window.showAlertModal('Nome obrigatório.'); return; }
+            state.studyData.subjects.push({ id: Date.now(), name: name, color: document.getElementById('new-subject-color').value || 'bg-cyan-500', createdAt: new Date().toISOString() });
+            window.showToast('Disciplina Adicionada', `${name} incluída.`, 'book', 'text-cyan-400'); window.saveState();
         };
-
         window.deleteSubject = function(id) {
-            window.showConfirmModal("Excluir esta disciplina apagará também os registros de sessões e revisões ligadas a ela. Confirmar?", () => {
+            window.showConfirmModal("Excluir disciplina apagará sessões e revisões ligadas. Confirmar?", () => {
                 state.studyData.subjects = state.studyData.subjects.filter(s => s.id !== id);
                 state.studyData.sessions = state.studyData.sessions.filter(s => s.subjectId !== id);
                 state.studyData.reviews = state.studyData.reviews.filter(r => r.subjectId !== id);
+                state.studyData.errorLog = state.studyData.errorLog.filter(e => e.subjectId !== id);
                 window.saveState();
             });
         };
@@ -739,66 +629,213 @@
             const qTotal = parseInt(document.getElementById('session-q-total').value) || 0;
             const qCorrect = parseInt(document.getElementById('session-q-correct').value) || 0;
             const topic = document.getElementById('session-topic').value.trim();
+            const confBefore = parseInt(document.getElementById('session-conf-before').value);
+            const confAfter = parseInt(document.getElementById('session-conf-after').value);
+            const barriers = Array.from(document.querySelectorAll('input[name="session-barriers"]:checked')).map(cb => cb.value);
 
             if (!subjectId) { window.showAlertModal('Selecione uma disciplina.'); return; }
-            if (qCorrect > qTotal) { window.showAlertModal('Questões corretas não podem ser maiores que o total.'); return; }
+            if (qCorrect > qTotal) { window.showAlertModal('Acertos > Total.'); return; }
 
             const sessionId = Date.now();
-            const sessionDate = new Date().toISOString();
-
             state.studyData.sessions.push({
-                id: sessionId, subjectId, type, duration, qTotal, qCorrect, topic, date: sessionDate
+                id: sessionId, subjectId, type, duration, qTotal, qCorrect, topic, 
+                date: new Date().toISOString(), confBefore, confAfter, barriers
             });
 
-            // Recompensa em XP pela sessão
-            const xpEarned = Math.round((duration * 2) + (qCorrect * 5));
-            state.xp += xpEarned;
+            const typeData = SESSION_TYPES[type] || SESSION_TYPES['leitura'];
+            const xpEarned = Math.round(((duration * 1.5) + (qCorrect * 3)) * typeData.mult);
+            state.xp += xpEarned; window.changeEnergy(-typeData.hp);
             window.checkLevelUp();
 
-            // Lógica Neurocientífica: Protocolo de Repetição Espaçada de Ebbinghaus
-            // Se for estudo teórico, agenda revisões para 1 dia, 7 dias e 30 dias.
-            if (type === 'teoria') {
-                const intervals = [1, 7, 30];
-                intervals.forEach(days => {
-                    const dueDate = new Date();
-                    dueDate.setDate(dueDate.getDate() + days);
-                    state.studyData.reviews.push({
-                        id: Date.now() + Math.random(),
-                        sourceSessionId: sessionId,
-                        subjectId: subjectId,
-                        topic: topic || 'Revisão Geral',
-                        dueDate: dueDate.toISOString(),
-                        intervalDays: days,
-                        status: 'pending' // pending, completed, missed
-                    });
+            // Adicionar repetição espaçada se for teoria ou leitura
+            if (['teoria', 'leitura'].includes(type)) {
+                [1, 7, 30].forEach(days => {
+                    const dueDate = new Date(); dueDate.setDate(dueDate.getDate() + days);
+                    state.studyData.reviews.push({ id: Date.now() + Math.random(), sourceSessionId: sessionId, subjectId: subjectId, topic: topic || 'Revisão Geral', dueDate: dueDate.toISOString(), intervalDays: days, status: 'pending' });
                 });
-                window.showToast('Sessão Registrada!', `+${xpEarned} XP. Protocolo de Revisão (1-7-30) ativado.`, 'brain', 'text-fuchsia-400');
+                window.showToast('Sessão Registrada!', `+${xpEarned} XP. Revisão programada.`, 'brain', 'text-fuchsia-400');
             } else {
-                window.showToast('Treinamento Registrado!', `+${xpEarned} XP consolidados.`, 'target', 'text-cyan-400');
+                window.showToast('Sessão Registrada!', `+${xpEarned} XP consolidados.`, 'target', 'text-cyan-400');
             }
 
+            if(state.energy < 20) {
+                setTimeout(() => window.showAlertModal("Bateria Executiva Crítica (<20 HP). O sistema recomenda transição para atividades passivas ou encerramento."), 1000);
+            }
             window.saveState();
         };
 
-        window.completeReview = function(reviewId) {
-            const review = state.studyData.reviews.find(r => r.id === reviewId);
-            if (review) {
-                review.status = 'completed';
-                state.xp += 50; // Bônus alto por cumprir a revisão
-                window.checkLevelUp();
-                window.showToast('Revisão Concluída', `Metabolismo neural reforçado! +50 XP`, 'check-circle', 'text-emerald-400');
-                window.saveState();
+        window.showReviewPrompt = function(reviewId) { uiState.customPrompt = { show: true, type: 'reviewDifficulty', reviewId: reviewId }; render(); };
+        window.closeCustomPrompt = function() { uiState.customPrompt = { show: false, type: '', reviewId: null }; render(); };
+        
+        window.processReviewDifficulty = function(diffStr) {
+            const review = state.studyData.reviews.find(r => r.id === uiState.customPrompt.reviewId);
+            if(review) {
+                review.status = 'completed'; review.completedAt = new Date().toISOString();
+                let nextDays = 0, xp = 0;
+                if(diffStr === 'easy') { nextDays = 15; xp = 20; }
+                else if(diffStr === 'medium') { nextDays = 7; xp = 35; }
+                else if(diffStr === 'hard') { nextDays = 3; xp = 50; }
+                else { nextDays = 1; xp = 60; }
+                
+                state.xp += xp; window.checkLevelUp();
+                
+                const dueDate = new Date(); dueDate.setDate(dueDate.getDate() + nextDays);
+                state.studyData.reviews.push({ id: Date.now(), sourceSessionId: review.sourceSessionId, subjectId: review.subjectId, topic: review.topic, dueDate: dueDate.toISOString(), intervalDays: nextDays, status: 'pending', difficultyOrigin: diffStr });
+                
+                window.showToast('Revisão Calibrada', `+${xp} XP. Nova revisão em ${nextDays} dias.`, 'check-circle', 'text-emerald-400');
+                window.closeCustomPrompt(); window.saveState();
             }
         };
 
-        // Funções auxiliares para gráficos
+        window.logError = function() {
+            const subjectId = parseInt(document.getElementById('error-subject').value);
+            const topic = document.getElementById('error-topic').value.trim();
+            const source = document.getElementById('error-source').value.trim();
+            const reason = document.getElementById('error-reason').value;
+            const notes = document.getElementById('error-notes').value.trim();
+            
+            if(!subjectId || !topic) { window.showAlertModal('Disciplina e Tópico são obrigatórios.'); return; }
+            state.studyData.errorLog.push({ id: Date.now(), date: new Date().toISOString(), subjectId, topic, questionSource: source, errorReason: reason, notes, status: 'open' });
+            state.xp += 10; window.checkLevelUp(); window.showToast('Erro Registrado', '+10 XP. Dados diagnósticos coletados.', 'microscope', 'text-fuchsia-400');
+            window.saveState();
+        };
+
+        window.resolveError = function(id) {
+            const err = state.studyData.errorLog.find(e => e.id === id);
+            if(err && err.status === 'open') { err.status = 'resolved'; state.xp += 30; window.checkLevelUp(); window.showToast('Vulnerabilidade Fechada', '+30 XP pela correção efetiva.', 'shield-check', 'text-emerald-500'); window.saveState(); }
+        };
+        window.deleteError = function(id) { state.studyData.errorLog = state.studyData.errorLog.filter(e => e.id !== id); window.saveState(); };
+
+        window.createStudyCycle = function() {
+            const name = document.getElementById('cycle-name').value.trim();
+            const subs = Array.from(document.getElementById('cycle-subs').selectedOptions).map(opt => parseInt(opt.value));
+            const hours = parseInt(document.getElementById('cycle-hours').value) || 0;
+            if(!name || subs.length === 0) { window.showAlertModal('Nome e pelo menos 1 disciplina são obrigatórios.'); return; }
+            state.studyData.cycles.forEach(c => c.active = false); // Apenas 1 ativo por vez
+            state.studyData.cycles.push({ id: Date.now(), name, subjectIds: subs, weeklyHoursGoal: hours, active: true });
+            window.showToast('Ciclo Criado', 'Novo protocolo tático ativado.', 'refresh-cw', 'text-cyan-400'); window.saveState();
+        };
+        window.deleteCycle = function(id) { state.studyData.cycles = state.studyData.cycles.filter(c => c.id !== id); window.saveState(); };
+        window.activateCycle = function(id) { state.studyData.cycles.forEach(c => c.active = (c.id === id)); window.saveState(); };
+
         window.getSubjectStats = function(subjectId) {
             const sessions = state.studyData.sessions.filter(s => s.subjectId === subjectId);
             const totalTime = sessions.reduce((acc, s) => acc + s.duration, 0);
             const totalQ = sessions.reduce((acc, s) => acc + s.qTotal, 0);
             const correctQ = sessions.reduce((acc, s) => acc + s.qCorrect, 0);
             const retention = totalQ > 0 ? Math.round((correctQ / totalQ) * 100) : 0;
-            return { totalTime, totalQ, correctQ, retention };
+            const lastSession = sessions.length > 0 ? new Date(Math.max(...sessions.map(s => new Date(s.date)))) : null;
+            return { totalTime, totalQ, correctQ, retention, lastSession };
+        };
+
+        // ==========================================
+        // MÓDULO 2: CENTRO FÍSICO (SAÚDE)
+        // ==========================================
+        window.toggleHealthModal = function() { uiState.showHealthModal = !uiState.showHealthModal; render(); };
+        window.setHealthTab = function(tab) { uiState.healthTab = tab; render(); };
+
+        window.logWorkout = function() {
+            const type = document.getElementById('wo-type').value;
+            const duration = parseInt(document.getElementById('wo-duration').value) || 30;
+            const intensity = document.getElementById('wo-intensity').value;
+            const notes = document.getElementById('wo-notes').value.trim();
+            
+            const intData = WORKOUT_INTENSITIES[intensity];
+            const typeData = WORKOUT_TYPES[type];
+            const finalHpCost = Math.round(intData.hp * typeData.hpMod);
+            
+            state.healthData.workouts.push({ id: Date.now(), date: new Date().toISOString(), type, duration, intensity, notes });
+            state.xp += intData.xp; window.changeEnergy(-finalHpCost); window.checkLevelUp();
+            window.showToast('Treino Validado', `+${intData.xp} XP consolidados.`, 'dumbbell', 'text-rose-400');
+            window.saveState();
+        };
+        window.deleteWorkout = function(id) { state.healthData.workouts = state.healthData.workouts.filter(w => w.id !== id); window.saveState(); };
+
+        window.logBodyMetric = function() {
+            const weight = parseFloat(document.getElementById('metric-weight').value);
+            const waist = parseFloat(document.getElementById('metric-waist').value);
+            if(!weight && !waist) return;
+            state.healthData.bodyMetrics.push({ id: Date.now(), date: new Date().toISOString(), weight, waist });
+            window.showToast('Métrica Salva', 'Sua evolução corporal foi atualizada.', 'scale', 'text-rose-400'); window.saveState();
+        };
+
+        window.logHabit = function() {
+            const sleep = parseFloat(document.getElementById('habit-sleep').value);
+            const water = parseFloat(document.getElementById('habit-water').value);
+            const mood = document.getElementById('habit-mood').value;
+            const fatigue = document.getElementById('habit-fatigue').value;
+            state.healthData.habits.push({ id: Date.now(), date: new Date().toISOString(), sleep, water, mood, fatigue });
+            state.xp += 20; window.checkLevelUp(); window.showToast('Rotina Salva', '+20 XP', 'heart', 'text-emerald-400'); window.saveState();
+        };
+
+        // ==========================================
+        // MÓDULO 3: TESOURARIA TÁTICA (FINANÇAS)
+        // ==========================================
+        window.toggleFinanceModal = function() { uiState.showFinanceModal = !uiState.showFinanceModal; render(); };
+        window.setFinanceTab = function(tab) { uiState.financeTab = tab; render(); };
+
+        window.addIncome = function() {
+            const desc = document.getElementById('inc-desc').value.trim(); const amt = parseFloat(document.getElementById('inc-amount').value);
+            if(!desc || !amt) return;
+            state.financeData.incomes.push({ id: Date.now(), date: new Date().toISOString(), description: desc, amount: amt, category: document.getElementById('inc-cat').value });
+            window.saveState();
+        };
+        window.deleteIncome = function(id) { state.financeData.incomes = state.financeData.incomes.filter(i => i.id !== id); window.saveState(); };
+
+        window.addFixedExpense = function() {
+            const desc = document.getElementById('fix-desc').value.trim(); const amt = parseFloat(document.getElementById('fix-amount').value);
+            if(!desc || !amt) return;
+            state.financeData.fixedExpenses.push({ id: Date.now(), description: desc, amount: amt, category: document.getElementById('fix-cat').value, paid: false });
+            window.saveState();
+        };
+        window.toggleFixedPaid = function(id) {
+            const e = state.financeData.fixedExpenses.find(x => x.id === id); if(e) { e.paid = !e.paid; window.saveState(); }
+        };
+        window.deleteFixed = function(id) { state.financeData.fixedExpenses = state.financeData.fixedExpenses.filter(i => i.id !== id); window.saveState(); };
+
+        window.tryAddVariableExpense = function() {
+            const desc = document.getElementById('var-desc').value.trim(); const amt = parseFloat(document.getElementById('var-amount').value);
+            const cat = document.getElementById('var-cat').value; const trigger = document.getElementById('var-trigger').value;
+            if(!desc || !amt) { window.showAlertModal('Preencha os campos obrigatórios.'); return; }
+            
+            const data = { id: Date.now(), date: new Date().toISOString(), description: desc, amount: amt, category: cat, trigger };
+            
+            if(['Ansiedade', 'Cansaço', 'Recompensa', 'Impulso'].includes(trigger) || amt >= 150) {
+                uiState.financeGuardianData = data;
+                uiState.customPrompt = { show: true, type: 'financeGuardian' };
+                render();
+            } else {
+                window.confirmAddVariable(data);
+            }
+        };
+
+        window.confirmAddVariable = function(data) {
+            state.financeData.variableExpenses.push(data || uiState.financeGuardianData);
+            window.closeCustomPrompt(); uiState.financeGuardianData = null; window.showToast('Gasto Registrado', 'Saída consolidada no orçamento.', 'arrow-down-circle', 'text-red-400'); window.saveState();
+        };
+        window.delayPurchase = function() {
+            if(uiState.financeGuardianData) {
+                state.financeData.moneyJournal.push({ id: Date.now(), date: new Date().toISOString(), event: `Tentou comprar: ${uiState.financeGuardianData.description} (R$${uiState.financeGuardianData.amount})`, action: 'Adiou por 24h', mood: 'Ansioso' });
+                state.xp += 50; window.checkLevelUp();
+                window.showToast('Pausa Tática Ativada', 'Excelente comando! +50 XP. Avalie amanhã.', 'shield', 'text-emerald-400');
+            }
+            window.closeCustomPrompt(); uiState.financeGuardianData = null; window.saveState();
+        };
+        window.cancelPurchase = function() {
+            if(uiState.financeGuardianData) {
+                state.financeData.moneyJournal.push({ id: Date.now(), date: new Date().toISOString(), event: `Evitou comprar: ${uiState.financeGuardianData.description}`, action: 'Cancelou ideia', mood: 'Confiante' });
+                state.xp += 80; window.checkLevelUp();
+                window.showToast('Defesa Perfeita!', 'Ataque ao orçamento neutralizado. +80 XP.', 'shield-check', 'text-emerald-500');
+            }
+            window.closeCustomPrompt(); uiState.financeGuardianData = null; window.saveState();
+        }
+        window.deleteVariable = function(id) { state.financeData.variableExpenses = state.financeData.variableExpenses.filter(i => i.id !== id); window.saveState(); };
+
+        window.logMoneyJournal = function() {
+            const mood = document.getElementById('mj-mood').value; const event = document.getElementById('mj-event').value.trim(); const thought = document.getElementById('mj-thought').value.trim();
+            if(!event) return;
+            state.financeData.moneyJournal.push({ id: Date.now(), date: new Date().toISOString(), mood, event, thought });
+            state.xp += 15; window.checkLevelUp(); window.showToast('Diário Salvo', 'Autoconsciência melhora o bolso. +15 XP.', 'book-open', 'text-yellow-400'); window.saveState();
         };
 
         // ==========================================
@@ -813,10 +850,10 @@
 
             let html = ``;
 
-            // MODAIS NATIVOS
+            // MODAIS NATIVOS GERAIS
             if (uiState.confirm.show) {
                 html += `
-                <div class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-[60] backdrop-blur-sm font-mono">
+                <div class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-[999] backdrop-blur-sm font-mono">
                     <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm w-full shadow-2xl modal-enter">
                         <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2"><i data-lucide="help-circle" class="text-indigo-400"></i> Confirmação Tática</h3>
                         <p class="text-slate-300 text-sm mb-6 leading-relaxed">${uiState.confirm.message}</p>
@@ -830,7 +867,7 @@
 
             if (uiState.alert.show) {
                 html += `
-                <div class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-[60] backdrop-blur-sm font-mono">
+                <div class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-[999] backdrop-blur-sm font-mono">
                     <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm w-full shadow-2xl modal-enter">
                         <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2"><i data-lucide="alert-circle" class="text-yellow-500"></i> Alerta</h3>
                         <p class="text-slate-300 text-sm mb-6 leading-relaxed">${uiState.alert.message}</p>
@@ -839,9 +876,46 @@
                 </div>`;
             }
 
+            if (uiState.customPrompt.show) {
+                if(uiState.customPrompt.type === 'reviewDifficulty') {
+                    html += `
+                    <div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[999] backdrop-blur-md font-mono">
+                        <div class="bg-slate-900 border border-fuchsia-900/50 rounded-2xl p-6 max-w-md w-full shadow-2xl modal-enter text-center">
+                            <i data-lucide="brain-circuit" class="text-fuchsia-500 w-12 h-12 mx-auto mb-4"></i>
+                            <h3 class="text-lg font-bold text-white mb-2">Calibração Neural</h3>
+                            <p class="text-slate-400 text-sm mb-6">Qual foi o nível de esforço para recuperar esta informação?</p>
+                            <div class="grid grid-cols-2 gap-3 mb-4">
+                                <button onclick="window.processReviewDifficulty('easy')" class="bg-slate-800 border border-emerald-900 hover:bg-emerald-900/50 text-emerald-400 p-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-all"><span class="text-xs uppercase">Fácil</span><span class="text-[10px] text-slate-500">+15 Dias | +20 XP</span></button>
+                                <button onclick="window.processReviewDifficulty('medium')" class="bg-slate-800 border border-yellow-900 hover:bg-yellow-900/50 text-yellow-400 p-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-all"><span class="text-xs uppercase">Médio</span><span class="text-[10px] text-slate-500">+7 Dias | +35 XP</span></button>
+                                <button onclick="window.processReviewDifficulty('hard')" class="bg-slate-800 border border-orange-900 hover:bg-orange-900/50 text-orange-400 p-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-all"><span class="text-xs uppercase">Difícil</span><span class="text-[10px] text-slate-500">+3 Dias | +50 XP</span></button>
+                                <button onclick="window.processReviewDifficulty('forgot')" class="bg-slate-800 border border-red-900 hover:bg-red-900/50 text-red-400 p-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-all"><span class="text-xs uppercase">Esqueci</span><span class="text-[10px] text-slate-500">+1 Dia | +60 XP</span></button>
+                            </div>
+                            <button onclick="window.closeCustomPrompt()" class="text-slate-500 hover:text-white text-xs underline">Cancelar fechamento</button>
+                        </div>
+                    </div>`;
+                } else if(uiState.customPrompt.type === 'financeGuardian') {
+                    html += `
+                    <div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[999] backdrop-blur-md font-mono">
+                        <div class="bg-slate-900 border-2 border-yellow-600/50 rounded-2xl p-6 max-w-md w-full shadow-[0_0_50px_rgba(202,138,4,0.2)] modal-enter text-center">
+                            <div class="bg-yellow-500/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-yellow-500/30">
+                                <i data-lucide="shield-alert" class="text-yellow-500 w-8 h-8"></i>
+                            </div>
+                            <h3 class="text-xl font-black text-white tracking-widest uppercase mb-2">Pausa Tática</h3>
+                            <p class="text-slate-400 text-sm mb-6 leading-relaxed">Você está prestes a gastar <b>R$${uiState.financeGuardianData?.amount}</b> por motivo de <b>${uiState.financeGuardianData?.trigger}</b>. <br><br>Isso resolve um problema real ou apenas altera seu estado emocional temporariamente?</p>
+                            
+                            <div class="space-y-3">
+                                <button onclick="window.cancelPurchase()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold p-3 rounded-xl transition-all shadow-lg flex justify-center items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i> Mudei de ideia (Evitar Gasto)</button>
+                                <button onclick="window.delayPurchase()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold p-3 rounded-xl transition-all flex justify-center items-center gap-2"><i data-lucide="clock" class="w-4 h-4"></i> Adiar decisão por 24h</button>
+                                <button onclick="window.confirmAddVariable()" class="w-full bg-transparent hover:bg-red-900/30 text-slate-500 hover:text-red-400 text-xs font-bold p-3 rounded-xl transition-all">Manter compra (Registrar mesmo assim)</button>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+            }
+
             if (uiState.showLevelUp) {
                 html += `
-                <div class="fixed inset-0 flex items-center justify-center z-50 pointer-events-none px-4">
+                <div class="fixed inset-0 flex items-center justify-center z-[900] pointer-events-none px-4">
                     <div class="bg-gradient-to-r from-yellow-600 to-yellow-400 text-white px-6 py-4 rounded-full font-bold text-xl sm:text-2xl shadow-[0_0_50px_rgba(234,179,8,0.5)] animate-bounce flex items-center gap-3">
                         <i data-lucide="trophy" class="w-8 h-8 shrink-0"></i> LEVEL UP! Nível ${state.level} Alcançado!
                     </div>
@@ -850,7 +924,7 @@
 
             if (uiState.showPanic) {
                 html += `
-                <div class="fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[60] backdrop-blur-sm font-mono">
+                <div class="fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[800] backdrop-blur-sm font-mono">
                     <div class="bg-slate-900 border-2 border-red-500/50 rounded-xl p-6 max-w-md w-full shadow-[0_0_50px_rgba(239,68,68,0.2)]">
                         <div class="flex justify-between items-center mb-6">
                             <h2 class="text-2xl font-bold text-red-400 flex items-center gap-2"><i data-lucide="alert-triangle"></i> Refúgio Tático (DBT)</h2>
@@ -871,80 +945,95 @@
                 </div>`;
             }
 
-            // TOP BAR, HUD E SYNC UI
+            // TOP BAR & HUD
             html += `
-            <div class="flex flex-col sm:flex-row justify-between items-center bg-slate-900 border border-slate-800 p-3 rounded-2xl mb-4 sticky top-2 z-40 shadow-lg font-mono gap-3 sm:gap-0">
-                <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+            <div class="flex flex-col xl:flex-row justify-between items-center bg-slate-900 border border-slate-800 p-3 rounded-2xl mb-4 sticky top-2 z-40 shadow-lg font-mono gap-4 xl:gap-0">
+                <div class="flex items-center justify-between w-full xl:w-auto">
                     <div class="flex items-center gap-2">
                         <div class="bg-indigo-600 p-2 rounded-lg relative shrink-0">
                             <i data-lucide="shield" class="w-5 h-5 text-white"></i>
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
-                        <div class="hidden md:block font-black tracking-widest text-sm text-slate-200 whitespace-nowrap">CENTRAL TÁTICA</div>
+                        <div class="hidden sm:block font-black tracking-widest text-sm text-slate-200 whitespace-nowrap">MISSÃO TÁTICA</div>
                     </div>
-                    
-                    <div id="sync-status" class="flex items-center gap-1.5 px-2 py-1 bg-slate-950 rounded-md text-[10px] font-bold text-slate-400 uppercase tracking-wider border border-slate-800 shrink-0">
-                        <span class="w-2 h-2 rounded-full shrink-0" id="sync-indicator"></span>
-                        <span id="sync-text"></span>
+                    <div id="sync-status" class="xl:hidden flex items-center gap-1.5 px-2 py-1 bg-slate-950 rounded-md text-[10px] font-bold text-slate-400 uppercase tracking-wider border border-slate-800 shrink-0">
+                        <span class="w-2 h-2 rounded-full shrink-0" id="sync-indicator"></span><span id="sync-text"></span>
                     </div>
                 </div>
-                <div class="flex gap-2 w-full sm:w-auto justify-end">
-                    <button onclick="window.toggleCreateTaskModal()" class="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
-                        <i data-lucide="plus" class="w-4 h-4"></i> <span class="hidden xs:inline">Criar</span>
+                
+                <div class="flex flex-wrap justify-center gap-2 w-full xl:w-auto">
+                    <button onclick="window.toggleCreateTaskModal()" class="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-lg text-xs font-bold transition-colors">
+                        <i data-lucide="plus" class="w-4 h-4"></i> <span class="hidden sm:inline">Criar</span>
                     </button>
-                    <!-- BOTÃO: CENTRO DE INTELIGÊNCIA -->
-                    <button onclick="window.toggleStudyModal()" class="flex items-center gap-1 bg-cyan-900/40 hover:bg-cyan-800/60 text-cyan-400 border border-cyan-700/50 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-[0_0_10px_rgba(34,211,238,0.1)]">
+                    <button onclick="window.toggleStudyModal()" class="flex items-center gap-1 bg-cyan-900/40 hover:bg-cyan-800/60 text-cyan-400 border border-cyan-700/50 px-3 py-2 rounded-lg text-xs font-bold transition-colors">
                         <i data-lucide="brain-circuit" class="w-4 h-4"></i> <span class="hidden sm:inline">Inteligência</span>
                     </button>
-                    <button onclick="window.toggleStatsModal()" class="flex items-center gap-1 bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-500 border border-yellow-600/50 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+                    <button onclick="window.toggleHealthModal()" class="flex items-center gap-1 bg-rose-900/40 hover:bg-rose-800/60 text-rose-400 border border-rose-700/50 px-3 py-2 rounded-lg text-xs font-bold transition-colors">
+                        <i data-lucide="activity" class="w-4 h-4"></i> <span class="hidden sm:inline">Corpo</span>
+                    </button>
+                    <button onclick="window.toggleFinanceModal()" class="flex items-center gap-1 bg-yellow-900/40 hover:bg-yellow-800/60 text-yellow-500 border border-yellow-700/50 px-3 py-2 rounded-lg text-xs font-bold transition-colors">
+                        <i data-lucide="wallet" class="w-4 h-4"></i> <span class="hidden sm:inline">Finanças</span>
+                    </button>
+                    <button onclick="window.toggleStatsModal()" class="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-2 rounded-lg text-xs font-bold transition-colors">
                         <i data-lucide="building-2" class="w-4 h-4"></i> Q.G.
                     </button>
-                    <button onclick="window.logout()" class="flex items-center justify-center bg-slate-800 hover:bg-red-900/50 hover:text-red-400 text-slate-400 px-3 py-1.5 rounded-lg transition-colors" title="Sair da Conta">
+                    <button onclick="window.logout()" class="flex items-center justify-center bg-slate-950 hover:bg-red-900/50 hover:text-red-400 text-slate-500 px-3 py-2 rounded-lg transition-colors border border-slate-800" title="Sair da Conta">
                         <i data-lucide="log-out" class="w-4 h-4"></i>
                     </button>
                 </div>
+                <div class="hidden xl:flex items-center gap-1.5 px-2 py-1 bg-slate-950 rounded-md text-[10px] font-bold text-slate-400 uppercase tracking-wider border border-slate-800 shrink-0">
+                    <span class="w-2 h-2 rounded-full shrink-0" id="sync-indicator-dt"></span><span id="sync-text-dt">Conectado</span> <!-- Duplicated logic for desktop via CSS hide -->
+                </div>
             </div>`;
 
-            // ECONOMIA E BATERIA
+            // ECONOMIA, BATERIA E RELÓGIO (HUD PRINCIPAL)
             html += `
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg relative overflow-hidden mb-4 font-mono">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
-                    <div>
-                        <p class="text-slate-400 font-medium flex items-center gap-2">
-                            <span class="bg-indigo-900 text-indigo-300 text-xs px-2 py-1 rounded uppercase font-bold">Nível ${state.level}</span>
-                            ${window.getRankName()} Victor
-                        </p>
-                    </div>
-                    <div class="flex flex-wrap sm:flex-row gap-2 w-full md:w-auto">
-                        <div class="flex items-center gap-2 px-3 py-2 bg-yellow-950/30 text-yellow-500 border border-yellow-900/50 rounded-lg text-sm font-bold justify-center" title="Moedas Táticas">
-                            <i data-lucide="coins" class="w-4 h-4"></i><span>${state.coins} MT</span>
-                        </div>
-                        <button onclick="window.drinkWater(event)" class="flex items-center gap-2 px-3 py-2 bg-blue-950/40 text-blue-400 border border-blue-900/50 rounded-lg text-sm font-bold justify-center hover:bg-blue-900 hover:text-white transition-colors">
-                            <i data-lucide="droplets" class="w-4 h-4"></i><span class="hidden sm:inline">Água</span>
-                        </button>
-                        <button onclick="window.togglePanicModal(true)" class="flex items-center gap-2 px-3 py-2 bg-red-950/40 text-red-400 border border-red-900/50 rounded-lg text-sm font-bold justify-center hover:bg-red-900 hover:text-white transition-colors">
-                            <i data-lucide="shield-alert" class="w-4 h-4"></i>SOS
-                        </button>
-                        <button onclick="window.endDay()" class="flex items-center gap-2 px-3 py-2 bg-indigo-950/40 text-indigo-400 border border-indigo-900/50 rounded-lg text-sm font-bold justify-center hover:bg-indigo-900 hover:text-white transition-colors">
-                            <i data-lucide="moon" class="w-4 h-4"></i><span class="hidden sm:inline">Dormir</span>
-                        </button>
-                    </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 font-mono">
+                <!-- TEMPO OPERACIONAL -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col justify-center" id="time-operational-widget">
+                    <div class="text-xs text-slate-500 animate-pulse">Iniciando sistemas de tempo...</div>
                 </div>
 
-                <div class="mt-4 space-y-3">
-                    <div>
-                        <div class="flex justify-between text-xs mb-1 font-bold">
-                            <span class="text-indigo-400 flex items-center gap-1"><i data-lucide="zap" class="w-3 h-3"></i> XP Global ${state.combo > 1 ? `<span class="text-orange-400 ml-1">(Combo x${window.getComboMultiplier().toFixed(1)})</span>` : ''}</span>
-                            <span class="text-slate-400">${state.xp} / ${window.getXpForCurrentLevel()}</span>
+                <!-- XP / BATERIA / AÇÕES -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden md:col-span-2">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+                        <div>
+                            <p class="text-slate-400 font-medium flex items-center gap-2">
+                                <span class="bg-indigo-900 text-indigo-300 text-xs px-2 py-1 rounded uppercase font-bold">Nível ${state.level}</span>
+                                ${window.getRankName()} Victor
+                            </p>
                         </div>
-                        <div class="w-full bg-slate-800 rounded-full h-2"><div class="bg-gradient-to-r from-indigo-600 to-purple-500 h-2 rounded-full transition-all" style="width: ${xpPercent}%"></div></div>
+                        <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+                            <div class="flex items-center gap-2 px-3 py-2 bg-yellow-950/30 text-yellow-500 border border-yellow-900/50 rounded-lg text-sm font-bold justify-center" title="Moedas Táticas">
+                                <i data-lucide="coins" class="w-4 h-4"></i><span>${state.coins} MT</span>
+                            </div>
+                            <button onclick="window.drinkWater(event)" class="flex items-center gap-2 px-3 py-2 bg-blue-950/40 text-blue-400 border border-blue-900/50 rounded-lg text-sm font-bold justify-center hover:bg-blue-900 hover:text-white transition-colors">
+                                <i data-lucide="droplets" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="window.togglePanicModal(true)" class="flex items-center gap-2 px-3 py-2 bg-red-950/40 text-red-400 border border-red-900/50 rounded-lg text-sm font-bold justify-center hover:bg-red-900 hover:text-white transition-colors">
+                                <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="window.endDay()" class="flex items-center gap-2 px-3 py-2 bg-indigo-950/40 text-indigo-400 border border-indigo-900/50 rounded-lg text-sm font-bold justify-center hover:bg-indigo-900 hover:text-white transition-colors">
+                                <i data-lucide="moon" class="w-4 h-4"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div>
-                        <div class="flex justify-between text-xs mb-1 font-bold">
-                            <span class="text-emerald-400 flex items-center gap-1"><i data-lucide="battery" class="w-3 h-3"></i> Bateria Executiva (HP)</span>
-                            <span class="text-slate-400">${state.energy}%</span>
+
+                    <div class="mt-4 space-y-3">
+                        <div>
+                            <div class="flex justify-between text-xs mb-1 font-bold">
+                                <span class="text-indigo-400 flex items-center gap-1"><i data-lucide="zap" class="w-3 h-3"></i> XP Global ${state.combo > 1 ? `<span class="text-orange-400 ml-1">(Combo x${window.getComboMultiplier().toFixed(1)})</span>` : ''}</span>
+                                <span class="text-slate-400">${state.xp} / ${window.getXpForCurrentLevel()}</span>
+                            </div>
+                            <div class="w-full bg-slate-800 rounded-full h-2"><div class="bg-gradient-to-r from-indigo-600 to-purple-500 h-2 rounded-full transition-all" style="width: ${xpPercent}%"></div></div>
                         </div>
-                        <div class="w-full bg-slate-800 rounded-full h-2"><div class="h-2 rounded-full transition-all ${state.energy > 50 ? 'bg-emerald-500' : (state.energy > 20 ? 'bg-yellow-500' : 'bg-red-500')}" style="width: ${state.energy}%"></div></div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1 font-bold">
+                                <span class="${state.energy < 20 ? 'text-red-400 animate-pulse' : 'text-emerald-400'} flex items-center gap-1"><i data-lucide="battery" class="w-3 h-3"></i> Bateria Executiva (HP)</span>
+                                <span class="text-slate-400">${state.energy}%</span>
+                            </div>
+                            <div class="w-full bg-slate-800 rounded-full h-2"><div class="h-2 rounded-full transition-all ${state.energy > 50 ? 'bg-emerald-500' : (state.energy > 20 ? 'bg-yellow-500' : 'bg-red-500')}" style="width: ${state.energy}%"></div></div>
+                        </div>
                     </div>
                 </div>
             </div>`;
@@ -952,7 +1041,7 @@
             // TABS DIÁRIAS
             html += `<div class="flex overflow-x-auto pb-2 scrollbar-hide gap-2 bg-slate-900 p-2 rounded-xl border border-slate-800 mb-4 font-mono">`;
             daysOfWeek.forEach(day => {
-                const activeClass = state.activeTab === day.id ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800';
+                const activeClass = state.activeTab === day.id ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800';
                 html += `<button onclick="window.setTab('${day.id}')" class="whitespace-nowrap px-4 py-2 rounded-lg font-bold text-sm transition-all ${activeClass}">${day.label}</button>`;
             });
             html += `</div>`;
@@ -1054,13 +1143,13 @@
                         </div>`;
                     });
                 } else {
-                    html += `<p class="text-xs text-slate-500 italic">A sua mente está limpa.</p>`;
+                    html += `<p class="text-xs text-slate-500 italic">Mente limpa.</p>`;
                 }
                 html += `</div></div>`;
 
                 html += `<div class="bg-slate-900 rounded-xl border border-slate-800 p-2 sm:p-4 space-y-2 mb-8 font-mono">`;
                 if (filteredTasks.length === 0) {
-                    html += `<div class="text-center p-6 text-slate-500">Nenhuma missão correspondente para hoje. Use "Criar Missão" acima.</div>`;
+                    html += `<div class="text-center p-6 text-slate-500">Nenhuma missão. Use "Criar" acima.</div>`;
                 } else {
                     filteredTasks.forEach(task => {
                         const bgClass = task.completed ? 'bg-slate-950 opacity-50' : 'bg-slate-800 hover:bg-slate-700';
@@ -1101,36 +1190,26 @@
             if (uiState.showCreateTaskModal) {
                 html += `
                 <div class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm font-mono">
-                    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-md w-full shadow-2xl modal-enter">
-                        <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3"><h2 class="text-lg font-black text-emerald-400 flex items-center gap-2"><i data-lucide="plus-circle"></i> Criar Missão Tática</h2><button onclick="window.toggleCreateTaskModal()" class="text-slate-500 hover:text-white"><i data-lucide="x"></i></button></div>
+                    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-md w-full shadow-2xl modal-enter overflow-y-auto max-h-[90vh]">
+                        <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3"><h2 class="text-lg font-black text-emerald-400 flex items-center gap-2"><i data-lucide="plus-circle"></i> Criar Missão</h2><button onclick="window.toggleCreateTaskModal()" class="text-slate-500 hover:text-white"><i data-lucide="x"></i></button></div>
                         <div class="space-y-4">
-                            <div><label class="text-xs font-bold text-slate-400 uppercase">Título da Missão</label><input type="text" id="ct-text" placeholder="O que precisa ser feito?" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-emerald-500 outline-none"></div>
-                            
+                            <div><label class="text-xs font-bold text-slate-400 uppercase">Título</label><input type="text" id="ct-text" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-emerald-500 outline-none"></div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div><label class="text-xs font-bold text-slate-400 uppercase">Dia</label><select id="ct-day" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">${daysOfWeek.map(d => `<option value="${d.id}" ${d.id === state.activeTab ? 'selected' : ''}>${d.label}</option>`).join('')}<option value="next_week">Próxima Semana</option></select></div>
                                 <div><label class="text-xs font-bold text-slate-400 uppercase">Categoria</label>
                                     <select id="ct-category" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">
-                                        <option value="work">Trabalho (Coaktion)</option><option value="law">Advocacia</option><option value="study">Estudos</option>
-                                        <option value="home">Casa/Infra</option><option value="life">Pessoal/Vida</option><option value="health">Saúde/Médico</option>
-                                        <option value="finance">Finanças/PJ</option><option value="leisure">Lazer/Descompressão</option>
+                                        <option value="work">Trabalho</option><option value="law">Advocacia</option><option value="study">Estudos</option><option value="home">Casa/Infra</option><option value="life">Pessoal/Vida</option><option value="health">Saúde</option><option value="finance">Finanças</option><option value="leisure">Lazer</option>
                                     </select>
                                 </div>
                             </div>
-                            
                             <div class="grid grid-cols-2 gap-3">
                                 <div><label class="text-xs font-bold text-slate-400 uppercase">Prioridade</label><select id="ct-priority" onchange="window.updatePreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none"><option value="essencial">Essencial</option><option value="alta">Alta</option><option value="media" selected>Média</option><option value="baixa">Baixa</option></select></div>
                                 <div><label class="text-xs font-bold text-slate-400 uppercase">Dificuldade (1-5)</label><input type="number" id="ct-complexity" min="1" max="5" value="2" oninput="window.updatePreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none"></div>
                             </div>
-
                             <div class="grid grid-cols-2 gap-3">
-                                <div><label class="text-xs font-bold text-slate-400 uppercase">Tempo (Minutos)</label><input type="number" id="ct-time" value="30" step="15" oninput="window.updatePreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none"></div>
-                                <div><label class="text-xs font-bold text-slate-400 uppercase">Impacto HP</label>
-                                    <select id="ct-impact-type" onchange="window.updatePreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">
-                                        <option value="drain" selected>Drena Bateria</option><option value="recharge">Recarrega Bateria</option>
-                                    </select>
-                                </div>
+                                <div><label class="text-xs font-bold text-slate-400 uppercase">Tempo (Min)</label><input type="number" id="ct-time" value="30" step="15" oninput="window.updatePreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none"></div>
+                                <div><label class="text-xs font-bold text-slate-400 uppercase">Impacto HP</label><select id="ct-impact-type" onchange="window.updatePreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none"><option value="drain" selected>Drena Bateria</option><option value="recharge">Recarrega</option></select></div>
                             </div>
-
                             <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex justify-between items-center mt-2">
                                 <span class="text-xs font-bold text-slate-400 uppercase">Impacto Projetado:</span>
                                 <div class="flex gap-2"><span id="ct-xp-preview" class="bg-indigo-900/50 text-indigo-400 px-3 py-1 rounded-md text-xs font-bold">+0 XP</span><span id="ct-hp-preview" class="bg-red-900/50 text-red-400 px-3 py-1 rounded-md text-xs font-bold">-0 HP</span></div>
@@ -1144,7 +1223,7 @@
             // MODAL Q.G.
             if (uiState.showStatsModal) {
                 html += `
-                <div class="fixed inset-0 bg-black/90 flex flex-col items-center justify-start p-2 sm:p-6 z-50 backdrop-blur-md overflow-y-auto pt-10 font-mono">
+                <div class="fixed inset-0 bg-black/90 flex flex-col items-center justify-start p-2 sm:p-6 z-[60] backdrop-blur-md overflow-y-auto pt-10 font-mono">
                     <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl shadow-2xl modal-enter relative mb-10">
                         <button onclick="window.toggleStatsModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full p-1"><i data-lucide="x"></i></button>
                         <div class="p-5 sm:p-8">
@@ -1165,37 +1244,70 @@
             // MODAL CENTRO DE INTELIGÊNCIA (ESTUDOS)
             if (uiState.showStudyModal) {
                 html += `
-                <div class="fixed inset-0 bg-slate-950/95 flex flex-col items-center justify-start p-2 sm:p-6 z-[55] backdrop-blur-lg overflow-y-auto pt-8 font-mono">
+                <div class="fixed inset-0 bg-slate-950/95 flex flex-col items-center justify-start p-2 sm:p-6 z-[60] backdrop-blur-lg overflow-y-auto pt-8 font-mono">
                     <div class="bg-slate-900 border border-cyan-900/50 rounded-2xl w-full max-w-4xl shadow-[0_0_50px_rgba(8,145,178,0.15)] modal-enter relative mb-10">
                         <button onclick="window.toggleStudyModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full p-2 hover:bg-red-500/20 hover:text-red-400 transition-colors z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
-                        
                         <div class="p-5 sm:p-8">
                             <div class="flex items-center gap-4 mb-6 border-b border-slate-800 pb-4">
-                                <div class="bg-cyan-950 p-3 rounded-xl border border-cyan-800/50 shadow-inner">
-                                    <i data-lucide="brain" class="text-cyan-400 w-8 h-8"></i>
-                                </div>
-                                <div>
-                                    <h2 class="text-2xl font-black text-white tracking-wide">Centro de Inteligência</h2>
-                                    <p class="text-xs text-cyan-500 font-bold uppercase tracking-widest mt-1">Neuro-otimização de Aprendizado</p>
-                                </div>
+                                <div class="bg-cyan-950 p-3 rounded-xl border border-cyan-800/50 shadow-inner"><i data-lucide="brain" class="text-cyan-400 w-8 h-8"></i></div>
+                                <div><h2 class="text-2xl font-black text-white tracking-wide">Centro de Inteligência</h2><p class="text-xs text-cyan-500 font-bold uppercase tracking-widest mt-1">Neuro-otimização</p></div>
                             </div>
-                            
                             <div class="flex overflow-x-auto scrollbar-hide gap-2 mb-6 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
-                                ${[
-                                    {id: 'dashboard', icon: 'line-chart', label: 'Radar (Desempenho)'},
-                                    {id: 'subjects', icon: 'layers', label: 'Arsenal (Disciplinas)'},
-                                    {id: 'log', icon: 'crosshair', label: 'Registrar Missão'},
-                                    {id: 'reviews', icon: 'rotate-cw', label: 'Protocolo Ebbinghaus'}
-                                ].map(tab => `
+                                ${[{id: 'plano', icon: 'crosshair', label: 'Plano de Hoje'}, {id: 'dashboard', icon: 'line-chart', label: 'Radar'}, {id: 'subjects', icon: 'layers', label: 'Arsenal'}, {id: 'log', icon: 'zap', label: 'Registrar'}, {id: 'reviews', icon: 'rotate-cw', label: '1-7-30'}, {id: 'erros', icon: 'microscope', label: 'Erros'}, {id: 'ciclos', icon: 'refresh-cw', label: 'Ciclos'}].map(tab => `
                                     <button onclick="window.setStudyTab('${tab.id}')" class="flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all whitespace-nowrap ${uiState.studyTab === tab.id ? 'bg-cyan-900/40 text-cyan-300 border border-cyan-700/50 shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-transparent'}">
                                         <i data-lucide="${tab.icon}" class="w-4 h-4"></i> ${tab.label}
                                     </button>
                                 `).join('')}
                             </div>
-                            
-                            <div class="min-h-[400px]">
-                                ${renderStudyContent()}
+                            <div class="min-h-[400px]">${renderStudyContent()}</div>
+                        </div>
+                    </div>
+                </div>`;
+            }
+
+            // MODAL CENTRO FÍSICO
+            if (uiState.showHealthModal) {
+                html += `
+                <div class="fixed inset-0 bg-slate-950/95 flex flex-col items-center justify-start p-2 sm:p-6 z-[60] backdrop-blur-lg overflow-y-auto pt-8 font-mono">
+                    <div class="bg-slate-900 border border-rose-900/50 rounded-2xl w-full max-w-4xl shadow-[0_0_50px_rgba(244,63,94,0.15)] modal-enter relative mb-10">
+                        <button onclick="window.toggleHealthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full p-2 hover:bg-red-500/20 hover:text-red-400 transition-colors z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
+                        <div class="p-5 sm:p-8">
+                            <div class="flex items-center gap-4 mb-6 border-b border-slate-800 pb-4">
+                                <div class="bg-rose-950 p-3 rounded-xl border border-rose-800/50 shadow-inner"><i data-lucide="activity" class="text-rose-400 w-8 h-8"></i></div>
+                                <div><h2 class="text-2xl font-black text-white tracking-wide">Corpo de Combate</h2><p class="text-xs text-rose-500 font-bold uppercase tracking-widest mt-1">Engenharia Física</p></div>
                             </div>
+                            <div class="flex overflow-x-auto scrollbar-hide gap-2 mb-6 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+                                ${[{id: 'dashboard', icon: 'line-chart', label: 'Dashboard'}, {id: 'treinos', icon: 'dumbbell', label: 'Treinos'}, {id: 'metricas', icon: 'scale', label: 'Métricas'}, {id: 'habitos', icon: 'heart', label: 'Hábitos'}].map(tab => `
+                                    <button onclick="window.setHealthTab('${tab.id}')" class="flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all whitespace-nowrap ${uiState.healthTab === tab.id ? 'bg-rose-900/40 text-rose-300 border border-rose-700/50 shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-transparent'}">
+                                        <i data-lucide="${tab.icon}" class="w-4 h-4"></i> ${tab.label}
+                                    </button>
+                                `).join('')}
+                            </div>
+                            <div class="min-h-[400px]">${renderHealthContent()}</div>
+                        </div>
+                    </div>
+                </div>`;
+            }
+
+            // MODAL CENTRO FINANCEIRO
+            if (uiState.showFinanceModal) {
+                html += `
+                <div class="fixed inset-0 bg-slate-950/95 flex flex-col items-center justify-start p-2 sm:p-6 z-[60] backdrop-blur-lg overflow-y-auto pt-8 font-mono">
+                    <div class="bg-slate-900 border border-yellow-900/50 rounded-2xl w-full max-w-4xl shadow-[0_0_50px_rgba(234,179,8,0.1)] modal-enter relative mb-10">
+                        <button onclick="window.toggleFinanceModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full p-2 hover:bg-red-500/20 hover:text-red-400 transition-colors z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
+                        <div class="p-5 sm:p-8">
+                            <div class="flex items-center gap-4 mb-6 border-b border-slate-800 pb-4">
+                                <div class="bg-yellow-950 p-3 rounded-xl border border-yellow-800/50 shadow-inner"><i data-lucide="landmark" class="text-yellow-400 w-8 h-8"></i></div>
+                                <div><h2 class="text-2xl font-black text-white tracking-wide">Tesouraria Tática</h2><p class="text-xs text-yellow-500 font-bold uppercase tracking-widest mt-1">Psicologia do Dinheiro</p></div>
+                            </div>
+                            <div class="flex overflow-x-auto scrollbar-hide gap-2 mb-6 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+                                ${[{id: 'dashboard', icon: 'pie-chart', label: 'Dashboard'}, {id: 'variaveis', icon: 'shopping-bag', label: 'Variáveis'}, {id: 'fixas', icon: 'home', label: 'Fixas'}, {id: 'receitas', icon: 'dollar-sign', label: 'Receitas'}, {id: 'diario', icon: 'book-open', label: 'Diário Psi'}].map(tab => `
+                                    <button onclick="window.setFinanceTab('${tab.id}')" class="flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all whitespace-nowrap ${uiState.financeTab === tab.id ? 'bg-yellow-900/40 text-yellow-300 border border-yellow-700/50 shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-transparent'}">
+                                        <i data-lucide="${tab.icon}" class="w-4 h-4"></i> ${tab.label}
+                                    </button>
+                                `).join('')}
+                            </div>
+                            <div class="min-h-[400px]">${renderFinanceContent()}</div>
                         </div>
                     </div>
                 </div>`;
@@ -1212,16 +1324,17 @@
             appDiv.innerHTML = html;
             lucide.createIcons();
             
-            // Restaura estado dinâmico do UI sync após redesenho
+            // Render specific components that require external DOM access safely
+            if(!clockInterval && currentUser) startClock();
             window.updateSyncStatus(currentSyncStatus);
         }
 
+        // --- Q.G. ---
         function renderQGContent() {
             if (uiState.statsTab === 'roadmap') {
                 let html = `<div class="space-y-3">`;
                 RANKS.forEach(rank => {
-                    const isCurrent = rank.level === state.level;
-                    const isPast = rank.level < state.level;
+                    const isCurrent = rank.level === state.level; const isPast = rank.level < state.level;
                     const bgClass = isCurrent ? 'bg-indigo-900/40 border-indigo-500 shadow-md shadow-indigo-950/20' : (isPast ? 'bg-slate-800/50 border-slate-700 opacity-50' : 'bg-slate-900 border-slate-800');
                     html += `
                     <div class="flex items-center gap-4 p-3 rounded-xl border ${bgClass} transition-all">
@@ -1234,8 +1347,7 @@
                     </div>`;
                 });
                 return html + `</div>`;
-            } 
-            else if (uiState.statsTab === 'badges') {
+            } else if (uiState.statsTab === 'badges') {
                 let html = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">`;
                 BADGES_DB.forEach(badge => {
                     const unlocked = state.unlockedBadges.includes(badge.id);
@@ -1251,29 +1363,21 @@
                     </div>`;
                 });
                 return html + `</div>`;
-            }
-            else if (uiState.statsTab === 'shop') {
+            } else if (uiState.statsTab === 'shop') {
                 let html = `
                 <div class="bg-yellow-950/20 border border-yellow-900/50 p-4 rounded-xl mb-6 flex justify-between items-center">
                     <div><h3 class="text-yellow-500 font-black uppercase text-sm">Seu Saldo</h3><p class="text-xs text-slate-400">Pague pelo seu merecido lazer acumulando moedas!</p></div>
                     <div class="text-3xl font-black text-yellow-400 flex items-center gap-2"><i data-lucide="coins"></i> ${state.coins}</div>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">`;
+                </div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4">`;
                 REWARDS_SHOP.forEach(r => {
                     const canAfford = state.coins >= r.cost;
                     html += `
                     <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col justify-between hover:border-slate-500 transition-colors">
                         <div>
-                            <div class="flex justify-between items-start mb-2">
-                                <i data-lucide="${r.icon}" class="text-white w-6 h-6"></i>
-                                <span class="bg-slate-950 text-yellow-400 text-xs font-bold px-2 py-1 rounded border border-yellow-900/50">${r.cost} MT</span>
-                            </div>
-                            <h4 class="font-bold text-white text-sm">${r.title}</h4>
-                            <p class="text-xs text-slate-400 mt-1 leading-tight">${r.desc}</p>
+                            <div class="flex justify-between items-start mb-2"><i data-lucide="${r.icon}" class="text-white w-6 h-6"></i><span class="bg-slate-950 text-yellow-400 text-xs font-bold px-2 py-1 rounded border border-yellow-900/50">${r.cost} MT</span></div>
+                            <h4 class="font-bold text-white text-sm">${r.title}</h4><p class="text-xs text-slate-400 mt-1 leading-tight">${r.desc}</p>
                         </div>
-                        <button onclick="window.buyReward('${r.id}')" class="mt-4 w-full py-2 rounded-lg text-xs font-bold transition-colors ${canAfford ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/30' : 'bg-slate-900 text-slate-500 cursor-not-allowed'}">
-                            ${canAfford ? 'Resgatar' : 'Faltam Moedas'}
-                        </button>
+                        <button onclick="window.buyReward('${r.id}')" class="mt-4 w-full py-2 rounded-lg text-xs font-bold transition-colors ${canAfford ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-slate-900 text-slate-500 cursor-not-allowed'}">${canAfford ? 'Resgatar' : 'Faltam Moedas'}</button>
                     </div>`;
                 });
                 return html + `</div>`;
@@ -1281,249 +1385,449 @@
             return '';
         }
 
-        // RENDERIZAÇÃO DO CONTEÚDO DE ESTUDOS
+        // --- ESTUDOS ---
         function renderStudyContent() {
-            if (uiState.studyTab === 'dashboard') {
+            if (uiState.studyTab === 'plano') {
+                const now = new Date();
+                const dueReviews = state.studyData.reviews.filter(r => r.status === 'pending' && new Date(r.dueDate) <= now);
+                const openErrors = state.studyData.errorLog.filter(e => e.status === 'open');
+                
+                let recs = [];
+                if (dueReviews.length > 0) recs.push({ title: 'Revisões Críticas Atrasadas', desc: `Você tem ${dueReviews.length} revisões Ebbinghaus aguardando. Foco total aqui.`, color: 'text-red-400', border: 'border-red-900/50' });
+                if (openErrors.length > 0) recs.push({ title: 'Vulnerabilidades (Erros) Abertos', desc: `Corrija ${openErrors.length} falhas no seu Caderno de Erros. É onde o nível sobe.`, color: 'text-orange-400', border: 'border-orange-900/50' });
+                
+                state.studyData.subjects.forEach(sub => {
+                    const stats = window.getSubjectStats(sub.id);
+                    if (stats.retention > 0 && stats.retention < 70) recs.push({ title: `Alerta: ${sub.name}`, desc: `Sua retenção está em ${stats.retention}%. Faça bateria de questões focada.`, color: 'text-yellow-400', border: 'border-yellow-900/50' });
+                    if (!stats.lastSession || (now - stats.lastSession) / (1000*60*60*24) > 7) recs.push({ title: `Abandono: ${sub.name}`, desc: `Faz mais de 7 dias que você não vê esta matéria. Retome hoje.`, color: 'text-slate-400', border: 'border-slate-700' });
+                });
+
+                if (state.energy < 30) recs.unshift({ title: 'Bateria Executiva Baixa', desc: 'Sua energia está crítica. Faça apenas leitura leve ou flashcards curtos. Não faça simulados hoje.', color: 'text-blue-400', border: 'border-blue-900/50', icon: 'battery-low' });
+                else if (state.energy > 60 && dueReviews.length === 0) recs.push({ title: 'Energia Alta Disponível', desc: 'Condições ideais. Execute blocos de Teoria Ativa ou baterias longas de questões.', color: 'text-emerald-400', border: 'border-emerald-900/50', icon: 'zap' });
+
+                let html = `<div class="bg-cyan-950/10 border border-cyan-900/30 p-5 rounded-xl mb-6"><h3 class="text-cyan-400 font-black uppercase tracking-widest text-sm mb-4"><i data-lucide="compass" class="inline w-4 h-4 mr-2"></i>Diretrizes Táticas Para Hoje</h3><div class="space-y-3">`;
+                if(recs.length === 0) html += `<div class="text-slate-500 italic text-sm">Nenhuma emergência detectada. Prossiga com seu edital normal.</div>`;
+                recs.slice(0, 5).forEach(r => {
+                    html += `<div class="bg-slate-900 border ${r.border} p-4 rounded-lg flex items-start gap-3"><i data-lucide="${r.icon || 'alert-circle'}" class="${r.color} w-5 h-5 mt-0.5"></i><div><h4 class="font-bold text-white text-sm">${r.title}</h4><p class="text-xs text-slate-400 mt-1">${r.desc}</p></div></div>`;
+                });
+                return html + `</div></div>`;
+            }
+            else if (uiState.studyTab === 'dashboard') {
                 const totalSessions = state.studyData.sessions.length;
                 const totalMinutes = state.studyData.sessions.reduce((acc, s) => acc + s.duration, 0);
-                const totalHours = (totalMinutes / 60).toFixed(1);
                 const totalQ = state.studyData.sessions.reduce((acc, s) => acc + s.qTotal, 0);
                 const correctQ = state.studyData.sessions.reduce((acc, s) => acc + s.qCorrect, 0);
                 const globalRetention = totalQ > 0 ? Math.round((correctQ / totalQ) * 100) : 0;
-
-                let html = `
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center justify-center text-center">
-                        <i data-lucide="clock" class="text-indigo-400 mb-2 w-6 h-6"></i>
-                        <span class="text-2xl font-black text-white">${totalHours}h</span>
-                        <span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Tempo Total</span>
-                    </div>
-                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center justify-center text-center">
-                        <i data-lucide="target" class="text-cyan-400 mb-2 w-6 h-6"></i>
-                        <span class="text-2xl font-black text-white">${totalQ}</span>
-                        <span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Questões Feitas</span>
-                    </div>
-                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center justify-center text-center relative overflow-hidden">
-                        <div class="absolute inset-0 bg-gradient-to-t from-emerald-900/20 to-transparent"></div>
-                        <i data-lucide="percent" class="text-emerald-400 mb-2 w-6 h-6 relative z-10"></i>
-                        <span class="text-2xl font-black text-white relative z-10">${globalRetention}%</span>
-                        <span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1 relative z-10">Retenção (Active Recall)</span>
-                    </div>
-                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center justify-center text-center">
-                        <i data-lucide="zap" class="text-yellow-400 mb-2 w-6 h-6"></i>
-                        <span class="text-2xl font-black text-white">${totalSessions}</span>
-                        <span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Sessões Táticas</span>
-                    </div>
-                </div>
-
-                <h3 class="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2 uppercase tracking-widest"><i data-lucide="bar-chart-2" class="text-cyan-500"></i> Eficiência por Disciplina</h3>
-                <div class="space-y-4">`;
-
-                if (state.studyData.subjects.length === 0) {
-                    html += `<p class="text-slate-500 text-sm italic text-center p-8 bg-slate-950 rounded-xl border border-slate-800">Seu arsenal está vazio. Adicione disciplinas para visualizar as estatísticas.</p>`;
+                
+                let confBeforeAvg = 0, confAfterAvg = 0;
+                const sessionsWithConf = state.studyData.sessions.filter(s => s.confBefore && s.confAfter);
+                if(sessionsWithConf.length > 0) {
+                    confBeforeAvg = (sessionsWithConf.reduce((acc, s) => acc + s.confBefore, 0) / sessionsWithConf.length).toFixed(1);
+                    confAfterAvg = (sessionsWithConf.reduce((acc, s) => acc + s.confAfter, 0) / sessionsWithConf.length).toFixed(1);
                 }
 
+                let html = `
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center justify-center text-center"><i data-lucide="clock" class="text-indigo-400 mb-2 w-6 h-6"></i><span class="text-2xl font-black text-white">${(totalMinutes / 60).toFixed(1)}h</span><span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Tempo Total</span></div>
+                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center justify-center text-center"><i data-lucide="target" class="text-cyan-400 mb-2 w-6 h-6"></i><span class="text-2xl font-black text-white">${totalQ}</span><span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Questões</span></div>
+                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center justify-center text-center relative overflow-hidden"><i data-lucide="percent" class="text-emerald-400 mb-2 w-6 h-6"></i><span class="text-2xl font-black text-white">${globalRetention}%</span><span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Retenção</span></div>
+                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center justify-center text-center"><i data-lucide="brain" class="text-fuchsia-400 mb-2 w-6 h-6"></i><span class="text-2xl font-black text-white">${confBeforeAvg} > ${confAfterAvg}</span><span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Confiança Média</span></div>
+                </div>
+
+                <h3 class="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2 uppercase tracking-widest"><i data-lucide="bar-chart-2" class="text-cyan-500 w-4 h-4"></i> Radar de Retenção</h3>
+                <div class="space-y-4">`;
+
+                if (state.studyData.subjects.length === 0) html += `<p class="text-slate-500 text-sm italic text-center p-8 bg-slate-950 rounded-xl border border-slate-800">Arsenal vazio.</p>`;
+                const now = new Date();
                 state.studyData.subjects.forEach(sub => {
                     const stats = window.getSubjectStats(sub.id);
-                    const retentionColor = stats.retention >= 80 ? 'bg-emerald-500' : (stats.retention >= 60 ? 'bg-yellow-500' : 'bg-red-500');
+                    let radarStatus = "Esquecida", color = "bg-slate-600";
+                    if(stats.lastSession && (now - stats.lastSession) / (1000*60*60*24) <= 10) {
+                        if(stats.retention >= 80) { radarStatus = "Forte"; color = "bg-emerald-500"; }
+                        else if(stats.retention >= 60) { radarStatus = "Atenção"; color = "bg-yellow-500"; }
+                        else { radarStatus = "Crítica"; color = "bg-red-500"; }
+                    }
                     
                     html += `
                     <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl">
                         <div class="flex justify-between items-end mb-2">
-                            <div class="flex items-center gap-2">
-                                <div class="w-3 h-3 rounded-full ${sub.color}"></div>
-                                <span class="font-bold text-white text-sm">${sub.name}</span>
-                            </div>
-                            <span class="text-xs font-bold text-slate-400">${(stats.totalTime / 60).toFixed(1)}h estudadas</span>
+                            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full ${sub.color}"></div><span class="font-bold text-white text-sm">${sub.name}</span></div>
+                            <span class="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded text-white ${color}">${radarStatus}</span>
                         </div>
-                        <div class="flex items-center gap-4 mt-3">
-                            <div class="flex-1">
-                                <div class="flex justify-between text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">
-                                    <span>Retenção Neural</span>
-                                    <span class="${stats.retention >= 80 ? 'text-emerald-400' : 'text-slate-400'}">${stats.retention}% (${stats.correctQ}/${stats.totalQ})</span>
-                                </div>
-                                <div class="w-full bg-slate-900 rounded-full h-2 border border-slate-800 overflow-hidden">
-                                    <div class="${retentionColor} h-2 rounded-full transition-all" style="width: ${stats.retention}%"></div>
-                                </div>
-                            </div>
+                        <div class="flex-1 mt-3">
+                            <div class="flex justify-between text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider"><span>Retenção (${stats.correctQ}/${stats.totalQ})</span><span class="${color.replace('bg-','text-')}">${stats.retention}%</span></div>
+                            <div class="w-full bg-slate-900 rounded-full h-2 border border-slate-800"><div class="${color} h-2 rounded-full transition-all" style="width: ${stats.retention}%"></div></div>
                         </div>
                     </div>`;
                 });
-
-                html += `</div>
-                <div class="mt-6 bg-cyan-950/20 border border-cyan-900/30 p-4 rounded-xl text-xs text-cyan-500 leading-relaxed">
-                    <strong class="text-cyan-400">Nota Neuropsicopedagógica:</strong> Manter uma taxa de retenção acima de 80% indica consolidação eficaz na memória de longo prazo. Se uma disciplina estiver abaixo de 60%, reduza a carga teórica e aumente a resolução de questões focadas (Evocação Ativa).
-                </div>`;
-                return html;
+                return html + `</div>`;
             } 
             else if (uiState.studyTab === 'subjects') {
                 let html = `
                 <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl mb-6">
-                    <h3 class="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2"><i data-lucide="plus-square" class="text-emerald-400"></i> Adicionar ao Edital / Ciclo</h3>
+                    <h3 class="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2"><i data-lucide="plus-square" class="text-emerald-400"></i> Adicionar Disciplina</h3>
                     <div class="flex flex-col sm:flex-row gap-3">
-                        <input type="text" id="new-subject-name" placeholder="Ex: Direito Constitucional, Inglês..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-cyan-500">
+                        <input type="text" id="new-subject-name" placeholder="Ex: Direito Constitucional..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-cyan-500">
                         <select id="new-subject-color" class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-300 focus:outline-none">
-                            <option value="bg-cyan-500" class="text-cyan-500 font-bold">Ciano</option>
-                            <option value="bg-indigo-500" class="text-indigo-500 font-bold">Índigo</option>
-                            <option value="bg-emerald-500" class="text-emerald-500 font-bold">Esmeralda</option>
-                            <option value="bg-rose-500" class="text-rose-500 font-bold">Rosa</option>
-                            <option value="bg-yellow-500" class="text-yellow-500 font-bold">Amarelo</option>
-                            <option value="bg-fuchsia-500" class="text-fuchsia-500 font-bold">Fúcsia</option>
+                            <option value="bg-cyan-500" class="text-cyan-500 font-bold">Ciano</option><option value="bg-indigo-500" class="text-indigo-500 font-bold">Índigo</option><option value="bg-emerald-500" class="text-emerald-500 font-bold">Esmeralda</option><option value="bg-rose-500" class="text-rose-500 font-bold">Rosa</option><option value="bg-yellow-500" class="text-yellow-500 font-bold">Amarelo</option><option value="bg-fuchsia-500" class="text-fuchsia-500 font-bold">Fúcsia</option>
                         </select>
                         <button onclick="window.addSubject()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-6 rounded-lg transition-colors">Cadastrar</button>
                     </div>
                 </div>
-
-                <h3 class="text-sm font-bold text-slate-300 mb-3 uppercase tracking-widest text-xs">Disciplinas Ativas</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">`;
-
-                if (state.studyData.subjects.length === 0) {
-                    html += `<div class="col-span-full text-center text-slate-500 p-4 italic text-sm">Nenhuma disciplina cadastrada.</div>`;
-                }
-
+                if (state.studyData.subjects.length === 0) html += `<div class="col-span-full text-center text-slate-500 p-4 italic text-sm">Nenhuma disciplina cadastrada.</div>`;
                 state.studyData.subjects.forEach(sub => {
                     html += `
                     <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex justify-between items-center group hover:border-slate-600 transition-colors">
-                        <div class="flex items-center gap-3">
-                            <div class="w-4 h-4 rounded-full ${sub.color} shadow-[0_0_10px_currentColor] opacity-80"></div>
-                            <span class="font-bold text-white">${sub.name}</span>
-                        </div>
-                        <button onclick="window.deleteSubject(${sub.id})" class="text-slate-600 hover:text-red-400 p-2 rounded-lg hover:bg-slate-900 transition-colors opacity-0 group-hover:opacity-100">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
+                        <div class="flex items-center gap-3"><div class="w-4 h-4 rounded-full ${sub.color}"></div><span class="font-bold text-white">${sub.name}</span></div>
+                        <button onclick="window.deleteSubject(${sub.id})" class="text-slate-600 hover:text-red-400 p-2 rounded-lg hover:bg-slate-900 opacity-0 group-hover:opacity-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                     </div>`;
                 });
                 return html + `</div>`;
             }
             else if (uiState.studyTab === 'log') {
-                if (state.studyData.subjects.length === 0) {
-                    return `<div class="text-center p-8 text-slate-400">Adicione disciplinas na aba "Arsenal" antes de registrar uma sessão.</div>`;
-                }
-
+                if (state.studyData.subjects.length === 0) return `<div class="text-center p-8 text-slate-400">Adicione disciplinas na aba "Arsenal".</div>`;
                 let html = `
-                <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 sm:p-6 max-w-2xl mx-auto">
-                    <p class="text-xs text-slate-400 mb-6 leading-relaxed">Registrar o que você estudou alimenta os gráficos de inteligência e <strong class="text-fuchsia-400">programa automaticamente o seu algoritmo de repetição espaçada.</strong></p>
-                    
-                    <div class="space-y-5">
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 sm:p-6 max-w-2xl mx-auto space-y-5">
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Disciplina Alvo</label>
+                        <select id="session-subject" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
+                            <option value="" disabled selected>Selecione...</option>
+                            ${state.studyData.subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Tópico Específico</label>
+                        <input type="text" id="session-topic" placeholder="Ex: Direitos Políticos..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Disciplina Alvo</label>
-                            <select id="session-subject" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
-                                <option value="" disabled selected>Selecione a disciplina...</option>
-                                ${state.studyData.subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Modo de Operação</label>
+                            <select id="session-type" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
+                                ${Object.entries(SESSION_TYPES).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
                             </select>
                         </div>
-
                         <div>
-                            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Assunto / Tópico Específico</label>
-                            <input type="text" id="session-topic" placeholder="Ex: Direitos Políticos, Verbo To Be..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Tempo (Min)</label>
+                            <input type="number" id="session-duration" value="60" min="5" step="5" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
                         </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Modo de Operação</label>
-                                <select id="session-type" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
-                                    <option value="teoria">Teoria (Gera Revisões Automáticas)</option>
-                                    <option value="revisao">Revisão Ativa</option>
-                                    <option value="questoes">Bateria de Questões</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Tempo (Minutos)</label>
-                                <input type="number" id="session-duration" value="60" min="5" step="5" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
-                            </div>
-                        </div>
-
-                        <div class="bg-indigo-950/20 border border-indigo-900/30 p-4 rounded-xl mt-4">
-                            <label class="text-xs font-bold text-indigo-400 uppercase tracking-widest block mb-3 flex items-center gap-2"><i data-lucide="target" class="w-4 h-4"></i> Testagem Ativa (Metacognição)</label>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Total de Questões</label>
-                                    <input type="number" id="session-q-total" value="0" min="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500">
-                                </div>
-                                <div>
-                                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Acertos</label>
-                                    <input type="number" id="session-q-correct" value="0" min="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-emerald-500">
-                                </div>
-                            </div>
-                        </div>
-
-                        <button onclick="window.logStudySession()" class="w-full bg-cyan-700 hover:bg-cyan-600 text-white font-black uppercase tracking-widest py-4 rounded-xl mt-4 shadow-[0_0_15px_rgba(8,145,178,0.3)] transition-all">Registrar Inteligência Coletada</button>
                     </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Confiança ANTES (0-5)</label><input type="number" id="session-conf-before" value="2" min="0" max="5" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white"></div>
+                        <div><label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Confiança DEPOIS (0-5)</label><input type="number" id="session-conf-after" value="4" min="0" max="5" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white"></div>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Barreiras de Foco (Opcional)</label>
+                        <div class="flex flex-wrap gap-2">
+                            ${['Celular','Sono','Cansaço','Ansiedade','Interrupções'].map(b => `<label class="flex items-center gap-2 bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-md text-xs cursor-pointer"><input type="checkbox" name="session-barriers" value="${b}" class="accent-cyan-500"> ${b}</label>`).join('')}
+                        </div>
+                    </div>
+                    <div class="bg-indigo-950/20 border border-indigo-900/30 p-4 rounded-xl">
+                        <label class="text-xs font-bold text-indigo-400 uppercase tracking-widest block mb-3"><i data-lucide="target" class="w-4 h-4 inline"></i> Metacognição (Questões)</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Total</label><input type="number" id="session-q-total" value="0" min="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white"></div>
+                            <div><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Acertos</label><input type="number" id="session-q-correct" value="0" min="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white"></div>
+                        </div>
+                    </div>
+                    <button onclick="window.logStudySession()" class="w-full bg-cyan-700 hover:bg-cyan-600 text-white font-black uppercase tracking-widest py-4 rounded-xl mt-4 transition-all">Registrar Inteligência</button>
                 </div>`;
                 return html;
             }
             else if (uiState.studyTab === 'reviews') {
                 const now = new Date();
-                
-                // Limpeza: remove revisões de disciplinas que foram apagadas
                 state.studyData.reviews = state.studyData.reviews.filter(r => state.studyData.subjects.some(s => s.id === r.subjectId));
+                const pending = state.studyData.reviews.filter(r => r.status === 'pending').sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+                const dueToday = pending.filter(r => new Date(r.dueDate) <= now);
+                const upcoming = pending.filter(r => new Date(r.dueDate) > now).slice(0, 10);
 
-                const pendingReviews = state.studyData.reviews.filter(r => r.status === 'pending');
-                pendingReviews.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-
-                const dueTodayOrPast = pendingReviews.filter(r => new Date(r.dueDate) <= now);
-                const upcoming = pendingReviews.filter(r => new Date(r.dueDate) > now);
-
-                let html = `
-                <div class="bg-fuchsia-950/20 border border-fuchsia-900/30 p-4 rounded-xl mb-6">
-                    <h3 class="text-fuchsia-400 font-black uppercase text-sm flex items-center gap-2 mb-2"><i data-lucide="brain-cog"></i> Curva de Esquecimento de Ebbinghaus</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">Para fixar um dado na memória de longo prazo, seu cérebro precisa ser relembrado na iminência de esquecê-lo. O algoritmo age nos dias 1, 7 e 30 após o contato inicial.</p>
-                </div>`;
-
-                if (pendingReviews.length === 0) {
-                    return html + `<div class="text-center p-12 text-slate-500 border border-dashed border-slate-700 rounded-xl bg-slate-950/50">Nenhuma revisão pendente detectada no radar neural. Vá estudar teorias para alimentar o sistema.</div>`;
-                }
-
-                html += `<div class="grid grid-cols-1 md:grid-cols-2 gap-6">`;
-
-                // Coluna: Ação Imediata
-                html += `<div><h4 class="text-xs font-bold text-red-400 uppercase tracking-widest mb-3 flex items-center gap-2"><i data-lucide="alert-circle" class="w-4 h-4"></i> Ação Imediata (${dueTodayOrPast.length})</h4><div class="space-y-3">`;
-                if (dueTodayOrPast.length === 0) { html += `<p class="text-xs text-slate-600 italic">Limpo por hoje.</p>`; }
-                dueTodayOrPast.forEach(r => {
-                    const subject = state.studyData.subjects.find(s => s.id === r.subjectId);
-                    if(!subject) return;
+                let html = `<div class="grid grid-cols-1 md:grid-cols-2 gap-6">`;
+                
+                html += `<div><h4 class="text-xs font-bold text-red-400 uppercase tracking-widest mb-3 flex items-center gap-2"><i data-lucide="alert-circle" class="w-4 h-4"></i> Ação Imediata (${dueToday.length})</h4><div class="space-y-3">`;
+                if (dueToday.length === 0) html += `<p class="text-xs text-slate-600 italic">Limpo.</p>`;
+                dueToday.forEach(r => {
+                    const sub = state.studyData.subjects.find(s => s.id === r.subjectId);
                     html += `
                     <div class="bg-slate-950 border border-red-900/30 p-3 rounded-lg flex justify-between items-center group">
                         <div>
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="text-[9px] uppercase font-bold bg-red-950 text-red-400 px-1.5 py-0.5 rounded border border-red-900/50">Atrasado / Hoje</span>
-                                <span class="text-[9px] uppercase font-bold bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded">+${r.intervalDays} Dias</span>
-                            </div>
-                            <div class="font-bold text-sm text-white flex items-center gap-1.5"><div class="w-2 h-2 rounded-full ${subject.color}"></div> ${subject.name}</div>
+                            <div class="flex items-center gap-2 mb-1"><span class="text-[9px] uppercase font-bold bg-red-950 text-red-400 px-1.5 py-0.5 rounded">Hoje/Atrasado</span><span class="text-[9px] uppercase font-bold bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded">+${r.intervalDays} Dias</span></div>
+                            <div class="font-bold text-sm text-white flex items-center gap-1.5"><div class="w-2 h-2 rounded-full ${sub.color}"></div> ${sub.name}</div>
                             <div class="text-xs text-slate-400 truncate max-w-[200px] mt-0.5">${r.topic}</div>
                         </div>
-                        <button onclick="window.completeReview(${r.id})" class="bg-emerald-900/30 hover:bg-emerald-600 text-emerald-500 hover:text-white border border-emerald-800/50 p-2 rounded-lg transition-all" title="Marcar Revisão como Concluída"><i data-lucide="check" class="w-4 h-4"></i></button>
+                        <button onclick="window.showReviewPrompt(${r.id})" class="bg-emerald-900/30 hover:bg-emerald-600 text-emerald-500 hover:text-white p-2 rounded-lg transition-all" title="Concluir Revisão"><i data-lucide="check-circle-2" class="w-5 h-5"></i></button>
                     </div>`;
                 });
                 html += `</div></div>`;
 
-                // Coluna: Radar Futuro
-                html += `<div><h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><i data-lucide="calendar" class="w-4 h-4"></i> Próximos Dias (${upcoming.length})</h4><div class="space-y-3">`;
-                if (upcoming.length === 0) { html += `<p class="text-xs text-slate-600 italic">Nada no radar recente.</p>`; }
-                upcoming.slice(0, 10).forEach(r => { // Mostra só os próximos 10
-                    const subject = state.studyData.subjects.find(s => s.id === r.subjectId);
-                    if(!subject) return;
-                    const dateStr = new Date(r.dueDate).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'});
+                html += `<div><h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><i data-lucide="calendar" class="w-4 h-4"></i> Radar (${upcoming.length})</h4><div class="space-y-3">`;
+                if (upcoming.length === 0) html += `<p class="text-xs text-slate-600 italic">Vazio.</p>`;
+                upcoming.forEach(r => {
+                    const sub = state.studyData.subjects.find(s => s.id === r.subjectId);
                     html += `
                     <div class="bg-slate-950/50 border border-slate-800/50 p-3 rounded-lg opacity-70">
-                        <div class="flex items-center gap-2 mb-1">
-                            <span class="text-[9px] uppercase font-bold bg-slate-900 text-slate-500 px-1.5 py-0.5 rounded border border-slate-800">Para: ${dateStr}</span>
-                            <span class="text-[9px] uppercase font-bold bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">+${r.intervalDays} Dias</span>
-                        </div>
-                        <div class="font-bold text-sm text-slate-300 flex items-center gap-1.5"><div class="w-2 h-2 rounded-full ${subject.color}"></div> ${subject.name}</div>
+                        <div class="flex items-center gap-2 mb-1"><span class="text-[9px] uppercase font-bold bg-slate-900 text-slate-500 px-1.5 py-0.5 rounded border border-slate-800">Para: ${new Date(r.dueDate).toLocaleDateString('pt-BR')}</span></div>
+                        <div class="font-bold text-sm text-slate-300 flex items-center gap-1.5"><div class="w-2 h-2 rounded-full ${sub.color}"></div> ${sub.name}</div>
                         <div class="text-xs text-slate-500 truncate mt-0.5">${r.topic}</div>
                     </div>`;
                 });
-                html += `</div></div>`;
+                html += `</div></div></div>`;
+                return html;
+            }
+            else if (uiState.studyTab === 'erros') {
+                const openErrors = state.studyData.errorLog.filter(e => e.status === 'open');
+                let html = `
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 mb-6">
+                    <h3 class="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2"><i data-lucide="file-warning" class="text-fuchsia-400"></i> Registrar Erro / Vulnerabilidade</h3>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <select id="error-subject" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none"><option value="">Disciplina...</option>${state.studyData.subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select>
+                        <input type="text" id="error-topic" placeholder="Tópico (ex: Crase)" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <input type="text" id="error-source" placeholder="Fonte (ex: QConcursos #123)" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none">
+                        <select id="error-reason" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none">
+                            <option value="Não sabia">Não sabia o conteúdo</option><option value="Confundi">Confundi conceito</option><option value="Falta de atenção">Falta de atenção</option><option value="Esqueci">Esqueci detalhe</option>
+                        </select>
+                    </div>
+                    <textarea id="error-notes" placeholder="Anotação de correção rápida..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white mb-3 h-16 focus:outline-none"></textarea>
+                    <button onclick="window.logError()" class="w-full bg-fuchsia-900/50 hover:bg-fuchsia-800 text-fuchsia-300 font-bold py-2.5 rounded-lg border border-fuchsia-700/50 transition-all text-xs">Registrar Vulnerabilidade (+10 XP)</button>
+                </div>
+                
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Vulnerabilidades Abertas (${openErrors.length})</h3>
+                <div class="space-y-3">`;
+                if(openErrors.length === 0) html += `<div class="text-center p-6 text-slate-500 italic text-sm">Nenhum erro aberto.</div>`;
+                openErrors.forEach(e => {
+                    const sub = state.studyData.subjects.find(s => s.id === e.subjectId) || {name: 'Deletada', color: 'bg-slate-500'};
+                    html += `
+                    <div class="bg-slate-950 border border-red-900/30 p-4 rounded-xl relative group">
+                        <button onclick="window.deleteError(${e.id})" class="absolute top-2 right-2 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100"><i data-lucide="x" class="w-4 h-4"></i></button>
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-[9px] uppercase font-bold bg-slate-900 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800">${new Date(e.date).toLocaleDateString('pt-BR')}</span>
+                            <span class="text-[9px] uppercase font-bold bg-red-950/50 text-red-400 px-1.5 py-0.5 rounded border border-red-900/50">${e.errorReason}</span>
+                        </div>
+                        <h4 class="font-bold text-white text-sm mb-1"><span class="inline-block w-2 h-2 rounded-full ${sub.color} mr-1"></span>${sub.name}: ${e.topic}</h4>
+                        <p class="text-xs text-slate-400 mb-3">${e.notes}</p>
+                        <button onclick="window.resolveError(${e.id})" class="w-full bg-slate-900 hover:bg-emerald-900/40 border border-slate-800 hover:border-emerald-800/50 text-emerald-500 font-bold py-2 rounded-lg text-xs transition-all flex justify-center items-center gap-1"><i data-lucide="check" class="w-3 h-3"></i> Resolvido (+30 XP)</button>
+                    </div>`;
+                });
+                return html + `</div>`;
+            }
+            else if (uiState.studyTab === 'ciclos') {
+                let html = `
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 mb-6">
+                    <h3 class="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2"><i data-lucide="refresh-cw" class="text-cyan-400"></i> Criar Novo Ciclo</h3>
+                    <div class="space-y-3">
+                        <input type="text" id="cycle-name" placeholder="Nome do Ciclo (ex: Pré-Edital Polícia)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+                        <select id="cycle-subs" multiple class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white h-24">
+                            ${state.studyData.subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}
+                        </select>
+                        <input type="number" id="cycle-hours" placeholder="Meta Semanal (Horas)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+                        <button onclick="window.createStudyCycle()" class="w-full bg-cyan-900/50 hover:bg-cyan-800 text-cyan-300 font-bold py-2.5 rounded-lg border border-cyan-700/50 text-xs">Ativar Novo Ciclo</button>
+                    </div>
+                </div>
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Ciclos Táticos</h3>
+                <div class="space-y-3">`;
+                if(state.studyData.cycles.length === 0) html += `<div class="text-center p-6 text-slate-500 italic text-sm">Nenhum ciclo.</div>`;
+                state.studyData.cycles.forEach(c => {
+                    const subs = c.subjectIds.map(id => state.studyData.subjects.find(s=>s.id===id)?.name).filter(Boolean).join(', ');
+                    const activeStyle = c.active ? 'border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.1)] bg-slate-900' : 'border-slate-800 bg-slate-950 opacity-60';
+                    html += `
+                    <div class="border p-4 rounded-xl relative group ${activeStyle}">
+                        <button onclick="window.deleteCycle(${c.id})" class="absolute top-2 right-2 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        <div class="flex items-center gap-2 mb-2">
+                            ${c.active ? `<span class="text-[9px] uppercase font-bold bg-cyan-950 text-cyan-400 px-1.5 py-0.5 rounded border border-cyan-900/50">Ativo</span>` : `<button onclick="window.activateCycle(${c.id})" class="text-[9px] uppercase font-bold bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded hover:bg-cyan-900 hover:text-cyan-400">Ativar</button>`}
+                        </div>
+                        <h4 class="font-bold text-white text-sm mb-1">${c.name}</h4>
+                        <p class="text-xs text-slate-400 mb-1">Meta: ${c.weeklyHoursGoal}h semanais</p>
+                        <p class="text-[10px] text-slate-500 leading-tight">Materérias: ${subs}</p>
+                    </div>`;
+                });
+                return html + `</div>`;
+            }
+            return '';
+        }
 
-                html += `</div>`;
+        // --- SAÚDE/CORPO ---
+        function renderHealthContent() {
+            if(uiState.healthTab === 'dashboard') {
+                const w = state.healthData.workouts;
+                const totalW = w.length;
+                const now = new Date();
+                const thisWeekW = w.filter(w => (now - new Date(w.date)) / (1000*60*60*24) <= 7).length;
+                const lastW = w.length > 0 ? new Date(Math.max(...w.map(x => new Date(x.date)))) : null;
+                const daysSinceLast = lastW ? Math.floor((now - lastW) / (1000*60*60*24)) : 999;
+                
+                let recTitle = "Aguardando Dados", recDesc = "Registre treinos e hábitos para recomendações.", recColor = "text-slate-400";
+                if(daysSinceLast >= 3) { recTitle = "Alerta de Sedentarismo"; recDesc = `Faz ${daysSinceLast} dias sem treinar. Retome com algo leve hoje (Mobilidade ou Caminhada).`; recColor = "text-red-400"; }
+                else if(state.energy < 30) { recTitle = "Recuperação Ativa"; recDesc = `Sua bateria está em ${state.energy}%. Priorize Alongamento, Sono e Água.`; recColor = "text-blue-400"; }
+                else { recTitle = "Condição Ideal"; recDesc = "Corpo pronto para carga moderada/intensa."; recColor = "text-emerald-400"; }
+
+                let html = `
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center text-center"><i data-lucide="activity" class="text-rose-400 mb-2 w-6 h-6"></i><span class="text-2xl font-black text-white">${totalW}</span><span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Treinos Totais</span></div>
+                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center text-center"><i data-lucide="flame" class="text-orange-400 mb-2 w-6 h-6"></i><span class="text-2xl font-black text-white">${thisWeekW}</span><span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Treinos Semana</span></div>
+                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center text-center sm:col-span-1 col-span-2"><i data-lucide="calendar" class="text-indigo-400 mb-2 w-6 h-6"></i><span class="text-2xl font-black text-white">${daysSinceLast > 30 ? '-' : daysSinceLast}</span><span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Dias Desde o Último</span></div>
+                </div>
+                
+                <div class="bg-slate-900 border border-rose-900/30 p-5 rounded-xl mb-6">
+                    <h4 class="font-bold text-sm text-white mb-1 flex items-center gap-2"><i data-lucide="zap" class="${recColor} w-4 h-4"></i> ${recTitle}</h4>
+                    <p class="text-xs text-slate-400">${recDesc}</p>
+                </div>
+                
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Últimos Treinos</h3>
+                <div class="space-y-3">`;
+                if(w.length === 0) html += `<p class="text-xs italic text-slate-600">Nenhum treino registrado.</p>`;
+                w.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0,5).forEach(x => {
+                    html += `<div class="bg-slate-950 border border-slate-800 p-3 rounded-lg flex justify-between items-center"><div class="flex flex-col"><span class="text-[9px] uppercase font-bold text-slate-500 mb-1">${new Date(x.date).toLocaleDateString()}</span><span class="text-sm font-bold text-white">${x.type}</span></div><div class="text-right flex flex-col"><span class="text-xs text-rose-400 font-bold">${x.intensity}</span><span class="text-[10px] text-slate-500">${x.duration} min</span></div></div>`;
+                });
+                return html + `</div>`;
+            }
+            else if(uiState.healthTab === 'treinos') {
+                let html = `
+                <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl mb-6 space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Modalidade</label><select id="wo-type" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none">${Object.keys(WORKOUT_TYPES).map(k=>`<option value="${k}">${k}</option>`).join('')}</select></div>
+                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Intensidade</label><select id="wo-intensity" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none">${Object.keys(WORKOUT_INTENSITIES).map(k=>`<option value="${k}">${k}</option>`).join('')}</select></div>
+                    </div>
+                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Duração (Min)</label><input type="number" id="wo-duration" value="45" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"></div>
+                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Anotações / Ficha</label><input type="text" id="wo-notes" placeholder="Ex: Peito e Tríceps..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"></div>
+                    <button onclick="window.logWorkout()" class="w-full bg-rose-900/50 hover:bg-rose-800 text-rose-300 font-bold py-2.5 rounded-lg border border-rose-700/50 text-xs transition-colors">Registrar Treino & HP</button>
+                </div>`;
+                return html;
+            }
+            else if(uiState.healthTab === 'metricas') {
+                const bm = state.healthData.bodyMetrics.slice().sort((a,b) => new Date(b.date) - new Date(a.date));
+                let html = `
+                <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl mb-6">
+                    <h3 class="text-sm font-bold text-slate-300 mb-3"><i data-lucide="scale" class="inline w-4 h-4 text-cyan-400 mr-2"></i>Registrar Corpo</h3>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <input type="number" step="0.1" id="metric-weight" placeholder="Peso (kg)" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+                        <input type="number" step="0.1" id="metric-waist" placeholder="Cintura (cm)" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+                    </div>
+                    <button onclick="window.logBodyMetric()" class="w-full bg-cyan-900/50 hover:bg-cyan-800 text-cyan-300 font-bold py-2 rounded-lg border border-cyan-700/50 text-xs">Salvar Evolução</button>
+                </div>
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Histórico</h3><div class="space-y-2">`;
+                if(bm.length===0) html += `<p class="text-xs text-slate-500">Sem métricas.</p>`;
+                bm.forEach(m => {
+                    html += `<div class="bg-slate-950 border border-slate-800 p-3 rounded-lg flex justify-between text-xs text-white"><span class="text-slate-400">${new Date(m.date).toLocaleDateString()}</span><span>${m.weight? m.weight+'kg':'-'} | ${m.waist? m.waist+'cm':'-'}</span></div>`;
+                });
+                return html + `</div>`;
+            }
+            else if(uiState.healthTab === 'habitos') {
+                let html = `
+                <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Sono (Horas)</label><input type="number" step="0.5" id="habit-sleep" value="7" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white"></div>
+                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Água (Litros)</label><input type="number" step="0.1" id="habit-water" value="2" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Humor</label><select id="habit-mood" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white"><option>Muito ruim</option><option>Ruim</option><option selected>Neutro</option><option>Bom</option><option>Excelente</option></select></div>
+                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Fadiga</label><select id="habit-fatigue" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white"><option>Nenhuma</option><option selected>Leve</option><option>Moderada</option><option>Alta</option></select></div>
+                    </div>
+                    <button onclick="window.logHabit()" class="w-full bg-emerald-900/50 hover:bg-emerald-800 text-emerald-300 font-bold py-2.5 rounded-lg border border-emerald-700/50 text-xs">Salvar Check-in Diário (+20 XP)</button>
+                </div>`;
                 return html;
             }
             return '';
         }
 
-        // Setup Inicial de Ícones para a tela de Login
-        lucide.createIcons();
+        // --- FINANÇAS ---
+        function renderFinanceContent() {
+            if(uiState.financeTab === 'dashboard') {
+                const inc = state.financeData.incomes.reduce((a,b)=>a+b.amount,0);
+                const fix = state.financeData.fixedExpenses.reduce((a,b)=>a+b.amount,0);
+                const val = state.financeData.variableExpenses.reduce((a,b)=>a+b.amount,0);
+                const bal = inc - fix - val;
+                
+                const impulsive = state.financeData.variableExpenses.filter(v => ['Ansiedade','Cansaço','Recompensa','Impulso'].includes(v.trigger)).reduce((a,b)=>a+b.amount,0);
+
+                let html = `
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center text-center"><i data-lucide="arrow-up-circle" class="text-emerald-400 mb-2 w-6 h-6"></i><span class="text-xl font-black text-white text-emerald-400">R$${inc.toFixed(0)}</span><span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Receitas</span></div>
+                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center text-center"><i data-lucide="home" class="text-blue-400 mb-2 w-6 h-6"></i><span class="text-xl font-black text-white">R$${fix.toFixed(0)}</span><span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Fixas</span></div>
+                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center text-center"><i data-lucide="shopping-bag" class="text-orange-400 mb-2 w-6 h-6"></i><span class="text-xl font-black text-white text-orange-400">R$${val.toFixed(0)}</span><span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Variáveis</span></div>
+                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center text-center relative overflow-hidden"><i data-lucide="wallet" class="text-yellow-400 mb-2 w-6 h-6 z-10"></i><span class="text-xl font-black text-white z-10">R$${bal.toFixed(0)}</span><span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1 z-10">Saldo Operacional</span></div>
+                </div>
+                
+                <div class="bg-red-950/20 border border-red-900/30 p-5 rounded-xl mb-6 flex items-center justify-between">
+                    <div><h4 class="font-bold text-sm text-red-400 mb-1 flex items-center gap-2"><i data-lucide="alert-triangle" class="w-4 h-4"></i> Vazamento Emocional</h4><p class="text-xs text-slate-400">Soma de gastos por gatilhos: Ansiedade, Cansaço, Recompensa ou Impulso.</p></div>
+                    <div class="text-2xl font-black text-red-500">R$${impulsive.toFixed(0)}</div>
+                </div>
+                
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Últimas Movimentações Variáveis</h3><div class="space-y-2">`;
+                if(state.financeData.variableExpenses.length === 0) html += `<p class="text-xs text-slate-500">Limpo.</p>`;
+                state.financeData.variableExpenses.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,5).forEach(v => {
+                    const isImpulsive = ['Ansiedade','Cansaço','Recompensa','Impulso'].includes(v.trigger);
+                    html += `<div class="bg-slate-950 border border-slate-800 p-3 rounded-lg flex justify-between items-center"><div class="flex flex-col"><span class="text-[9px] uppercase font-bold text-slate-500 mb-0.5">${new Date(v.date).toLocaleDateString()} | ${v.category}</span><span class="text-sm font-bold text-white flex items-center gap-2">${v.description} ${isImpulsive?`<span class="w-2 h-2 rounded-full bg-red-500" title="Gatilho Emocional"></span>`:''}</span></div><span class="text-xs text-orange-400 font-bold">R$${v.amount.toFixed(2)}</span></div>`;
+                });
+                return html + `</div>`;
+            }
+            else if(uiState.financeTab === 'variaveis') {
+                let html = `
+                <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl mb-6 space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Descrição</label><input type="text" id="var-desc" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"></div>
+                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Valor (R$)</label><input type="number" id="var-amount" step="0.01" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Categoria</label><select id="var-cat" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"><option>Alimentação fora</option><option>Mercado</option><option>Transporte</option><option>Saúde</option><option>Lazer</option><option>Roupas</option><option>Tecnologia</option><option>Educação</option><option>Outro</option></select></div>
+                        <div><label class="text-[10px] font-bold text-slate-500 uppercase text-fuchsia-400">Gatilho Psi</label><select id="var-trigger" class="w-full bg-slate-900 border border-fuchsia-900/50 rounded-lg p-2.5 text-xs text-fuchsia-100 outline-none"><option>Necessidade real</option><option>Planejado</option><option class="text-red-400">Ansiedade</option><option class="text-red-400">Cansaço</option><option class="text-red-400">Recompensa</option><option class="text-red-400">Impulso</option><option>Tédio</option></select></div>
+                    </div>
+                    <button onclick="window.tryAddVariableExpense()" class="w-full bg-yellow-900/50 hover:bg-yellow-800 text-yellow-400 font-bold py-2.5 rounded-lg border border-yellow-700/50 text-xs transition-colors">Debitar Fundo Tático</button>
+                </div>
+                <div class="space-y-2">`;
+                state.financeData.variableExpenses.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(v => {
+                    html += `<div class="bg-slate-950 border border-slate-800 p-3 rounded-lg flex justify-between items-center group"><div class="flex flex-col"><span class="text-[9px] uppercase font-bold text-slate-500 mb-0.5">${new Date(v.date).toLocaleDateString()} | ${v.trigger}</span><span class="text-sm font-bold text-white">${v.description}</span></div><div class="flex items-center gap-3"><span class="text-xs text-orange-400 font-bold">R$${v.amount.toFixed(2)}</span><button onclick="window.deleteVariable(${v.id})" class="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
+                });
+                return html + `</div>`;
+            }
+            else if(uiState.financeTab === 'fixas') {
+                let html = `
+                <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl mb-6 space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Conta / Dívida</label><input type="text" id="fix-desc" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"></div>
+                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Valor (R$)</label><input type="number" id="fix-amount" step="0.01" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"></div>
+                    </div>
+                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Categoria</label><select id="fix-cat" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"><option>Moradia</option><option>Água/Luz/Internet</option><option>Saúde</option><option>Educação</option><option>Assinaturas</option><option>Dívidas</option><option>Outro</option></select></div>
+                    <button onclick="window.addFixedExpense()" class="w-full bg-blue-900/50 hover:bg-blue-800 text-blue-300 font-bold py-2.5 rounded-lg border border-blue-700/50 text-xs transition-colors">Adicionar Custo Fixo</button>
+                </div><div class="space-y-2">`;
+                state.financeData.fixedExpenses.forEach(f => {
+                    const paidStyle = f.paid ? 'opacity-50 line-through' : '';
+                    html += `<div class="bg-slate-950 border border-slate-800 p-3 rounded-lg flex justify-between items-center group"><div class="flex items-center gap-3"><button onclick="window.toggleFixedPaid(${f.id})"><i data-lucide="${f.paid?'check-circle':'circle'}" class="w-5 h-5 ${f.paid?'text-emerald-500':'text-slate-600'}"></i></button><div class="flex flex-col ${paidStyle}"><span class="text-sm font-bold text-white">${f.description}</span></div></div><div class="flex items-center gap-3"><span class="text-xs text-blue-400 font-bold ${paidStyle}">R$${f.amount.toFixed(2)}</span><button onclick="window.deleteFixed(${f.id})" class="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
+                });
+                return html + `</div>`;
+            }
+            else if(uiState.financeTab === 'receitas') {
+                let html = `
+                <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl mb-6 space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Origem</label><input type="text" id="inc-desc" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"></div>
+                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Valor (R$)</label><input type="number" id="inc-amount" step="0.01" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"></div>
+                    </div>
+                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Categoria</label><select id="inc-cat" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"><option>Salário</option><option>Consultoria / PJ</option><option>Extra</option><option>Outro</option></select></div>
+                    <button onclick="window.addIncome()" class="w-full bg-emerald-900/50 hover:bg-emerald-800 text-emerald-400 font-bold py-2.5 rounded-lg border border-emerald-700/50 text-xs transition-colors">Injetar Capital</button>
+                </div><div class="space-y-2">`;
+                state.financeData.incomes.forEach(i => {
+                    html += `<div class="bg-slate-950 border border-slate-800 p-3 rounded-lg flex justify-between items-center group"><div class="flex flex-col"><span class="text-sm font-bold text-white">${i.description}</span></div><div class="flex items-center gap-3"><span class="text-xs text-emerald-400 font-bold">R$${i.amount.toFixed(2)}</span><button onclick="window.deleteIncome(${i.id})" class="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
+                });
+                return html + `</div>`;
+            }
+            else if(uiState.financeTab === 'diario') {
+                let html = `
+                <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl mb-6">
+                    <h3 class="text-sm font-bold text-slate-300 mb-3"><i data-lucide="book-open" class="inline w-4 h-4 text-fuchsia-400 mr-2"></i>Journal Financeiro</h3>
+                    <div class="space-y-3">
+                        <select id="mj-mood" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"><option>Ansioso com contas</option><option>Confiante</option><option>Frustrado com gastos</option><option>Calmo</option></select>
+                        <input type="text" id="mj-event" placeholder="Evento (Ex: Paguei fatura alta, Vontade de comprar X)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none">
+                        <textarea id="mj-thought" placeholder="O que pensou/sentiu?" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none h-16"></textarea>
+                        <button onclick="window.logMoneyJournal()" class="w-full bg-fuchsia-900/50 hover:bg-fuchsia-800 text-fuchsia-300 font-bold py-2 rounded-lg border border-fuchsia-700/50 text-xs">Registrar Reflexão (+15 XP)</button>
+                    </div>
+                </div><div class="space-y-3">`;
+                state.financeData.moneyJournal.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(m => {
+                    html += `<div class="bg-slate-950 border border-slate-800 p-4 rounded-xl"><div class="flex items-center gap-2 mb-2"><span class="text-[9px] uppercase font-bold text-slate-500">${new Date(m.date).toLocaleDateString()}</span><span class="text-[9px] uppercase font-bold bg-slate-900 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700">${m.mood}</span></div><h4 class="font-bold text-white text-sm mb-1">${m.event}</h4>${m.action ? `<p class="text-[10px] text-emerald-400 font-bold mb-1 uppercase">Ação: ${m.action}</p>`:''}<p class="text-xs text-slate-400">${m.thought}</p></div>`;
+                });
+                return html + `</div>`;
+            }
+            return '';
+        }
 
     </script>
 </body>
