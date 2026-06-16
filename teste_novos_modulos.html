@@ -94,6 +94,17 @@
         // ==========================================
         const ICONS = { work: 'briefcase', law: 'scale', home: 'home', life: 'heart', health: 'pill', finance: 'dollar-sign', leisure: 'gamepad-2', study: 'book-open', default: 'target' };
 
+        const DEFAULT_TASK_CATEGORIES = [
+            { id: 'work', label: 'Trabalho', icon: 'briefcase', color: 'text-blue-400', active: true, system: true },
+            { id: 'law', label: 'Advocacia', icon: 'scale', color: 'text-indigo-400', active: true, system: true },
+            { id: 'study', label: 'Estudos', icon: 'book-open', color: 'text-cyan-400', active: true, system: true },
+            { id: 'home', label: 'Casa/Infra', icon: 'home', color: 'text-emerald-400', active: true, system: true },
+            { id: 'life', label: 'Pessoal/Vida', icon: 'heart', color: 'text-pink-400', active: true, system: true },
+            { id: 'health', label: 'Saúde', icon: 'pill', color: 'text-rose-400', active: true, system: true },
+            { id: 'finance', label: 'Finanças', icon: 'dollar-sign', color: 'text-yellow-400', active: true, system: true },
+            { id: 'leisure', label: 'Lazer', icon: 'gamepad-2', color: 'text-orange-400', active: true, system: true }
+        ];
+
         const daysOfWeek = [
             { id: 'monday', label: 'Segunda' }, { id: 'tuesday', label: 'Terça' }, { id: 'wednesday', label: 'Quarta' },
             { id: 'thursday', label: 'Quinta' }, { id: 'friday', label: 'Sexta' }, { id: 'saturday', label: 'Sábado' }, { id: 'sunday', label: 'Domingo' }
@@ -178,6 +189,8 @@
             showStudyModal: false, studyTab: 'plano',
             showHealthModal: false, healthTab: 'dashboard',
             showFinanceModal: false, financeTab: 'dashboard',
+            showRitualModal: false,
+            showCategoryModal: false,
             financeGuardianData: null,
             confirm: { show: false, message: '', onConfirm: null },
             alert: { show: false, message: '' },
@@ -200,7 +213,7 @@
                 state = {
                     activeTab: 'monday', focusMode: false, focusedTaskId: null,
                     xp: 0, level: 1, energy: 100, waterCount: 0, coins: 0, combo: 0,
-                    unlockedBadges: [], tasks: [], quickTasks: [], currentFilter: 'all',
+                    unlockedBadges: [], tasks: [], quickTasks: [], currentFilter: 'all', taskCategories: DEFAULT_TASK_CATEGORIES.map(c => ({...c})),
                     pomodoroSettings: { focus: 25, shortBreak: 5, longBreak: 15, cycles: 4 },
                     stats: { pomodorosCompleted: 0, tasksMoved: 0, maxComboReached: 0, rewardsBought: 0 }
                 };
@@ -210,6 +223,23 @@
             if (!state.unlockedBadges) state.unlockedBadges = [];
             if (!state.tasks) state.tasks = []; 
             if (!state.currentFilter) state.currentFilter = 'all';
+            if (!state.taskCategories || !Array.isArray(state.taskCategories) || state.taskCategories.length === 0) {
+                state.taskCategories = DEFAULT_TASK_CATEGORIES.map(c => ({...c}));
+            } else {
+                DEFAULT_TASK_CATEGORIES.forEach(defaultCat => {
+                    const existing = state.taskCategories.find(c => c.id === defaultCat.id);
+                    if (!existing) state.taskCategories.push({...defaultCat});
+                    else {
+                        existing.label = existing.label || defaultCat.label;
+                        existing.icon = existing.icon || defaultCat.icon;
+                        existing.color = existing.color || defaultCat.color;
+                        if (typeof existing.active === 'undefined') existing.active = true;
+                        if (typeof existing.system === 'undefined') existing.system = true;
+                    }
+                });
+            }
+            state.tasks.forEach(t => { if (!Array.isArray(t.subtasks)) t.subtasks = []; });
+            if (state.currentFilter !== 'all' && !state.taskCategories.some(c => c.id === state.currentFilter && c.active !== false)) state.currentFilter = 'all';
             
             if (!state.customRewards) state.customRewards = [];
             if (!state.rewardPurchases) state.rewardPurchases = [];
@@ -568,6 +598,93 @@
             window.showConfirmModal("Tem certeza que deseja excluir esta missão?", () => { state.tasks = state.tasks.filter(t => t.id != taskId); window.breakCombo(); window.saveState(); });
         };
 
+        window.getTaskCategories = function(includeInactive = false) {
+            const cats = Array.isArray(state.taskCategories) ? state.taskCategories : [];
+            return cats.filter(c => includeInactive || c.active !== false);
+        };
+
+        window.getTaskCategory = function(categoryId) {
+            return (Array.isArray(state.taskCategories) ? state.taskCategories : []).find(c => c.id === categoryId) || DEFAULT_TASK_CATEGORIES.find(c => c.id === categoryId) || { id: categoryId || 'default', label: categoryId || 'Geral', icon: 'target', color: 'text-slate-400', active: true };
+        };
+
+        window.getTaskCategoryIcon = function(categoryId) {
+            return window.getTaskCategory(categoryId).icon || ICONS[categoryId] || ICONS.default;
+        };
+
+        window.getTaskCategoryLabel = function(categoryId) {
+            return window.getTaskCategory(categoryId).label || categoryId || 'Geral';
+        };
+
+        window.slugifyCategoryName = function(name) {
+            return String(name || '')
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase().trim()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '') || `categoria-${Date.now()}`;
+        };
+
+        window.toggleCategoryModal = function() { uiState.showCategoryModal = !uiState.showCategoryModal; render(); };
+
+        window.addTaskCategory = function() {
+            const name = document.getElementById('task-category-name')?.value.trim();
+            const icon = document.getElementById('task-category-icon')?.value || 'target';
+            const color = document.getElementById('task-category-color')?.value || 'text-slate-400';
+            if (!name) { window.showAlertModal('Nome da categoria é obrigatório.'); return; }
+            let id = window.slugifyCategoryName(name);
+            if (state.taskCategories.some(c => c.id === id)) id = `${id}-${Date.now()}`;
+            state.taskCategories.push({ id, label: name, icon, color, active: true, system: false, createdAt: new Date().toISOString() });
+            window.saveState();
+            window.showToast('Categoria criada', `${name} foi adicionada às missões.`, 'tags', 'text-emerald-400');
+        };
+
+        window.archiveTaskCategory = function(categoryId) {
+            const cat = state.taskCategories.find(c => c.id === categoryId);
+            if (!cat) { window.showAlertModal('Categoria não encontrada.'); return; }
+            window.showConfirmModal(`Arquivar a categoria "${cat.label}"? As missões antigas serão preservadas.`, () => {
+                cat.active = false;
+                if (state.currentFilter === categoryId) state.currentFilter = 'all';
+                window.saveState();
+                window.showToast('Categoria arquivada', 'Missões antigas foram preservadas.', 'archive', 'text-slate-300');
+            });
+        };
+
+        window.restoreTaskCategory = function(categoryId) {
+            const cat = state.taskCategories.find(c => c.id === categoryId);
+            if (!cat) { window.showAlertModal('Categoria não encontrada.'); return; }
+            cat.active = true;
+            window.saveState();
+            window.showToast('Categoria reativada', `${cat.label} voltou aos filtros.`, 'rotate-ccw', 'text-emerald-400');
+        };
+
+        window.addSubtask = function(taskId) {
+            const input = document.getElementById(`subtask-input-${taskId}`);
+            const text = input?.value.trim();
+            if (!text) { window.showAlertModal('Digite o nome da subtarefa.'); return; }
+            const task = state.tasks.find(t => t.id == taskId);
+            if (!task) { window.showAlertModal('Missão não encontrada.'); return; }
+            if (!Array.isArray(task.subtasks)) task.subtasks = [];
+            task.subtasks.push({ id: Date.now() + Math.random(), text, completed: false, createdAt: new Date().toISOString() });
+            if (input) input.value = '';
+            window.saveState();
+        };
+
+        window.toggleSubtask = function(taskId, subtaskId, event) {
+            if (event) event.stopPropagation();
+            const task = state.tasks.find(t => t.id == taskId);
+            const subtask = task?.subtasks?.find(st => st.id == subtaskId);
+            if (!subtask) return;
+            subtask.completed = !subtask.completed;
+            window.saveState();
+        };
+
+        window.deleteSubtask = function(taskId, subtaskId, event) {
+            if (event) event.stopPropagation();
+            const task = state.tasks.find(t => t.id == taskId);
+            if (!task || !Array.isArray(task.subtasks)) return;
+            task.subtasks = task.subtasks.filter(st => st.id != subtaskId);
+            window.saveState();
+        };
+
         window.addQuickTask = function() {
             const text = document.getElementById('quick-task-input')?.value.trim(); if (!text) return;
             state.quickTasks.push({ id: Date.now(), text: text, done: false }); window.saveState();
@@ -633,8 +750,17 @@
         window.saveNewTask = function() {
             const text = document.getElementById('ct-text').value.trim(); if (!text) { window.showAlertModal('Título vazio.'); return; }
             const cost = window.calculateTaskCost(document.getElementById('ct-priority').value, document.getElementById('ct-complexity').value, document.getElementById('ct-time').value, document.getElementById('ct-impact-type').value);
-            state.tasks.push({ id: Date.now(), day: document.getElementById('ct-day').value, category: document.getElementById('ct-category').value, text: text, xp: cost.xp, energyCost: cost.hp, completed: false, priority: document.getElementById('ct-priority').value, time: document.getElementById('ct-time').value + ' min' });
-            uiState.showCreateTaskModal = false; window.showToast('Missão Alistada!', 'Adicionada ao quadro.', 'crosshair', 'text-emerald-400'); window.saveState();
+            const rawSubtasks = document.getElementById('ct-subtasks')?.value || '';
+            const subtasks = rawSubtasks.split('\n').map(t => t.trim()).filter(Boolean).map((subText, index) => ({
+                id: Date.now() + index + Math.random(),
+                text: subText,
+                completed: false,
+                createdAt: new Date().toISOString()
+            }));
+            const activeCategories = window.getTaskCategories();
+            const selectedCategory = document.getElementById('ct-category').value || activeCategories[0]?.id || 'life';
+            state.tasks.push({ id: Date.now(), day: document.getElementById('ct-day').value, category: selectedCategory, text: text, xp: cost.xp, energyCost: cost.hp, completed: false, priority: document.getElementById('ct-priority').value, time: document.getElementById('ct-time').value + ' min', subtasks });
+            uiState.showCreateTaskModal = false; window.showToast('Missão Alistada!', subtasks.length ? `Adicionada com ${subtasks.length} subtarefa(s).` : 'Adicionada ao quadro.', 'crosshair', 'text-emerald-400'); window.saveState();
         };
 
         window.setCategoryFilter = function(filterId) { state.currentFilter = filterId; window.saveState(); };
@@ -651,6 +777,8 @@
                 window.saveState(); window.showToast("Quartel General: Nova Semana!", "Quadro limpo.", "sparkles", "text-yellow-400");
             }); 
         };
+
+        window.toggleRitualModal = function() { uiState.showRitualModal = !uiState.showRitualModal; render(); };
 
         // ==========================================
         // MÓDULO: RITUAIS OPERACIONAIS
@@ -803,16 +931,31 @@
 
                 <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
                     <h3 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Criar Ritual</h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-3">
-                        <input id="ritual-title" type="text" placeholder="Nome do ritual" class="sm:col-span-2 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500">
-                        <select id="ritual-period" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500">
-                            <option value="morning">Manhã</option>
-                            <option value="night">Noite</option>
-                        </select>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                        <label class="block lg:col-span-2">
+                            <span class="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1">Nome do ritual</span>
+                            <input id="ritual-title" type="text" placeholder="Ex.: Beber água" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500">
+                        </label>
+                        <label class="block">
+                            <span class="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1">Período</span>
+                            <select id="ritual-period" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500">
+                                <option value="morning">Manhã</option>
+                                <option value="night">Noite</option>
+                            </select>
+                        </label>
                         <div class="grid grid-cols-2 gap-2">
-                            <input id="ritual-xp" type="number" value="10" placeholder="XP" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500">
-                            <input id="ritual-energy" type="number" value="0" placeholder="HP" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500">
+                            <label class="block">
+                                <span class="block text-[10px] uppercase tracking-widest font-bold text-indigo-400 mb-1">XP</span>
+                                <input id="ritual-xp" type="number" value="10" placeholder="10" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] uppercase tracking-widest font-bold text-emerald-400 mb-1">HP</span>
+                                <input id="ritual-energy" type="number" value="0" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500">
+                            </label>
                         </div>
+                    </div>
+                    <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-3 mb-4 text-[11px] text-slate-400 leading-relaxed">
+                        <b class="text-indigo-300">XP</b> é a experiência ganha ao concluir o ritual. <b class="text-emerald-300">HP</b> altera sua Bateria Executiva: número positivo recupera energia, número negativo consome energia. Ex.: <span class="text-emerald-400">5</span> recupera HP; <span class="text-red-400">-5</span> consome HP.
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
@@ -1400,6 +1543,9 @@
                     <button onclick="window.toggleCreateTaskModal()" class="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-lg text-xs font-bold transition-colors">
                         <i data-lucide="plus" class="w-4 h-4"></i> <span class="hidden sm:inline">Criar</span>
                     </button>
+                    <button onclick="window.toggleCategoryModal()" class="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-2 rounded-lg text-xs font-bold transition-colors">
+                        <i data-lucide="tags" class="w-4 h-4"></i> <span class="hidden sm:inline">Categorias</span>
+                    </button>
                     <button onclick="window.toggleStudyModal()" class="flex items-center gap-1 bg-cyan-900/40 hover:bg-cyan-800/60 text-cyan-400 border border-cyan-700/50 px-3 py-2 rounded-lg text-xs font-bold transition-colors">
                         <i data-lucide="brain-circuit" class="w-4 h-4"></i> <span class="hidden sm:inline">Inteligência</span>
                     </button>
@@ -1408,6 +1554,9 @@
                     </button>
                     <button onclick="window.toggleFinanceModal()" class="flex items-center gap-1 bg-yellow-900/40 hover:bg-yellow-800/60 text-yellow-500 border border-yellow-700/50 px-3 py-2 rounded-lg text-xs font-bold transition-colors">
                         <i data-lucide="wallet" class="w-4 h-4"></i> <span class="hidden sm:inline">Finanças</span>
+                    </button>
+                    <button onclick="window.toggleRitualModal()" class="flex items-center gap-1 bg-emerald-900/40 hover:bg-emerald-800/60 text-emerald-400 border border-emerald-700/50 px-3 py-2 rounded-lg text-xs font-bold transition-colors">
+                        <i data-lucide="clipboard-check" class="w-4 h-4"></i> <span class="hidden sm:inline">Rituais</span>
                     </button>
                     <button onclick="window.toggleStatsModal()" class="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-2 rounded-lg text-xs font-bold transition-colors">
                         <i data-lucide="building-2" class="w-4 h-4"></i> Q.G.
@@ -1473,9 +1622,6 @@
                 </div>
             </div>`;
 
-            // RITUAIS OPERACIONAIS
-            html += window.renderRitualsSection();
-
             // TABS DIÁRIAS
             html += `<div class="flex overflow-x-auto pb-2 scrollbar-hide gap-2 bg-slate-900 p-2 rounded-xl border border-slate-800 mb-4 font-mono">`;
             daysOfWeek.forEach(day => {
@@ -1490,11 +1636,7 @@
                 <div class="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">
                     <span class="text-xs font-bold text-slate-500 uppercase tracking-widest pl-2 shrink-0 font-mono">Filtrar:</span>`;
             
-            const filterCategories = [
-                { id: 'all', label: 'Tudo' }, { id: 'work', label: 'Trabalho' }, { id: 'study', label: 'Estudos' },
-                { id: 'home', label: 'Casa' }, { id: 'law', label: 'Advocacia' }, { id: 'health', label: 'Saúde' },
-                { id: 'life', label: 'Pessoal' }, { id: 'leisure', label: 'Lazer' }
-            ];
+            const filterCategories = [{ id: 'all', label: 'Tudo' }, ...window.getTaskCategories().map(c => ({ id: c.id, label: c.label }))];
 
             filterCategories.forEach(cat => {
                 const isActive = state.currentFilter === cat.id;
@@ -1595,6 +1737,10 @@
                         const textClass = task.completed ? 'line-through text-slate-600' : 'text-slate-200';
                         const prioColors = { essencial: 'text-purple-400 border-purple-800', alta: 'text-red-400 border-red-800', media: 'text-yellow-400 border-yellow-800', baixa: 'text-slate-400 border-slate-800' };
                         const daysOptions = daysOfWeek.map(d => `<option value="${d.id}" ${d.id === task.day ? 'disabled' : ''}>${d.label}</option>`).join('') + `<option value="next_week">Próxima Semana</option>`;
+                        const taskCategory = window.getTaskCategory(task.category);
+                        const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
+                        const doneSubtasks = subtasks.filter(st => st.completed).length;
+                        const subtaskPercent = subtasks.length ? Math.round((doneSubtasks / subtasks.length) * 100) : 0;
 
                         html += `
                         <div onclick="window.toggleTask(${task.id}, event)" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg cursor-pointer transition-all ${bgClass} group relative">
@@ -1603,14 +1749,37 @@
                                     <div class="mt-0.5"><i data-lucide="${task.completed ? 'check-circle' : 'circle'}" class="${iconColor} w-5 h-5"></i></div>
                                     <div>
                                         <span class="text-sm md:text-base font-medium flex items-center gap-2 ${textClass}">
-                                            <i data-lucide="${ICONS[task.category] || ICONS.default}" class="w-4 h-4 text-slate-500"></i> ${task.text}
+                                            <i data-lucide="${taskCategory.icon || ICONS.default}" class="w-4 h-4 ${taskCategory.color || 'text-slate-500'}"></i> ${task.text}
                                         </span>
                                         ${!task.completed ? `
                                         <div class="flex gap-2 mt-2">
                                             <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${prioColors[task.priority]}">${task.priority}</span>
+                                            <span class="text-[10px] uppercase font-bold ${taskCategory.color || 'text-slate-400'} bg-slate-900 px-2 py-0.5 rounded border border-slate-700"><i data-lucide="${taskCategory.icon || 'target'}" class="inline w-3 h-3 mr-1"></i>${taskCategory.label}</span>
                                             <span class="text-[10px] uppercase font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-700"><i data-lucide="zap" class="inline w-3 h-3 text-indigo-400 mr-1"></i>${task.xp}</span>
                                             <span class="text-[10px] uppercase font-bold ${task.energyCost < 0 ? 'text-emerald-400' : 'text-orange-400'} bg-slate-900 px-2 py-0.5 rounded border border-slate-700"><i data-lucide="battery" class="inline w-3 h-3 mr-1"></i>${task.energyCost < 0 ? '+' : '-'}${Math.abs(task.energyCost)}</span>
+                                            ${subtasks.length ? `<span class="text-[10px] uppercase font-bold text-cyan-400 bg-slate-900 px-2 py-0.5 rounded border border-cyan-900/50"><i data-lucide="list-checks" class="inline w-3 h-3 mr-1"></i>${doneSubtasks}/${subtasks.length}</span>` : ''}
                                         </div>` : ''}
+                                        ${subtasks.length ? `
+                                        <div class="mt-3 bg-slate-900/60 border border-slate-700 rounded-lg p-2" onclick="event.stopPropagation()">
+                                            <div class="flex items-center justify-between gap-2 mb-2">
+                                                <span class="text-[10px] uppercase tracking-widest font-bold text-slate-500">Subtarefas</span>
+                                                <span class="text-[10px] font-bold text-cyan-400">${doneSubtasks}/${subtasks.length} • ${subtaskPercent}%</span>
+                                            </div>
+                                            <div class="w-full bg-slate-800 rounded-full h-1.5 mb-2"><div class="bg-cyan-500 h-1.5 rounded-full transition-all" style="width: ${subtaskPercent}%"></div></div>
+                                            <div class="space-y-1">
+                                                ${subtasks.map(st => `
+                                                    <div class="flex items-center justify-between gap-2 text-xs bg-slate-950 border border-slate-800 rounded px-2 py-1.5">
+                                                        <button onclick="window.toggleSubtask(${task.id}, ${st.id}, event)" class="flex items-center gap-2 text-left flex-1 ${st.completed ? 'text-slate-500 line-through' : 'text-slate-300 hover:text-white'}">
+                                                            <i data-lucide="${st.completed ? 'check-square' : 'square'}" class="w-3.5 h-3.5 ${st.completed ? 'text-emerald-400' : 'text-slate-500'}"></i> ${st.text}
+                                                        </button>
+                                                        <button onclick="window.deleteSubtask(${task.id}, ${st.id}, event)" class="text-slate-600 hover:text-red-400"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                                                    </div>`).join('')}
+                                            </div>
+                                        </div>` : ''}
+                                        <div class="mt-2 flex gap-2" onclick="event.stopPropagation()">
+                                            <input id="subtask-input-${task.id}" type="text" placeholder="Nova subtarefa..." class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-cyan-500" onkeypress="if(event.key === 'Enter') { event.stopPropagation(); window.addSubtask(${task.id}); }">
+                                            <button onclick="window.addSubtask(${task.id})" class="bg-cyan-900/50 hover:bg-cyan-800 text-cyan-300 border border-cyan-700/50 rounded-lg px-2 py-1.5 text-xs font-bold"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
@@ -1624,6 +1793,38 @@
                 html += `</div>`;
             }
 
+            // MODAL CATEGORIAS DE TAREFAS
+            if (uiState.showCategoryModal) {
+                const activeCats = window.getTaskCategories(true);
+                html += `
+                <div class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-[70] backdrop-blur-sm font-mono">
+                    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-2xl w-full shadow-2xl modal-enter overflow-y-auto max-h-[90vh]">
+                        <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+                            <div>
+                                <h2 class="text-lg font-black text-cyan-400 flex items-center gap-2"><i data-lucide="tags"></i> Categorias de Missões</h2>
+                                <p class="text-xs text-slate-500 mt-1">Crie categorias próprias e arquive as que não quiser usar.</p>
+                            </div>
+                            <button onclick="window.toggleCategoryModal()" class="text-slate-500 hover:text-white"><i data-lucide="x"></i></button>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 mb-4">
+                            <h3 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Nova categoria</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div><label class="text-[10px] font-bold text-slate-500 uppercase">Nome</label><input id="task-category-name" type="text" placeholder="Ex.: Igreja, Clientes, Security+" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-cyan-500"></div>
+                                <div><label class="text-[10px] font-bold text-slate-500 uppercase">Ícone</label><select id="task-category-icon" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-cyan-500">${['target','briefcase','book-open','scale','home','heart','pill','dollar-sign','gamepad-2','church','users','shield','brain','dumbbell','file-text','laptop','calendar-check','star'].map(icon => `<option value="${icon}">${icon}</option>`).join('')}</select></div>
+                                <div><label class="text-[10px] font-bold text-slate-500 uppercase">Cor</label><select id="task-category-color" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-cyan-500"><option value="text-cyan-400">Ciano</option><option value="text-emerald-400">Verde</option><option value="text-indigo-400">Índigo</option><option value="text-yellow-400">Amarelo</option><option value="text-rose-400">Rosa</option><option value="text-orange-400">Laranja</option><option value="text-purple-400">Roxo</option><option value="text-slate-400">Cinza</option></select></div>
+                            </div>
+                            <button onclick="window.addTaskCategory()" class="mt-3 w-full bg-cyan-700 hover:bg-cyan-600 text-white font-black uppercase tracking-widest py-2.5 rounded-lg text-xs transition-colors">Criar Categoria</button>
+                        </div>
+                        <div class="space-y-2">
+                            ${activeCats.map(cat => {
+                                const taskCount = state.tasks.filter(t => t.category === cat.id).length;
+                                return `<div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-3"><div class="flex items-center gap-3"><div class="bg-slate-900 border border-slate-700 rounded-lg p-2"><i data-lucide="${cat.icon || 'target'}" class="w-4 h-4 ${cat.color || 'text-slate-400'}"></i></div><div><div class="text-sm font-bold text-white">${cat.label}</div><div class="text-[10px] uppercase tracking-widest text-slate-500">${taskCount} missão(ões) • ${cat.active === false ? 'Arquivada' : 'Ativa'}</div></div></div>${cat.active === false ? `<button onclick="window.restoreTaskCategory('${cat.id}')" class="px-3 py-1.5 rounded-lg bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-400 border border-emerald-800 text-xs font-bold">Reativar</button>` : `<button onclick="window.archiveTaskCategory('${cat.id}')" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-red-950/40 text-slate-400 hover:text-red-400 border border-slate-700 text-xs font-bold">Arquivar</button>`}</div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>`;
+            }
+
             // MODAL CRIAR TAREFA
             if (uiState.showCreateTaskModal) {
                 html += `
@@ -1632,12 +1833,14 @@
                         <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3"><h2 class="text-lg font-black text-emerald-400 flex items-center gap-2"><i data-lucide="plus-circle"></i> Criar Missão</h2><button onclick="window.toggleCreateTaskModal()" class="text-slate-500 hover:text-white"><i data-lucide="x"></i></button></div>
                         <div class="space-y-4">
                             <div><label class="text-xs font-bold text-slate-400 uppercase">Título</label><input type="text" id="ct-text" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-emerald-500 outline-none"></div>
+                            <div><label class="text-xs font-bold text-slate-400 uppercase">Subtarefas iniciais <span class="text-slate-600 normal-case">(opcional, uma por linha)</span></label><textarea id="ct-subtasks" rows="3" placeholder="Ex.: Separar documentos&#10;Escrever minuta&#10;Revisar antes de enviar" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-cyan-500 outline-none resize-y"></textarea></div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div><label class="text-xs font-bold text-slate-400 uppercase">Dia</label><select id="ct-day" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">${daysOfWeek.map(d => `<option value="${d.id}" ${d.id === state.activeTab ? 'selected' : ''}>${d.label}</option>`).join('')}<option value="next_week">Próxima Semana</option></select></div>
                                 <div><label class="text-xs font-bold text-slate-400 uppercase">Categoria</label>
                                     <select id="ct-category" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">
-                                        <option value="work">Trabalho</option><option value="law">Advocacia</option><option value="study">Estudos</option><option value="home">Casa/Infra</option><option value="life">Pessoal/Vida</option><option value="health">Saúde</option><option value="finance">Finanças</option><option value="leisure">Lazer</option>
+                                        ${window.getTaskCategories().map(cat => `<option value="${cat.id}">${cat.label}</option>`).join('')}
                                     </select>
+                                    <button type="button" onclick="window.toggleCategoryModal()" class="mt-2 text-[10px] text-cyan-400 hover:text-cyan-300 font-bold uppercase tracking-widest">Gerenciar categorias</button>
                                 </div>
                             </div>
                             <div class="grid grid-cols-2 gap-3">
@@ -1746,6 +1949,24 @@
                                 `).join('')}
                             </div>
                             <div class="min-h-[400px]">${renderFinanceContent()}</div>
+                        </div>
+                    </div>
+                </div>`;
+            }
+
+
+            // MODAL RITUAIS OPERACIONAIS
+            if (uiState.showRitualModal) {
+                html += `
+                <div class="fixed inset-0 bg-slate-950/95 flex flex-col items-center justify-start p-2 sm:p-6 z-[60] backdrop-blur-lg overflow-y-auto pt-8 font-mono">
+                    <div class="bg-slate-900 border border-emerald-900/50 rounded-2xl w-full max-w-4xl shadow-[0_0_50px_rgba(16,185,129,0.12)] modal-enter relative mb-10">
+                        <button onclick="window.toggleRitualModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full p-2 hover:bg-red-500/20 hover:text-red-400 transition-colors z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
+                        <div class="p-5 sm:p-8">
+                            <div class="flex items-center gap-4 mb-6 border-b border-slate-800 pb-4">
+                                <div class="bg-emerald-950 p-3 rounded-xl border border-emerald-800/50 shadow-inner"><i data-lucide="clipboard-check" class="text-emerald-400 w-8 h-8"></i></div>
+                                <div><h2 class="text-2xl font-black text-white tracking-wide">Rituais Operacionais</h2><p class="text-xs text-emerald-500 font-bold uppercase tracking-widest mt-1">Protocolos matinais e noturnos</p></div>
+                            </div>
+                            <div class="min-h-[400px]">${window.renderRitualsSection()}</div>
                         </div>
                     </div>
                 </div>`;
