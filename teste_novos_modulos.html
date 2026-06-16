@@ -1690,9 +1690,9 @@
                                 <div class="bg-cyan-950 p-3 rounded-xl border border-cyan-800/50 shadow-inner"><i data-lucide="brain" class="text-cyan-400 w-8 h-8"></i></div>
                                 <div><h2 class="text-2xl font-black text-white tracking-wide">Centro de Inteligência</h2><p class="text-xs text-cyan-500 font-bold uppercase tracking-widest mt-1">Neuro-otimização</p></div>
                             </div>
-                            <div class="flex flex-nowrap overflow-x-auto scrollbar-hide gap-2 mb-6 bg-slate-950 p-1.5 pr-4 rounded-xl border border-slate-800">
+                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mb-6 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
                                 ${[{id: 'plano', icon: 'crosshair', label: 'Plano de Hoje'}, {id: 'dashboard', icon: 'line-chart', label: 'Radar'}, {id: 'subjects', icon: 'layers', label: 'Arsenal'}, {id: 'log', icon: 'zap', label: 'Registrar'}, {id: 'reviews', icon: 'rotate-cw', label: '1-7-30'}, {id: 'erros', icon: 'microscope', label: 'Erros'}, {id: 'ciclos', icon: 'refresh-cw', label: 'Ciclos'}].map(tab => `
-                                    <button onclick="window.setStudyTab('${tab.id}')" class="shrink-0 flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all whitespace-nowrap ${uiState.studyTab === tab.id ? 'bg-cyan-900/40 text-cyan-300 border border-cyan-700/50 shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-transparent'}">
+                                    <button onclick="window.setStudyTab('${tab.id}')" class="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all whitespace-nowrap ${uiState.studyTab === tab.id ? 'bg-cyan-900/40 text-cyan-300 border border-cyan-700/50 shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-transparent'}">
                                         <i data-lucide="${tab.icon}" class="w-4 h-4"></i> ${tab.label}
                                     </button>
                                 `).join('')}
@@ -1714,9 +1714,9 @@
                                 <div class="bg-rose-950 p-3 rounded-xl border border-rose-800/50 shadow-inner"><i data-lucide="activity" class="text-rose-400 w-8 h-8"></i></div>
                                 <div><h2 class="text-2xl font-black text-white tracking-wide">Corpo de Combate</h2><p class="text-xs text-rose-500 font-bold uppercase tracking-widest mt-1">Engenharia Física</p></div>
                             </div>
-                            <div class="flex overflow-x-auto scrollbar-hide gap-2 mb-6 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
                                 ${[{id: 'dashboard', icon: 'line-chart', label: 'Dashboard'}, {id: 'treinos', icon: 'dumbbell', label: 'Treinos'}, {id: 'metricas', icon: 'scale', label: 'Métricas'}, {id: 'habitos', icon: 'heart', label: 'Hábitos'}].map(tab => `
-                                    <button onclick="window.setHealthTab('${tab.id}')" class="flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all whitespace-nowrap ${uiState.healthTab === tab.id ? 'bg-rose-900/40 text-rose-300 border border-rose-700/50 shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-transparent'}">
+                                    <button onclick="window.setHealthTab('${tab.id}')" class="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all whitespace-nowrap ${uiState.healthTab === tab.id ? 'bg-rose-900/40 text-rose-300 border border-rose-700/50 shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-transparent'}">
                                         <i data-lucide="${tab.icon}" class="w-4 h-4"></i> ${tab.label}
                                     </button>
                                 `).join('')}
@@ -1738,9 +1738,9 @@
                                 <div class="bg-yellow-950 p-3 rounded-xl border border-yellow-800/50 shadow-inner"><i data-lucide="landmark" class="text-yellow-400 w-8 h-8"></i></div>
                                 <div><h2 class="text-2xl font-black text-white tracking-wide">Tesouraria Tática</h2><p class="text-xs text-yellow-500 font-bold uppercase tracking-widest mt-1">Psicologia do Dinheiro</p></div>
                             </div>
-                            <div class="flex overflow-x-auto scrollbar-hide gap-2 mb-6 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-6 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
                                 ${[{id: 'dashboard', icon: 'pie-chart', label: 'Dashboard'}, {id: 'variaveis', icon: 'shopping-bag', label: 'Variáveis'}, {id: 'fixas', icon: 'home', label: 'Fixas'}, {id: 'receitas', icon: 'dollar-sign', label: 'Receitas'}, {id: 'diario', icon: 'book-open', label: 'Diário Psi'}].map(tab => `
-                                    <button onclick="window.setFinanceTab('${tab.id}')" class="flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all whitespace-nowrap ${uiState.financeTab === tab.id ? 'bg-yellow-900/40 text-yellow-300 border border-yellow-700/50 shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-transparent'}">
+                                    <button onclick="window.setFinanceTab('${tab.id}')" class="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all whitespace-nowrap ${uiState.financeTab === tab.id ? 'bg-yellow-900/40 text-yellow-300 border border-yellow-700/50 shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-transparent'}">
                                         <i data-lucide="${tab.icon}" class="w-4 h-4"></i> ${tab.label}
                                     </button>
                                 `).join('')}
