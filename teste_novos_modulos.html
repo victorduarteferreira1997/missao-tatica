@@ -421,15 +421,6 @@
             return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
         };
 
-        window.escapeHtml = function(value) {
-            return String(value ?? '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        };
-
         window.getLocalDateKey = function(date = new Date()) {
             const d = new Date(date);
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -1779,7 +1770,7 @@
                             </div>
                             <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-4">
                                 <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Tarefa vinculada</p>
-                                <p class="text-sm text-white font-bold mt-1">${window.escapeHtml(evalData.taskText || 'Ciclo sem tarefa vinculada')}</p>
+                                <p class="text-sm text-white font-bold mt-1">${evalData.taskText || 'Ciclo sem tarefa vinculada'}</p>
                                 <p class="text-[11px] text-slate-500 mt-1">Duração: ${evalData.focusMinutes || state.pomodoroSettings.focus} min</p>
                             </div>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -2019,13 +2010,44 @@
                     html += window.renderFocusEfficiencyChart();
 
                     if (pendingTask) {
+                        const focusSubtasks = Array.isArray(pendingTask.subtasks) ? pendingTask.subtasks : [];
+                        const focusDoneSubtasks = focusSubtasks.filter(st => st.completed).length;
+                        const focusSubtaskPercent = focusSubtasks.length ? Math.round((focusDoneSubtasks / focusSubtasks.length) * 100) : 0;
+
                         html += `
                         <div class="bg-slate-800 border-2 border-slate-700 p-4 rounded-lg">
                             <p class="text-lg font-bold text-white mb-4">${pendingTask.text}</p>
-                            <div class="flex gap-2 mb-4">
+                            <div class="flex flex-wrap gap-2 mb-4">
                                 <span class="text-xs font-bold text-slate-300 bg-slate-900 px-2 py-1 rounded border border-slate-700"><i data-lucide="zap" class="inline w-3 h-3 text-indigo-400 mr-1"></i>+${pendingTask.xp} XP</span>
                                 <span class="text-xs font-bold ${pendingTask.energyCost < 0 ? 'text-emerald-400' : 'text-orange-400'} bg-slate-900 px-2 py-1 rounded border border-slate-700"><i data-lucide="battery" class="inline w-3 h-3 mr-1"></i>${pendingTask.energyCost < 0 ? '+' : '-'}${Math.abs(pendingTask.energyCost)} HP</span>
+                                ${focusSubtasks.length ? `<span class="text-xs font-bold text-cyan-400 bg-slate-900 px-2 py-1 rounded border border-cyan-900/50"><i data-lucide="list-checks" class="inline w-3 h-3 mr-1"></i>${focusDoneSubtasks}/${focusSubtasks.length} subtarefas</span>` : ''}
                             </div>
+
+                            <div class="bg-slate-950 border border-slate-700 rounded-xl p-3 mb-4">
+                                <div class="flex items-center justify-between gap-2 mb-2">
+                                    <span class="text-[10px] uppercase tracking-widest font-black text-slate-400 flex items-center gap-1"><i data-lucide="list-checks" class="w-3 h-3 text-cyan-400"></i> Subtarefas do alvo</span>
+                                    <span class="text-[10px] font-bold text-cyan-400">${focusSubtasks.length ? `${focusDoneSubtasks}/${focusSubtasks.length} • ${focusSubtaskPercent}%` : '0/0'}</span>
+                                </div>
+                                ${focusSubtasks.length ? `<div class="w-full bg-slate-800 rounded-full h-1.5 mb-3"><div class="bg-cyan-500 h-1.5 rounded-full transition-all" style="width: ${focusSubtaskPercent}%"></div></div>` : ''}
+                                <div class="space-y-2 mb-3">
+                                    ${focusSubtasks.length ? focusSubtasks.map(st => `
+                                        <div class="flex items-center justify-between gap-2 bg-slate-900/80 border border-slate-800 rounded-lg px-3 py-2">
+                                            <button onclick="window.toggleSubtask(${pendingTask.id}, ${st.id}, event)" class="flex items-center gap-2 text-left min-w-0 flex-1 group">
+                                                <span class="w-5 h-5 rounded border flex items-center justify-center shrink-0 ${st.completed ? 'bg-emerald-600 border-emerald-500' : 'border-slate-600 group-hover:border-cyan-400'}">
+                                                    ${st.completed ? '<i data-lucide="check" class="w-3 h-3 text-white"></i>' : ''}
+                                                </span>
+                                                <span class="text-xs ${st.completed ? 'text-slate-500 line-through' : 'text-slate-200'} truncate">${st.text}</span>
+                                            </button>
+                                            <button onclick="window.deleteSubtask(${pendingTask.id}, ${st.id}, event)" class="text-slate-600 hover:text-red-400 p-1" title="Excluir subtarefa"><i data-lucide="x" class="w-3 h-3"></i></button>
+                                        </div>
+                                    `).join('') : `<p class="text-xs text-slate-500 italic">Nenhuma subtarefa cadastrada para esta missão.</p>`}
+                                </div>
+                                <div class="flex gap-2">
+                                    <input id="subtask-input-${pendingTask.id}" type="text" placeholder="Nova subtarefa do alvo..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 outline-none focus:border-cyan-500" onkeypress="if(event.key === 'Enter') { event.stopPropagation(); window.addSubtask(${pendingTask.id}); }">
+                                    <button onclick="window.addSubtask(${pendingTask.id})" class="bg-cyan-700 hover:bg-cyan-600 text-white px-3 py-2 rounded-lg text-xs font-bold"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                                </div>
+                            </div>
+
                             <button onclick="window.toggleTask(${pendingTask.id}, event)" class="bg-emerald-600 hover:bg-emerald-500 text-white p-3 rounded-lg font-bold w-full flex justify-center items-center gap-2"><i data-lucide="check-circle" class="w-5 h-5"></i> CONCLUIR MISSÃO</button>
                         </div>`;
                     }
