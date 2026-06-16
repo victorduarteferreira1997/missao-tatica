@@ -186,6 +186,7 @@
             showPanic: false, breathingStep: 0, breathingInterval: null,
             showLevelUp: false, showStatsModal: false, statsTab: 'roadmap',
             showCreateTaskModal: false,
+            showEditTaskModal: false, editingTaskId: null,
             showStudyModal: false, studyTab: 'plano',
             showHealthModal: false, healthTab: 'dashboard',
             showFinanceModal: false, financeTab: 'dashboard',
@@ -523,14 +524,17 @@
                 task.completed = false; task.skipped = false;
                 const deductedXp = task.rewardedXp || task.xp; const deductedCoins = task.rewardedCoins || Math.round(task.xp * 0.2);
                 state.xp = Math.max(0, state.xp - deductedXp); state.coins = Math.max(0, state.coins - deductedCoins);
-                window.changeEnergy(task.energyCost); state.combo = Math.max(0, state.combo - 1);
+                const energyToRestore = (typeof task.rewardedEnergyCost !== 'undefined') ? task.rewardedEnergyCost : task.energyCost;
+                window.changeEnergy(energyToRestore);
+                delete task.rewardedEnergyCost;
+                state.combo = Math.max(0, state.combo - 1);
                 window.rollbackTaskBadges(task);
                 if (typeof getCorrectLevel === 'function') state.level = getCorrectLevel(state.xp);
                 window.spawnFloatingText(event, `-${deductedXp} XP`, 'text-red-400');
             } else {
                 const badgesBefore = [...state.unlockedBadges];
                 const multiplier = window.getComboMultiplier(); const finalXp = Math.round(task.xp * multiplier); const earnedCoins = Math.round(finalXp * 0.2); 
-                task.completed = true; task.rewardedXp = finalXp; task.rewardedCoins = earnedCoins; 
+                task.completed = true; task.rewardedXp = finalXp; task.rewardedCoins = earnedCoins; task.rewardedEnergyCost = task.energyCost; 
                 state.xp += finalXp; state.coins += earnedCoins; window.changeEnergy(-task.energyCost); state.combo += 1;
                 window.checkGameTriggers();
                 task.rewardedBadgeIds = state.unlockedBadges.filter(badgeId => !badgesBefore.includes(badgeId));
@@ -741,6 +745,261 @@
             window.saveState();
         };
 
+
+        window.escapeAttr = function(value) {
+            return String(value || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        };
+
+        window.inferTaskComplexity = function(task) {
+            if (task && task.complexity) return Math.max(1, Math.min(5, parseInt(task.complexity, 10) || 2));
+            const priority = task?.priority || 'media';
+            const timeVal = parseInt(task?.time, 10) || 30;
+            const impactType = task?.impactType || ((task?.energyCost || 0) < 0 ? 'recharge' : 'drain');
+            let best = 2;
+            let bestDiff = Infinity;
+            for (let c = 1; c <= 5; c++) {
+                const cost = window.calculateTaskCost(priority, c, timeVal, impactType);
+                const diff = Math.abs((cost.xp || 0) - (task?.xp || 0)) + Math.abs((cost.hp || 0) - (task?.energyCost || 0));
+                if (diff < bestDiff) { bestDiff = diff; best = c; }
+            }
+            return best;
+        };
+
+        window.openEditTaskModal = function(taskId, event) {
+            if (event) event.stopPropagation();
+            const task = state.tasks.find(t => t.id == taskId);
+            if (!task) { window.showAlertModal('Missão não encontrada.'); return; }
+            uiState.editingTaskId = task.id;
+            uiState.showEditTaskModal = true;
+            render();
+            setTimeout(() => window.updateEditPreviewCalc(), 0);
+        };
+
+        window.closeEditTaskModal = function() {
+            uiState.showEditTaskModal = false;
+            uiState.editingTaskId = null;
+            render();
+        };
+
+        window.setEditTaskRecurrence = function(mode) {
+            daysOfWeek.forEach(d => {
+                const el = document.getElementById(`et-repeat-${d.id}`);
+                if (el) el.checked = mode === 'all';
+            });
+        };
+
+        window.updateEditPreviewCalc = function() {
+            const prio = document.getElementById('et-priority')?.value || 'media';
+            const comp = document.getElementById('et-complexity')?.value || 2;
+            const time = document.getElementById('et-time')?.value || 30;
+            const impactType = document.getElementById('et-impact-type')?.value || 'drain';
+            const cost = window.calculateTaskCost(prio, comp, time, impactType);
+            const xpPreview = document.getElementById('et-xp-preview');
+            const hpPreview = document.getElementById('et-hp-preview');
+            if (xpPreview) xpPreview.innerText = `+${cost.xp} XP`;
+            if (hpPreview) {
+                if (cost.hp < 0) {
+                    hpPreview.innerText = `+${Math.abs(cost.hp)} HP (Recarga)`;
+                    hpPreview.className = "bg-emerald-900/50 text-emerald-400 px-3 py-1 rounded-md text-xs font-bold";
+                } else {
+                    hpPreview.innerText = `-${cost.hp} HP (Dreno)`;
+                    hpPreview.className = "bg-red-900/50 text-red-400 px-3 py-1 rounded-md text-xs font-bold";
+                }
+            }
+        };
+
+        window.applyTaskEditFields = function(task, data) {
+            if (!task) return;
+            if (task.completed && typeof task.rewardedEnergyCost === 'undefined') task.rewardedEnergyCost = task.energyCost;
+            task.text = data.text;
+            task.category = data.category;
+            task.priority = data.priority;
+            task.complexity = data.complexity;
+            task.impactType = data.impactType;
+            task.time = data.timeVal + ' min';
+            task.xp = data.cost.xp;
+            task.energyCost = data.cost.hp;
+            task.updatedAt = new Date().toISOString();
+        };
+
+        window.makeTaskCloneForDay = function(sourceTask, data, day, groupId) {
+            return {
+                id: Date.now() + Math.random(),
+                day,
+                category: data.category,
+                text: data.text,
+                xp: data.cost.xp,
+                energyCost: data.cost.hp,
+                completed: false,
+                priority: data.priority,
+                complexity: data.complexity,
+                impactType: data.impactType,
+                time: data.timeVal + ' min',
+                subtasks: window.cloneSubtasksForNewTask(Array.isArray(sourceTask.subtasks) ? sourceTask.subtasks : []),
+                isRecurring: true,
+                recurrenceDays: [...data.recurrenceDays],
+                recurrenceGroupId: groupId,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+        };
+
+        window.saveEditedTask = function() {
+            const task = state.tasks.find(t => t.id == uiState.editingTaskId);
+            if (!task) { window.showAlertModal('Missão não encontrada.'); window.closeEditTaskModal(); return; }
+
+            const text = document.getElementById('et-text')?.value.trim();
+            if (!text) { window.showAlertModal('Título vazio.'); return; }
+
+            const priority = document.getElementById('et-priority')?.value || 'media';
+            const complexity = Math.max(1, Math.min(5, parseInt(document.getElementById('et-complexity')?.value, 10) || 1));
+            const timeVal = Math.max(1, parseInt(document.getElementById('et-time')?.value, 10) || 30);
+            const impactType = document.getElementById('et-impact-type')?.value || 'drain';
+            const cost = window.calculateTaskCost(priority, complexity, timeVal, impactType);
+            const category = document.getElementById('et-category')?.value || task.category || 'life';
+            const selectedDay = document.getElementById('et-day')?.value || task.day || state.activeTab;
+            const recurrenceDays = daysOfWeek
+                .filter(d => document.getElementById(`et-repeat-${d.id}`)?.checked)
+                .map(d => d.id);
+            const isRecurring = recurrenceDays.length > 0;
+            const oldGroupId = task.recurrenceGroupId;
+            const groupTasksBefore = oldGroupId ? state.tasks.filter(t => t.recurrenceGroupId === oldGroupId) : [task];
+
+            const data = { text, priority, complexity, timeVal, impactType, cost, category, selectedDay, recurrenceDays };
+
+            if (isRecurring) {
+                const groupId = oldGroupId || `rec-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+                const firstDay = recurrenceDays[0];
+
+                groupTasksBefore.forEach(t => {
+                    if (recurrenceDays.includes(t.day)) {
+                        window.applyTaskEditFields(t, data);
+                        t.isRecurring = true;
+                        t.recurrenceDays = [...recurrenceDays];
+                        t.recurrenceGroupId = groupId;
+                    } else if (t.completed) {
+                        window.applyTaskEditFields(t, data);
+                        t.isRecurring = false;
+                        t.recurrenceDays = [];
+                        t.recurrenceGroupId = null;
+                    }
+                });
+
+                state.tasks = state.tasks.filter(t => {
+                    if (!groupTasksBefore.some(g => g.id === t.id)) return true;
+                    if (recurrenceDays.includes(t.day)) return true;
+                    return !!t.completed;
+                });
+
+                let currentGroupTasks = state.tasks.filter(t => t.recurrenceGroupId === groupId);
+                if (currentGroupTasks.length === 0) {
+                    window.applyTaskEditFields(task, data);
+                    task.day = firstDay;
+                    task.completed = false;
+                    task.skipped = false;
+                    delete task.rewardedXp;
+                    delete task.rewardedCoins;
+                    delete task.rewardedEnergyCost;
+                    task.isRecurring = true;
+                    task.recurrenceDays = [...recurrenceDays];
+                    task.recurrenceGroupId = groupId;
+                    if (!state.tasks.some(t => t.id === task.id)) state.tasks.push(task);
+                    currentGroupTasks = [task];
+                }
+
+                const existingDays = new Set(state.tasks.filter(t => t.recurrenceGroupId === groupId).map(t => t.day));
+                recurrenceDays.forEach(day => {
+                    if (!existingDays.has(day)) state.tasks.push(window.makeTaskCloneForDay(task, data, day, groupId));
+                });
+            } else {
+                window.applyTaskEditFields(task, data);
+                task.day = selectedDay;
+                task.isRecurring = false;
+                task.recurrenceDays = [];
+                task.recurrenceGroupId = null;
+
+                if (oldGroupId) {
+                    state.tasks = state.tasks.filter(t => {
+                        if (t.id === task.id) return true;
+                        if (t.recurrenceGroupId !== oldGroupId) return true;
+                        if (t.completed) {
+                            window.applyTaskEditFields(t, data);
+                            t.isRecurring = false;
+                            t.recurrenceDays = [];
+                            t.recurrenceGroupId = null;
+                            return true;
+                        }
+                        return false;
+                    });
+                }
+            }
+
+            if (!state.tasks.some(t => t.id === task.id)) state.tasks.push(task);
+            window.checkGameTriggers();
+            window.closeEditTaskModal();
+            window.showToast('Missão atualizada', 'Título, categoria, impacto e recorrência foram ajustados.', 'pencil', 'text-emerald-400');
+            window.saveState();
+        };
+
+        window.renderEditTaskModal = function() {
+            if (!uiState.showEditTaskModal) return '';
+            const task = state.tasks.find(t => t.id == uiState.editingTaskId);
+            if (!task) return '';
+            const priority = task.priority || 'media';
+            const timeVal = parseInt(task.time, 10) || 30;
+            const complexity = window.inferTaskComplexity(task);
+            const impactType = task.impactType || ((task.energyCost || 0) < 0 ? 'recharge' : 'drain');
+            const recurrenceDays = Array.isArray(task.recurrenceDays) ? task.recurrenceDays : [];
+            const currentCost = window.calculateTaskCost(priority, complexity, timeVal, impactType);
+            return `
+                <div class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[75] backdrop-blur-sm font-mono">
+                    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-md w-full shadow-2xl modal-enter overflow-y-auto max-h-[90vh]">
+                        <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+                            <h2 class="text-lg font-black text-amber-400 flex items-center gap-2"><i data-lucide="pencil"></i> Editar Missão</h2>
+                            <button onclick="window.closeEditTaskModal()" class="text-slate-500 hover:text-white"><i data-lucide="x"></i></button>
+                        </div>
+                        <div class="space-y-4">
+                            <div><label class="text-xs font-bold text-slate-400 uppercase">Título</label><input type="text" id="et-text" value="${window.escapeAttr(task.text)}" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-amber-500 outline-none"></div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div><label class="text-xs font-bold text-slate-400 uppercase">Dia</label><select id="et-day" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">${daysOfWeek.map(d => `<option value="${d.id}" ${d.id === task.day ? 'selected' : ''}>${d.label}</option>`).join('')}<option value="next_week" ${task.day === 'next_week' ? 'selected' : ''}>Próxima Semana</option></select></div>
+                                <div><label class="text-xs font-bold text-slate-400 uppercase">Categoria</label>
+                                    <select id="et-category" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">
+                                        ${window.getTaskCategories().map(cat => `<option value="${cat.id}" ${cat.id === task.category ? 'selected' : ''}>${cat.label}</option>`).join('')}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="bg-slate-950/70 border border-violet-900/40 rounded-xl p-3 space-y-3">
+                                <div>
+                                    <label class="text-xs font-bold text-violet-300 uppercase flex items-center gap-2"><i data-lucide="repeat" class="w-3.5 h-3.5"></i> Recorrência semanal</label>
+                                    <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Altere os dias em que esta missão se repete. Se nenhum dia estiver marcado, ela vira uma missão avulsa.</p>
+                                </div>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    ${daysOfWeek.map(d => `<label class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg px-2 py-2 text-xs text-slate-300 hover:border-violet-700 cursor-pointer"><input id="et-repeat-${d.id}" type="checkbox" class="accent-violet-500" ${recurrenceDays.includes(d.id) ? 'checked' : ''}> ${d.label}</label>`).join('')}
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    <button type="button" onclick="window.setEditTaskRecurrence('all')" class="text-[10px] bg-violet-900/40 hover:bg-violet-800 text-violet-200 border border-violet-700/50 px-2 py-1 rounded font-bold uppercase">Todos os dias</button>
+                                    <button type="button" onclick="window.setEditTaskRecurrence('clear')" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 px-2 py-1 rounded font-bold uppercase">Limpar recorrência</button>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div><label class="text-xs font-bold text-slate-400 uppercase">Prioridade</label><select id="et-priority" onchange="window.updateEditPreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none"><option value="essencial" ${priority === 'essencial' ? 'selected' : ''}>Essencial</option><option value="alta" ${priority === 'alta' ? 'selected' : ''}>Alta</option><option value="media" ${priority === 'media' ? 'selected' : ''}>Média</option><option value="baixa" ${priority === 'baixa' ? 'selected' : ''}>Baixa</option></select></div>
+                                <div><label class="text-xs font-bold text-slate-400 uppercase">Dificuldade (1-5)</label><input type="number" id="et-complexity" min="1" max="5" value="${complexity}" oninput="window.updateEditPreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div><label class="text-xs font-bold text-slate-400 uppercase">Tempo (Min)</label><input type="number" id="et-time" value="${timeVal}" step="15" oninput="window.updateEditPreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none"></div>
+                                <div><label class="text-xs font-bold text-slate-400 uppercase">Impacto HP</label><select id="et-impact-type" onchange="window.updateEditPreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none"><option value="drain" ${impactType === 'drain' ? 'selected' : ''}>Drena Bateria</option><option value="recharge" ${impactType === 'recharge' ? 'selected' : ''}>Recarrega</option></select></div>
+                            </div>
+                            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex justify-between items-center mt-2">
+                                <span class="text-xs font-bold text-slate-400 uppercase">Novo impacto:</span>
+                                <div class="flex gap-2"><span id="et-xp-preview" class="bg-indigo-900/50 text-indigo-400 px-3 py-1 rounded-md text-xs font-bold">+${currentCost.xp} XP</span><span id="et-hp-preview" class="${currentCost.hp < 0 ? 'bg-emerald-900/50 text-emerald-400' : 'bg-red-900/50 text-red-400'} px-3 py-1 rounded-md text-xs font-bold">${currentCost.hp < 0 ? '+' + Math.abs(currentCost.hp) : '-' + currentCost.hp} HP</span></div>
+                            </div>
+                            <p class="text-[11px] text-slate-500 leading-relaxed">Observação: se a missão já foi concluída, a edição vale para as próximas conclusões. O XP/moedas já recebidos naquela conclusão continuam rastreados corretamente para reversão.</p>
+                            <button onclick="window.saveEditedTask()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl mt-2 transition-colors">Salvar Alterações</button>
+                        </div>
+                    </div>
+                </div>`;
+        };
+
         window.addQuickTask = function() {
             const text = document.getElementById('quick-task-input')?.value.trim(); if (!text) return;
             state.quickTasks.push({ id: Date.now(), text: text, done: false }); window.saveState();
@@ -833,6 +1092,8 @@
                     energyCost: cost.hp,
                     completed: false,
                     priority: document.getElementById('ct-priority').value,
+                    complexity: parseInt(document.getElementById('ct-complexity').value, 10) || 1,
+                    impactType: document.getElementById('ct-impact-type').value || 'drain',
                     time: document.getElementById('ct-time').value + ' min',
                     subtasks: window.cloneSubtasksForNewTask(baseSubtasks),
                     isRecurring,
@@ -1886,6 +2147,7 @@
                                 </div>
                                 <div class="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
                                     <select onchange="window.moveTaskFromSelect(${task.id}, event, this)" onclick="event.stopPropagation()" class="bg-slate-900 border border-slate-700 text-slate-400 rounded-lg p-1.5 text-xs focus:outline-none cursor-pointer"><option value="" disabled selected>📅 Mover</option>${daysOptions}</select>
+                                    <button onclick="window.openEditTaskModal(${task.id}, event)" class="p-1.5 text-slate-500 hover:text-amber-400 hover:bg-slate-900 rounded-lg transition-colors" title="Editar missão"><i data-lucide="pencil" class="w-5 h-5"></i></button>
                                     <button onclick="window.deleteMainTask(${task.id}, event)" class="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-900 rounded-lg transition-colors"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                                 </div>
                             </div>
@@ -1894,6 +2156,8 @@
                 }
                 html += `</div>`;
             }
+
+            if (typeof window.renderEditTaskModal === 'function') html += window.renderEditTaskModal();
 
             // MODAL CATEGORIAS DE TAREFAS
             if (uiState.showCategoryModal) {
