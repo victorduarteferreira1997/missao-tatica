@@ -186,7 +186,6 @@
             showPanic: false, breathingStep: 0, breathingInterval: null,
             showLevelUp: false, showStatsModal: false, statsTab: 'roadmap',
             showCreateTaskModal: false,
-            showEditTaskModal: false, editingTaskId: null,
             showStudyModal: false, studyTab: 'plano',
             showHealthModal: false, healthTab: 'dashboard',
             showFinanceModal: false, financeTab: 'dashboard',
@@ -195,10 +194,11 @@
             financeGuardianData: null,
             confirm: { show: false, message: '', onConfirm: null },
             alert: { show: false, message: '' },
-            customPrompt: { show: false, type: '', reviewId: null }
+            customPrompt: { show: false, type: '', reviewId: null },
+            pomodoroEvaluationData: null
         };
 
-        let pomodoro = { isRunning: false, timeLeft: 25 * 60, mode: 'focus', cycle: 1, intervalId: null };
+        let pomodoro = { isRunning: false, timeLeft: 25 * 60, mode: 'focus', cycle: 1, intervalId: null, currentFocusStartedAt: null };
 
         function getCorrectLevel(currentXp) {
             let correctLevel = 1;
@@ -216,6 +216,7 @@
                     xp: 0, level: 1, energy: 100, waterCount: 0, coins: 0, combo: 0,
                     unlockedBadges: [], tasks: [], quickTasks: [], currentFilter: 'all', taskCategories: DEFAULT_TASK_CATEGORIES.map(c => ({...c})),
                     pomodoroSettings: { focus: 25, shortBreak: 5, longBreak: 15, cycles: 4 },
+                    focusData: { cycles: [] },
                     stats: { pomodorosCompleted: 0, tasksMoved: 0, maxComboReached: 0, rewardsBought: 0 }
                 };
             }
@@ -278,6 +279,15 @@
             if (!state.financeData.goals) state.financeData.goals = [];
             if (!state.financeData.moneyJournal) state.financeData.moneyJournal = [];
             if (!state.financeData.categoryBudgets) state.financeData.categoryBudgets = [];
+
+            // Validação Pomodoro & Eficiência de Foco
+            if (!state.pomodoroSettings) state.pomodoroSettings = { focus: 25, shortBreak: 5, longBreak: 15, cycles: 4 };
+            state.pomodoroSettings.focus = Math.max(1, Math.min(180, parseInt(state.pomodoroSettings.focus) || 25));
+            state.pomodoroSettings.shortBreak = Math.max(1, Math.min(60, parseInt(state.pomodoroSettings.shortBreak) || 5));
+            state.pomodoroSettings.longBreak = Math.max(1, Math.min(120, parseInt(state.pomodoroSettings.longBreak) || 15));
+            state.pomodoroSettings.cycles = Math.max(1, Math.min(12, parseInt(state.pomodoroSettings.cycles) || 4));
+            if (!state.focusData) state.focusData = {};
+            if (!Array.isArray(state.focusData.cycles)) state.focusData.cycles = [];
 
             if(!pomodoro.isRunning) pomodoro.timeLeft = state.pomodoroSettings.focus * 60;
         };
@@ -411,6 +421,15 @@
             return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
         };
 
+        window.escapeHtml = function(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        };
+
         window.getLocalDateKey = function(date = new Date()) {
             const d = new Date(date);
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -524,17 +543,14 @@
                 task.completed = false; task.skipped = false;
                 const deductedXp = task.rewardedXp || task.xp; const deductedCoins = task.rewardedCoins || Math.round(task.xp * 0.2);
                 state.xp = Math.max(0, state.xp - deductedXp); state.coins = Math.max(0, state.coins - deductedCoins);
-                const energyToRestore = (typeof task.rewardedEnergyCost !== 'undefined') ? task.rewardedEnergyCost : task.energyCost;
-                window.changeEnergy(energyToRestore);
-                delete task.rewardedEnergyCost;
-                state.combo = Math.max(0, state.combo - 1);
+                window.changeEnergy(task.energyCost); state.combo = Math.max(0, state.combo - 1);
                 window.rollbackTaskBadges(task);
                 if (typeof getCorrectLevel === 'function') state.level = getCorrectLevel(state.xp);
                 window.spawnFloatingText(event, `-${deductedXp} XP`, 'text-red-400');
             } else {
                 const badgesBefore = [...state.unlockedBadges];
                 const multiplier = window.getComboMultiplier(); const finalXp = Math.round(task.xp * multiplier); const earnedCoins = Math.round(finalXp * 0.2); 
-                task.completed = true; task.rewardedXp = finalXp; task.rewardedCoins = earnedCoins; task.rewardedEnergyCost = task.energyCost; 
+                task.completed = true; task.rewardedXp = finalXp; task.rewardedCoins = earnedCoins; 
                 state.xp += finalXp; state.coins += earnedCoins; window.changeEnergy(-task.energyCost); state.combo += 1;
                 window.checkGameTriggers();
                 task.rewardedBadgeIds = state.unlockedBadges.filter(badgeId => !badgesBefore.includes(badgeId));
@@ -745,261 +761,6 @@
             window.saveState();
         };
 
-
-        window.escapeAttr = function(value) {
-            return String(value || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-        };
-
-        window.inferTaskComplexity = function(task) {
-            if (task && task.complexity) return Math.max(1, Math.min(5, parseInt(task.complexity, 10) || 2));
-            const priority = task?.priority || 'media';
-            const timeVal = parseInt(task?.time, 10) || 30;
-            const impactType = task?.impactType || ((task?.energyCost || 0) < 0 ? 'recharge' : 'drain');
-            let best = 2;
-            let bestDiff = Infinity;
-            for (let c = 1; c <= 5; c++) {
-                const cost = window.calculateTaskCost(priority, c, timeVal, impactType);
-                const diff = Math.abs((cost.xp || 0) - (task?.xp || 0)) + Math.abs((cost.hp || 0) - (task?.energyCost || 0));
-                if (diff < bestDiff) { bestDiff = diff; best = c; }
-            }
-            return best;
-        };
-
-        window.openEditTaskModal = function(taskId, event) {
-            if (event) event.stopPropagation();
-            const task = state.tasks.find(t => t.id == taskId);
-            if (!task) { window.showAlertModal('Missão não encontrada.'); return; }
-            uiState.editingTaskId = task.id;
-            uiState.showEditTaskModal = true;
-            render();
-            setTimeout(() => window.updateEditPreviewCalc(), 0);
-        };
-
-        window.closeEditTaskModal = function() {
-            uiState.showEditTaskModal = false;
-            uiState.editingTaskId = null;
-            render();
-        };
-
-        window.setEditTaskRecurrence = function(mode) {
-            daysOfWeek.forEach(d => {
-                const el = document.getElementById(`et-repeat-${d.id}`);
-                if (el) el.checked = mode === 'all';
-            });
-        };
-
-        window.updateEditPreviewCalc = function() {
-            const prio = document.getElementById('et-priority')?.value || 'media';
-            const comp = document.getElementById('et-complexity')?.value || 2;
-            const time = document.getElementById('et-time')?.value || 30;
-            const impactType = document.getElementById('et-impact-type')?.value || 'drain';
-            const cost = window.calculateTaskCost(prio, comp, time, impactType);
-            const xpPreview = document.getElementById('et-xp-preview');
-            const hpPreview = document.getElementById('et-hp-preview');
-            if (xpPreview) xpPreview.innerText = `+${cost.xp} XP`;
-            if (hpPreview) {
-                if (cost.hp < 0) {
-                    hpPreview.innerText = `+${Math.abs(cost.hp)} HP (Recarga)`;
-                    hpPreview.className = "bg-emerald-900/50 text-emerald-400 px-3 py-1 rounded-md text-xs font-bold";
-                } else {
-                    hpPreview.innerText = `-${cost.hp} HP (Dreno)`;
-                    hpPreview.className = "bg-red-900/50 text-red-400 px-3 py-1 rounded-md text-xs font-bold";
-                }
-            }
-        };
-
-        window.applyTaskEditFields = function(task, data) {
-            if (!task) return;
-            if (task.completed && typeof task.rewardedEnergyCost === 'undefined') task.rewardedEnergyCost = task.energyCost;
-            task.text = data.text;
-            task.category = data.category;
-            task.priority = data.priority;
-            task.complexity = data.complexity;
-            task.impactType = data.impactType;
-            task.time = data.timeVal + ' min';
-            task.xp = data.cost.xp;
-            task.energyCost = data.cost.hp;
-            task.updatedAt = new Date().toISOString();
-        };
-
-        window.makeTaskCloneForDay = function(sourceTask, data, day, groupId) {
-            return {
-                id: Date.now() + Math.random(),
-                day,
-                category: data.category,
-                text: data.text,
-                xp: data.cost.xp,
-                energyCost: data.cost.hp,
-                completed: false,
-                priority: data.priority,
-                complexity: data.complexity,
-                impactType: data.impactType,
-                time: data.timeVal + ' min',
-                subtasks: window.cloneSubtasksForNewTask(Array.isArray(sourceTask.subtasks) ? sourceTask.subtasks : []),
-                isRecurring: true,
-                recurrenceDays: [...data.recurrenceDays],
-                recurrenceGroupId: groupId,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
-        };
-
-        window.saveEditedTask = function() {
-            const task = state.tasks.find(t => t.id == uiState.editingTaskId);
-            if (!task) { window.showAlertModal('Missão não encontrada.'); window.closeEditTaskModal(); return; }
-
-            const text = document.getElementById('et-text')?.value.trim();
-            if (!text) { window.showAlertModal('Título vazio.'); return; }
-
-            const priority = document.getElementById('et-priority')?.value || 'media';
-            const complexity = Math.max(1, Math.min(5, parseInt(document.getElementById('et-complexity')?.value, 10) || 1));
-            const timeVal = Math.max(1, parseInt(document.getElementById('et-time')?.value, 10) || 30);
-            const impactType = document.getElementById('et-impact-type')?.value || 'drain';
-            const cost = window.calculateTaskCost(priority, complexity, timeVal, impactType);
-            const category = document.getElementById('et-category')?.value || task.category || 'life';
-            const selectedDay = document.getElementById('et-day')?.value || task.day || state.activeTab;
-            const recurrenceDays = daysOfWeek
-                .filter(d => document.getElementById(`et-repeat-${d.id}`)?.checked)
-                .map(d => d.id);
-            const isRecurring = recurrenceDays.length > 0;
-            const oldGroupId = task.recurrenceGroupId;
-            const groupTasksBefore = oldGroupId ? state.tasks.filter(t => t.recurrenceGroupId === oldGroupId) : [task];
-
-            const data = { text, priority, complexity, timeVal, impactType, cost, category, selectedDay, recurrenceDays };
-
-            if (isRecurring) {
-                const groupId = oldGroupId || `rec-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-                const firstDay = recurrenceDays[0];
-
-                groupTasksBefore.forEach(t => {
-                    if (recurrenceDays.includes(t.day)) {
-                        window.applyTaskEditFields(t, data);
-                        t.isRecurring = true;
-                        t.recurrenceDays = [...recurrenceDays];
-                        t.recurrenceGroupId = groupId;
-                    } else if (t.completed) {
-                        window.applyTaskEditFields(t, data);
-                        t.isRecurring = false;
-                        t.recurrenceDays = [];
-                        t.recurrenceGroupId = null;
-                    }
-                });
-
-                state.tasks = state.tasks.filter(t => {
-                    if (!groupTasksBefore.some(g => g.id === t.id)) return true;
-                    if (recurrenceDays.includes(t.day)) return true;
-                    return !!t.completed;
-                });
-
-                let currentGroupTasks = state.tasks.filter(t => t.recurrenceGroupId === groupId);
-                if (currentGroupTasks.length === 0) {
-                    window.applyTaskEditFields(task, data);
-                    task.day = firstDay;
-                    task.completed = false;
-                    task.skipped = false;
-                    delete task.rewardedXp;
-                    delete task.rewardedCoins;
-                    delete task.rewardedEnergyCost;
-                    task.isRecurring = true;
-                    task.recurrenceDays = [...recurrenceDays];
-                    task.recurrenceGroupId = groupId;
-                    if (!state.tasks.some(t => t.id === task.id)) state.tasks.push(task);
-                    currentGroupTasks = [task];
-                }
-
-                const existingDays = new Set(state.tasks.filter(t => t.recurrenceGroupId === groupId).map(t => t.day));
-                recurrenceDays.forEach(day => {
-                    if (!existingDays.has(day)) state.tasks.push(window.makeTaskCloneForDay(task, data, day, groupId));
-                });
-            } else {
-                window.applyTaskEditFields(task, data);
-                task.day = selectedDay;
-                task.isRecurring = false;
-                task.recurrenceDays = [];
-                task.recurrenceGroupId = null;
-
-                if (oldGroupId) {
-                    state.tasks = state.tasks.filter(t => {
-                        if (t.id === task.id) return true;
-                        if (t.recurrenceGroupId !== oldGroupId) return true;
-                        if (t.completed) {
-                            window.applyTaskEditFields(t, data);
-                            t.isRecurring = false;
-                            t.recurrenceDays = [];
-                            t.recurrenceGroupId = null;
-                            return true;
-                        }
-                        return false;
-                    });
-                }
-            }
-
-            if (!state.tasks.some(t => t.id === task.id)) state.tasks.push(task);
-            window.checkGameTriggers();
-            window.closeEditTaskModal();
-            window.showToast('Missão atualizada', 'Título, categoria, impacto e recorrência foram ajustados.', 'pencil', 'text-emerald-400');
-            window.saveState();
-        };
-
-        window.renderEditTaskModal = function() {
-            if (!uiState.showEditTaskModal) return '';
-            const task = state.tasks.find(t => t.id == uiState.editingTaskId);
-            if (!task) return '';
-            const priority = task.priority || 'media';
-            const timeVal = parseInt(task.time, 10) || 30;
-            const complexity = window.inferTaskComplexity(task);
-            const impactType = task.impactType || ((task.energyCost || 0) < 0 ? 'recharge' : 'drain');
-            const recurrenceDays = Array.isArray(task.recurrenceDays) ? task.recurrenceDays : [];
-            const currentCost = window.calculateTaskCost(priority, complexity, timeVal, impactType);
-            return `
-                <div class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[75] backdrop-blur-sm font-mono">
-                    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-md w-full shadow-2xl modal-enter overflow-y-auto max-h-[90vh]">
-                        <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
-                            <h2 class="text-lg font-black text-amber-400 flex items-center gap-2"><i data-lucide="pencil"></i> Editar Missão</h2>
-                            <button onclick="window.closeEditTaskModal()" class="text-slate-500 hover:text-white"><i data-lucide="x"></i></button>
-                        </div>
-                        <div class="space-y-4">
-                            <div><label class="text-xs font-bold text-slate-400 uppercase">Título</label><input type="text" id="et-text" value="${window.escapeAttr(task.text)}" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-amber-500 outline-none"></div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div><label class="text-xs font-bold text-slate-400 uppercase">Dia</label><select id="et-day" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">${daysOfWeek.map(d => `<option value="${d.id}" ${d.id === task.day ? 'selected' : ''}>${d.label}</option>`).join('')}<option value="next_week" ${task.day === 'next_week' ? 'selected' : ''}>Próxima Semana</option></select></div>
-                                <div><label class="text-xs font-bold text-slate-400 uppercase">Categoria</label>
-                                    <select id="et-category" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">
-                                        ${window.getTaskCategories().map(cat => `<option value="${cat.id}" ${cat.id === task.category ? 'selected' : ''}>${cat.label}</option>`).join('')}
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="bg-slate-950/70 border border-violet-900/40 rounded-xl p-3 space-y-3">
-                                <div>
-                                    <label class="text-xs font-bold text-violet-300 uppercase flex items-center gap-2"><i data-lucide="repeat" class="w-3.5 h-3.5"></i> Recorrência semanal</label>
-                                    <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Altere os dias em que esta missão se repete. Se nenhum dia estiver marcado, ela vira uma missão avulsa.</p>
-                                </div>
-                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                    ${daysOfWeek.map(d => `<label class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg px-2 py-2 text-xs text-slate-300 hover:border-violet-700 cursor-pointer"><input id="et-repeat-${d.id}" type="checkbox" class="accent-violet-500" ${recurrenceDays.includes(d.id) ? 'checked' : ''}> ${d.label}</label>`).join('')}
-                                </div>
-                                <div class="flex flex-wrap gap-2">
-                                    <button type="button" onclick="window.setEditTaskRecurrence('all')" class="text-[10px] bg-violet-900/40 hover:bg-violet-800 text-violet-200 border border-violet-700/50 px-2 py-1 rounded font-bold uppercase">Todos os dias</button>
-                                    <button type="button" onclick="window.setEditTaskRecurrence('clear')" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 px-2 py-1 rounded font-bold uppercase">Limpar recorrência</button>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div><label class="text-xs font-bold text-slate-400 uppercase">Prioridade</label><select id="et-priority" onchange="window.updateEditPreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none"><option value="essencial" ${priority === 'essencial' ? 'selected' : ''}>Essencial</option><option value="alta" ${priority === 'alta' ? 'selected' : ''}>Alta</option><option value="media" ${priority === 'media' ? 'selected' : ''}>Média</option><option value="baixa" ${priority === 'baixa' ? 'selected' : ''}>Baixa</option></select></div>
-                                <div><label class="text-xs font-bold text-slate-400 uppercase">Dificuldade (1-5)</label><input type="number" id="et-complexity" min="1" max="5" value="${complexity}" oninput="window.updateEditPreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none"></div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div><label class="text-xs font-bold text-slate-400 uppercase">Tempo (Min)</label><input type="number" id="et-time" value="${timeVal}" step="15" oninput="window.updateEditPreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none"></div>
-                                <div><label class="text-xs font-bold text-slate-400 uppercase">Impacto HP</label><select id="et-impact-type" onchange="window.updateEditPreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none"><option value="drain" ${impactType === 'drain' ? 'selected' : ''}>Drena Bateria</option><option value="recharge" ${impactType === 'recharge' ? 'selected' : ''}>Recarrega</option></select></div>
-                            </div>
-                            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex justify-between items-center mt-2">
-                                <span class="text-xs font-bold text-slate-400 uppercase">Novo impacto:</span>
-                                <div class="flex gap-2"><span id="et-xp-preview" class="bg-indigo-900/50 text-indigo-400 px-3 py-1 rounded-md text-xs font-bold">+${currentCost.xp} XP</span><span id="et-hp-preview" class="${currentCost.hp < 0 ? 'bg-emerald-900/50 text-emerald-400' : 'bg-red-900/50 text-red-400'} px-3 py-1 rounded-md text-xs font-bold">${currentCost.hp < 0 ? '+' + Math.abs(currentCost.hp) : '-' + currentCost.hp} HP</span></div>
-                            </div>
-                            <p class="text-[11px] text-slate-500 leading-relaxed">Observação: se a missão já foi concluída, a edição vale para as próximas conclusões. O XP/moedas já recebidos naquela conclusão continuam rastreados corretamente para reversão.</p>
-                            <button onclick="window.saveEditedTask()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl mt-2 transition-colors">Salvar Alterações</button>
-                        </div>
-                    </div>
-                </div>`;
-        };
-
         window.addQuickTask = function() {
             const text = document.getElementById('quick-task-input')?.value.trim(); if (!text) return;
             state.quickTasks.push({ id: Date.now(), text: text, done: false }); window.saveState();
@@ -1012,30 +773,189 @@
         window.deleteQuickTask = function(id) { state.quickTasks = state.quickTasks.filter(q => q.id !== id); window.saveState(); };
 
         window.togglePomodoro = function() {
-            if (pomodoro.isRunning) { clearInterval(pomodoro.intervalId); pomodoro.isRunning = false; } 
-            else { pomodoro.isRunning = true; pomodoro.intervalId = setInterval(() => { if (pomodoro.timeLeft > 0) { pomodoro.timeLeft--; const display = document.getElementById('pomodoro-display'); if (display) display.innerText = window.formatTime(pomodoro.timeLeft); } else { window.handlePomodoroEnd(); } }, 1000); }
+            if (pomodoro.isRunning) { 
+                clearInterval(pomodoro.intervalId); 
+                pomodoro.isRunning = false; 
+            } else { 
+                pomodoro.isRunning = true; 
+                if (pomodoro.mode === 'focus' && !pomodoro.currentFocusStartedAt) pomodoro.currentFocusStartedAt = new Date().toISOString();
+                pomodoro.intervalId = setInterval(() => { 
+                    if (pomodoro.timeLeft > 0) { 
+                        pomodoro.timeLeft--; 
+                        const display = document.getElementById('pomodoro-display'); 
+                        if (display) display.innerText = window.formatTime(pomodoro.timeLeft); 
+                    } else { 
+                        window.handlePomodoroEnd(); 
+                    } 
+                }, 1000); 
+            }
             render();
         };
 
         window.handlePomodoroEnd = function() {
-            clearInterval(pomodoro.intervalId); pomodoro.isRunning = false; try { new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play(); } catch(e) {}
+            clearInterval(pomodoro.intervalId); 
+            pomodoro.isRunning = false; 
+            try { new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play(); } catch(e) {}
             const s = state.pomodoroSettings;
             if (pomodoro.mode === 'focus') {
-                if (pomodoro.cycle % s.cycles === 0) { pomodoro.mode = 'longBreak'; pomodoro.timeLeft = s.longBreak * 60; } else { pomodoro.mode = 'shortBreak'; pomodoro.timeLeft = s.shortBreak * 60; }
-                const earnedXP = 30 * window.getComboMultiplier(); const earnedCoins = 10;
-                state.xp += Math.round(earnedXP); state.coins += earnedCoins; state.stats.pomodorosCompleted = (state.stats.pomodorosCompleted || 0) + 1; window.changeEnergy(-5); 
-                window.showToast('Foco Concluído!', `+${Math.round(earnedXP)} XP`, 'target', 'text-yellow-400'); window.checkGameTriggers(); window.checkLevelUp();
+                const focusMinutes = parseInt(s.focus) || 25;
+                const focusedTask = state.tasks.find(t => t.id == state.focusedTaskId) || state.tasks.find(t => !t.completed && t.day === state.activeTab) || null;
+                const startedAt = pomodoro.currentFocusStartedAt || new Date(Date.now() - (focusMinutes * 60000)).toISOString();
+
+                if (pomodoro.cycle % s.cycles === 0) { 
+                    pomodoro.mode = 'longBreak'; 
+                    pomodoro.timeLeft = s.longBreak * 60; 
+                } else { 
+                    pomodoro.mode = 'shortBreak'; 
+                    pomodoro.timeLeft = s.shortBreak * 60; 
+                }
+                const earnedXP = 30 * window.getComboMultiplier(); 
+                const earnedCoins = 10;
+                state.xp += Math.round(earnedXP); 
+                state.coins += earnedCoins; 
+                state.stats.pomodorosCompleted = (state.stats.pomodorosCompleted || 0) + 1; 
+                window.changeEnergy(-5); 
+                pomodoro.currentFocusStartedAt = null;
+
+                uiState.pomodoroEvaluationData = {
+                    id: Date.now(),
+                    date: new Date().toISOString(),
+                    startedAt,
+                    completedAt: new Date().toISOString(),
+                    taskId: focusedTask ? focusedTask.id : null,
+                    taskText: focusedTask ? focusedTask.text : 'Ciclo sem tarefa vinculada',
+                    focusMinutes,
+                    cycleNumber: pomodoro.cycle
+                };
+                uiState.customPrompt = { show: true, type: 'pomodoroEvaluation', reviewId: null };
+
+                window.showToast('Foco Concluído!', `+${Math.round(earnedXP)} XP. Avalie a eficiência do ciclo.`, 'target', 'text-yellow-400'); 
+                window.checkGameTriggers(); 
+                window.checkLevelUp();
             } else {
                 const wasLongBreak = pomodoro.mode === 'longBreak';
                 pomodoro.mode = 'focus'; 
                 pomodoro.timeLeft = s.focus * 60;
+                pomodoro.currentFocusStartedAt = null;
                 if (wasLongBreak) pomodoro.cycle = 1; else pomodoro.cycle++;
                 window.changeEnergy(wasLongBreak ? 20 : 5);
             }
             window.saveState();
         };
 
-        window.resetPomodoro = function() { clearInterval(pomodoro.intervalId); pomodoro.isRunning = false; pomodoro.mode = 'focus'; pomodoro.cycle = 1; pomodoro.timeLeft = state.pomodoroSettings.focus * 60; render(); };
+        window.resetPomodoro = function() { 
+            clearInterval(pomodoro.intervalId); 
+            pomodoro.isRunning = false; 
+            pomodoro.mode = 'focus'; 
+            pomodoro.cycle = 1; 
+            pomodoro.currentFocusStartedAt = null;
+            pomodoro.timeLeft = state.pomodoroSettings.focus * 60; 
+            render(); 
+        };
+
+        window.savePomodoroSettings = function() {
+            if (pomodoro.isRunning) {
+                window.showAlertModal('Pause ou reinicie o Pomodoro antes de alterar os tempos.');
+                return;
+            }
+            const focus = Math.max(1, Math.min(180, parseInt(document.getElementById('pomo-focus-min')?.value) || 25));
+            const shortBreak = Math.max(1, Math.min(60, parseInt(document.getElementById('pomo-short-min')?.value) || 5));
+            const cycles = Math.max(1, Math.min(12, parseInt(document.getElementById('pomo-cycles-long')?.value) || 4));
+            const longBreak = Math.max(1, Math.min(120, parseInt(document.getElementById('pomo-long-min')?.value) || 15));
+            state.pomodoroSettings = { focus, shortBreak, longBreak, cycles };
+            pomodoro.mode = 'focus';
+            pomodoro.cycle = 1;
+            pomodoro.currentFocusStartedAt = null;
+            pomodoro.timeLeft = focus * 60;
+            window.showToast('Pomodoro atualizado', 'Novos tempos aplicados ao próximo ciclo.', 'settings', 'text-yellow-400');
+            window.saveState();
+        };
+
+        window.calculatePomodoroEfficiency = function(focusRating, distractions) {
+            const rating = Math.max(1, Math.min(5, parseInt(focusRating) || 3));
+            const dist = Math.max(0, parseInt(distractions) || 0);
+            return Math.max(0, Math.min(100, Math.round((rating * 20) - (dist * 7))));
+        };
+
+        window.savePomodoroEvaluation = function() {
+            const data = uiState.pomodoroEvaluationData;
+            if (!data) { window.skipPomodoroEvaluation(); return; }
+            const focusRating = Math.max(1, Math.min(5, parseInt(document.getElementById('pomo-eval-focus')?.value) || 3));
+            const distractions = Math.max(0, parseInt(document.getElementById('pomo-eval-distractions')?.value) || 0);
+            const notes = document.getElementById('pomo-eval-notes')?.value.trim() || '';
+            const efficiency = window.calculatePomodoroEfficiency(focusRating, distractions);
+            if (!state.focusData) state.focusData = { cycles: [] };
+            if (!Array.isArray(state.focusData.cycles)) state.focusData.cycles = [];
+            state.focusData.cycles.push({
+                ...data,
+                focusRating,
+                distractions,
+                notes,
+                efficiency
+            });
+            uiState.pomodoroEvaluationData = null;
+            uiState.customPrompt = { show: false, type: '', reviewId: null };
+            window.showToast('Eficiência registrada', `${efficiency}% de foco no ciclo.`, 'bar-chart-3', efficiency >= 75 ? 'text-emerald-400' : (efficiency >= 50 ? 'text-yellow-400' : 'text-orange-400'));
+            window.saveState();
+        };
+
+        window.skipPomodoroEvaluation = function() {
+            uiState.pomodoroEvaluationData = null;
+            uiState.customPrompt = { show: false, type: '', reviewId: null };
+            window.saveState();
+        };
+
+        window.getFocusEfficiencyByTask = function() {
+            const cycles = (state.focusData && Array.isArray(state.focusData.cycles)) ? state.focusData.cycles : [];
+            const grouped = {};
+            cycles.forEach(c => {
+                const key = c.taskId ? `task_${c.taskId}` : `text_${c.taskText || 'sem_tarefa'}`;
+                if (!grouped[key]) grouped[key] = { taskText: c.taskText || 'Ciclo sem tarefa', total: 0, count: 0, lastDate: c.date };
+                grouped[key].total += parseInt(c.efficiency) || 0;
+                grouped[key].count += 1;
+                if (!grouped[key].lastDate || new Date(c.date) > new Date(grouped[key].lastDate)) grouped[key].lastDate = c.date;
+            });
+            return Object.values(grouped)
+                .map(g => ({ ...g, avg: Math.round(g.total / Math.max(1, g.count)) }))
+                .sort((a, b) => new Date(b.lastDate) - new Date(a.lastDate))
+                .slice(0, 8);
+        };
+
+        window.renderFocusEfficiencyChart = function() {
+            const rows = window.getFocusEfficiencyByTask();
+            const cycles = (state.focusData && Array.isArray(state.focusData.cycles)) ? state.focusData.cycles : [];
+            if (!cycles.length) {
+                return `<div class="bg-slate-950 border border-slate-800 rounded-xl p-4 mb-6 text-center text-slate-500 text-xs font-bold uppercase tracking-widest">Sem ciclos avaliados ainda. Conclua um Pomodoro e salve a avaliação para gerar o gráfico.</div>`;
+            }
+            const overall = Math.round(cycles.reduce((acc, c) => acc + (parseInt(c.efficiency) || 0), 0) / cycles.length);
+            return `
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 mb-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                        <div>
+                            <h4 class="text-xs font-black text-yellow-400 uppercase tracking-widest flex items-center gap-2"><i data-lucide="bar-chart-3" class="w-4 h-4"></i> Eficiência do Foco por Tarefa</h4>
+                            <p class="text-[11px] text-slate-500 mt-1">Média baseada nas avaliações dos ciclos de Pomodoro.</p>
+                        </div>
+                        <div class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-right">
+                            <div class="text-[10px] text-slate-500 uppercase font-bold">Média geral</div>
+                            <div class="text-lg font-black ${overall >= 75 ? 'text-emerald-400' : (overall >= 50 ? 'text-yellow-400' : 'text-orange-400')}">${overall}%</div>
+                        </div>
+                    </div>
+                    <div class="space-y-3">
+                        ${rows.map(row => `
+                            <div>
+                                <div class="flex justify-between gap-3 text-[11px] mb-1">
+                                    <span class="text-slate-300 font-bold truncate">${window.escapeHtml(row.taskText)}</span>
+                                    <span class="text-slate-500 shrink-0">${row.avg}% · ${row.count} ciclo${row.count > 1 ? 's' : ''}</span>
+                                </div>
+                                <div class="w-full bg-slate-900 rounded-full h-2.5 border border-slate-800 overflow-hidden">
+                                    <div class="h-full rounded-full ${row.avg >= 75 ? 'bg-emerald-500' : (row.avg >= 50 ? 'bg-yellow-500' : 'bg-orange-500')}" style="width:${row.avg}%"></div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+        };
+
         window.drinkWater = function(event) { state.waterCount++; window.changeEnergy(10); state.xp += 15; window.spawnFloatingText(event, `+10 HP`, 'text-emerald-400'); window.checkGameTriggers(); window.checkLevelUp(); window.saveState(); }
         window.toggleCreateTaskModal = function() { uiState.showCreateTaskModal = !uiState.showCreateTaskModal; render(); };
         
@@ -1092,8 +1012,6 @@
                     energyCost: cost.hp,
                     completed: false,
                     priority: document.getElementById('ct-priority').value,
-                    complexity: parseInt(document.getElementById('ct-complexity').value, 10) || 1,
-                    impactType: document.getElementById('ct-impact-type').value || 'drain',
                     time: document.getElementById('ct-time').value + ' min',
                     subtasks: window.cloneSubtasksForNewTask(baseSubtasks),
                     isRecurring,
@@ -1847,6 +1765,52 @@
                             </div>
                         </div>
                     </div>`;
+                } else if(uiState.customPrompt.type === 'pomodoroEvaluation') {
+                    const evalData = uiState.pomodoroEvaluationData || {};
+                    html += `
+                    <div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[999] backdrop-blur-md font-mono">
+                        <div class="bg-slate-900 border-2 border-yellow-600/50 rounded-2xl p-6 max-w-lg w-full shadow-[0_0_50px_rgba(234,179,8,0.12)] modal-enter">
+                            <div class="flex items-start justify-between gap-4 mb-4">
+                                <div>
+                                    <h3 class="text-xl font-black text-white tracking-widest uppercase flex items-center gap-2"><i data-lucide="radar" class="text-yellow-400 w-5 h-5"></i> Avaliação do Ciclo</h3>
+                                    <p class="text-slate-400 text-xs mt-1 leading-relaxed">Registre a eficiência real deste Pomodoro. Isso alimenta o gráfico de foco por tarefa.</p>
+                                </div>
+                                <button onclick="window.skipPomodoroEvaluation()" class="text-slate-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+                            </div>
+                            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-4">
+                                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Tarefa vinculada</p>
+                                <p class="text-sm text-white font-bold mt-1">${window.escapeHtml(evalData.taskText || 'Ciclo sem tarefa vinculada')}</p>
+                                <p class="text-[11px] text-slate-500 mt-1">Duração: ${evalData.focusMinutes || state.pomodoroSettings.focus} min</p>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-400 uppercase">Qualidade do foco</label>
+                                    <select id="pomo-eval-focus" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">
+                                        <option value="5">5 — Foco absoluto</option>
+                                        <option value="4">4 — Muito bom</option>
+                                        <option value="3" selected>3 — Razoável</option>
+                                        <option value="2">2 — Instável</option>
+                                        <option value="1">1 — Muito disperso</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-400 uppercase">Distrações percebidas</label>
+                                    <input id="pomo-eval-distractions" type="number" min="0" value="0" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <label class="text-xs font-bold text-slate-400 uppercase">Observação rápida</label>
+                                <input id="pomo-eval-notes" type="text" placeholder="Ex: celular, interrupção, cansaço..." class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">
+                            </div>
+                            <div class="bg-yellow-950/20 border border-yellow-900/40 rounded-xl p-3 mb-4 text-[11px] text-yellow-100/80 leading-relaxed">
+                                A eficiência é calculada com base na qualidade do foco e na quantidade de distrações. Quanto menos interrupções e maior foco, maior o percentual do ciclo.
+                            </div>
+                            <div class="flex gap-3">
+                                <button onclick="window.skipPomodoroEvaluation()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl text-sm font-bold transition-colors">Pular</button>
+                                <button onclick="window.savePomodoroEvaluation()" class="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white py-3 rounded-xl text-sm font-bold transition-colors">Salvar Avaliação</button>
+                            </div>
+                        </div>
+                    </div>`;
                 }
             }
 
@@ -2035,6 +1999,25 @@
                         </div>
                     </div>`;
 
+                    html += `
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 mb-6">
+                        <div class="flex items-start justify-between gap-3 mb-3">
+                            <div>
+                                <h4 class="text-xs font-black text-yellow-400 uppercase tracking-widest flex items-center gap-2"><i data-lucide="sliders-horizontal" class="w-4 h-4"></i> Configurações do Pomodoro</h4>
+                                <p class="text-[11px] text-slate-500 mt-1">Personalize tempos e ciclos. A alteração vale para o próximo ciclo reiniciado.</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                            <div><label class="text-[10px] font-bold text-slate-500 uppercase">Foco (min)</label><input type="number" id="pomo-focus-min" min="1" max="180" value="${state.pomodoroSettings.focus}" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 uppercase">Pausa curta</label><input type="number" id="pomo-short-min" min="1" max="60" value="${state.pomodoroSettings.shortBreak}" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 uppercase">Ciclos p/ longa</label><input type="number" id="pomo-cycles-long" min="1" max="12" value="${state.pomodoroSettings.cycles}" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none"></div>
+                            <div><label class="text-[10px] font-bold text-slate-500 uppercase">Pausa longa</label><input type="number" id="pomo-long-min" min="1" max="120" value="${state.pomodoroSettings.longBreak}" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none"></div>
+                        </div>
+                        <button onclick="window.savePomodoroSettings()" class="w-full bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg py-2 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2"><i data-lucide="save" class="w-4 h-4"></i> Salvar Pomodoro</button>
+                    </div>`;
+
+                    html += window.renderFocusEfficiencyChart();
+
                     if (pendingTask) {
                         html += `
                         <div class="bg-slate-800 border-2 border-slate-700 p-4 rounded-lg">
@@ -2147,7 +2130,6 @@
                                 </div>
                                 <div class="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
                                     <select onchange="window.moveTaskFromSelect(${task.id}, event, this)" onclick="event.stopPropagation()" class="bg-slate-900 border border-slate-700 text-slate-400 rounded-lg p-1.5 text-xs focus:outline-none cursor-pointer"><option value="" disabled selected>📅 Mover</option>${daysOptions}</select>
-                                    <button onclick="window.openEditTaskModal(${task.id}, event)" class="p-1.5 text-slate-500 hover:text-amber-400 hover:bg-slate-900 rounded-lg transition-colors" title="Editar missão"><i data-lucide="pencil" class="w-5 h-5"></i></button>
                                     <button onclick="window.deleteMainTask(${task.id}, event)" class="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-900 rounded-lg transition-colors"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                                 </div>
                             </div>
@@ -2156,8 +2138,6 @@
                 }
                 html += `</div>`;
             }
-
-            if (typeof window.renderEditTaskModal === 'function') html += window.renderEditTaskModal();
 
             // MODAL CATEGORIAS DE TAREFAS
             if (uiState.showCategoryModal) {
