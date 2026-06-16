@@ -238,7 +238,11 @@
                     }
                 });
             }
-            state.tasks.forEach(t => { if (!Array.isArray(t.subtasks)) t.subtasks = []; });
+            state.tasks.forEach(t => { 
+                if (!Array.isArray(t.subtasks)) t.subtasks = []; 
+                if (!Array.isArray(t.recurrenceDays)) t.recurrenceDays = []; 
+                if (typeof t.isRecurring === 'undefined') t.isRecurring = t.recurrenceDays.length > 0;
+            });
             if (state.currentFilter !== 'all' && !state.taskCategories.some(c => c.id === state.currentFilter && c.active !== false)) state.currentFilter = 'all';
             
             if (!state.customRewards) state.customRewards = [];
@@ -440,7 +444,7 @@
             }
         };
 
-        window.checkGameTriggers = function() {
+        window.getCurrentlyQualifiedBadgeIds = function() {
             const activeBadges = [];
             if (state.tasks.length > 0 && state.tasks.some(t => t.completed)) activeBadges.push('primeiro_sangue');
             if (state.waterCount >= 5) activeBadges.push('oasis');
@@ -469,6 +473,28 @@
             if (state.financeData?.moneyJournal?.some(m => m.action && (m.action.includes('Adiou') || m.action.includes('Cancelou')))) activeBadges.push('blindagem_financeira');
             if ((state.studyData?.sessions?.length >= 1) && (state.healthData?.workouts?.length >= 1) && hasFinanceData) activeBadges.push('comandante_integrado');
 
+            return activeBadges;
+        };
+
+        window.rollbackTaskBadges = function(task) {
+            const badgeIds = Array.isArray(task?.rewardedBadgeIds) ? task.rewardedBadgeIds : [];
+            if (badgeIds.length === 0) return;
+
+            const stillQualified = window.getCurrentlyQualifiedBadgeIds();
+            const badgesToRemove = badgeIds.filter(badgeId => !stillQualified.includes(badgeId));
+            if (badgesToRemove.length > 0) {
+                state.unlockedBadges = state.unlockedBadges.filter(badgeId => !badgesToRemove.includes(badgeId));
+                state.xp = Math.max(0, state.xp - (badgesToRemove.length * 100));
+                state.coins = Math.max(0, state.coins - (badgesToRemove.length * 50));
+                if (typeof getCorrectLevel === 'function') state.level = getCorrectLevel(state.xp);
+                const names = badgesToRemove.map(id => BADGES_DB.find(b => b.id === id)?.title || id).join(', ');
+                window.showToast('Conquista revertida', `${names}. A medalha saiu porque a missão foi desmarcada.`, 'rotate-ccw', 'text-orange-400');
+            }
+            task.rewardedBadgeIds = [];
+        };
+
+        window.checkGameTriggers = function() {
+            const activeBadges = window.getCurrentlyQualifiedBadgeIds();
             const toUnlock = activeBadges.filter(b => !state.unlockedBadges.includes(b));
             toUnlock.forEach(badgeId => window.unlockBadge(badgeId));
             if (state.combo > (state.stats.maxComboReached || 0)) state.stats.maxComboReached = state.combo;
@@ -491,19 +517,26 @@
 
         window.toggleTask = function(taskId, event) {
             const task = state.tasks.find(t => t.id == taskId);
+            if (!task) return;
+
             if (task.completed) {
                 task.completed = false; task.skipped = false;
                 const deductedXp = task.rewardedXp || task.xp; const deductedCoins = task.rewardedCoins || Math.round(task.xp * 0.2);
                 state.xp = Math.max(0, state.xp - deductedXp); state.coins = Math.max(0, state.coins - deductedCoins);
                 window.changeEnergy(task.energyCost); state.combo = Math.max(0, state.combo - 1);
+                window.rollbackTaskBadges(task);
+                if (typeof getCorrectLevel === 'function') state.level = getCorrectLevel(state.xp);
                 window.spawnFloatingText(event, `-${deductedXp} XP`, 'text-red-400');
             } else {
+                const badgesBefore = [...state.unlockedBadges];
                 const multiplier = window.getComboMultiplier(); const finalXp = Math.round(task.xp * multiplier); const earnedCoins = Math.round(finalXp * 0.2); 
                 task.completed = true; task.rewardedXp = finalXp; task.rewardedCoins = earnedCoins; 
                 state.xp += finalXp; state.coins += earnedCoins; window.changeEnergy(-task.energyCost); state.combo += 1;
+                window.checkGameTriggers();
+                task.rewardedBadgeIds = state.unlockedBadges.filter(badgeId => !badgesBefore.includes(badgeId));
                 window.spawnFloatingText(event, `+${finalXp} XP`, 'text-indigo-400');
             }
-            window.checkGameTriggers(); window.checkLevelUp(); window.saveState();
+            window.checkLevelUp(); window.saveState();
         };
 
         window.showToast = function(title, desc, iconName, colorClass) {
@@ -613,6 +646,29 @@
 
         window.getTaskCategoryLabel = function(categoryId) {
             return window.getTaskCategory(categoryId).label || categoryId || 'Geral';
+        };
+
+        window.getRecurringDaysLabel = function(days = []) {
+            if (!Array.isArray(days) || days.length === 0) return '';
+            const ordered = daysOfWeek.filter(d => days.includes(d.id));
+            if (ordered.length === 7) return 'Todos os dias';
+            return ordered.map(d => d.label.slice(0, 3)).join(', ');
+        };
+
+        window.cloneSubtasksForNewTask = function(subtasks = []) {
+            return (Array.isArray(subtasks) ? subtasks : []).map((st, index) => ({
+                id: Date.now() + Math.random() + index,
+                text: st.text,
+                completed: false,
+                createdAt: new Date().toISOString()
+            }));
+        };
+
+        window.setCreateTaskRecurrence = function(mode) {
+            daysOfWeek.forEach(d => {
+                const el = document.getElementById(`ct-repeat-${d.id}`);
+                if (el) el.checked = mode === 'all';
+            });
         };
 
         window.slugifyCategoryName = function(name) {
@@ -751,7 +807,7 @@
             const text = document.getElementById('ct-text').value.trim(); if (!text) { window.showAlertModal('Título vazio.'); return; }
             const cost = window.calculateTaskCost(document.getElementById('ct-priority').value, document.getElementById('ct-complexity').value, document.getElementById('ct-time').value, document.getElementById('ct-impact-type').value);
             const rawSubtasks = document.getElementById('ct-subtasks')?.value || '';
-            const subtasks = rawSubtasks.split('\n').map(t => t.trim()).filter(Boolean).map((subText, index) => ({
+            const baseSubtasks = rawSubtasks.split('\n').map(t => t.trim()).filter(Boolean).map((subText, index) => ({
                 id: Date.now() + index + Math.random(),
                 text: subText,
                 completed: false,
@@ -759,8 +815,36 @@
             }));
             const activeCategories = window.getTaskCategories();
             const selectedCategory = document.getElementById('ct-category').value || activeCategories[0]?.id || 'life';
-            state.tasks.push({ id: Date.now(), day: document.getElementById('ct-day').value, category: selectedCategory, text: text, xp: cost.xp, energyCost: cost.hp, completed: false, priority: document.getElementById('ct-priority').value, time: document.getElementById('ct-time').value + ' min', subtasks });
-            uiState.showCreateTaskModal = false; window.showToast('Missão Alistada!', subtasks.length ? `Adicionada com ${subtasks.length} subtarefa(s).` : 'Adicionada ao quadro.', 'crosshair', 'text-emerald-400'); window.saveState();
+            const selectedDay = document.getElementById('ct-day').value;
+            const recurrenceDays = daysOfWeek
+                .filter(d => document.getElementById(`ct-repeat-${d.id}`)?.checked)
+                .map(d => d.id);
+            const isRecurring = recurrenceDays.length > 0;
+            const daysToCreate = isRecurring ? recurrenceDays : [selectedDay];
+            const recurrenceGroupId = isRecurring ? `rec-${Date.now()}-${Math.random().toString(16).slice(2)}` : null;
+
+            daysToCreate.forEach((targetDay, index) => {
+                state.tasks.push({
+                    id: Date.now() + index + Math.random(),
+                    day: targetDay,
+                    category: selectedCategory,
+                    text: text,
+                    xp: cost.xp,
+                    energyCost: cost.hp,
+                    completed: false,
+                    priority: document.getElementById('ct-priority').value,
+                    time: document.getElementById('ct-time').value + ' min',
+                    subtasks: window.cloneSubtasksForNewTask(baseSubtasks),
+                    isRecurring,
+                    recurrenceDays: isRecurring ? [...recurrenceDays] : [],
+                    recurrenceGroupId
+                });
+            });
+
+            uiState.showCreateTaskModal = false;
+            const recurrenceMsg = isRecurring ? ` Missão recorrente: ${window.getRecurringDaysLabel(recurrenceDays)}.` : '';
+            window.showToast('Missão Alistada!', `${daysToCreate.length} missão(ões) adicionada(s).${baseSubtasks.length ? ` ${baseSubtasks.length} subtarefa(s).` : ''}${recurrenceMsg}`, 'crosshair', 'text-emerald-400');
+            window.saveState();
         };
 
         window.setCategoryFilter = function(filterId) { state.currentFilter = filterId; window.saveState(); };
@@ -772,9 +856,23 @@
         window.healEnergy = function() { state.energy = 100; window.togglePanicModal(false); window.saveState(); };
         
         window.resetSystem = function() { 
-            window.showConfirmModal("Deseja APAGAR tarefas para iniciar semana limpa? XP/Patente não serão zerados.", () => { 
-                state.tasks = []; state.quickTasks = []; state.combo = 0; state.waterCount = 0; state.energy = 100; state.activeTab = 'monday'; state.currentFilter = 'all';
-                window.saveState(); window.showToast("Quartel General: Nova Semana!", "Quadro limpo.", "sparkles", "text-yellow-400");
+            window.showConfirmModal("Deseja reiniciar a semana? Missões comuns serão apagadas, mas missões recorrentes serão preservadas e marcadas como pendentes para a nova semana.", () => { 
+                const recurringTasks = state.tasks
+                    .filter(t => t.isRecurring || (Array.isArray(t.recurrenceDays) && t.recurrenceDays.length > 0))
+                    .map(t => {
+                        const cleanTask = {
+                            ...t,
+                            completed: false,
+                            skipped: false,
+                            subtasks: (Array.isArray(t.subtasks) ? t.subtasks : []).map(st => ({ ...st, completed: false }))
+                        };
+                        delete cleanTask.rewardedXp;
+                        delete cleanTask.rewardedCoins;
+                        return cleanTask;
+                    });
+                const preservedCount = recurringTasks.length;
+                state.tasks = recurringTasks; state.quickTasks = []; state.combo = 0; state.waterCount = 0; state.energy = 100; state.activeTab = 'monday'; state.currentFilter = 'all';
+                window.saveState(); window.showToast("Quartel General: Nova Semana!", preservedCount ? `Quadro limpo. ${preservedCount} missão(ões) recorrente(s) preservada(s).` : "Quadro limpo.", "sparkles", "text-yellow-400");
             }); 
         };
 
@@ -1741,6 +1839,9 @@
                         const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
                         const doneSubtasks = subtasks.filter(st => st.completed).length;
                         const subtaskPercent = subtasks.length ? Math.round((doneSubtasks / subtasks.length) * 100) : 0;
+                        const recurrenceDays = Array.isArray(task.recurrenceDays) ? task.recurrenceDays : [];
+                        const isRecurringTask = task.isRecurring || recurrenceDays.length > 0;
+                        const recurrenceLabel = window.getRecurringDaysLabel(recurrenceDays);
 
                         html += `
                         <div onclick="window.toggleTask(${task.id}, event)" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg cursor-pointer transition-all ${bgClass} group relative">
@@ -1757,6 +1858,7 @@
                                             <span class="text-[10px] uppercase font-bold ${taskCategory.color || 'text-slate-400'} bg-slate-900 px-2 py-0.5 rounded border border-slate-700"><i data-lucide="${taskCategory.icon || 'target'}" class="inline w-3 h-3 mr-1"></i>${taskCategory.label}</span>
                                             <span class="text-[10px] uppercase font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-700"><i data-lucide="zap" class="inline w-3 h-3 text-indigo-400 mr-1"></i>${task.xp}</span>
                                             <span class="text-[10px] uppercase font-bold ${task.energyCost < 0 ? 'text-emerald-400' : 'text-orange-400'} bg-slate-900 px-2 py-0.5 rounded border border-slate-700"><i data-lucide="battery" class="inline w-3 h-3 mr-1"></i>${task.energyCost < 0 ? '+' : '-'}${Math.abs(task.energyCost)}</span>
+                                            ${isRecurringTask ? `<span class="text-[10px] uppercase font-bold text-violet-300 bg-slate-900 px-2 py-0.5 rounded border border-violet-900/50"><i data-lucide="repeat" class="inline w-3 h-3 mr-1"></i>${recurrenceLabel || 'Recorrente'}</span>` : ''}
                                             ${subtasks.length ? `<span class="text-[10px] uppercase font-bold text-cyan-400 bg-slate-900 px-2 py-0.5 rounded border border-cyan-900/50"><i data-lucide="list-checks" class="inline w-3 h-3 mr-1"></i>${doneSubtasks}/${subtasks.length}</span>` : ''}
                                         </div>` : ''}
                                         ${subtasks.length ? `
@@ -1841,6 +1943,19 @@
                                         ${window.getTaskCategories().map(cat => `<option value="${cat.id}">${cat.label}</option>`).join('')}
                                     </select>
                                     <button type="button" onclick="window.toggleCategoryModal()" class="mt-2 text-[10px] text-cyan-400 hover:text-cyan-300 font-bold uppercase tracking-widest">Gerenciar categorias</button>
+                                </div>
+                            </div>
+                            <div class="bg-slate-950/70 border border-violet-900/40 rounded-xl p-3 space-y-3">
+                                <div>
+                                    <label class="text-xs font-bold text-violet-300 uppercase flex items-center gap-2"><i data-lucide="repeat" class="w-3.5 h-3.5"></i> Recorrência semanal</label>
+                                    <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Marque os dias em que esta missão deve se repetir. Ao reiniciar a semana, missões recorrentes ficam preservadas e voltam como pendentes.</p>
+                                </div>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    ${daysOfWeek.map(d => `<label class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg px-2 py-2 text-xs text-slate-300 hover:border-violet-700 cursor-pointer"><input id="ct-repeat-${d.id}" type="checkbox" class="accent-violet-500"> ${d.label}</label>`).join('')}
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    <button type="button" onclick="window.setCreateTaskRecurrence('all')" class="text-[10px] bg-violet-900/40 hover:bg-violet-800 text-violet-200 border border-violet-700/50 px-2 py-1 rounded font-bold uppercase">Todos os dias</button>
+                                    <button type="button" onclick="window.setCreateTaskRecurrence('clear')" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 px-2 py-1 rounded font-bold uppercase">Limpar recorrência</button>
                                 </div>
                             </div>
                             <div class="grid grid-cols-2 gap-3">
