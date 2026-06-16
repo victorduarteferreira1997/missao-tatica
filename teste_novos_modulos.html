@@ -214,7 +214,7 @@
             if (!state.customRewards) state.customRewards = [];
             if (!state.rewardPurchases) state.rewardPurchases = [];
 
-            // Validação Módulo Rituais
+            // Validação Módulo de Rituais
             if (!state.routineData) state.routineData = {};
             if (!state.routineData.rituals) state.routineData.rituals = [];
             if (!state.routineData.logs) state.routineData.logs = [];
@@ -595,7 +595,8 @@
                 window.showToast('Foco Concluído!', `+${Math.round(earnedXP)} XP`, 'target', 'text-yellow-400'); window.checkGameTriggers(); window.checkLevelUp();
             } else {
                 const wasLongBreak = pomodoro.mode === 'longBreak';
-                pomodoro.mode = 'focus'; pomodoro.timeLeft = s.focus * 60;
+                pomodoro.mode = 'focus'; 
+                pomodoro.timeLeft = s.focus * 60;
                 if (wasLongBreak) pomodoro.cycle = 1; else pomodoro.cycle++;
                 window.changeEnergy(wasLongBreak ? 20 : 5);
             }
@@ -651,7 +652,6 @@
             }); 
         };
 
-
         // ==========================================
         // MÓDULO: RITUAIS OPERACIONAIS
         // ==========================================
@@ -663,8 +663,8 @@
 
             if (!title) { window.showAlertModal('Nome do ritual é obrigatório.'); return; }
             if (!['morning', 'night'].includes(period)) { window.showAlertModal('Período inválido.'); return; }
-            if (Number.isNaN(xp)) xp = 10;
-            if (Number.isNaN(energyDelta)) energyDelta = 0;
+            if (isNaN(xp)) xp = 10;
+            if (isNaN(energyDelta)) energyDelta = 0;
 
             state.routineData.rituals.push({
                 id: Date.now(),
@@ -677,17 +677,23 @@
             });
 
             if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
-            window.showToast('Ritual criado', 'Protocolo operacional adicionado.', 'clipboard-check', 'text-emerald-400');
             window.saveState();
+            window.showToast('Ritual criado', 'Protocolo operacional adicionado.', 'clipboard-check', 'text-emerald-400');
         };
 
         window.completeRitual = function(ritualId) {
-            const ritual = state.routineData.rituals.find(r => r.id === ritualId && r.active);
+            const ritual = state.routineData.rituals.find(r => r.id === ritualId && r.active !== false);
             if (!ritual) { window.showAlertModal('Ritual não encontrado.'); return; }
 
             const todayKey = window.getLocalDateKey();
-            const alreadyDone = state.routineData.logs.some(log => log.ritualId === ritualId && window.getLocalDateKey(log.date) === todayKey);
-            if (alreadyDone) { window.showAlertModal('Este ritual já foi concluído hoje.'); return; }
+            const alreadyDone = state.routineData.logs.some(log => 
+                log.ritualId === ritualId && window.getLocalDateKey(log.date || log.completedAt) === todayKey
+            );
+
+            if (alreadyDone) {
+                window.showAlertModal('Este ritual já foi concluído hoje.');
+                return;
+            }
 
             const xpAwarded = Number.isFinite(Number(ritual.xp)) ? Number(ritual.xp) : 10;
             const energyDeltaApplied = Number.isFinite(Number(ritual.energyDelta)) ? Number(ritual.energyDelta) : 0;
@@ -705,8 +711,8 @@
             window.changeEnergy(energyDeltaApplied);
             window.checkLevelUp();
             if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
-            window.showToast('Ritual concluído', `+${xpAwarded} XP. Consistência operacional registrada.`, 'check-circle', 'text-emerald-400');
             window.saveState();
+            window.showToast('Ritual concluído', `+${xpAwarded} XP. Consistência operacional registrada.`, 'check-circle', 'text-emerald-400');
         };
 
         window.deleteRitual = function(ritualId) {
@@ -714,21 +720,127 @@
                 const ritual = state.routineData.rituals.find(r => r.id === ritualId);
                 if (!ritual) { window.showAlertModal('Ritual não encontrado.'); return; }
                 ritual.active = false;
-                if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
-                window.showToast('Ritual arquivado', 'Histórico preservado.', 'archive', 'text-slate-300');
                 window.saveState();
+                window.showToast('Ritual arquivado', 'Histórico preservado.', 'archive', 'text-slate-300');
             });
         };
 
         window.fillRitualSuggestion = function(title, period, xp, energyDelta) {
-            const titleEl = document.getElementById('ritual-title');
-            const periodEl = document.getElementById('ritual-period');
-            const xpEl = document.getElementById('ritual-xp');
-            const energyEl = document.getElementById('ritual-energy');
-            if (titleEl) titleEl.value = title;
-            if (periodEl) periodEl.value = period;
-            if (xpEl) xpEl.value = xp;
-            if (energyEl) energyEl.value = energyDelta;
+            const titleInput = document.getElementById('ritual-title');
+            const periodInput = document.getElementById('ritual-period');
+            const xpInput = document.getElementById('ritual-xp');
+            const energyInput = document.getElementById('ritual-energy');
+
+            if (titleInput) titleInput.value = title;
+            if (periodInput) periodInput.value = period;
+            if (xpInput) xpInput.value = xp;
+            if (energyInput) energyInput.value = energyDelta;
+        };
+
+        window.isRitualCompletedToday = function(ritualId) {
+            const todayKey = window.getLocalDateKey();
+            return state.routineData.logs.some(log => 
+                log.ritualId === ritualId && window.getLocalDateKey(log.date || log.completedAt) === todayKey
+            );
+        };
+
+        window.renderRitualsSection = function() {
+            const rituals = (state.routineData?.rituals || []).filter(r => r.active !== false);
+            const morning = rituals.filter(r => r.period === 'morning');
+            const night = rituals.filter(r => r.period === 'night');
+
+            const renderRitualList = (items, emptyText) => {
+                if (!items.length) return `<p class="text-xs text-slate-500 italic">${emptyText}</p>`;
+
+                return items.map(r => {
+                    const doneToday = window.isRitualCompletedToday(r.id);
+                    const hpText = Number(r.energyDelta || 0) === 0 ? 'HP 0' : `${Number(r.energyDelta) > 0 ? '+' : ''}${r.energyDelta} HP`;
+                    const hpClass = Number(r.energyDelta || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
+
+                    return `
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <h4 class="text-sm font-bold text-white">${r.title}</h4>
+                            <div class="flex flex-wrap gap-2 mt-1 text-[10px] font-bold uppercase tracking-widest">
+                                <span class="text-indigo-400 bg-indigo-950/40 border border-indigo-900/50 px-2 py-0.5 rounded">+${r.xp || 10} XP</span>
+                                <span class="${hpClass} bg-slate-900 border border-slate-700 px-2 py-0.5 rounded">${hpText}</span>
+                                ${doneToday ? `<span class="text-emerald-400 bg-emerald-950/40 border border-emerald-900/50 px-2 py-0.5 rounded">Concluído hoje</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex gap-2 shrink-0">
+                            ${doneToday 
+                                ? `<button disabled class="px-3 py-2 rounded-lg bg-emerald-950/30 text-emerald-500 border border-emerald-900/40 text-xs font-bold cursor-default">Feito</button>`
+                                : `<button onclick="window.completeRitual(${r.id})" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors">Concluir hoje</button>`
+                            }
+                            <button onclick="window.deleteRitual(${r.id})" class="px-3 py-2 rounded-lg bg-slate-900 hover:bg-red-950/40 text-slate-500 hover:text-red-400 border border-slate-800 text-xs font-bold transition-colors" title="Arquivar ritual"><i data-lucide="archive" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>`;
+                }).join('');
+            };
+
+            return `
+            <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 mb-4 font-mono">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h2 class="text-sm font-black tracking-widest uppercase text-emerald-400 flex items-center gap-2"><i data-lucide="clipboard-check" class="w-4 h-4"></i> Rituais Operacionais</h2>
+                        <p class="text-xs text-slate-500 mt-1">Protocolos matinais e noturnos integrados à gamificação.</p>
+                    </div>
+                    <div class="text-[10px] uppercase tracking-widest font-bold text-slate-500 bg-slate-950 border border-slate-800 px-3 py-1 rounded-full">Rotina 1.0</div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
+                    <div class="bg-slate-950/40 border border-slate-800 rounded-xl p-4">
+                        <h3 class="text-xs font-bold uppercase tracking-widest text-yellow-400 mb-3 flex items-center gap-2"><i data-lucide="sunrise" class="w-4 h-4"></i> Ritual Matinal</h3>
+                        <div class="space-y-2">${renderRitualList(morning, 'Nenhum ritual matinal ativo.')}</div>
+                    </div>
+                    <div class="bg-slate-950/40 border border-slate-800 rounded-xl p-4">
+                        <h3 class="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-3 flex items-center gap-2"><i data-lucide="moon" class="w-4 h-4"></i> Ritual Noturno</h3>
+                        <div class="space-y-2">${renderRitualList(night, 'Nenhum ritual noturno ativo.')}</div>
+                    </div>
+                </div>
+
+                ${rituals.length === 0 ? `<div class="mb-4 bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-500 italic">Nenhum ritual ativo. Crie um protocolo matinal ou noturno.</div>` : ''}
+
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
+                    <h3 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Criar Ritual</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-3">
+                        <input id="ritual-title" type="text" placeholder="Nome do ritual" class="sm:col-span-2 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500">
+                        <select id="ritual-period" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500">
+                            <option value="morning">Manhã</option>
+                            <option value="night">Noite</option>
+                        </select>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input id="ritual-xp" type="number" value="10" placeholder="XP" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500">
+                            <input id="ritual-energy" type="number" value="0" placeholder="HP" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <p class="text-[10px] uppercase font-bold text-slate-500 mb-2">Sugestões matinais</p>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="window.fillRitualSuggestion('Beber água', 'morning', 10, 5)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">Beber água</button>
+                                <button onclick="window.fillRitualSuggestion('Luz natural por alguns minutos', 'morning', 10, 5)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">Luz natural</button>
+                                <button onclick="window.fillRitualSuggestion('Alongamento leve', 'morning', 10, 5)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">Alongamento</button>
+                                <button onclick="window.fillRitualSuggestion('Planejar 3 prioridades', 'morning', 15, 0)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">3 prioridades</button>
+                                <button onclick="window.fillRitualSuggestion('Medicação prescrita', 'morning', 10, 0)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">Medicação prescrita</button>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase font-bold text-slate-500 mb-2">Sugestões noturnas</p>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="window.fillRitualSuggestion('Desligar telas', 'night', 15, 5)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">Desligar telas</button>
+                                <button onclick="window.fillRitualSuggestion('Separar roupa do dia seguinte', 'night', 10, 0)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">Separar roupa</button>
+                                <button onclick="window.fillRitualSuggestion('Higiene do sono', 'night', 15, 5)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">Higiene do sono</button>
+                                <button onclick="window.fillRitualSuggestion('Diário rápido', 'night', 10, 0)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">Diário rápido</button>
+                                <button onclick="window.fillRitualSuggestion('Medicação prescrita', 'night', 10, 0)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">Medicação prescrita</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="window.addRitual()" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-black uppercase tracking-widest py-3 rounded-xl text-xs transition-colors">Criar Ritual</button>
+                </div>
+            </section>`;
         };
 
         // ==========================================
@@ -838,6 +950,7 @@
 
             state.xp += xpEarned; window.changeEnergy(energyDelta);
             window.checkLevelUp();
+            if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
 
             if (generatedReviewIds.length > 0) {
                 window.showToast('Sessão Registrada!', `+${xpEarned} XP. Revisão programada.`, 'brain', 'text-fuchsia-400');
@@ -848,7 +961,6 @@
             if(state.energy < 20) {
                 setTimeout(() => window.showAlertModal("Bateria Executiva Crítica (<20 HP). O sistema recomenda transição para atividades passivas ou encerramento."), 1000);
             }
-            if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
             window.saveState();
         };
 
@@ -1003,9 +1115,7 @@
                     window.showToast('Revisão Concluída', `+${xp} XP. Próxima etapa já estava programada.`, 'check-circle', 'text-emerald-400');
                 }
                 
-                window.closeCustomPrompt(); 
-                if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
-                window.saveState();
+                window.closeCustomPrompt(); if (typeof window.checkGameTriggers === "function") window.checkGameTriggers(); window.saveState();
             }
         };
 
@@ -1088,7 +1198,7 @@
             const mood = document.getElementById('habit-mood').value;
             const fatigue = document.getElementById('habit-fatigue').value;
             state.healthData.habits.push({ id: Date.now(), date: new Date().toISOString(), sleep, water, mood, fatigue });
-            state.xp += 20; window.checkLevelUp(); window.showToast('Rotina Salva', '+20 XP', 'heart', 'text-emerald-400'); if (typeof window.checkGameTriggers === "function") window.checkGameTriggers(); window.saveState();
+            state.xp += 20; window.checkLevelUp(); if (typeof window.checkGameTriggers === "function") window.checkGameTriggers(); window.showToast('Rotina Salva', '+20 XP', 'heart', 'text-emerald-400'); window.saveState();
         };
 
         // ==========================================
@@ -1144,8 +1254,7 @@
                 state.xp += 50; window.checkLevelUp();
                 window.showToast('Pausa Tática Ativada', 'Excelente comando! +50 XP. Avalie amanhã.', 'shield', 'text-emerald-400');
             }
-            if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
-            window.closeCustomPrompt(); uiState.financeGuardianData = null; window.saveState();
+            window.closeCustomPrompt(); uiState.financeGuardianData = null; if (typeof window.checkGameTriggers === "function") window.checkGameTriggers(); window.saveState();
         };
         window.cancelPurchase = function() {
             if(uiState.financeGuardianData) {
@@ -1153,7 +1262,6 @@
                 state.xp += 80; window.checkLevelUp();
                 window.showToast('Defesa Perfeita!', 'Ataque ao orçamento neutralizado. +80 XP.', 'shield-check', 'text-emerald-500');
             }
-            if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
             window.closeCustomPrompt(); uiState.financeGuardianData = null; window.saveState();
         }
         window.deleteVariable = function(id) { state.financeData.variableExpenses = state.financeData.variableExpenses.filter(i => i.id !== id); window.saveState(); };
@@ -1162,7 +1270,7 @@
             const mood = document.getElementById('mj-mood').value; const event = document.getElementById('mj-event').value.trim(); const thought = document.getElementById('mj-thought').value.trim();
             if(!event) return;
             state.financeData.moneyJournal.push({ id: Date.now(), date: new Date().toISOString(), mood, event, thought });
-            state.xp += 15; window.checkLevelUp(); window.showToast('Diário Salvo', 'Autoconsciência melhora o bolso. +15 XP.', 'book-open', 'text-yellow-400'); if (typeof window.checkGameTriggers === "function") window.checkGameTriggers(); window.saveState();
+            state.xp += 15; window.checkLevelUp(); if (typeof window.checkGameTriggers === "function") window.checkGameTriggers(); window.showToast('Diário Salvo', 'Autoconsciência melhora o bolso. +15 XP.', 'book-open', 'text-yellow-400'); window.saveState();
         };
 
         // ==========================================
@@ -1365,6 +1473,9 @@
                 </div>
             </div>`;
 
+            // RITUAIS OPERACIONAIS
+            html += window.renderRitualsSection();
+
             // TABS DIÁRIAS
             html += `<div class="flex overflow-x-auto pb-2 scrollbar-hide gap-2 bg-slate-900 p-2 rounded-xl border border-slate-800 mb-4 font-mono">`;
             daysOfWeek.forEach(day => {
@@ -1395,9 +1506,6 @@
             // MODO FOCO
             const focusClass = state.focusMode ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' : 'bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800';
             html += `<button onclick="window.toggleFocusMode()" class="mb-4 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold text-sm transition-all border w-full ${focusClass} font-mono"><i data-lucide="crosshair" class="w-4 h-4"></i> ${state.focusMode ? 'Desativar Estação de Foco' : 'Estação de Foco (Pomodoro)'}</button>`;
-
-            // RITUAIS OPERACIONAIS
-            html += renderRitualSection();
 
             if (state.focusMode) {
                 const targetTasks = state.currentFilter === 'all' ? dailyTasks : dailyTasks.filter(t => t.category === state.currentFilter);
@@ -1658,112 +1766,6 @@
             // Render specific components that require external DOM access safely
             if(!clockInterval && currentUser) startClock();
             window.updateSyncStatus(currentSyncStatus);
-        }
-
-
-        function renderRitualSection() {
-            const rituals = (state.routineData?.rituals || []).filter(r => r.active !== false);
-            const logs = state.routineData?.logs || [];
-            const todayKey = window.getLocalDateKey();
-            const isDoneToday = (ritualId) => logs.some(log => log.ritualId === ritualId && window.getLocalDateKey(log.date) === todayKey);
-
-            const renderRitualList = (period) => {
-                const items = rituals.filter(r => r.period === period);
-                if (items.length === 0) {
-                    return `<p class="text-xs text-slate-600 italic bg-slate-950/50 border border-slate-800 rounded-lg p-3">Nenhum ritual ativo. Crie um protocolo matinal ou noturno.</p>`;
-                }
-                return `<div class="space-y-2">${items.map(r => {
-                    const done = isDoneToday(r.id);
-                    const xp = Number.isFinite(Number(r.xp)) ? Number(r.xp) : 10;
-                    const hp = Number.isFinite(Number(r.energyDelta)) ? Number(r.energyDelta) : 0;
-                    const hpText = hp === 0 ? '0 HP' : `${hp > 0 ? '+' : ''}${hp} HP`;
-                    const hpColor = hp > 0 ? 'text-emerald-400' : hp < 0 ? 'text-red-400' : 'text-slate-500';
-                    return `
-                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-3">
-                        <div class="min-w-0 flex-1">
-                            <div class="font-bold text-sm text-white truncate">${r.title}</div>
-                            <div class="flex flex-wrap gap-2 mt-1 text-[10px] font-bold uppercase tracking-wider">
-                                <span class="text-indigo-400 bg-indigo-950/30 border border-indigo-900/40 px-1.5 py-0.5 rounded">+${xp} XP</span>
-                                <span class="${hpColor} bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded">${hpText}</span>
-                                ${done ? `<span class="text-emerald-400 bg-emerald-950/30 border border-emerald-900/40 px-1.5 py-0.5 rounded">Concluído hoje</span>` : ''}
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2 shrink-0">
-                            ${done ? `<button disabled class="bg-emerald-950/30 text-emerald-700 p-2 rounded-lg cursor-not-allowed" title="Concluído hoje"><i data-lucide="check-circle" class="w-4 h-4"></i></button>` : `<button onclick="window.completeRitual(${r.id})" class="bg-emerald-900/40 hover:bg-emerald-600 text-emerald-400 hover:text-white p-2 rounded-lg transition-colors" title="Concluir hoje"><i data-lucide="check" class="w-4 h-4"></i></button>`}
-                            <button onclick="window.deleteRitual(${r.id})" class="bg-slate-900 hover:bg-slate-800 text-slate-500 hover:text-slate-300 p-2 rounded-lg transition-colors" title="Arquivar ritual"><i data-lucide="archive" class="w-4 h-4"></i></button>
-                        </div>
-                    </div>`;
-                }).join('')}</div>`;
-            };
-
-            return `
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg mb-4 font-mono">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4 border-b border-slate-800 pb-3">
-                    <div>
-                        <h2 class="text-sm font-black uppercase tracking-widest text-slate-200 flex items-center gap-2"><i data-lucide="sun-moon" class="w-4 h-4 text-indigo-400"></i> Rituais Operacionais</h2>
-                        <p class="text-[11px] text-slate-500 mt-1">Protocolos matinais e noturnos integrados à gamificação.</p>
-                    </div>
-                    <span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest bg-slate-950 border border-slate-800 px-2 py-1 rounded">${logs.filter(l => window.getLocalDateKey(l.date) === todayKey).length} feitos hoje</span>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
-                    <div class="bg-slate-950/40 border border-slate-800 rounded-xl p-3">
-                        <h3 class="text-xs font-bold uppercase tracking-widest text-yellow-400 mb-3 flex items-center gap-2"><i data-lucide="sunrise" class="w-4 h-4"></i> Ritual Matinal</h3>
-                        ${renderRitualList('morning')}
-                    </div>
-                    <div class="bg-slate-950/40 border border-slate-800 rounded-xl p-3">
-                        <h3 class="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-3 flex items-center gap-2"><i data-lucide="moon" class="w-4 h-4"></i> Ritual Noturno</h3>
-                        ${renderRitualList('night')}
-                    </div>
-                </div>
-
-                <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 sm:p-4">
-                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-widest mb-3 flex items-center gap-2"><i data-lucide="plus-circle" class="w-4 h-4 text-emerald-400"></i> Criar Ritual</h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-3">
-                        <input id="ritual-title" type="text" placeholder="Nome do ritual" class="sm:col-span-2 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
-                        <select id="ritual-period" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
-                            <option value="morning">Manhã</option>
-                            <option value="night">Noite</option>
-                        </select>
-                        <button onclick="window.addRitual()" class="bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg px-3 py-2 text-xs font-black uppercase tracking-widest transition-colors">Criar Ritual</button>
-                    </div>
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">XP</label>
-                            <input id="ritual-xp" type="number" value="10" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">HP</label>
-                            <input id="ritual-energy" type="number" value="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
-                        </div>
-                        <div class="col-span-2 flex items-end">
-                            <p class="text-[10px] text-slate-500 leading-relaxed">Use HP positivo para rituais restauradores e HP negativo para rituais exigentes.</p>
-                        </div>
-                    </div>
-                    <div class="space-y-2">
-                        <div>
-                            <span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mr-2">Sugestões matinais:</span>
-                            ${[
-                                ['Beber água','morning',10,5],
-                                ['Luz natural por alguns minutos','morning',10,5],
-                                ['Alongamento leve','morning',10,5],
-                                ['Planejar 3 prioridades','morning',15,0],
-                                ['Medicação prescrita','morning',10,0]
-                            ].map(s => `<button onclick="window.fillRitualSuggestion('${s[0]}','${s[1]}',${s[2]},${s[3]})" class="text-[10px] bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 px-2 py-1 rounded-full mr-1 mb-1 transition-colors">${s[0]}</button>`).join('')}
-                        </div>
-                        <div>
-                            <span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mr-2">Sugestões noturnas:</span>
-                            ${[
-                                ['Desligar telas','night',15,5],
-                                ['Separar roupa do dia seguinte','night',10,0],
-                                ['Higiene do sono','night',15,5],
-                                ['Diário rápido','night',10,0],
-                                ['Medicação prescrita','night',10,0]
-                            ].map(s => `<button onclick="window.fillRitualSuggestion('${s[0]}','${s[1]}',${s[2]},${s[3]})" class="text-[10px] bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 px-2 py-1 rounded-full mr-1 mb-1 transition-colors">${s[0]}</button>`).join('')}
-                        </div>
-                    </div>
-                </div>
-            </div>`;
         }
 
         // --- Q.G. ---
@@ -2148,8 +2150,7 @@
                 let countMaintenance = 0;
                 let countArchived = 0;
 
-                const validSubjectIds = new Set((state.studyData?.subjects || []).map(s => s.id));
-                const allReviews = (state.studyData?.reviews || []).filter(r => validSubjectIds.has(r.subjectId));
+                const allReviews = state.studyData?.reviews || [];
 
                 allReviews.forEach(r => {
                     const status = r.status || 'pending';
@@ -2232,9 +2233,11 @@
                 </div>`;
 
                 const now = new Date();
-                const pending = allReviews.filter(r => r.status === 'pending').sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-                const completed = allReviews.filter(r => r.status === 'completed').sort((a, b) => new Date(b.completedAt || b.dueDate) - new Date(a.completedAt || a.dueDate)).slice(0, 5);
-                const archived = allReviews.filter(r => r.status === 'archived').sort((a, b) => new Date(b.archivedAt || b.completedAt || b.dueDate) - new Date(a.archivedAt || a.completedAt || a.dueDate)).slice(0, 10);
+                const visibleReviews = state.studyData.reviews.filter(r => state.studyData.subjects.some(s => s.id === r.subjectId));
+
+                const pending = visibleReviews.filter(r => r.status === 'pending').sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+                const completed = visibleReviews.filter(r => r.status === 'completed').sort((a, b) => new Date(b.completedAt || b.dueDate) - new Date(a.completedAt || a.dueDate)).slice(0, 5);
+                const archived = visibleReviews.filter(r => r.status === 'archived').sort((a, b) => new Date(b.archivedAt || b.completedAt || b.dueDate) - new Date(a.archivedAt || a.completedAt || a.dueDate)).slice(0, 10);
 
                 const dueToday = pending.filter(r => new Date(r.dueDate) <= now);
                 const upcoming = pending.filter(r => new Date(r.dueDate) > now).slice(0, 10);
