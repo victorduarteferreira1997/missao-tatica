@@ -218,6 +218,12 @@
 
         let pomodoro = { isRunning: false, timeLeft: 25 * 60, mode: 'focus', cycle: 1, intervalId: null, currentFocusStartedAt: null };
 
+        // Função definida cedo para evitar crash no validateState quando já existem tarefas salvas.
+        window.getTaskCategory = function(categoryId) {
+            const cat = state?.taskCategories?.find(c => c.id === categoryId) || DEFAULT_TASK_CATEGORIES.find(c => c.id === categoryId);
+            return cat || { id: categoryId || 'default', label: categoryId || 'Geral', icon: ICONS[categoryId] || ICONS.default, color: 'text-slate-400', active: true };
+        };
+
         function getCorrectLevel(currentXp) {
             let correctLevel = 1;
             for (let i = 0; i < RANKS.length; i++) {
