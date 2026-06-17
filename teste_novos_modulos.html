@@ -282,7 +282,9 @@
                 if (!Array.isArray(t.subtasks)) t.subtasks = []; 
                 if (!Array.isArray(t.recurrenceDays)) t.recurrenceDays = []; 
                 if (typeof t.isRecurring === 'undefined') t.isRecurring = t.recurrenceDays.length > 0;
-                if (!window.getTaskCategory(t.category) || !state.taskCategories.some(c => c.id === t.category)) t.category = state.taskCategories.find(c => c.active !== false)?.id || 'geral';
+                // Não depender de window.getTaskCategory aqui: validateState roda antes de alguns helpers visuais.
+                const categoryExistsForTask = state.taskCategories.some(c => c.id === t.category);
+                if (!categoryExistsForTask) t.category = state.taskCategories.find(c => c.active !== false)?.id || 'geral';
             });
             if (state.currentFilter !== 'all' && !state.taskCategories.some(c => c.id === state.currentFilter && c.active !== false)) state.currentFilter = 'all';
             
@@ -330,6 +332,15 @@
 
             if(!pomodoro.isRunning) pomodoro.timeLeft = state.pomodoroSettings.focus * 60;
         };
+
+        // Guarda extra de inicialização: o login precisa existir mesmo se categorias antigas estiverem salvas.
+        if (typeof window.getTaskCategory !== 'function') {
+            window.getTaskCategory = function(categoryId) {
+                const safeCategories = Array.isArray(state?.taskCategories) ? state.taskCategories : [];
+                const cat = safeCategories.find(c => c.id === categoryId) || (typeof DEFAULT_TASK_CATEGORIES !== 'undefined' ? DEFAULT_TASK_CATEGORIES.find(c => c.id === categoryId) : null);
+                return cat || { id: categoryId || 'geral', label: categoryId || 'Geral', icon: (ICONS && (ICONS[categoryId] || ICONS.default)) || 'target', color: 'text-slate-400', active: true };
+            };
+        }
 
         window.validateState();
 
