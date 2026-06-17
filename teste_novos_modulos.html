@@ -231,7 +231,7 @@
             pomodoroEvaluationData: null
         };
 
-        let pomodoro = { isRunning: false, timeLeft: 25 * 60, mode: 'focus', cycle: 1, intervalId: null, currentFocusStartedAt: null, currentFocusTaskId: null, currentFocusTaskText: null };
+        let pomodoro = { isRunning: false, timeLeft: 25 * 60, mode: 'focus', cycle: 1, intervalId: null, currentFocusStartedAt: null, currentFocusTaskId: null, currentFocusTaskText: null, currentFocusTaskDay: null, currentFocusTaskCategory: null };
 
         // Função definida cedo para evitar crash no validateState quando já existem tarefas salvas.
         window.getTaskCategory = function(categoryId) {
@@ -974,18 +974,41 @@
             return state.tasks.find(t => t.id == state.focusedTaskId && !t.completed && t.day === state.activeTab) || targetTasks.find(t => !t.completed) || null;
         };
 
-        window.togglePomodoro = function() {
+        window.getPomodoroLockedTask = function(taskIdFromButton = null) {
+            let lockedTask = null;
+
+            // Prioridade máxima: o valor REALMENTE selecionado no dropdown da Estação de Foco.
+            // Isso evita vincular o Pomodoro a uma tarefa antiga quando a tela ainda não rerenderizou.
+            const selectEl = document.getElementById('pomodoro-focused-task-select');
+            const selectedId = selectEl ? parseInt(selectEl.value) : NaN;
+            if (Number.isFinite(selectedId)) lockedTask = state.tasks.find(t => t.id == selectedId) || null;
+
+            // Fallback: id passado pelo botão, usado apenas quando não houver dropdown.
+            if (!lockedTask && taskIdFromButton !== null && typeof taskIdFromButton !== 'undefined' && taskIdFromButton !== '') {
+                const parsed = parseInt(taskIdFromButton);
+                if (Number.isFinite(parsed)) lockedTask = state.tasks.find(t => t.id == parsed) || null;
+            }
+
+            // Último fallback: regra antiga do alvo atual.
+            if (!lockedTask && window.getCurrentFocusTargetTask) lockedTask = window.getCurrentFocusTargetTask();
+            return lockedTask || null;
+        };
+
+        window.togglePomodoro = function(taskIdFromButton = null) {
             if (pomodoro.isRunning) { 
                 clearInterval(pomodoro.intervalId); 
                 pomodoro.isRunning = false; 
             } else { 
                 pomodoro.isRunning = true; 
                 if (pomodoro.mode === 'focus' && !pomodoro.currentFocusStartedAt) {
-                        pomodoro.currentFocusStartedAt = new Date().toISOString();
-                        const lockedTask = window.getCurrentFocusTargetTask ? window.getCurrentFocusTargetTask() : null;
-                        pomodoro.currentFocusTaskId = lockedTask ? lockedTask.id : null;
-                        pomodoro.currentFocusTaskText = lockedTask ? lockedTask.text : null;
-                    }
+                    pomodoro.currentFocusStartedAt = new Date().toISOString();
+                    const lockedTask = window.getPomodoroLockedTask(taskIdFromButton);
+                    pomodoro.currentFocusTaskId = lockedTask ? lockedTask.id : null;
+                    pomodoro.currentFocusTaskText = lockedTask ? lockedTask.text : null;
+                    pomodoro.currentFocusTaskDay = lockedTask ? lockedTask.day : null;
+                    pomodoro.currentFocusTaskCategory = lockedTask ? lockedTask.category : null;
+                    if (lockedTask) state.focusedTaskId = lockedTask.id;
+                }
                 pomodoro.intervalId = setInterval(() => { 
                     if (pomodoro.timeLeft > 0) { 
                         pomodoro.timeLeft--; 
@@ -1008,9 +1031,11 @@
                 const focusMinutes = parseInt(s.focus) || 25;
                 const lockedTaskId = pomodoro.currentFocusTaskId;
                 const lockedTaskText = pomodoro.currentFocusTaskText;
-                const focusedTask = lockedTaskId ? (state.tasks.find(t => t.id == lockedTaskId) || null) : (window.getCurrentFocusTargetTask ? window.getCurrentFocusTargetTask() : null);
-                const finalTaskId = lockedTaskId || (focusedTask ? focusedTask.id : null);
-                const finalTaskText = lockedTaskText || (focusedTask ? focusedTask.text : 'Ciclo sem tarefa vinculada');
+                const hasLockedTask = lockedTaskId !== null && typeof lockedTaskId !== 'undefined' && lockedTaskId !== '';
+                const focusedTask = hasLockedTask ? (state.tasks.find(t => String(t.id) === String(lockedTaskId)) || null) : null;
+                const fallbackTask = !hasLockedTask && window.getCurrentFocusTargetTask ? window.getCurrentFocusTargetTask() : null;
+                const finalTaskId = hasLockedTask ? lockedTaskId : (fallbackTask ? fallbackTask.id : null);
+                const finalTaskText = lockedTaskText || (focusedTask ? focusedTask.text : (fallbackTask ? fallbackTask.text : 'Ciclo sem tarefa vinculada'));
                 const startedAt = pomodoro.currentFocusStartedAt || new Date(Date.now() - (focusMinutes * 60000)).toISOString();
 
                 if (pomodoro.cycle % s.cycles === 0) { 
@@ -1029,6 +1054,8 @@
                 pomodoro.currentFocusStartedAt = null;
                 pomodoro.currentFocusTaskId = null;
                 pomodoro.currentFocusTaskText = null;
+                pomodoro.currentFocusTaskDay = null;
+                pomodoro.currentFocusTaskCategory = null;
 
                 uiState.pomodoroEvaluationData = {
                     id: Date.now(),
@@ -1052,6 +1079,8 @@
                 pomodoro.currentFocusStartedAt = null;
                 pomodoro.currentFocusTaskId = null;
                 pomodoro.currentFocusTaskText = null;
+                pomodoro.currentFocusTaskDay = null;
+                pomodoro.currentFocusTaskCategory = null;
                 if (wasLongBreak) pomodoro.cycle = 1; else pomodoro.cycle++;
                 window.changeEnergy(wasLongBreak ? 20 : 5);
             }
@@ -1066,6 +1095,8 @@
             pomodoro.currentFocusStartedAt = null;
             pomodoro.currentFocusTaskId = null;
             pomodoro.currentFocusTaskText = null;
+                pomodoro.currentFocusTaskDay = null;
+                pomodoro.currentFocusTaskCategory = null;
             pomodoro.timeLeft = state.pomodoroSettings.focus * 60; 
             render(); 
         };
@@ -1085,6 +1116,8 @@
             pomodoro.currentFocusStartedAt = null;
             pomodoro.currentFocusTaskId = null;
             pomodoro.currentFocusTaskText = null;
+                pomodoro.currentFocusTaskDay = null;
+                pomodoro.currentFocusTaskCategory = null;
             pomodoro.timeLeft = focus * 60;
             window.showToast('Pomodoro atualizado', 'Novos tempos aplicados ao próximo ciclo.', 'settings', 'text-yellow-400');
             window.saveState();
@@ -2428,7 +2461,7 @@
                             <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-4">
                                 <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Tarefa vinculada</p>
                                 <p class="text-sm text-white font-bold mt-1">${evalData.taskText || 'Ciclo sem tarefa vinculada'}</p>
-                                <p class="text-[11px] text-slate-500 mt-1">Duração: ${evalData.focusMinutes || state.pomodoroSettings.focus} min</p>
+                                <p class="text-[11px] text-slate-500 mt-1">Duração: ${evalData.focusMinutes || state.pomodoroSettings.focus} min${evalData.taskId ? ` • ID da tarefa: ${evalData.taskId}` : ""}</p>
                             </div>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                                 <div>
@@ -2632,7 +2665,7 @@
                     html += `
                     <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-6">
                         <h2 class="text-yellow-500 font-black tracking-widest uppercase text-sm flex items-center gap-2">Alvo Atual</h2>
-                        <select onchange="window.changeFocusedTask(this.value)" class="bg-slate-950 border border-slate-700 text-slate-300 rounded-lg p-2 text-xs sm:text-sm focus:border-yellow-500 w-full sm:max-w-xs">
+                        <select id="pomodoro-focused-task-select" onchange="window.changeFocusedTask(this.value)" class="bg-slate-950 border border-slate-700 text-slate-300 rounded-lg p-2 text-xs sm:text-sm focus:border-yellow-500 w-full sm:max-w-xs">
                             ${allPending.map(t => `<option value="${t.id}" ${t.id == pendingTask?.id ? 'selected' : ''}>[${t.priority}] ${t.text.substring(0,35)}...</option>`).join('')}
                         </select>
                     </div>`;
