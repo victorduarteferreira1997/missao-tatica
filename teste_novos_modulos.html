@@ -231,7 +231,7 @@
             pomodoroEvaluationData: null
         };
 
-        let pomodoro = { isRunning: false, timeLeft: 25 * 60, mode: 'focus', cycle: 1, intervalId: null, currentFocusStartedAt: null };
+        let pomodoro = { isRunning: false, timeLeft: 25 * 60, mode: 'focus', cycle: 1, intervalId: null, currentFocusStartedAt: null, currentFocusTaskId: null, currentFocusTaskText: null };
 
         // Função definida cedo para evitar crash no validateState quando já existem tarefas salvas.
         window.getTaskCategory = function(categoryId) {
@@ -968,13 +968,24 @@
         };
         window.deleteQuickTask = function(id) { state.quickTasks = state.quickTasks.filter(q => q.id !== id); window.saveState(); };
 
+        window.getCurrentFocusTargetTask = function() {
+            const dayTasks = state.tasks.filter(t => t.day === state.activeTab);
+            const targetTasks = state.currentFilter === 'all' ? dayTasks : dayTasks.filter(t => t.category === state.currentFilter);
+            return state.tasks.find(t => t.id == state.focusedTaskId && !t.completed && t.day === state.activeTab) || targetTasks.find(t => !t.completed) || null;
+        };
+
         window.togglePomodoro = function() {
             if (pomodoro.isRunning) { 
                 clearInterval(pomodoro.intervalId); 
                 pomodoro.isRunning = false; 
             } else { 
                 pomodoro.isRunning = true; 
-                if (pomodoro.mode === 'focus' && !pomodoro.currentFocusStartedAt) pomodoro.currentFocusStartedAt = new Date().toISOString();
+                if (pomodoro.mode === 'focus' && !pomodoro.currentFocusStartedAt) {
+                        pomodoro.currentFocusStartedAt = new Date().toISOString();
+                        const lockedTask = window.getCurrentFocusTargetTask ? window.getCurrentFocusTargetTask() : null;
+                        pomodoro.currentFocusTaskId = lockedTask ? lockedTask.id : null;
+                        pomodoro.currentFocusTaskText = lockedTask ? lockedTask.text : null;
+                    }
                 pomodoro.intervalId = setInterval(() => { 
                     if (pomodoro.timeLeft > 0) { 
                         pomodoro.timeLeft--; 
@@ -995,7 +1006,11 @@
             const s = state.pomodoroSettings;
             if (pomodoro.mode === 'focus') {
                 const focusMinutes = parseInt(s.focus) || 25;
-                const focusedTask = state.tasks.find(t => t.id == state.focusedTaskId) || state.tasks.find(t => !t.completed && t.day === state.activeTab) || null;
+                const lockedTaskId = pomodoro.currentFocusTaskId;
+                const lockedTaskText = pomodoro.currentFocusTaskText;
+                const focusedTask = lockedTaskId ? (state.tasks.find(t => t.id == lockedTaskId) || null) : (window.getCurrentFocusTargetTask ? window.getCurrentFocusTargetTask() : null);
+                const finalTaskId = lockedTaskId || (focusedTask ? focusedTask.id : null);
+                const finalTaskText = lockedTaskText || (focusedTask ? focusedTask.text : 'Ciclo sem tarefa vinculada');
                 const startedAt = pomodoro.currentFocusStartedAt || new Date(Date.now() - (focusMinutes * 60000)).toISOString();
 
                 if (pomodoro.cycle % s.cycles === 0) { 
@@ -1012,14 +1027,16 @@
                 state.stats.pomodorosCompleted = (state.stats.pomodorosCompleted || 0) + 1; 
                 window.changeEnergy(-5); 
                 pomodoro.currentFocusStartedAt = null;
+                pomodoro.currentFocusTaskId = null;
+                pomodoro.currentFocusTaskText = null;
 
                 uiState.pomodoroEvaluationData = {
                     id: Date.now(),
                     date: new Date().toISOString(),
                     startedAt,
                     completedAt: new Date().toISOString(),
-                    taskId: focusedTask ? focusedTask.id : null,
-                    taskText: focusedTask ? focusedTask.text : 'Ciclo sem tarefa vinculada',
+                    taskId: finalTaskId,
+                    taskText: finalTaskText,
                     focusMinutes,
                     cycleNumber: pomodoro.cycle
                 };
@@ -1033,6 +1050,8 @@
                 pomodoro.mode = 'focus'; 
                 pomodoro.timeLeft = s.focus * 60;
                 pomodoro.currentFocusStartedAt = null;
+                pomodoro.currentFocusTaskId = null;
+                pomodoro.currentFocusTaskText = null;
                 if (wasLongBreak) pomodoro.cycle = 1; else pomodoro.cycle++;
                 window.changeEnergy(wasLongBreak ? 20 : 5);
             }
@@ -1045,6 +1064,8 @@
             pomodoro.mode = 'focus'; 
             pomodoro.cycle = 1; 
             pomodoro.currentFocusStartedAt = null;
+            pomodoro.currentFocusTaskId = null;
+            pomodoro.currentFocusTaskText = null;
             pomodoro.timeLeft = state.pomodoroSettings.focus * 60; 
             render(); 
         };
@@ -1062,6 +1083,8 @@
             pomodoro.mode = 'focus';
             pomodoro.cycle = 1;
             pomodoro.currentFocusStartedAt = null;
+            pomodoro.currentFocusTaskId = null;
+            pomodoro.currentFocusTaskText = null;
             pomodoro.timeLeft = focus * 60;
             window.showToast('Pomodoro atualizado', 'Novos tempos aplicados ao próximo ciclo.', 'settings', 'text-yellow-400');
             window.saveState();
@@ -1450,7 +1473,11 @@
         };
 
         window.setCategoryFilter = function(filterId) { state.currentFilter = filterId; window.saveState(); };
-        window.changeFocusedTask = function(taskId) { state.focusedTaskId = parseInt(taskId); window.saveState(); };
+        window.changeFocusedTask = function(taskId) { 
+            const parsed = parseInt(taskId);
+            state.focusedTaskId = Number.isFinite(parsed) ? parsed : null;
+            window.saveState(); 
+        };
         window.setTab = function(tabId) { state.activeTab = tabId; window.saveState(); };
         window.toggleFocusMode = function() { state.focusMode = !state.focusMode; if (!state.focusMode && pomodoro.isRunning) window.togglePomodoro(); window.saveState(); };
         window.toggleStatsModal = function() { uiState.showStatsModal = !uiState.showStatsModal; render(); };
