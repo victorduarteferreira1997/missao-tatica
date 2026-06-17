@@ -260,13 +260,13 @@
                 const tasksForDay = state.tasks
                     .filter(t => t.day === day.id)
                     .sort((a, b) => ((typeof a.order === 'number' ? a.order : 999999) - (typeof b.order === 'number' ? b.order : 999999)) || ((a.id || 0) - (b.id || 0)));
-                tasksForDay.forEach((t, index) => { t.order = index + 1; });
+                tasksForDay.forEach((t, index) => { if (typeof t.order !== 'number') t.order = index + 1; });
             });
             state.tasks.forEach(t => { 
                 if (!Array.isArray(t.subtasks)) t.subtasks = []; 
                 if (!Array.isArray(t.recurrenceDays)) t.recurrenceDays = []; 
                 if (typeof t.isRecurring === 'undefined') t.isRecurring = t.recurrenceDays.length > 0;
-                if (!state.taskCategories.some(c => c.id === t.category)) t.category = state.taskCategories.find(c => c.active !== false)?.id || 'geral';
+                if (!window.getTaskCategory(t.category) || !state.taskCategories.some(c => c.id === t.category)) t.category = state.taskCategories.find(c => c.active !== false)?.id || 'geral';
             });
             if (state.currentFilter !== 'all' && !state.taskCategories.some(c => c.id === state.currentFilter && c.active !== false)) state.currentFilter = 'all';
             
@@ -1981,7 +1981,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-[1.15fr_2fr_1fr] gap-3 mt-3">
+                <div class="grid grid-cols-1 lg:grid-cols-[1fr_2.4fr] gap-3 mt-3">
                     <button onclick="window.toggleCreateTaskModal()" class="group bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white rounded-2xl px-4 py-3 border border-emerald-400/20 shadow-lg shadow-emerald-950/20 transition-all text-left flex items-center gap-3">
                         <div class="bg-white/15 rounded-xl p-2"><i data-lucide="plus-circle" class="w-5 h-5"></i></div>
                         <div><div class="text-sm font-black uppercase tracking-widest">Nova Missão</div><div class="text-[10px] text-emerald-100/80 font-bold uppercase tracking-wider">Criar tarefa</div></div>
@@ -1989,19 +1989,14 @@
 
                     <div class="bg-slate-950/70 border border-slate-800 rounded-2xl p-2.5">
                         <div class="text-[10px] text-slate-500 uppercase tracking-widest font-black mb-2 px-1">Módulos táticos</div>
-                        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                            <button onclick="window.toggleStudyModal()" class="flex items-center justify-center gap-1.5 bg-cyan-900/30 hover:bg-cyan-800/60 text-cyan-300 border border-cyan-800/60 px-2 py-2.5 rounded-xl text-xs font-bold transition-colors"><i data-lucide="brain-circuit" class="w-4 h-4"></i> Inteligência</button>
-                            <button onclick="window.toggleHealthModal()" class="flex items-center justify-center gap-1.5 bg-rose-900/30 hover:bg-rose-800/60 text-rose-300 border border-rose-800/60 px-2 py-2.5 rounded-xl text-xs font-bold transition-colors"><i data-lucide="activity" class="w-4 h-4"></i> Corpo</button>
-                            <button onclick="window.toggleFinanceModal()" class="flex items-center justify-center gap-1.5 bg-yellow-900/30 hover:bg-yellow-800/60 text-yellow-300 border border-yellow-800/60 px-2 py-2.5 rounded-xl text-xs font-bold transition-colors"><i data-lucide="wallet" class="w-4 h-4"></i> Finanças</button>
-                            <button onclick="window.toggleRitualModal()" class="flex items-center justify-center gap-1.5 bg-emerald-900/30 hover:bg-emerald-800/60 text-emerald-300 border border-emerald-800/60 px-2 py-2.5 rounded-xl text-xs font-bold transition-colors"><i data-lucide="clipboard-check" class="w-4 h-4"></i> Rituais</button>
-                            <button onclick="window.toggleStatsModal()" class="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-2 py-2.5 rounded-xl text-xs font-bold transition-colors"><i data-lucide="building-2" class="w-4 h-4"></i> Q.G.</button>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="window.toggleStudyModal()" class="flex items-center justify-center gap-1.5 bg-cyan-900/30 hover:bg-cyan-800/60 text-cyan-300 border border-cyan-800/60 px-3 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-colors min-w-[124px] flex-1"><i data-lucide="brain-circuit" class="w-4 h-4 shrink-0"></i><span class="truncate">Inteligência</span></button>
+                            <button onclick="window.toggleHealthModal()" class="flex items-center justify-center gap-1.5 bg-rose-900/30 hover:bg-rose-800/60 text-rose-300 border border-rose-800/60 px-3 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-colors min-w-[96px] flex-1"><i data-lucide="activity" class="w-4 h-4 shrink-0"></i><span class="truncate">Corpo</span></button>
+                            <button onclick="window.toggleFinanceModal()" class="flex items-center justify-center gap-1.5 bg-yellow-900/30 hover:bg-yellow-800/60 text-yellow-300 border border-yellow-800/60 px-3 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-colors min-w-[108px] flex-1"><i data-lucide="wallet" class="w-4 h-4 shrink-0"></i><span class="truncate">Finanças</span></button>
+                            <button onclick="window.toggleRitualModal()" class="flex items-center justify-center gap-1.5 bg-emerald-900/30 hover:bg-emerald-800/60 text-emerald-300 border border-emerald-800/60 px-3 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-colors min-w-[104px] flex-1"><i data-lucide="clipboard-check" class="w-4 h-4 shrink-0"></i><span class="truncate">Rituais</span></button>
+                            <button onclick="window.toggleStatsModal()" class="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-colors min-w-[88px] flex-1"><i data-lucide="building-2" class="w-4 h-4 shrink-0"></i><span class="truncate">Q.G.</span></button>
                         </div>
                     </div>
-
-                    <button onclick="window.toggleCategoryModal()" class="bg-slate-950/70 hover:bg-slate-900 text-slate-300 border border-slate-800 hover:border-cyan-800 rounded-2xl px-4 py-3 transition-all text-left flex items-center gap-3">
-                        <div class="bg-slate-900 border border-slate-700 rounded-xl p-2"><i data-lucide="tags" class="w-5 h-5 text-cyan-400"></i></div>
-                        <div><div class="text-sm font-black uppercase tracking-widest">Categorias</div><div class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Organizar filtros</div></div>
-                    </button>
                 </div>
             </div>`;
 
@@ -2068,8 +2063,12 @@
             // BARRA DE FILTROS DE CATEGORIA
             html += `
             <div class="bg-slate-900 border border-slate-800 rounded-xl p-2 mb-4">
-                <div class="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">
-                    <span class="text-xs font-bold text-slate-500 uppercase tracking-widest pl-2 shrink-0 font-mono">Filtrar:</span>`;
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <button onclick="window.toggleCategoryModal()" class="flex items-center justify-center gap-2 bg-slate-950 hover:bg-slate-800 text-cyan-300 border border-slate-800 hover:border-cyan-700 px-3 py-2 rounded-lg text-xs font-black font-mono uppercase tracking-widest transition-all shrink-0">
+                        <i data-lucide="tags" class="w-4 h-4"></i> Categorias
+                    </button>
+                    <div class="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1 flex-1">
+                        <span class="text-xs font-bold text-slate-500 uppercase tracking-widest pl-1 shrink-0 font-mono">Filtrar:</span>`;
             
             const filterCategories = [{ id: 'all', label: 'Tudo' }, ...window.getTaskCategories().map(c => ({ id: c.id, label: c.label }))];
 
@@ -2078,7 +2077,7 @@
                 const activeClass = isActive ? 'bg-indigo-600 text-white shadow-inner font-black' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800';
                 html += `<button onclick="window.setCategoryFilter('${cat.id}')" class="whitespace-nowrap px-3 py-1 rounded-full text-xs font-bold font-mono transition-all ${activeClass}">${cat.label}</button>`;
             });
-            html += `</div></div>`;
+            html += `</div></div></div>`;
 
             // MODO FOCO
             const focusClass = state.focusMode ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' : 'bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800';
