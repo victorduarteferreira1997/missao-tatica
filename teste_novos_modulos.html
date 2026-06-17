@@ -35,6 +35,14 @@
             from { transform: translateX(100%); opacity: 0; } 
             to { transform: translateX(0); opacity: 1; } 
         }
+
+        .task-drag-over {
+            outline: 2px dashed rgba(34, 211, 238, 0.75);
+            outline-offset: 4px;
+            background: rgba(8, 47, 73, 0.45) !important;
+        }
+        .drag-handle { cursor: grab; }
+        .drag-handle:active { cursor: grabbing; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen p-2 sm:p-6 pb-24 overflow-x-hidden">
@@ -225,10 +233,15 @@
             if (!state.unlockedBadges) state.unlockedBadges = [];
             if (!state.tasks) state.tasks = []; 
             if (!state.currentFilter) state.currentFilter = 'all';
-            if (!state.taskCategories || !Array.isArray(state.taskCategories) || state.taskCategories.length === 0) {
-                state.taskCategories = DEFAULT_TASK_CATEGORIES.map(c => ({...c}));
+            if (!Array.isArray(state.deletedTaskCategoryIds)) state.deletedTaskCategoryIds = [];
+            if (!state.taskCategories || !Array.isArray(state.taskCategories)) state.taskCategories = [];
+            if (state.taskCategories.length === 0) {
+                state.taskCategories = DEFAULT_TASK_CATEGORIES
+                    .filter(c => !state.deletedTaskCategoryIds.includes(c.id))
+                    .map(c => ({...c}));
             } else {
                 DEFAULT_TASK_CATEGORIES.forEach(defaultCat => {
+                    if (state.deletedTaskCategoryIds.includes(defaultCat.id)) return;
                     const existing = state.taskCategories.find(c => c.id === defaultCat.id);
                     if (!existing) state.taskCategories.push({...defaultCat});
                     else {
@@ -240,10 +253,20 @@
                     }
                 });
             }
+            if (!state.taskCategories.some(c => c.active !== false)) {
+                state.taskCategories.push({ id: 'geral', label: 'Geral', icon: 'target', color: 'text-slate-400', active: true, system: false, createdAt: new Date().toISOString() });
+            }
+            daysOfWeek.forEach(day => {
+                const tasksForDay = state.tasks
+                    .filter(t => t.day === day.id)
+                    .sort((a, b) => ((typeof a.order === 'number' ? a.order : 999999) - (typeof b.order === 'number' ? b.order : 999999)) || ((a.id || 0) - (b.id || 0)));
+                tasksForDay.forEach((t, index) => { t.order = index + 1; });
+            });
             state.tasks.forEach(t => { 
                 if (!Array.isArray(t.subtasks)) t.subtasks = []; 
                 if (!Array.isArray(t.recurrenceDays)) t.recurrenceDays = []; 
                 if (typeof t.isRecurring === 'undefined') t.isRecurring = t.recurrenceDays.length > 0;
+                if (!state.taskCategories.some(c => c.id === t.category)) t.category = state.taskCategories.find(c => c.active !== false)?.id || 'geral';
             });
             if (state.currentFilter !== 'all' && !state.taskCategories.some(c => c.id === state.currentFilter && c.active !== false)) state.currentFilter = 'all';
             
@@ -633,7 +656,7 @@
             if (event) { if (typeof event.stopPropagation === 'function') event.stopPropagation(); if (typeof event.preventDefault === 'function') event.preventDefault(); }
             const targetDay = selectEl.value; if (!targetDay) return;
             const task = state.tasks.find(t => t.id == taskId);
-            if (task) { task.day = targetDay; window.changeEnergy(10); state.stats.tasksMoved = (state.stats.tasksMoved || 0) + 1; window.unlockBadge('estrategista'); window.spawnFloatingText(event, `+10 HP`, 'text-emerald-400'); window.breakCombo(); window.saveState(); }
+            if (task) { task.day = targetDay; task.order = window.getNextTaskOrder(targetDay); window.changeEnergy(10); state.stats.tasksMoved = (state.stats.tasksMoved || 0) + 1; window.unlockBadge('estrategista'); window.spawnFloatingText(event, `+10 HP`, 'text-emerald-400'); window.breakCombo(); window.saveState(); }
             selectEl.value = "";
         };
 
@@ -648,7 +671,17 @@
         };
 
         window.getTaskCategory = function(categoryId) {
-            return (Array.isArray(state.taskCategories) ? state.taskCategories : []).find(c => c.id === categoryId) || DEFAULT_TASK_CATEGORIES.find(c => c.id === categoryId) || { id: categoryId || 'default', label: categoryId || 'Geral', icon: 'target', color: 'text-slate-400', active: true };
+            return (Array.isArray(state.taskCategories) ? state.taskCategories : []).find(c => c.id === categoryId) || { id: categoryId || 'geral', label: categoryId || 'Geral', icon: 'target', color: 'text-slate-400', active: true };
+        };
+
+        window.getFallbackTaskCategoryId = function(excludedId = null) {
+            const active = window.getTaskCategories().find(c => c.id !== excludedId);
+            if (active) return active.id;
+            const anyCat = (Array.isArray(state.taskCategories) ? state.taskCategories : []).find(c => c.id !== excludedId);
+            if (anyCat) { anyCat.active = true; return anyCat.id; }
+            const geral = { id: 'geral', label: 'Geral', icon: 'target', color: 'text-slate-400', active: true, system: false, createdAt: new Date().toISOString() };
+            state.taskCategories.push(geral);
+            return geral.id;
         };
 
         window.getTaskCategoryIcon = function(categoryId) {
@@ -704,16 +737,26 @@
             window.showToast('Categoria criada', `${name} foi adicionada às missões.`, 'tags', 'text-emerald-400');
         };
 
-        window.archiveTaskCategory = function(categoryId) {
+        window.deleteTaskCategory = function(categoryId) {
             const cat = state.taskCategories.find(c => c.id === categoryId);
             if (!cat) { window.showAlertModal('Categoria não encontrada.'); return; }
-            window.showConfirmModal(`Arquivar a categoria "${cat.label}"? As missões antigas serão preservadas.`, () => {
-                cat.active = false;
+            const taskCount = state.tasks.filter(t => t.category === categoryId).length;
+            window.showConfirmModal(`Excluir definitivamente a categoria "${cat.label}"? ${taskCount ? `As ${taskCount} missão(ões) desta categoria serão movidas para outra categoria ativa.` : 'Nenhuma missão será afetada.'}`, () => {
+                const fallbackId = window.getFallbackTaskCategoryId(categoryId);
+                state.tasks.forEach(t => { if (t.category === categoryId) t.category = fallbackId; });
+                state.taskCategories = state.taskCategories.filter(c => c.id !== categoryId);
+                if (!state.deletedTaskCategoryIds.includes(categoryId)) state.deletedTaskCategoryIds.push(categoryId);
+                if (!state.taskCategories.some(c => c.active !== false)) {
+                    state.taskCategories.push({ id: 'geral', label: 'Geral', icon: 'target', color: 'text-slate-400', active: true, system: false, createdAt: new Date().toISOString() });
+                }
                 if (state.currentFilter === categoryId) state.currentFilter = 'all';
                 window.saveState();
-                window.showToast('Categoria arquivada', 'Missões antigas foram preservadas.', 'archive', 'text-slate-300');
+                window.showToast('Categoria excluída', taskCount ? `Missões movidas para ${window.getTaskCategory(fallbackId).label}.` : 'Removida definitivamente.', 'trash-2', 'text-red-400');
             });
         };
+
+        // Compatibilidade com versões anteriores: botões antigos de arquivar agora excluem definitivamente.
+        window.archiveTaskCategory = window.deleteTaskCategory;
 
         window.restoreTaskCategory = function(categoryId) {
             const cat = state.taskCategories.find(c => c.id === categoryId);
@@ -721,6 +764,78 @@
             cat.active = true;
             window.saveState();
             window.showToast('Categoria reativada', `${cat.label} voltou aos filtros.`, 'rotate-ccw', 'text-emerald-400');
+        };
+
+        window.getNextTaskOrder = function(dayId) {
+            const orders = state.tasks.filter(t => t.day === dayId).map(t => typeof t.order === 'number' ? t.order : 0);
+            return orders.length ? Math.max(...orders) + 1 : 1;
+        };
+
+        window.sortTasksForDay = function(dayId) {
+            return state.tasks
+                .filter(t => t.day === dayId)
+                .sort((a, b) => ((typeof a.order === 'number' ? a.order : 999999) - (typeof b.order === 'number' ? b.order : 999999)) || ((a.id || 0) - (b.id || 0)));
+        };
+
+        window.reindexTaskOrderForDay = function(dayId) {
+            window.sortTasksForDay(dayId).forEach((t, index) => { t.order = index + 1; });
+        };
+
+        window.handleTaskDragStart = function(taskId, event) {
+            if (!event || !event.dataTransfer) return;
+            event.stopPropagation();
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', String(taskId));
+            event.currentTarget.classList.add('opacity-60');
+        };
+
+        window.handleTaskDragEnd = function(event) {
+            if (event?.currentTarget) event.currentTarget.classList.remove('opacity-60');
+            document.querySelectorAll('.task-drag-over').forEach(el => el.classList.remove('task-drag-over'));
+        };
+
+        window.handleTaskDragOver = function(taskId, event) {
+            if (!event) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            if (event.currentTarget) event.currentTarget.classList.add('task-drag-over');
+        };
+
+        window.handleTaskDragLeave = function(event) {
+            if (event?.currentTarget) event.currentTarget.classList.remove('task-drag-over');
+        };
+
+        window.handleTaskDrop = function(targetTaskId, event) {
+            if (!event || !event.dataTransfer) return;
+            event.preventDefault();
+            event.stopPropagation();
+            if (event.currentTarget) event.currentTarget.classList.remove('task-drag-over');
+            const draggedTaskId = event.dataTransfer.getData('text/plain');
+            if (!draggedTaskId || String(draggedTaskId) === String(targetTaskId)) return;
+            const dragged = state.tasks.find(t => String(t.id) === String(draggedTaskId));
+            const target = state.tasks.find(t => String(t.id) === String(targetTaskId));
+            if (!dragged || !target) return;
+            dragged.day = target.day;
+            const ordered = window.sortTasksForDay(target.day).filter(t => String(t.id) !== String(dragged.id));
+            const targetIndex = ordered.findIndex(t => String(t.id) === String(target.id));
+            ordered.splice(targetIndex < 0 ? ordered.length : targetIndex, 0, dragged);
+            ordered.forEach((t, index) => { t.order = index + 1; });
+            window.saveState();
+            window.showToast('Ordem atualizada', 'Missões reorganizadas no dia.', 'grip-vertical', 'text-cyan-400');
+        };
+
+        window.moveTaskOrder = function(taskId, direction, event) {
+            if (event) event.stopPropagation();
+            const task = state.tasks.find(t => t.id == taskId);
+            if (!task) return;
+            const ordered = window.sortTasksForDay(task.day);
+            const index = ordered.findIndex(t => t.id == taskId);
+            const nextIndex = index + direction;
+            if (index < 0 || nextIndex < 0 || nextIndex >= ordered.length) return;
+            const [item] = ordered.splice(index, 1);
+            ordered.splice(nextIndex, 0, item);
+            ordered.forEach((t, i) => { t.order = i + 1; });
+            window.saveState();
         };
 
         window.addSubtask = function(taskId) {
@@ -1004,6 +1119,9 @@
                     completed: false,
                     priority: document.getElementById('ct-priority').value,
                     time: document.getElementById('ct-time').value + ' min',
+                    complexity: parseInt(document.getElementById('ct-complexity').value) || 1,
+                    impactType: document.getElementById('ct-impact-type').value,
+                    order: window.getNextTaskOrder(targetDay),
                     subtasks: window.cloneSubtasksForNewTask(baseSubtasks),
                     isRecurring,
                     recurrenceDays: isRecurring ? [...recurrenceDays] : [],
@@ -1689,7 +1807,9 @@
         // ==========================================
         function render() {
             const appDiv = document.getElementById('app');
-            const dailyTasks = state.tasks.filter(t => t.day === state.activeTab);
+            const dailyTasks = state.tasks
+                .filter(t => t.day === state.activeTab)
+                .sort((a, b) => ((typeof a.order === 'number' ? a.order : 999999) - (typeof b.order === 'number' ? b.order : 999999)) || ((a.id || 0) - (b.id || 0)));
             let filteredTasks = dailyTasks;
             if (state.currentFilter && state.currentFilter !== 'all') filteredTasks = dailyTasks.filter(t => t.category === state.currentFilter);
             const xpPercent = Math.min(100, (state.xp / window.getXpForCurrentLevel()) * 100);
@@ -1839,48 +1959,49 @@
 
             // TOP BAR & HUD
             html += `
-            <div class="flex flex-col xl:flex-row justify-between items-center bg-slate-900 border border-slate-800 p-3 rounded-2xl mb-4 sticky top-2 z-40 shadow-lg font-mono gap-4 xl:gap-0">
-                <div class="flex items-center justify-between w-full xl:w-auto">
-                    <div class="flex items-center gap-2">
-                        <div class="bg-indigo-600 p-2 rounded-lg relative shrink-0">
+            <div class="bg-slate-900 border border-slate-800 p-3 sm:p-4 rounded-2xl mb-4 sticky top-2 z-40 shadow-lg font-mono">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-indigo-600 p-2 rounded-lg relative shrink-0 shadow-lg shadow-indigo-950/30">
                             <i data-lucide="shield" class="w-5 h-5 text-white"></i>
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
-                        <div class="hidden sm:block font-black tracking-widest text-sm text-slate-200 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-2 align-middle font-bold uppercase tracking-widest">Versão 1.0 — Estável</span></div>
+                        <div>
+                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.1</span></div>
+                            <div class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">Quartel operacional</div>
+                        </div>
                     </div>
-                    <div id="sync-status" class="xl:hidden flex items-center gap-1.5 px-2 py-1 bg-slate-950 rounded-md text-[10px] font-bold text-slate-400 uppercase tracking-wider border border-slate-800 shrink-0">
-                        <span class="w-2 h-2 rounded-full shrink-0" id="sync-indicator"></span><span id="sync-text"></span>
+                    <div class="flex items-center justify-between sm:justify-end gap-2">
+                        <div id="sync-status" class="flex items-center gap-1.5 px-2 py-1 bg-slate-950 rounded-md text-[10px] font-bold text-slate-400 uppercase tracking-wider border border-slate-800 shrink-0">
+                            <span class="w-2 h-2 rounded-full shrink-0" id="sync-indicator"></span><span id="sync-text"></span>
+                        </div>
+                        <button onclick="window.logout()" class="flex items-center justify-center bg-slate-950 hover:bg-red-900/50 hover:text-red-400 text-slate-500 px-3 py-2 rounded-lg transition-colors border border-slate-800" title="Sair da Conta">
+                            <i data-lucide="log-out" class="w-4 h-4"></i>
+                        </button>
                     </div>
                 </div>
-                
-                <div class="flex flex-wrap justify-center gap-2 w-full xl:w-auto">
-                    <button onclick="window.toggleCreateTaskModal()" class="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-lg text-xs font-bold transition-colors">
-                        <i data-lucide="plus" class="w-4 h-4"></i> <span class="hidden sm:inline">Criar</span>
+
+                <div class="grid grid-cols-1 lg:grid-cols-[1.15fr_2fr_1fr] gap-3 mt-3">
+                    <button onclick="window.toggleCreateTaskModal()" class="group bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white rounded-2xl px-4 py-3 border border-emerald-400/20 shadow-lg shadow-emerald-950/20 transition-all text-left flex items-center gap-3">
+                        <div class="bg-white/15 rounded-xl p-2"><i data-lucide="plus-circle" class="w-5 h-5"></i></div>
+                        <div><div class="text-sm font-black uppercase tracking-widest">Nova Missão</div><div class="text-[10px] text-emerald-100/80 font-bold uppercase tracking-wider">Criar tarefa</div></div>
                     </button>
-                    <button onclick="window.toggleCategoryModal()" class="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-2 rounded-lg text-xs font-bold transition-colors">
-                        <i data-lucide="tags" class="w-4 h-4"></i> <span class="hidden sm:inline">Categorias</span>
+
+                    <div class="bg-slate-950/70 border border-slate-800 rounded-2xl p-2.5">
+                        <div class="text-[10px] text-slate-500 uppercase tracking-widest font-black mb-2 px-1">Módulos táticos</div>
+                        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                            <button onclick="window.toggleStudyModal()" class="flex items-center justify-center gap-1.5 bg-cyan-900/30 hover:bg-cyan-800/60 text-cyan-300 border border-cyan-800/60 px-2 py-2.5 rounded-xl text-xs font-bold transition-colors"><i data-lucide="brain-circuit" class="w-4 h-4"></i> Inteligência</button>
+                            <button onclick="window.toggleHealthModal()" class="flex items-center justify-center gap-1.5 bg-rose-900/30 hover:bg-rose-800/60 text-rose-300 border border-rose-800/60 px-2 py-2.5 rounded-xl text-xs font-bold transition-colors"><i data-lucide="activity" class="w-4 h-4"></i> Corpo</button>
+                            <button onclick="window.toggleFinanceModal()" class="flex items-center justify-center gap-1.5 bg-yellow-900/30 hover:bg-yellow-800/60 text-yellow-300 border border-yellow-800/60 px-2 py-2.5 rounded-xl text-xs font-bold transition-colors"><i data-lucide="wallet" class="w-4 h-4"></i> Finanças</button>
+                            <button onclick="window.toggleRitualModal()" class="flex items-center justify-center gap-1.5 bg-emerald-900/30 hover:bg-emerald-800/60 text-emerald-300 border border-emerald-800/60 px-2 py-2.5 rounded-xl text-xs font-bold transition-colors"><i data-lucide="clipboard-check" class="w-4 h-4"></i> Rituais</button>
+                            <button onclick="window.toggleStatsModal()" class="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-2 py-2.5 rounded-xl text-xs font-bold transition-colors"><i data-lucide="building-2" class="w-4 h-4"></i> Q.G.</button>
+                        </div>
+                    </div>
+
+                    <button onclick="window.toggleCategoryModal()" class="bg-slate-950/70 hover:bg-slate-900 text-slate-300 border border-slate-800 hover:border-cyan-800 rounded-2xl px-4 py-3 transition-all text-left flex items-center gap-3">
+                        <div class="bg-slate-900 border border-slate-700 rounded-xl p-2"><i data-lucide="tags" class="w-5 h-5 text-cyan-400"></i></div>
+                        <div><div class="text-sm font-black uppercase tracking-widest">Categorias</div><div class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Organizar filtros</div></div>
                     </button>
-                    <button onclick="window.toggleStudyModal()" class="flex items-center gap-1 bg-cyan-900/40 hover:bg-cyan-800/60 text-cyan-400 border border-cyan-700/50 px-3 py-2 rounded-lg text-xs font-bold transition-colors">
-                        <i data-lucide="brain-circuit" class="w-4 h-4"></i> <span class="hidden sm:inline">Inteligência</span>
-                    </button>
-                    <button onclick="window.toggleHealthModal()" class="flex items-center gap-1 bg-rose-900/40 hover:bg-rose-800/60 text-rose-400 border border-rose-700/50 px-3 py-2 rounded-lg text-xs font-bold transition-colors">
-                        <i data-lucide="activity" class="w-4 h-4"></i> <span class="hidden sm:inline">Corpo</span>
-                    </button>
-                    <button onclick="window.toggleFinanceModal()" class="flex items-center gap-1 bg-yellow-900/40 hover:bg-yellow-800/60 text-yellow-500 border border-yellow-700/50 px-3 py-2 rounded-lg text-xs font-bold transition-colors">
-                        <i data-lucide="wallet" class="w-4 h-4"></i> <span class="hidden sm:inline">Finanças</span>
-                    </button>
-                    <button onclick="window.toggleRitualModal()" class="flex items-center gap-1 bg-emerald-900/40 hover:bg-emerald-800/60 text-emerald-400 border border-emerald-700/50 px-3 py-2 rounded-lg text-xs font-bold transition-colors">
-                        <i data-lucide="clipboard-check" class="w-4 h-4"></i> <span class="hidden sm:inline">Rituais</span>
-                    </button>
-                    <button onclick="window.toggleStatsModal()" class="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-2 rounded-lg text-xs font-bold transition-colors">
-                        <i data-lucide="building-2" class="w-4 h-4"></i> Q.G.
-                    </button>
-                    <button onclick="window.logout()" class="flex items-center justify-center bg-slate-950 hover:bg-red-900/50 hover:text-red-400 text-slate-500 px-3 py-2 rounded-lg transition-colors border border-slate-800" title="Sair da Conta">
-                        <i data-lucide="log-out" class="w-4 h-4"></i>
-                    </button>
-                </div>
-                <div class="hidden xl:flex items-center gap-1.5 px-2 py-1 bg-slate-950 rounded-md text-[10px] font-bold text-slate-400 uppercase tracking-wider border border-slate-800 shrink-0">
-                    <span class="w-2 h-2 rounded-full shrink-0" id="sync-indicator-dt"></span><span id="sync-text-dt">Conectado</span> <!-- Duplicated logic for desktop via CSS hide -->
                 </div>
             </div>`;
 
@@ -2091,9 +2212,13 @@
                 }
                 html += `</div></div>`;
 
-                html += `<div class="bg-slate-900 rounded-xl border border-slate-800 p-2 sm:p-4 space-y-2 mb-8 font-mono">`;
+                html += `<div class="bg-slate-900 rounded-xl border border-slate-800 p-2 sm:p-4 space-y-2 mb-8 font-mono">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-2 pb-2 border-b border-slate-800/70 mb-2">
+                        <div class="text-[10px] uppercase tracking-widest font-black text-slate-500 flex items-center gap-2"><i data-lucide="grip-vertical" class="w-3.5 h-3.5 text-cyan-400"></i> Arraste as missões para reorganizar o dia</div>
+                        <div class="text-[10px] text-slate-600 font-bold">Também há setas ↑ ↓ para ajustes rápidos</div>
+                    </div>`;
                 if (filteredTasks.length === 0) {
-                    html += `<div class="text-center p-6 text-slate-500">Nenhuma missão. Use "Criar" acima.</div>`;
+                    html += `<div class="text-center p-6 text-slate-500">Nenhuma missão. Use “Nova Missão” no topo.</div>`;
                 } else {
                     filteredTasks.forEach(task => {
                         const bgClass = task.completed ? 'bg-slate-950 opacity-50' : 'bg-slate-800 hover:bg-slate-700';
@@ -2110,9 +2235,10 @@
                         const recurrenceLabel = window.getRecurringDaysLabel(recurrenceDays);
 
                         html += `
-                        <div onclick="window.toggleTask(${task.id}, event)" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg cursor-pointer transition-all ${bgClass} group relative">
+                        <div onclick="window.toggleTask(${task.id}, event)" draggable="true" ondragstart="window.handleTaskDragStart(${task.id}, event)" ondragend="window.handleTaskDragEnd(event)" ondragover="window.handleTaskDragOver(${task.id}, event)" ondragleave="window.handleTaskDragLeave(event)" ondrop="window.handleTaskDrop(${task.id}, event)" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg cursor-pointer transition-all ${bgClass} group relative">
                             <div class="flex items-start justify-between gap-3 w-full">
-                                <div class="flex items-start gap-3 flex-1">
+                                <div class="flex items-start gap-3 flex-1 min-w-0">
+                                    <div class="drag-handle mt-0.5 text-slate-600 hover:text-cyan-400 transition-colors" title="Arraste para reorganizar" onclick="event.stopPropagation()"><i data-lucide="grip-vertical" class="w-5 h-5"></i></div>
                                     <div class="mt-0.5"><i data-lucide="${task.completed ? 'check-circle' : 'circle'}" class="${iconColor} w-5 h-5"></i></div>
                                     <div>
                                         <span class="text-sm md:text-base font-medium flex items-center gap-2 ${textClass}">
@@ -2150,7 +2276,9 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+                                <div class="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0" onclick="event.stopPropagation()">
+                                    <button onclick="window.moveTaskOrder(${task.id}, -1, event)" class="p-1.5 text-slate-500 hover:text-cyan-400 hover:bg-slate-900 rounded-lg transition-colors" title="Subir missão"><i data-lucide="arrow-up" class="w-4 h-4"></i></button>
+                                    <button onclick="window.moveTaskOrder(${task.id}, 1, event)" class="p-1.5 text-slate-500 hover:text-cyan-400 hover:bg-slate-900 rounded-lg transition-colors" title="Descer missão"><i data-lucide="arrow-down" class="w-4 h-4"></i></button>
                                     <select onchange="window.moveTaskFromSelect(${task.id}, event, this)" onclick="event.stopPropagation()" class="bg-slate-900 border border-slate-700 text-slate-400 rounded-lg p-1.5 text-xs focus:outline-none cursor-pointer"><option value="" disabled selected>📅 Mover</option>${daysOptions}</select>
                                     <button onclick="window.deleteMainTask(${task.id}, event)" class="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-900 rounded-lg transition-colors"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                                 </div>
@@ -2170,7 +2298,7 @@
                         <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
                             <div>
                                 <h2 class="text-lg font-black text-cyan-400 flex items-center gap-2"><i data-lucide="tags"></i> Categorias de Missões</h2>
-                                <p class="text-xs text-slate-500 mt-1">Crie categorias próprias e arquive as que não quiser usar.</p>
+                                <p class="text-xs text-slate-500 mt-1">Crie categorias próprias e exclua definitivamente as que não quiser usar.</p>
                             </div>
                             <button onclick="window.toggleCategoryModal()" class="text-slate-500 hover:text-white"><i data-lucide="x"></i></button>
                         </div>
@@ -2186,7 +2314,7 @@
                         <div class="space-y-2">
                             ${activeCats.map(cat => {
                                 const taskCount = state.tasks.filter(t => t.category === cat.id).length;
-                                return `<div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-3"><div class="flex items-center gap-3"><div class="bg-slate-900 border border-slate-700 rounded-lg p-2"><i data-lucide="${cat.icon || 'target'}" class="w-4 h-4 ${cat.color || 'text-slate-400'}"></i></div><div><div class="text-sm font-bold text-white">${cat.label}</div><div class="text-[10px] uppercase tracking-widest text-slate-500">${taskCount} missão(ões) • ${cat.active === false ? 'Arquivada' : 'Ativa'}</div></div></div>${cat.active === false ? `<button onclick="window.restoreTaskCategory('${cat.id}')" class="px-3 py-1.5 rounded-lg bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-400 border border-emerald-800 text-xs font-bold">Reativar</button>` : `<button onclick="window.archiveTaskCategory('${cat.id}')" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-red-950/40 text-slate-400 hover:text-red-400 border border-slate-700 text-xs font-bold">Arquivar</button>`}</div>`;
+                                return `<div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-3"><div class="flex items-center gap-3"><div class="bg-slate-900 border border-slate-700 rounded-lg p-2"><i data-lucide="${cat.icon || 'target'}" class="w-4 h-4 ${cat.color || 'text-slate-400'}"></i></div><div><div class="text-sm font-bold text-white">${cat.label}</div><div class="text-[10px] uppercase tracking-widest text-slate-500">${taskCount} missão(ões) • ${cat.system ? 'Padrão' : 'Personalizada'}</div></div></div><button onclick="window.deleteTaskCategory('${cat.id}')" class="px-3 py-1.5 rounded-lg bg-red-950/20 hover:bg-red-950/50 text-red-300 border border-red-900/50 text-xs font-bold flex items-center gap-1"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Excluir</button></div>`;
                             }).join('')}
                         </div>
                     </div>
