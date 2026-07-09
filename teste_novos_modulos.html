@@ -387,10 +387,23 @@
                 track.priority = track.priority || 'media';
                 if (typeof track.active === 'undefined') track.active = true;
             });
+            state.studyData.subjects.forEach(subject => {
+                if (!subject.id) subject.id = Date.now() + Math.random();
+                subject.name = subject.name || 'Disciplina';
+                subject.color = subject.color || 'bg-cyan-500';
+                if (typeof subject.trackId === 'undefined') subject.trackId = null;
+                if (subject.trackId && !state.studyData.studyPlan.tracks.some(t => String(t.id) === String(subject.trackId))) {
+                    subject.trackId = null;
+                }
+                if (!subject.createdAt) subject.createdAt = new Date().toISOString();
+            });
             state.studyData.studyPlan.weeklyBlocks.forEach(block => {
                 if (!block.id) block.id = Date.now() + Math.random();
                 if (!daysOfWeek.some(d => d.id === block.day)) block.day = 'monday';
                 if (!block.trackId || !state.studyData.studyPlan.tracks.some(t => String(t.id) === String(block.trackId))) block.trackId = state.studyData.studyPlan.tracks.find(t => t.active !== false)?.id || 'ingles';
+                const linkedSubject = state.studyData.subjects.find(s => String(s.id) === String(block.subjectId));
+                if (block.subjectId && !linkedSubject) block.subjectId = null;
+                if (linkedSubject?.trackId) block.trackId = linkedSubject.trackId;
                 block.title = block.title || 'Bloco de estudo';
                 block.studyType = block.studyType || 'teoria';
                 block.plannedMinutes = Math.max(5, Math.min(480, parseInt(block.plannedMinutes, 10) || 30));
@@ -2060,16 +2073,78 @@
 
         window.addSubject = function() {
             const name = document.getElementById('new-subject-name')?.value.trim();
-            if (!name) { window.showAlertModal('Nome obrigatório.'); return; }
-            state.studyData.subjects.push({ id: Date.now(), name: name, color: document.getElementById('new-subject-color').value || 'bg-cyan-500', createdAt: new Date().toISOString() });
-            window.showToast('Disciplina Adicionada', `${name} incluída.`, 'book', 'text-cyan-400'); window.saveState();
+            const trackId = document.getElementById('new-subject-track')?.value || '';
+            const color = document.getElementById('new-subject-color')?.value || 'bg-cyan-500';
+            if (!name) { window.showAlertModal('Digite o nome da disciplina.'); return; }
+            if (!trackId) { window.showAlertModal('Escolha a trilha à qual esta disciplina pertence.'); return; }
+            const duplicate = state.studyData.subjects.some(s => String(s.trackId) === String(trackId) && String(s.name || '').trim().toLowerCase() === name.toLowerCase());
+            if (duplicate) { window.showAlertModal('Esta disciplina já existe dentro da trilha escolhida.'); return; }
+            state.studyData.subjects.push({ id: Date.now(), name, trackId, color, createdAt: new Date().toISOString() });
+            const track = window.getStudyTrack(trackId);
+            window.showToast('Disciplina adicionada', `${name} entrou na trilha ${track.name}.`, 'book', track.color || 'text-cyan-400');
+            window.saveState();
         };
+
+        window.getStudySubjects = function(trackId = null) {
+            const subjects = Array.isArray(state.studyData?.subjects) ? state.studyData.subjects : [];
+            const filtered = trackId === null || trackId === undefined || trackId === ''
+                ? subjects
+                : subjects.filter(s => String(s.trackId || '') === String(trackId));
+            return filtered.slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR'));
+        };
+
+        window.renderStudySubjectOptions = function({ trackId = null, selectedId = '', includeEmpty = true, emptyLabel = 'Sem disciplina vinculada' } = {}) {
+            const tracks = window.getStudyTracks(true);
+            const selected = String(selectedId || '');
+            let html = includeEmpty ? `<option value="">${window.escapeHtml(emptyLabel)}</option>` : '';
+            const appendOptions = (subjects, label = '') => {
+                if (!subjects.length) return;
+                if (label) html += `<optgroup label="${window.escapeHtml(label)}">`;
+                html += subjects.map(s => `<option value="${s.id}" ${String(s.id) === selected ? 'selected' : ''}>${window.escapeHtml(s.name)}</option>`).join('');
+                if (label) html += '</optgroup>';
+            };
+            if (trackId !== null && trackId !== undefined && trackId !== '') {
+                const track = window.getStudyTrack(trackId);
+                appendOptions(window.getStudySubjects(trackId), track.name);
+                if (window.getStudySubjects(trackId).length === 0) html += '<option value="" disabled>Nenhuma disciplina cadastrada nesta trilha</option>';
+                return html;
+            }
+            tracks.forEach(track => appendOptions(window.getStudySubjects(track.id), track.name));
+            appendOptions(state.studyData.subjects.filter(s => !s.trackId), 'Sem trilha');
+            return html;
+        };
+
+        window.updateSubjectTrack = function(subjectId, trackId) {
+            const subject = state.studyData.subjects.find(s => String(s.id) === String(subjectId));
+            const track = window.getStudyTracks(true).find(t => String(t.id) === String(trackId));
+            if (!subject || !track) { window.showAlertModal('Disciplina ou trilha não encontrada.'); return; }
+            subject.trackId = track.id;
+            subject.updatedAt = new Date().toISOString();
+            (state.studyData.studyPlan?.weeklyBlocks || []).forEach(block => {
+                if (String(block.subjectId) === String(subject.id)) block.trackId = track.id;
+            });
+            window.saveState();
+            window.showToast('Disciplina reorganizada', `${subject.name} agora pertence à trilha ${track.name}.`, 'route', track.color || 'text-cyan-400');
+        };
+
+        window.updateStudyBlockSubjectOptions = function(selectedSubjectId = '') {
+            const trackId = document.getElementById('study-block-track')?.value || '';
+            const subjectSelect = document.getElementById('study-block-subject');
+            if (!subjectSelect) return;
+            subjectSelect.innerHTML = window.renderStudySubjectOptions({ trackId, selectedId: selectedSubjectId, includeEmpty: true, emptyLabel: 'Sem disciplina vinculada' });
+        };
+
         window.deleteSubject = function(id) {
-            window.showConfirmModal("Excluir disciplina apagará sessões e revisões ligadas. Confirmar?", () => {
-                state.studyData.subjects = state.studyData.subjects.filter(s => s.id !== id);
-                state.studyData.sessions = state.studyData.sessions.filter(s => s.subjectId !== id);
-                state.studyData.reviews = state.studyData.reviews.filter(r => r.subjectId !== id);
-                state.studyData.errorLog = state.studyData.errorLog.filter(e => e.subjectId !== id);
+            const subject = state.studyData.subjects.find(s => String(s.id) === String(id));
+            if (!subject) return;
+            window.showConfirmModal(`Excluir a disciplina "${subject.name}"? Sessões, revisões e registros de erro ligados a ela serão apagados. Blocos do planejamento serão preservados sem disciplina vinculada.`, () => {
+                state.studyData.subjects = state.studyData.subjects.filter(s => String(s.id) !== String(id));
+                state.studyData.sessions = state.studyData.sessions.filter(s => String(s.subjectId) !== String(id));
+                state.studyData.reviews = state.studyData.reviews.filter(r => String(r.subjectId) !== String(id));
+                state.studyData.errorLog = state.studyData.errorLog.filter(e => String(e.subjectId) !== String(id));
+                (state.studyData.studyPlan?.weeklyBlocks || []).forEach(block => {
+                    if (String(block.subjectId) === String(id)) block.subjectId = null;
+                });
                 window.saveState();
             });
         };
@@ -2399,17 +2474,24 @@
             if (!state.studyData.studyPlan) state.studyData.studyPlan = { tracks: [], weeklyBlocks: [] };
             const title = document.getElementById('study-block-title')?.value.trim();
             const day = document.getElementById('study-block-day')?.value || state.activeTab || 'monday';
-            const trackId = document.getElementById('study-block-track')?.value;
+            const selectedTrackId = document.getElementById('study-block-track')?.value || '';
             const subjectVal = document.getElementById('study-block-subject')?.value || '';
+            const selectedSubject = subjectVal ? state.studyData.subjects.find(s => String(s.id) === String(subjectVal)) : null;
+            const trackId = selectedSubject?.trackId || selectedTrackId;
             const studyType = document.getElementById('study-block-type')?.value || 'teoria';
             const plannedMinutes = Math.max(5, Math.min(480, parseInt(document.getElementById('study-block-minutes')?.value) || 30));
             const priority = document.getElementById('study-block-priority')?.value || 'media';
             const energyLevel = document.getElementById('study-block-energy')?.value || 'media';
             const notes = document.getElementById('study-block-notes')?.value.trim() || '';
             if (!title) { window.showAlertModal('Digite o tema ou atividade do bloco.'); return; }
+            if (!trackId) { window.showAlertModal('Escolha uma trilha para o bloco.'); return; }
+            if (selectedSubject?.trackId && String(selectedSubject.trackId) !== String(selectedTrackId)) {
+                window.showAlertModal('A disciplina escolhida pertence a outra trilha. Atualize a seleção e tente novamente.');
+                return;
+            }
             const order = window.getStudyBlocksForDay(day).length + 1;
             state.studyData.studyPlan.weeklyBlocks.push({
-                id: Date.now() + Math.random(), day, trackId, subjectId: subjectVal ? parseInt(subjectVal) : null,
+                id: Date.now() + Math.random(), day, trackId, subjectId: selectedSubject ? selectedSubject.id : null,
                 title, studyType, plannedMinutes, priority, energyLevel, notes, status: 'planned', order,
                 linkedSessionId: null, createdAt: new Date().toISOString()
             });
@@ -3478,7 +3560,7 @@
                     <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
                         <h4 class="text-xs font-black text-slate-300 uppercase tracking-widest mb-3 flex items-center gap-2"><i data-lucide="route" class="w-4 h-4 text-cyan-400"></i> Trilhas de estudo</h4>
                         <div class="space-y-2 mb-4">
-                            ${allTracks.map(t => `<div class="flex items-center justify-between gap-2 bg-slate-900 border border-slate-800 rounded-lg p-3 ${t.active === false ? 'opacity-50' : ''}"><div class="flex items-center gap-2 min-w-0"><i data-lucide="${t.icon}" class="w-4 h-4 ${t.color}"></i><div class="min-w-0"><div class="text-sm font-bold text-white truncate">${window.escapeHtml(t.name)}</div><div class="text-[10px] text-slate-500">Meta: ${t.weeklyGoalMinutes || 0} min/semana</div></div></div>${t.active !== false ? `<button onclick="window.deleteStudyTrack('${t.id}')" class="text-slate-600 hover:text-red-400"><i data-lucide="archive" class="w-4 h-4"></i></button>` : `<span class="text-[10px] text-slate-600 uppercase font-bold">Arquivada</span>`}</div>`).join('')}
+                            ${allTracks.map(t => { const subjectCount = window.getStudySubjects(t.id).length; return `<div class="flex items-center justify-between gap-2 bg-slate-900 border border-slate-800 rounded-lg p-3 ${t.active === false ? 'opacity-50' : ''}"><div class="flex items-center gap-2 min-w-0"><i data-lucide="${t.icon}" class="w-4 h-4 ${t.color}"></i><div class="min-w-0"><div class="text-sm font-bold text-white truncate">${window.escapeHtml(t.name)}</div><div class="text-[10px] text-slate-500">Meta: ${t.weeklyGoalMinutes || 0} min/semana · ${subjectCount} disciplina${subjectCount === 1 ? '' : 's'}</div></div></div>${t.active !== false ? `<button onclick="window.deleteStudyTrack('${t.id}')" class="text-slate-600 hover:text-red-400"><i data-lucide="archive" class="w-4 h-4"></i></button>` : `<span class="text-[10px] text-slate-600 uppercase font-bold">Arquivada</span>`}</div>`; }).join('')}
                         </div>
                         <div class="grid grid-cols-2 gap-2">
                             <input id="study-track-name" placeholder="Nova trilha" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
@@ -3490,12 +3572,12 @@
                     </div>
 
                     <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
-                        <h4 class="text-xs font-black text-slate-300 uppercase tracking-widest mb-3 flex items-center gap-2"><i data-lucide="calendar-plus" class="w-4 h-4 text-cyan-400"></i> Criar bloco semanal</h4>
+                        <h4 class="text-xs font-black text-slate-300 uppercase tracking-widest mb-3 flex items-center gap-2"><i data-lucide="calendar-plus" class="w-4 h-4 text-cyan-400"></i> Adicionar estudo ao calendário</h4>
                         <div class="grid grid-cols-2 gap-2 mb-2">
                             <input id="study-block-title" placeholder="Tema/atividade" class="col-span-2 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
-                            <select id="study-block-day" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">${daysOfWeek.map(d => `<option value="${d.id}" ${d.id === state.activeTab ? 'selected' : ''}>${d.label}</option>`).join('')}</select>
-                            <select id="study-block-track" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">${tracks.map(t => `<option value="${t.id}">${window.escapeHtml(t.name)}</option>`).join('')}</select>
-                            <select id="study-block-subject" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="">Sem matéria vinculada</option>${state.studyData.subjects.map(s => `<option value="${s.id}">${window.escapeHtml(s.name)}</option>`).join('')}</select>
+                            <div><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Dia</label><select id="study-block-day" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">${daysOfWeek.map(d => `<option value="${d.id}" ${d.id === state.activeTab ? 'selected' : ''}>${d.label}</option>`).join('')}</select></div>
+                            <div><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Trilha</label><select id="study-block-track" onchange="window.updateStudyBlockSubjectOptions()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">${tracks.map(t => `<option value="${t.id}">${window.escapeHtml(t.name)}</option>`).join('')}</select></div>
+                            <div class="col-span-2"><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Disciplina da trilha</label><select id="study-block-subject" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">${window.renderStudySubjectOptions({ trackId: tracks[0]?.id || '', includeEmpty: true, emptyLabel: 'Sem disciplina vinculada' })}</select><p class="text-[9px] text-slate-600 mt-1">A lista muda conforme a trilha. Cadastre e organize disciplinas no Arsenal.</p></div>
                             <select id="study-block-type" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="teoria">Teoria</option><option value="questoes">Questões</option><option value="revisao">Revisão</option><option value="flashcards">Flashcards</option><option value="listening">Listening</option><option value="conversacao">Conversação</option><option value="leitura">Leitura</option><option value="simulado">Simulado</option><option value="erros">Correção de erros</option><option value="carreira">Carreira técnica</option></select>
                             <input id="study-block-minutes" type="number" value="30" min="5" max="480" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
                             <select id="study-block-priority" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="alta">Prioridade alta</option><option value="media" selected>Prioridade média</option><option value="baixa">Prioridade baixa</option></select>
@@ -3824,25 +3906,45 @@
                 return html;
             } 
             else if (uiState.studyTab === 'subjects') {
+                const activeTracks = window.getStudyTracks();
+                const allTracks = window.getStudyTracks(true);
+                const unassignedSubjects = state.studyData.subjects.filter(s => !s.trackId);
                 let html = `
-                <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl mb-6">
-                    <h3 class="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2"><i data-lucide="plus-square" class="text-emerald-400"></i> Adicionar Disciplina</h3>
-                    <div class="flex flex-col sm:flex-row gap-3">
-                        <input type="text" id="new-subject-name" placeholder="Ex: Direito Constitucional..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-cyan-500">
-                        <select id="new-subject-color" class="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-300 focus:outline-none">
-                            <option value="bg-cyan-500" class="text-cyan-500 font-bold">Ciano</option><option value="bg-indigo-500" class="text-indigo-500 font-bold">Índigo</option><option value="bg-emerald-500" class="text-emerald-500 font-bold">Esmeralda</option><option value="bg-rose-500" class="text-rose-500 font-bold">Rosa</option><option value="bg-yellow-500" class="text-yellow-500 font-bold">Amarelo</option><option value="bg-fuchsia-500" class="text-fuchsia-500 font-bold">Fúcsia</option>
-                        </select>
-                        <button onclick="window.addSubject()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-6 rounded-lg transition-colors">Cadastrar</button>
+                <div class="bg-cyan-950/10 border border-cyan-900/30 rounded-xl p-4 mb-5">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="library-big" class="w-5 h-5 text-cyan-400 shrink-0 mt-0.5"></i>
+                        <div><h3 class="text-sm font-black text-cyan-300 uppercase tracking-widest">Arsenal organizado por trilhas</h3><p class="text-xs text-slate-400 mt-1 leading-relaxed">A trilha representa o objetivo maior — como Inglês, Concurso ou Carreira. A disciplina é o conteúdo específico dentro dela. Essa relação organiza o Radar, o registro de sessões e o Planejamento semanal.</p></div>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">`;
-                if (state.studyData.subjects.length === 0) html += `<div class="col-span-full text-center text-slate-500 p-4 italic text-sm">Nenhuma disciplina cadastrada.</div>`;
-                state.studyData.subjects.forEach(sub => {
-                    html += `
-                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex justify-between items-center group hover:border-slate-600 transition-colors">
-                        <div class="flex items-center gap-3"><div class="w-4 h-4 rounded-full ${sub.color}"></div><span class="font-bold text-white">${sub.name}</span></div>
-                        <button onclick="window.deleteSubject(${sub.id})" class="text-slate-600 hover:text-red-400 p-2 rounded-lg hover:bg-slate-900 opacity-0 group-hover:opacity-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                    </div>`;
+                <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl mb-6">
+                    <h3 class="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2"><i data-lucide="plus-square" class="text-emerald-400"></i> Adicionar disciplina ao Arsenal</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="sm:col-span-1"><label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Nome da disciplina</label><input type="text" id="new-subject-name" placeholder="Ex: Direito Constitucional" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500"></div>
+                        <div><label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Trilha obrigatória</label><select id="new-subject-track" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-cyan-500"><option value="">Selecione a trilha...</option>${activeTracks.map(t => `<option value="${t.id}">${window.escapeHtml(t.name)}</option>`).join('')}</select></div>
+                        <div><label class="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Cor visual</label><select id="new-subject-color" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-300 focus:outline-none"><option value="bg-cyan-500">Ciano</option><option value="bg-indigo-500">Índigo</option><option value="bg-emerald-500">Esmeralda</option><option value="bg-rose-500">Rosa</option><option value="bg-yellow-500">Amarelo</option><option value="bg-fuchsia-500">Fúcsia</option></select></div>
+                    </div>
+                    <button onclick="window.addSubject()" class="mt-3 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-widest text-xs py-2.5 px-6 rounded-lg transition-colors">Cadastrar disciplina</button>
+                </div>`;
+
+                if (state.studyData.subjects.length === 0) {
+                    html += `<div class="text-center text-slate-500 p-8 border border-dashed border-slate-800 rounded-xl"><i data-lucide="library" class="w-9 h-9 mx-auto mb-2 text-slate-700"></i><p class="text-sm italic">Nenhuma disciplina cadastrada.</p><p class="text-xs mt-1">Comece escolhendo uma trilha e cadastrando a primeira disciplina.</p></div>`;
+                    return html;
+                }
+
+                if (unassignedSubjects.length > 0) {
+                    html += `<div class="bg-yellow-950/20 border border-yellow-900/50 rounded-xl p-4 mb-5"><h4 class="text-xs font-black text-yellow-300 uppercase tracking-widest flex items-center gap-2 mb-3"><i data-lucide="triangle-alert" class="w-4 h-4"></i> Disciplinas antigas sem trilha (${unassignedSubjects.length})</h4><p class="text-xs text-slate-400 mb-3">Escolha uma trilha para cada item. Os blocos de planejamento vinculados serão atualizados automaticamente.</p><div class="grid grid-cols-1 md:grid-cols-2 gap-3">${unassignedSubjects.map(sub => `<div class="bg-slate-950 border border-yellow-900/40 rounded-lg p-3"><div class="flex items-center gap-2 mb-2"><div class="w-3 h-3 rounded-full ${sub.color}"></div><span class="font-bold text-white text-sm">${window.escapeHtml(sub.name)}</span></div><select onchange="window.updateSubjectTrack('${sub.id}', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white"><option value="">Vincular à trilha...</option>${activeTracks.map(t => `<option value="${t.id}">${window.escapeHtml(t.name)}</option>`).join('')}</select></div>`).join('')}</div></div>`;
+                }
+
+                html += `<div class="space-y-5">`;
+                allTracks.forEach(track => {
+                    const subjects = window.getStudySubjects(track.id);
+                    html += `<section class="rounded-xl border ${track.border} ${track.bg} p-4 ${track.active === false ? 'opacity-60' : ''}"><div class="flex items-center justify-between gap-3 mb-3"><div class="flex items-center gap-2"><div class="p-2 bg-slate-950/60 border border-slate-800 rounded-lg"><i data-lucide="${track.icon}" class="w-4 h-4 ${track.color}"></i></div><div><h4 class="font-black text-white">${window.escapeHtml(track.name)}</h4><p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">${subjects.length} disciplina${subjects.length === 1 ? '' : 's'} · meta ${track.weeklyGoalMinutes || 0} min/semana</p></div></div>${track.active === false ? `<span class="text-[10px] font-black text-slate-500 uppercase">Trilha arquivada</span>` : ''}</div>`;
+                    if (subjects.length === 0) {
+                        html += `<div class="border border-dashed border-slate-800 rounded-lg p-4 text-center text-xs text-slate-600 italic">Nenhuma disciplina nesta trilha.</div>`;
+                    } else {
+                        html += `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">${subjects.map(sub => `<div class="bg-slate-950 border border-slate-800 p-4 rounded-xl group hover:border-slate-600 transition-colors"><div class="flex justify-between gap-3"><div class="min-w-0 flex items-center gap-3"><div class="w-4 h-4 rounded-full ${sub.color} shrink-0"></div><div class="min-w-0"><div class="font-bold text-white truncate">${window.escapeHtml(sub.name)}</div><div class="text-[10px] ${track.color} font-black uppercase tracking-widest mt-0.5">${window.escapeHtml(track.name)}</div></div></div><button onclick="window.deleteSubject(${sub.id})" class="text-slate-600 hover:text-red-400 p-2 rounded-lg hover:bg-slate-900" title="Excluir disciplina"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div><div class="mt-3"><label class="text-[9px] text-slate-600 uppercase font-black tracking-widest block mb-1">Mover para outra trilha</label><select onchange="window.updateSubjectTrack('${sub.id}', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white">${activeTracks.map(t => `<option value="${t.id}" ${String(t.id) === String(sub.trackId) ? 'selected' : ''}>${window.escapeHtml(t.name)}</option>`).join('')}</select></div></div>`).join('')}</div>`;
+                    }
+                    html += `</section>`;
                 });
                 return html + `</div>`;
             }
@@ -3854,7 +3956,7 @@
                         <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Disciplina Alvo</label>
                         <select id="session-subject" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
                             <option value="" disabled selected>Selecione...</option>
-                            ${state.studyData.subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+                            ${window.renderStudySubjectOptions({ includeEmpty: false })}
                         </select>
                     </div>
                     <div>
@@ -4111,7 +4213,7 @@
                 <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 mb-6">
                     <h3 class="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2"><i data-lucide="file-warning" class="text-fuchsia-400"></i> Registrar Erro / Vulnerabilidade</h3>
                     <div class="grid grid-cols-2 gap-3 mb-3">
-                        <select id="error-subject" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none"><option value="">Disciplina...</option>${state.studyData.subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}</select>
+                        <select id="error-subject" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none"><option value="">Disciplina...</option>${window.renderStudySubjectOptions({ includeEmpty: false })}</select>
                         <input type="text" id="error-topic" placeholder="Tópico (ex: Crase)" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none">
                     </div>
                     <div class="grid grid-cols-2 gap-3 mb-3">
@@ -4150,7 +4252,7 @@
                     <div class="space-y-3">
                         <input type="text" id="cycle-name" placeholder="Nome do Ciclo (ex: Pré-Edital Polícia)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
                         <select id="cycle-subs" multiple class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white h-24">
-                            ${state.studyData.subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}
+                            ${window.renderStudySubjectOptions({ includeEmpty: false })}
                         </select>
                         <input type="number" id="cycle-hours" placeholder="Meta Semanal (Horas)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
                         <button onclick="window.createStudyCycle()" class="w-full bg-cyan-900/50 hover:bg-cyan-800 text-cyan-300 font-bold py-2.5 rounded-lg border border-cyan-700/50 text-xs">Ativar Novo Ciclo</button>
