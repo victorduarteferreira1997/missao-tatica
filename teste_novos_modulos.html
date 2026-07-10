@@ -227,6 +227,7 @@
             showEditTaskModal: false, editingTaskId: null,
             showStudyModal: false, studyTab: 'plano',
             studyPlanningTrackId: '',
+            editingStudyBlockId: null,
             showHealthModal: false, healthTab: 'dashboard',
             showFinanceModal: false, financeTab: 'dashboard',
             showRitualModal: false,
@@ -2531,6 +2532,68 @@
             window.showToast('Bloco planejado', 'Entrou no Plano de Estudos Semanal.', 'calendar-plus', 'text-cyan-400');
         };
 
+        window.startEditStudyPlanBlock = function(blockId, event = null) {
+            if (event) { event.stopPropagation(); event.preventDefault(); }
+            const block = state.studyData?.studyPlan?.weeklyBlocks?.find(b => String(b.id) === String(blockId));
+            if (!block) { window.showAlertModal('Bloco de planejamento não encontrado.'); return; }
+            uiState.editingStudyBlockId = String(block.id);
+            uiState.studyPlanningTrackId = String(block.trackId || '');
+            uiState.showStudyModal = true;
+            uiState.studyTab = 'planning';
+            render();
+            setTimeout(() => {
+                document.getElementById('study-plan-editor-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                document.getElementById('study-block-title')?.focus();
+            }, 80);
+        };
+
+        window.cancelEditStudyPlanBlock = function() {
+            uiState.editingStudyBlockId = null;
+            render();
+        };
+
+        window.saveStudyPlanBlockChanges = function() {
+            const block = state.studyData?.studyPlan?.weeklyBlocks?.find(b => String(b.id) === String(uiState.editingStudyBlockId));
+            if (!block) { window.showAlertModal('O bloco que você estava editando não foi encontrado.'); uiState.editingStudyBlockId = null; render(); return; }
+
+            const title = document.getElementById('study-block-title')?.value.trim();
+            const day = document.getElementById('study-block-day')?.value || block.day || state.activeTab || 'monday';
+            const selectedTrackId = document.getElementById('study-block-track')?.value || '';
+            const subjectVal = document.getElementById('study-block-subject')?.value || '';
+            const selectedSubject = subjectVal ? state.studyData.subjects.find(s => String(s.id) === String(subjectVal)) : null;
+            const trackId = selectedSubject?.trackId || selectedTrackId;
+            const studyType = document.getElementById('study-block-type')?.value || 'teoria';
+            const plannedMinutes = Math.max(5, Math.min(480, parseInt(document.getElementById('study-block-minutes')?.value) || 30));
+            const priority = document.getElementById('study-block-priority')?.value || 'media';
+            const energyLevel = document.getElementById('study-block-energy')?.value || 'media';
+            const notes = document.getElementById('study-block-notes')?.value.trim() || '';
+
+            if (!title) { window.showAlertModal('Digite o tema ou atividade do bloco.'); return; }
+            if (!trackId) { window.showAlertModal('Escolha uma trilha para o bloco.'); return; }
+            if (selectedSubject?.trackId && String(selectedSubject.trackId) !== String(selectedTrackId)) {
+                window.showAlertModal('A disciplina escolhida pertence a outra trilha. Atualize a seleção e tente novamente.');
+                return;
+            }
+
+            const previousDay = block.day;
+            block.title = title;
+            block.day = day;
+            block.trackId = trackId;
+            block.subjectId = selectedSubject ? selectedSubject.id : null;
+            block.studyType = studyType;
+            block.plannedMinutes = plannedMinutes;
+            block.priority = priority;
+            block.energyLevel = energyLevel;
+            block.notes = notes;
+            block.updatedAt = new Date().toISOString();
+            if (previousDay !== day) block.order = window.getStudyBlocksForDay(day).filter(b => String(b.id) !== String(block.id)).length + 1;
+
+            uiState.editingStudyBlockId = null;
+            uiState.studyPlanningTrackId = String(trackId);
+            window.showToast('Planejamento atualizado', 'As alterações do bloco foram salvas.', 'pencil', 'text-cyan-400');
+            window.saveState();
+        };
+
         window.updateStudyBlockStatus = function(blockId, status) {
             const block = state.studyData.studyPlan.weeklyBlocks.find(b => String(b.id) === String(blockId));
             if (!block) return;
@@ -2555,6 +2618,7 @@
         window.deleteStudyPlanBlock = function(blockId) {
             window.showConfirmModal('Excluir este bloco de planejamento?', () => {
                 state.studyData.studyPlan.weeklyBlocks = state.studyData.studyPlan.weeklyBlocks.filter(b => String(b.id) !== String(blockId));
+                if (String(uiState.editingStudyBlockId || '') === String(blockId)) uiState.editingStudyBlockId = null;
                 window.saveState();
             });
         };
@@ -3520,7 +3584,10 @@
                             <h4 class="text-sm font-black text-white leading-tight">${window.escapeHtml(block.title)}</h4>
                             ${subject ? `<p class="text-[11px] text-slate-400 mt-1">Matéria: ${window.escapeHtml(subject.name)}</p>` : ''}
                         </div>
-                        <button onclick="window.deleteStudyPlanBlock('${block.id}')" class="text-slate-600 hover:text-red-400 p-1 shrink-0" title="Excluir bloco"><i data-lucide="x" class="w-4 h-4"></i></button>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button onclick="window.startEditStudyPlanBlock('${block.id}', event)" class="text-slate-500 hover:text-cyan-300 p-1" title="Editar planejamento"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                            <button onclick="window.deleteStudyPlanBlock('${block.id}')" class="text-slate-600 hover:text-red-400 p-1" title="Excluir bloco"><i data-lucide="x" class="w-4 h-4"></i></button>
+                        </div>
                     </div>
                     <div class="flex flex-wrap gap-1.5 mb-3">
                         <span class="text-[10px] px-2 py-1 rounded-full border ${statusClass} font-bold">${window.getStudyBlockStatusLabel(block.status)}</span>
@@ -3565,12 +3632,19 @@
         function renderStudyPlanningContent() {
             const tracks = window.getStudyTracks();
             const allTracks = window.getStudyTracks(true);
-            const planningTrackId = tracks.some(t => String(t.id) === String(uiState.studyPlanningTrackId || ''))
-                ? String(uiState.studyPlanningTrackId)
-                : '';
+            const blocks = state.studyData.studyPlan.weeklyBlocks || [];
+            const editingBlock = uiState.editingStudyBlockId
+                ? blocks.find(b => String(b.id) === String(uiState.editingStudyBlockId))
+                : null;
+            const requestedTrackId = String(uiState.studyPlanningTrackId || editingBlock?.trackId || '');
+            const planningTrackId = tracks.some(t => String(t.id) === requestedTrackId) ? requestedTrackId : '';
             const planningTrack = planningTrackId ? window.getStudyTrack(planningTrackId) : null;
             const planningSubjects = planningTrackId ? window.getStudySubjects(planningTrackId) : [];
-            const blocks = state.studyData.studyPlan.weeklyBlocks || [];
+            const editingMode = Boolean(editingBlock);
+            const formDay = editingBlock?.day || state.activeTab || 'monday';
+            const formType = editingBlock?.studyType || 'teoria';
+            const formPriority = editingBlock?.priority || 'media';
+            const formEnergy = editingBlock?.energyLevel || 'media';
             const plannedMinutes = blocks.filter(b => b.status !== 'cancelled').reduce((acc,b) => acc + (parseInt(b.plannedMinutes) || 0), 0);
             const completedMinutes = blocks.filter(b => b.status === 'completed').reduce((acc,b) => acc + (parseInt(b.plannedMinutes) || 0), 0);
             const executionPct = plannedMinutes ? Math.round((completedMinutes / plannedMinutes) * 100) : 0;
@@ -3608,21 +3682,25 @@
                         <button onclick="window.addStudyTrack()" class="mt-3 w-full bg-cyan-800 hover:bg-cyan-700 text-white text-xs font-black uppercase tracking-widest rounded-lg py-2">Criar trilha</button>
                     </div>
 
-                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
-                        <h4 class="text-xs font-black text-slate-300 uppercase tracking-widest mb-3 flex items-center gap-2"><i data-lucide="calendar-plus" class="w-4 h-4 text-cyan-400"></i> Adicionar estudo ao calendário</h4>
-                        <div class="grid grid-cols-2 gap-2 mb-2">
-                            <input id="study-block-title" placeholder="Tema/atividade" class="col-span-2 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
-                            <div><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Dia</label><select id="study-block-day" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">${daysOfWeek.map(d => `<option value="${d.id}" ${d.id === state.activeTab ? 'selected' : ''}>${d.label}</option>`).join('')}</select></div>
-                            <div><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Trilha</label><select id="study-block-track" onchange="window.setStudyPlanningTrack(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="" ${!planningTrackId ? 'selected' : ''} disabled>Escolha a trilha</option>${tracks.map(t => `<option value="${t.id}" ${String(t.id) === String(planningTrackId) ? 'selected' : ''}>${window.escapeHtml(t.name)}</option>`).join('')}</select></div>
-                            <div class="col-span-2"><label id="study-block-subject-label" class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">${planningTrack ? `Disciplina de ${window.escapeHtml(planningTrack.name)}` : 'Disciplina da trilha'}</label><select id="study-block-subject" ${planningTrackId ? '' : 'disabled'} class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none disabled:opacity-50 disabled:cursor-not-allowed">${planningTrackId ? window.renderStudySubjectOptions({ trackId: planningTrackId, includeEmpty: true, emptyLabel: 'Sem disciplina vinculada' }) : '<option value="">Escolha primeiro uma trilha</option>'}</select><p id="study-block-subject-helper" class="text-[9px] text-slate-600 mt-1">${planningTrackId ? (planningSubjects.length ? `${planningSubjects.length} disciplina${planningSubjects.length === 1 ? '' : 's'} encontrada${planningSubjects.length === 1 ? '' : 's'} em ${window.escapeHtml(planningTrack.name)}.` : `Nenhuma disciplina está vinculada à trilha ${window.escapeHtml(planningTrack.name)}. Confira o Arsenal.`) : 'Selecione uma trilha para carregar somente as disciplinas vinculadas a ela.'}</p></div>
-                            <select id="study-block-type" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="teoria">Teoria</option><option value="questoes">Questões</option><option value="revisao">Revisão</option><option value="flashcards">Flashcards</option><option value="listening">Listening</option><option value="conversacao">Conversação</option><option value="leitura">Leitura</option><option value="simulado">Simulado</option><option value="erros">Correção de erros</option><option value="carreira">Carreira técnica</option></select>
-                            <input id="study-block-minutes" type="number" value="30" min="5" max="480" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
-                            <select id="study-block-priority" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="alta">Prioridade alta</option><option value="media" selected>Prioridade média</option><option value="baixa">Prioridade baixa</option></select>
-                            <select id="study-block-energy" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="alta">Energia alta</option><option value="media" selected>Energia média</option><option value="baixa">Energia baixa</option></select>
-                            <input id="study-block-notes" placeholder="Observação opcional" class="col-span-2 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
+                    <div id="study-plan-editor-card" class="bg-slate-950 border ${editingMode ? 'border-cyan-600/70 ring-1 ring-cyan-900/40' : 'border-slate-800'} rounded-xl p-4">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <h4 class="text-xs font-black ${editingMode ? 'text-cyan-300' : 'text-slate-300'} uppercase tracking-widest flex items-center gap-2"><i data-lucide="${editingMode ? 'pencil' : 'calendar-plus'}" class="w-4 h-4 text-cyan-400"></i> ${editingMode ? 'Editar estudo do calendário' : 'Adicionar estudo ao calendário'}</h4>
+                            ${editingMode ? `<span class="text-[9px] px-2 py-1 rounded-full border border-cyan-900/60 bg-cyan-950/30 text-cyan-300 font-black uppercase tracking-widest">Modo de edição</span>` : ''}
                         </div>
-                        <button onclick="window.addStudyPlanBlock()" class="w-full bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-black uppercase tracking-widest rounded-lg py-2 mb-2">Adicionar bloco</button>
-                        <div class="grid grid-cols-2 gap-2"><button onclick="window.applyStudyTemplate('balanced')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-black uppercase rounded-lg py-2">Template equilibrado</button><button onclick="window.applyStudyTemplate('maintenance')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-black uppercase rounded-lg py-2">Semana leve</button></div>
+                        ${editingMode ? `<div class="mb-3 rounded-lg border border-cyan-900/50 bg-cyan-950/20 p-3"><p class="text-[11px] text-cyan-200 font-bold">Editando: ${window.escapeHtml(editingBlock.title)}</p><p class="text-[10px] text-slate-500 mt-1">Altere qualquer campo abaixo e clique em “Salvar alterações”. O histórico e o status atual do bloco serão preservados.</p></div>` : ''}
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <input id="study-block-title" value="${window.escapeHtml(editingBlock?.title || '')}" placeholder="Tema/atividade" class="col-span-2 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
+                            <div><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Dia</label><select id="study-block-day" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">${daysOfWeek.map(d => `<option value="${d.id}" ${d.id === formDay ? 'selected' : ''}>${d.label}</option>`).join('')}</select></div>
+                            <div><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Trilha</label><select id="study-block-track" onchange="window.setStudyPlanningTrack(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="" ${!planningTrackId ? 'selected' : ''} disabled>Escolha a trilha</option>${tracks.map(t => `<option value="${t.id}" ${String(t.id) === String(planningTrackId) ? 'selected' : ''}>${window.escapeHtml(t.name)}</option>`).join('')}</select></div>
+                            <div class="col-span-2"><label id="study-block-subject-label" class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">${planningTrack ? `Disciplina de ${window.escapeHtml(planningTrack.name)}` : 'Disciplina da trilha'}</label><select id="study-block-subject" ${planningTrackId ? '' : 'disabled'} class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none disabled:opacity-50 disabled:cursor-not-allowed">${planningTrackId ? window.renderStudySubjectOptions({ trackId: planningTrackId, selectedId: editingBlock?.subjectId || '', includeEmpty: true, emptyLabel: 'Sem disciplina vinculada' }) : '<option value="">Escolha primeiro uma trilha</option>'}</select><p id="study-block-subject-helper" class="text-[9px] text-slate-600 mt-1">${planningTrackId ? (planningSubjects.length ? `${planningSubjects.length} disciplina${planningSubjects.length === 1 ? '' : 's'} encontrada${planningSubjects.length === 1 ? '' : 's'} em ${window.escapeHtml(planningTrack.name)}.` : `Nenhuma disciplina está vinculada à trilha ${window.escapeHtml(planningTrack.name)}. Confira o Arsenal.`) : 'Selecione uma trilha para carregar somente as disciplinas vinculadas a ela.'}</p></div>
+                            <select id="study-block-type" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="teoria" ${formType === 'teoria' ? 'selected' : ''}>Teoria</option><option value="questoes" ${formType === 'questoes' ? 'selected' : ''}>Questões</option><option value="revisao" ${formType === 'revisao' ? 'selected' : ''}>Revisão</option><option value="flashcards" ${formType === 'flashcards' ? 'selected' : ''}>Flashcards</option><option value="listening" ${formType === 'listening' ? 'selected' : ''}>Listening</option><option value="conversacao" ${formType === 'conversacao' ? 'selected' : ''}>Conversação</option><option value="leitura" ${formType === 'leitura' ? 'selected' : ''}>Leitura</option><option value="simulado" ${formType === 'simulado' ? 'selected' : ''}>Simulado</option><option value="erros" ${formType === 'erros' ? 'selected' : ''}>Correção de erros</option><option value="carreira" ${formType === 'carreira' ? 'selected' : ''}>Carreira técnica</option></select>
+                            <input id="study-block-minutes" type="number" value="${editingBlock?.plannedMinutes || 30}" min="5" max="480" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
+                            <select id="study-block-priority" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="alta" ${formPriority === 'alta' ? 'selected' : ''}>Prioridade alta</option><option value="media" ${formPriority === 'media' ? 'selected' : ''}>Prioridade média</option><option value="baixa" ${formPriority === 'baixa' ? 'selected' : ''}>Prioridade baixa</option></select>
+                            <select id="study-block-energy" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="alta" ${formEnergy === 'alta' ? 'selected' : ''}>Energia alta</option><option value="media" ${formEnergy === 'media' ? 'selected' : ''}>Energia média</option><option value="baixa" ${formEnergy === 'baixa' ? 'selected' : ''}>Energia baixa</option></select>
+                            <input id="study-block-notes" value="${window.escapeHtml(editingBlock?.notes || '')}" placeholder="Observação opcional" class="col-span-2 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
+                        </div>
+                        ${editingMode ? `<div class="grid grid-cols-2 gap-2 mb-2"><button onclick="window.saveStudyPlanBlockChanges()" class="bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-black uppercase tracking-widest rounded-lg py-2.5 flex items-center justify-center gap-2"><i data-lucide="save" class="w-4 h-4"></i> Salvar alterações</button><button onclick="window.cancelEditStudyPlanBlock()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-black uppercase tracking-widest rounded-lg py-2.5">Cancelar</button></div>` : `<button onclick="window.addStudyPlanBlock()" class="w-full bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-black uppercase tracking-widest rounded-lg py-2 mb-2">Adicionar bloco</button>`}
+                        ${!editingMode ? `<div class="grid grid-cols-2 gap-2"><button onclick="window.applyStudyTemplate('balanced')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-black uppercase rounded-lg py-2">Template equilibrado</button><button onclick="window.applyStudyTemplate('maintenance')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-black uppercase rounded-lg py-2">Semana leve</button></div>` : ''}
                     </div>
                 </div>
 
