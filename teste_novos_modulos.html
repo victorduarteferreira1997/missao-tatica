@@ -2675,24 +2675,86 @@
             window.saveState();
         };
 
-        window.updateStudyBlockStatus = function(blockId, status) {
-            const block = state.studyData.studyPlan.weeklyBlocks.find(b => String(b.id) === String(blockId));
-            if (!block) return;
-            block.status = status;
-            block.updatedAt = new Date().toISOString();
-            if (status === 'completed' && !block.completedAt) block.completedAt = new Date().toISOString();
-            if (status === 'partial' && !block.partialAt) block.partialAt = new Date().toISOString();
-            window.saveState();
+        window.captureStudyPlanViewPosition = function(blockId) {
+            const modalScroll = document.getElementById('study-modal-scroll');
+            return {
+                blockId: String(blockId),
+                modalWasOpen: Boolean(modalScroll),
+                modalScrollTop: modalScroll ? modalScroll.scrollTop : 0,
+                windowScrollY: window.scrollY || document.documentElement.scrollTop || 0
+            };
         };
 
-        window.rescheduleStudyBlockToNextDay = function(blockId) {
+        window.restoreStudyPlanViewPosition = function(snapshot) {
+            if (!snapshot) return;
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const modalScroll = document.getElementById('study-modal-scroll');
+                    if (snapshot.modalWasOpen && modalScroll) {
+                        modalScroll.scrollTop = snapshot.modalScrollTop;
+                    } else if (!snapshot.modalWasOpen) {
+                        window.scrollTo({ top: snapshot.windowScrollY, behavior: 'auto' });
+                    }
+
+                    const matchingCard = Array.from(document.querySelectorAll('[data-study-block-id]'))
+                        .find(card => String(card.dataset.studyBlockId) === String(snapshot.blockId));
+                    if (matchingCard) {
+                        matchingCard.classList.add('ring-2', 'ring-yellow-500/40');
+                        setTimeout(() => matchingCard.classList.remove('ring-2', 'ring-yellow-500/40'), 900);
+                    }
+                });
+            });
+        };
+
+        window.updateStudyBlockStatus = function(blockId, status, event = null) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            const block = state.studyData.studyPlan.weeklyBlocks.find(b => String(b.id) === String(blockId));
+            if (!block) {
+                window.showAlertModal('Bloco de planejamento não encontrado.');
+                return;
+            }
+
+            const viewPosition = window.captureStudyPlanViewPosition(blockId);
+            const now = new Date().toISOString();
+            block.status = status;
+            block.updatedAt = now;
+
+            if (status === 'completed') {
+                block.completedAt = now;
+                delete block.partialAt;
+            } else if (status === 'partial') {
+                block.partialAt = now;
+                delete block.completedAt;
+            }
+
+            window.saveState();
+            window.restoreStudyPlanViewPosition(viewPosition);
+
+            if (status === 'partial') {
+                window.showToast('Progresso parcial registrado', 'O bloco foi marcado como parcial e permanece no planejamento.', 'circle-dot', 'text-yellow-400');
+            } else if (status === 'completed') {
+                window.showToast('Bloco concluído', 'O estudo foi marcado como concluído.', 'check-circle-2', 'text-emerald-400');
+            }
+        };
+
+        window.rescheduleStudyBlockToNextDay = function(blockId, event = null) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
             const block = state.studyData.studyPlan.weeklyBlocks.find(b => String(b.id) === String(blockId));
             if (!block) return;
+            const viewPosition = window.captureStudyPlanViewPosition(blockId);
             const idx = daysOfWeek.findIndex(d => d.id === block.day);
             block.day = daysOfWeek[(idx + 1 + daysOfWeek.length) % daysOfWeek.length].id;
             block.status = 'rescheduled';
             block.updatedAt = new Date().toISOString();
             window.saveState();
+            window.restoreStudyPlanViewPosition(viewPosition);
             window.showToast('Bloco remarcado', 'Movido para o próximo dia da semana.', 'calendar-clock', 'text-blue-400');
         };
 
@@ -3527,7 +3589,7 @@
             // MODAL CENTRO DE INTELIGÊNCIA (ESTUDOS)
             if (uiState.showStudyModal) {
                 html += `
-                <div class="fixed inset-0 bg-slate-950/95 flex flex-col items-center justify-start p-2 sm:p-6 z-[60] backdrop-blur-lg overflow-y-auto pt-8 font-mono">
+                <div id="study-modal-scroll" class="fixed inset-0 bg-slate-950/95 flex flex-col items-center justify-start p-2 sm:p-6 z-[60] backdrop-blur-lg overflow-y-auto pt-8 font-mono">
                     <div class="bg-slate-900 border border-cyan-900/50 rounded-2xl w-full max-w-5xl shadow-[0_0_50px_rgba(8,145,178,0.15)] modal-enter relative mb-10">
                         <button onclick="window.toggleStudyModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full p-2 hover:bg-red-500/20 hover:text-red-400 transition-colors z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
                         <div class="p-5 sm:p-8">
@@ -3660,8 +3722,9 @@
                 ? repeatDays.map(dayId => daysOfWeek.find(day => day.id === dayId)?.label?.slice(0, 3) || dayId).join(' · ')
                 : '';
             const completed = block.status === 'completed';
+            const partial = block.status === 'partial';
             return `
-                <div class="${track.bg} border ${track.border} rounded-2xl p-4 ${completed ? 'opacity-80' : ''} shadow-sm">
+                <div data-study-block-id="${block.id}" class="${track.bg} border ${track.border} rounded-2xl p-4 ${completed ? 'opacity-80' : ''} shadow-sm transition-all">
                     <div class="flex items-start justify-between gap-3 mb-3">
                         <div class="min-w-0 flex-1">
                             <div class="flex flex-wrap items-center gap-2 mb-2">
@@ -3672,8 +3735,8 @@
                             ${subject ? `<p class="text-xs text-slate-400 mt-1.5 flex items-start gap-1.5"><i data-lucide="book-marked" class="w-3.5 h-3.5 mt-0.5 shrink-0"></i><span>${window.escapeHtml(subject.name)}</span></p>` : '<p class="text-xs text-slate-600 mt-1.5">Sem disciplina vinculada</p>'}
                         </div>
                         <div class="flex items-center gap-1 shrink-0">
-                            <button onclick="window.startEditStudyPlanBlock('${block.id}', event)" class="text-slate-400 hover:text-cyan-300 hover:bg-cyan-950/40 p-2 rounded-lg transition-colors" title="Editar planejamento"><i data-lucide="pencil" class="w-4 h-4"></i></button>
-                            <button onclick="window.deleteStudyPlanBlock('${block.id}')" class="text-slate-500 hover:text-red-400 hover:bg-red-950/30 p-2 rounded-lg transition-colors" title="Excluir este dia"><i data-lucide="x" class="w-4 h-4"></i></button>
+                            <button type="button" onclick="window.startEditStudyPlanBlock('${block.id}', event)" class="text-slate-400 hover:text-cyan-300 hover:bg-cyan-950/40 p-2 rounded-lg transition-colors" title="Editar planejamento"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                            <button type="button" onclick="window.deleteStudyPlanBlock('${block.id}')" class="text-slate-500 hover:text-red-400 hover:bg-red-950/30 p-2 rounded-lg transition-colors" title="Excluir este dia"><i data-lucide="x" class="w-4 h-4"></i></button>
                         </div>
                     </div>
 
@@ -3699,10 +3762,10 @@
                     ${block.notes && !compact ? `<p class="text-xs text-slate-400 bg-slate-950/60 border border-slate-800 rounded-xl p-3 mb-4 leading-relaxed">${window.escapeHtml(block.notes)}</p>` : ''}
 
                     <div class="grid grid-cols-2 gap-2">
-                        <button onclick="window.prefillStudySessionFromPlan('${block.id}')" class="min-h-[42px] bg-cyan-700 hover:bg-cyan-600 text-white text-[11px] font-black rounded-xl px-3 py-2.5 flex items-center justify-center gap-2 transition-colors"><i data-lucide="clipboard-pen" class="w-4 h-4"></i>Registrar sessão</button>
-                        <button onclick="window.updateStudyBlockStatus('${block.id}','completed')" class="min-h-[42px] ${completed ? 'bg-emerald-900/60 text-emerald-200' : 'bg-emerald-700 hover:bg-emerald-600 text-white'} text-[11px] font-black rounded-xl px-3 py-2.5 flex items-center justify-center gap-2 transition-colors"><i data-lucide="check" class="w-4 h-4"></i>${completed ? 'Concluído' : 'Concluir'}</button>
-                        <button onclick="window.updateStudyBlockStatus('${block.id}','partial')" class="min-h-[40px] bg-yellow-950/50 hover:bg-yellow-900/60 border border-yellow-900/60 text-yellow-200 text-[11px] font-bold rounded-xl px-3 py-2 flex items-center justify-center gap-2 transition-colors"><i data-lucide="circle-dot" class="w-4 h-4"></i>Marcar parcial</button>
-                        <button onclick="window.rescheduleStudyBlockToNextDay('${block.id}')" class="min-h-[40px] bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[11px] font-bold rounded-xl px-3 py-2 flex items-center justify-center gap-2 transition-colors"><i data-lucide="calendar-clock" class="w-4 h-4"></i>Remarcar</button>
+                        <button type="button" onclick="window.prefillStudySessionFromPlan('${block.id}')" class="min-h-[42px] bg-cyan-700 hover:bg-cyan-600 text-white text-[11px] font-black rounded-xl px-3 py-2.5 flex items-center justify-center gap-2 transition-colors"><i data-lucide="clipboard-pen" class="w-4 h-4"></i>Registrar sessão</button>
+                        <button type="button" onclick="window.updateStudyBlockStatus('${block.id}','completed', event)" class="min-h-[42px] ${completed ? 'bg-emerald-900/60 text-emerald-200' : 'bg-emerald-700 hover:bg-emerald-600 text-white'} text-[11px] font-black rounded-xl px-3 py-2.5 flex items-center justify-center gap-2 transition-colors"><i data-lucide="check" class="w-4 h-4"></i>${completed ? 'Concluído' : 'Concluir'}</button>
+                        <button type="button" onclick="window.updateStudyBlockStatus('${block.id}','partial', event)" class="min-h-[40px] ${partial ? 'bg-yellow-700 text-white border-yellow-500' : 'bg-yellow-950/50 hover:bg-yellow-900/60 border-yellow-900/60 text-yellow-200'} border text-[11px] font-bold rounded-xl px-3 py-2 flex items-center justify-center gap-2 transition-colors"><i data-lucide="circle-dot" class="w-4 h-4"></i>${partial ? 'Parcial marcado' : 'Marcar parcial'}</button>
+                        <button type="button" onclick="window.rescheduleStudyBlockToNextDay('${block.id}', event)" class="min-h-[40px] bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[11px] font-bold rounded-xl px-3 py-2 flex items-center justify-center gap-2 transition-colors"><i data-lucide="calendar-clock" class="w-4 h-4"></i>Remarcar</button>
                     </div>
                 </div>`;
         }
