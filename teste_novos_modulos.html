@@ -2720,23 +2720,31 @@
 
             const viewPosition = window.captureStudyPlanViewPosition(blockId);
             const now = new Date().toISOString();
-            block.status = status;
+            const removingPartial = status === 'partial' && block.status === 'partial';
+            const nextStatus = removingPartial ? 'planned' : status;
+
+            block.status = nextStatus;
             block.updatedAt = now;
 
-            if (status === 'completed') {
+            if (nextStatus === 'completed') {
                 block.completedAt = now;
                 delete block.partialAt;
-            } else if (status === 'partial') {
+            } else if (nextStatus === 'partial') {
                 block.partialAt = now;
+                delete block.completedAt;
+            } else if (nextStatus === 'planned') {
+                delete block.partialAt;
                 delete block.completedAt;
             }
 
             window.saveState();
             window.restoreStudyPlanViewPosition(viewPosition);
 
-            if (status === 'partial') {
+            if (removingPartial) {
+                window.showToast('Marcação parcial removida', 'O bloco voltou ao status Planejado.', 'undo-2', 'text-cyan-400');
+            } else if (nextStatus === 'partial') {
                 window.showToast('Progresso parcial registrado', 'O bloco foi marcado como parcial e permanece no planejamento.', 'circle-dot', 'text-yellow-400');
-            } else if (status === 'completed') {
+            } else if (nextStatus === 'completed') {
                 window.showToast('Bloco concluído', 'O estudo foi marcado como concluído.', 'check-circle-2', 'text-emerald-400');
             }
         };
@@ -3764,7 +3772,7 @@
                     <div class="grid grid-cols-2 gap-2">
                         <button type="button" onclick="window.prefillStudySessionFromPlan('${block.id}')" class="min-h-[42px] bg-cyan-700 hover:bg-cyan-600 text-white text-[11px] font-black rounded-xl px-3 py-2.5 flex items-center justify-center gap-2 transition-colors"><i data-lucide="clipboard-pen" class="w-4 h-4"></i>Registrar sessão</button>
                         <button type="button" onclick="window.updateStudyBlockStatus('${block.id}','completed', event)" class="min-h-[42px] ${completed ? 'bg-emerald-900/60 text-emerald-200' : 'bg-emerald-700 hover:bg-emerald-600 text-white'} text-[11px] font-black rounded-xl px-3 py-2.5 flex items-center justify-center gap-2 transition-colors"><i data-lucide="check" class="w-4 h-4"></i>${completed ? 'Concluído' : 'Concluir'}</button>
-                        <button type="button" onclick="window.updateStudyBlockStatus('${block.id}','partial', event)" class="min-h-[40px] ${partial ? 'bg-yellow-700 text-white border-yellow-500' : 'bg-yellow-950/50 hover:bg-yellow-900/60 border-yellow-900/60 text-yellow-200'} border text-[11px] font-bold rounded-xl px-3 py-2 flex items-center justify-center gap-2 transition-colors"><i data-lucide="circle-dot" class="w-4 h-4"></i>${partial ? 'Parcial marcado' : 'Marcar parcial'}</button>
+                        <button type="button" onclick="window.updateStudyBlockStatus('${block.id}','partial', event)" class="min-h-[40px] ${partial ? 'bg-yellow-700 hover:bg-yellow-600 text-white border-yellow-500' : 'bg-yellow-950/50 hover:bg-yellow-900/60 border-yellow-900/60 text-yellow-200'} border text-[11px] font-bold rounded-xl px-3 py-2 flex items-center justify-center gap-2 transition-colors" title="${partial ? 'Remover marcação parcial e voltar para Planejado' : 'Marcar este bloco como parcialmente realizado'}"><i data-lucide="${partial ? 'undo-2' : 'circle-dot'}" class="w-4 h-4"></i>${partial ? 'Desmarcar parcial' : 'Marcar parcial'}</button>
                         <button type="button" onclick="window.rescheduleStudyBlockToNextDay('${block.id}', event)" class="min-h-[40px] bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[11px] font-bold rounded-xl px-3 py-2 flex items-center justify-center gap-2 transition-colors"><i data-lucide="calendar-clock" class="w-4 h-4"></i>Remarcar</button>
                     </div>
                 </div>`;
