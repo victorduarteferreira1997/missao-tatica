@@ -226,6 +226,7 @@
             showCreateTaskModal: false,
             showEditTaskModal: false, editingTaskId: null,
             showStudyModal: false, studyTab: 'plano',
+            studyPlanningTrackId: '',
             showHealthModal: false, healthTab: 'dashboard',
             showFinanceModal: false, financeTab: 'dashboard',
             showRitualModal: false,
@@ -2127,11 +2128,42 @@
             window.showToast('Disciplina reorganizada', `${subject.name} agora pertence à trilha ${track.name}.`, 'route', track.color || 'text-cyan-400');
         };
 
+        window.setStudyPlanningTrack = function(trackId, selectedSubjectId = '') {
+            const normalizedTrackId = String(trackId || '');
+            uiState.studyPlanningTrackId = normalizedTrackId;
+            const subjectSelect = document.getElementById('study-block-subject');
+            const subjectLabel = document.getElementById('study-block-subject-label');
+            const subjectHelper = document.getElementById('study-block-subject-helper');
+            if (!subjectSelect) return;
+
+            if (!normalizedTrackId) {
+                subjectSelect.disabled = true;
+                subjectSelect.innerHTML = '<option value="">Escolha primeiro uma trilha</option>';
+                if (subjectLabel) subjectLabel.textContent = 'Disciplina da trilha';
+                if (subjectHelper) subjectHelper.textContent = 'Selecione uma trilha para carregar somente as disciplinas vinculadas a ela.';
+                return;
+            }
+
+            const track = window.getStudyTrack(normalizedTrackId);
+            const subjects = window.getStudySubjects(normalizedTrackId);
+            subjectSelect.disabled = false;
+            subjectSelect.innerHTML = window.renderStudySubjectOptions({
+                trackId: normalizedTrackId,
+                selectedId: selectedSubjectId,
+                includeEmpty: true,
+                emptyLabel: 'Sem disciplina vinculada'
+            });
+            if (subjectLabel) subjectLabel.textContent = `Disciplina de ${track.name}`;
+            if (subjectHelper) {
+                subjectHelper.textContent = subjects.length
+                    ? `${subjects.length} disciplina${subjects.length === 1 ? '' : 's'} encontrada${subjects.length === 1 ? '' : 's'} em ${track.name}.`
+                    : `Nenhuma disciplina está vinculada à trilha ${track.name}. Confira o Arsenal.`;
+            }
+        };
+
         window.updateStudyBlockSubjectOptions = function(selectedSubjectId = '') {
             const trackId = document.getElementById('study-block-track')?.value || '';
-            const subjectSelect = document.getElementById('study-block-subject');
-            if (!subjectSelect) return;
-            subjectSelect.innerHTML = window.renderStudySubjectOptions({ trackId, selectedId: selectedSubjectId, includeEmpty: true, emptyLabel: 'Sem disciplina vinculada' });
+            window.setStudyPlanningTrack(trackId, selectedSubjectId);
         };
 
         window.deleteSubject = function(id) {
@@ -3533,6 +3565,11 @@
         function renderStudyPlanningContent() {
             const tracks = window.getStudyTracks();
             const allTracks = window.getStudyTracks(true);
+            const planningTrackId = tracks.some(t => String(t.id) === String(uiState.studyPlanningTrackId || ''))
+                ? String(uiState.studyPlanningTrackId)
+                : '';
+            const planningTrack = planningTrackId ? window.getStudyTrack(planningTrackId) : null;
+            const planningSubjects = planningTrackId ? window.getStudySubjects(planningTrackId) : [];
             const blocks = state.studyData.studyPlan.weeklyBlocks || [];
             const plannedMinutes = blocks.filter(b => b.status !== 'cancelled').reduce((acc,b) => acc + (parseInt(b.plannedMinutes) || 0), 0);
             const completedMinutes = blocks.filter(b => b.status === 'completed').reduce((acc,b) => acc + (parseInt(b.plannedMinutes) || 0), 0);
@@ -3576,8 +3613,8 @@
                         <div class="grid grid-cols-2 gap-2 mb-2">
                             <input id="study-block-title" placeholder="Tema/atividade" class="col-span-2 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
                             <div><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Dia</label><select id="study-block-day" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">${daysOfWeek.map(d => `<option value="${d.id}" ${d.id === state.activeTab ? 'selected' : ''}>${d.label}</option>`).join('')}</select></div>
-                            <div><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Trilha</label><select id="study-block-track" onchange="window.updateStudyBlockSubjectOptions()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">${tracks.map(t => `<option value="${t.id}">${window.escapeHtml(t.name)}</option>`).join('')}</select></div>
-                            <div class="col-span-2"><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Disciplina da trilha</label><select id="study-block-subject" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">${window.renderStudySubjectOptions({ trackId: tracks[0]?.id || '', includeEmpty: true, emptyLabel: 'Sem disciplina vinculada' })}</select><p class="text-[9px] text-slate-600 mt-1">A lista muda conforme a trilha. Cadastre e organize disciplinas no Arsenal.</p></div>
+                            <div><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Trilha</label><select id="study-block-track" onchange="window.setStudyPlanningTrack(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="" ${!planningTrackId ? 'selected' : ''} disabled>Escolha a trilha</option>${tracks.map(t => `<option value="${t.id}" ${String(t.id) === String(planningTrackId) ? 'selected' : ''}>${window.escapeHtml(t.name)}</option>`).join('')}</select></div>
+                            <div class="col-span-2"><label id="study-block-subject-label" class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">${planningTrack ? `Disciplina de ${window.escapeHtml(planningTrack.name)}` : 'Disciplina da trilha'}</label><select id="study-block-subject" ${planningTrackId ? '' : 'disabled'} class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none disabled:opacity-50 disabled:cursor-not-allowed">${planningTrackId ? window.renderStudySubjectOptions({ trackId: planningTrackId, includeEmpty: true, emptyLabel: 'Sem disciplina vinculada' }) : '<option value="">Escolha primeiro uma trilha</option>'}</select><p id="study-block-subject-helper" class="text-[9px] text-slate-600 mt-1">${planningTrackId ? (planningSubjects.length ? `${planningSubjects.length} disciplina${planningSubjects.length === 1 ? '' : 's'} encontrada${planningSubjects.length === 1 ? '' : 's'} em ${window.escapeHtml(planningTrack.name)}.` : `Nenhuma disciplina está vinculada à trilha ${window.escapeHtml(planningTrack.name)}. Confira o Arsenal.`) : 'Selecione uma trilha para carregar somente as disciplinas vinculadas a ela.'}</p></div>
                             <select id="study-block-type" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="teoria">Teoria</option><option value="questoes">Questões</option><option value="revisao">Revisão</option><option value="flashcards">Flashcards</option><option value="listening">Listening</option><option value="conversacao">Conversação</option><option value="leitura">Leitura</option><option value="simulado">Simulado</option><option value="erros">Correção de erros</option><option value="carreira">Carreira técnica</option></select>
                             <input id="study-block-minutes" type="number" value="30" min="5" max="480" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
                             <select id="study-block-priority" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="alta">Prioridade alta</option><option value="media" selected>Prioridade média</option><option value="baixa">Prioridade baixa</option></select>
@@ -3715,29 +3752,65 @@
         // --- ESTUDOS ---
         function renderStudyContent() {
             if (uiState.studyTab === 'plano') {
+                const selectedDayId = state.activeTab || daysOfWeek[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1]?.id || 'monday';
+                const selectedDay = daysOfWeek.find(d => d.id === selectedDayId) || { label: 'Hoje' };
+                const dayBlocks = window.getStudyBlocksForDay(selectedDayId).filter(b => b.status !== 'cancelled');
+                const completedBlocks = dayBlocks.filter(b => b.status === 'completed').length;
+                const plannedMinutes = dayBlocks.reduce((acc, b) => acc + (parseInt(b.plannedMinutes, 10) || 0), 0);
+                const completedMinutes = dayBlocks.filter(b => b.status === 'completed').reduce((acc, b) => acc + (parseInt(b.plannedMinutes, 10) || 0), 0);
+                const progressPct = dayBlocks.length ? Math.round((completedBlocks / dayBlocks.length) * 100) : 0;
+
+                const plannedSubjectIds = new Set(dayBlocks.filter(b => b.subjectId !== null && b.subjectId !== undefined && b.subjectId !== '').map(b => String(b.subjectId)));
                 const now = new Date();
-                const dueReviews = state.studyData.reviews.filter(r => r.status === 'pending' && new Date(r.dueDate) <= now);
-                const openErrors = state.studyData.errorLog.filter(e => e.status === 'open');
-                
+                const dueReviews = state.studyData.reviews.filter(r => r.status === 'pending' && new Date(r.dueDate) <= now && plannedSubjectIds.has(String(r.subjectId)));
+                const openErrors = state.studyData.errorLog.filter(e => e.status === 'open' && plannedSubjectIds.has(String(e.subjectId)));
                 let recs = [];
-                if (dueReviews.length > 0) recs.push({ title: 'Revisões Críticas Atrasadas', desc: `Você tem ${dueReviews.length} revisões Ebbinghaus aguardando. Foco total aqui.`, color: 'text-red-400', border: 'border-red-900/50' });
-                if (openErrors.length > 0) recs.push({ title: 'Vulnerabilidades (Erros) Abertos', desc: `Corrija ${openErrors.length} falhas no seu Caderno de Erros. É onde o nível sobe.`, color: 'text-orange-400', border: 'border-orange-900/50' });
-                
-                state.studyData.subjects.forEach(sub => {
+
+                if (dueReviews.length > 0) recs.push({ title: 'Revisões ligadas ao plano', desc: `Há ${dueReviews.length} revisão${dueReviews.length !== 1 ? 'ões' : ''} pendente${dueReviews.length !== 1 ? 's' : ''} das disciplinas previstas para este dia.`, color: 'text-red-400', border: 'border-red-900/50', icon: 'rotate-cw' });
+                if (openErrors.length > 0) recs.push({ title: 'Erros ligados ao plano', desc: `Há ${openErrors.length} item${openErrors.length !== 1 ? 's' : ''} aberto${openErrors.length !== 1 ? 's' : ''} no Caderno de Erros das disciplinas previstas para este dia.`, color: 'text-orange-400', border: 'border-orange-900/50', icon: 'microscope' });
+
+                plannedSubjectIds.forEach(subjectId => {
+                    const sub = state.studyData.subjects.find(s => String(s.id) === String(subjectId));
+                    if (!sub) return;
                     const stats = window.getSubjectStats(sub.id);
-                    if (stats.retention > 0 && stats.retention < 70) recs.push({ title: `Alerta: ${sub.name}`, desc: `Sua retenção está em ${stats.retention}%. Faça bateria de questões focada.`, color: 'text-yellow-400', border: 'border-yellow-900/50' });
-                    if (!stats.lastSession || (now - stats.lastSession) / (1000*60*60*24) > 7) recs.push({ title: `Abandono: ${sub.name}`, desc: `Faz mais de 7 dias que você não vê esta matéria. Retome hoje.`, color: 'text-slate-400', border: 'border-slate-700' });
+                    if (stats.retention > 0 && stats.retention < 70) {
+                        recs.push({ title: `Reforço sugerido: ${sub.name}`, desc: `Retenção atual de ${stats.retention}%. Considere questões curtas ou recuperação ativa durante o bloco planejado.`, color: 'text-yellow-400', border: 'border-yellow-900/50', icon: 'brain' });
+                    }
+                    if (!stats.lastSession || (now - stats.lastSession) / (1000 * 60 * 60 * 24) > 7) {
+                        recs.push({ title: `Retomada sugerida: ${sub.name}`, desc: 'Esta disciplina está no plano de hoje e não possui sessão recente registrada. Comece com um bloco pequeno para reduzir a resistência inicial.', color: 'text-slate-300', border: 'border-slate-700', icon: 'history' });
+                    }
                 });
 
-                if (state.energy < 30) recs.unshift({ title: 'Bateria Executiva Baixa', desc: 'Sua energia está crítica. Faça apenas leitura leve ou flashcards curtos. Não faça simulados hoje.', color: 'text-blue-400', border: 'border-blue-900/50', icon: 'battery-low' });
-                else if (state.energy > 60 && dueReviews.length === 0) recs.push({ title: 'Energia Alta Disponível', desc: 'Condições ideais. Execute blocos de Teoria Ativa ou baterias longas de questões.', color: 'text-emerald-400', border: 'border-emerald-900/50', icon: 'zap' });
+                if (dayBlocks.length > 0 && state.energy < 30) {
+                    recs.unshift({ title: 'Bateria executiva baixa', desc: 'Mantenha o planejamento, mas reduza a exigência: leitura leve, flashcards ou um bloco menor.', color: 'text-blue-400', border: 'border-blue-900/50', icon: 'battery-low' });
+                }
 
-                let html = `<div class="bg-cyan-950/10 border border-cyan-900/30 p-5 rounded-xl mb-6"><h3 class="text-cyan-400 font-black uppercase tracking-widest text-sm mb-4"><i data-lucide="compass" class="inline w-4 h-4 mr-2"></i>Diretrizes Táticas Para Hoje</h3><div class="space-y-3">`;
-                if(recs.length === 0) html += `<div class="text-slate-500 italic text-sm">Nenhuma emergência detectada. Prossiga com seu edital normal.</div>`;
-                recs.slice(0, 5).forEach(r => {
-                    html += `<div class="bg-slate-900 border ${r.border} p-4 rounded-lg flex items-start gap-3"><i data-lucide="${r.icon || 'alert-circle'}" class="${r.color} w-5 h-5 mt-0.5"></i><div><h4 class="font-bold text-white text-sm">${r.title}</h4><p class="text-xs text-slate-400 mt-1">${r.desc}</p></div></div>`;
-                });
-                return html + `</div></div>`;
+                let html = `
+                    <div class="bg-cyan-950/10 border border-cyan-900/30 p-5 rounded-xl mb-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                            <div>
+                                <h3 class="text-cyan-400 font-black uppercase tracking-widest text-sm flex items-center gap-2"><i data-lucide="calendar-check" class="w-4 h-4"></i> Plano de ${selectedDay.label}</h3>
+                                <p class="text-[11px] text-slate-500 mt-1">Aqui aparecem somente os blocos criados em Planejamento. Cadastrar uma disciplina no Arsenal não a coloca automaticamente no dia.</p>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-widest">
+                                <span class="bg-slate-950 border border-slate-800 text-slate-400 px-2 py-1 rounded-lg">${completedBlocks}/${dayBlocks.length} blocos</span>
+                                <span class="bg-cyan-950/40 border border-cyan-900/50 text-cyan-300 px-2 py-1 rounded-lg">${completedMinutes}/${plannedMinutes} min</span>
+                                <button onclick="window.setStudyTab('planning')" class="bg-cyan-700 hover:bg-cyan-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> Planejar</button>
+                            </div>
+                        </div>
+                        ${dayBlocks.length ? `<div class="w-full bg-slate-800 rounded-full h-2 mb-4"><div class="bg-cyan-500 h-2 rounded-full transition-all" style="width:${progressPct}%"></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-3">${dayBlocks.map(b => renderStudyPlanBlockCard(b, true)).join('')}</div>` : `<div class="border border-dashed border-slate-800 rounded-xl p-6 text-center"><i data-lucide="calendar-plus" class="w-9 h-9 text-slate-600 mx-auto mb-2"></i><p class="text-sm text-slate-500 italic mb-1">Nenhum estudo foi planejado para ${selectedDay.label}.</p><p class="text-[11px] text-slate-600 mb-3">As disciplinas do Arsenal continuam cadastradas, mas só aparecem aqui quando você cria um bloco para este dia.</p><button onclick="window.setStudyTab('planning')" class="bg-cyan-800 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest">Criar planejamento</button></div>`}
+                    </div>`;
+
+                if (dayBlocks.length > 0) {
+                    html += `<div class="bg-slate-950 border border-slate-800 p-5 rounded-xl"><h3 class="text-slate-300 font-black uppercase tracking-widest text-xs mb-1 flex items-center gap-2"><i data-lucide="sparkles" class="w-4 h-4 text-cyan-400"></i>Apoios para executar o plano</h3><p class="text-[10px] text-slate-600 mb-4">Estes avisos consideram apenas as disciplinas vinculadas aos blocos de ${selectedDay.label}; não são novos estudos adicionados automaticamente.</p><div class="space-y-3">`;
+                    if (recs.length === 0) html += `<div class="text-slate-500 italic text-sm border border-dashed border-slate-800 rounded-lg p-4">Nenhum alerta específico para os blocos planejados. Execute a agenda normalmente.</div>`;
+                    recs.slice(0, 5).forEach(r => {
+                        html += `<div class="bg-slate-900 border ${r.border} p-4 rounded-lg flex items-start gap-3"><i data-lucide="${r.icon || 'info'}" class="${r.color} w-5 h-5 mt-0.5"></i><div><h4 class="font-bold text-white text-sm">${r.title}</h4><p class="text-xs text-slate-400 mt-1">${r.desc}</p></div></div>`;
+                    });
+                    html += `</div></div>`;
+                }
+
+                return html;
             }
             else if (uiState.studyTab === 'planning') {
                 return renderStudyPlanningContent();
