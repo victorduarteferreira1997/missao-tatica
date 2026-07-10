@@ -2458,6 +2458,25 @@
             return blocks.filter(b => b.day === dayId).sort((a,b) => (a.order || 9999) - (b.order || 9999) || String(a.title).localeCompare(String(b.title)));
         };
 
+
+        window.getSelectedStudyPlanDays = function() {
+            return Array.from(document.querySelectorAll('input[name="study-block-days"]:checked')).map(el => el.value);
+        };
+
+        window.getStudySeriesBlocks = function(block) {
+            if (!block) return [];
+            const blocks = state.studyData?.studyPlan?.weeklyBlocks || [];
+            if (!block.seriesId) return [block];
+            return blocks.filter(item => String(item.seriesId || '') === String(block.seriesId));
+        };
+
+        window.getStudySeriesDayIds = function(block) {
+            return window.getStudySeriesBlocks(block)
+                .map(item => item.day)
+                .filter(Boolean)
+                .sort((a, b) => daysOfWeek.findIndex(day => day.id === a) - daysOfWeek.findIndex(day => day.id === b));
+        };
+
         window.getStudyTypeLabel = function(type) {
             const labels = { teoria: 'Teoria', leitura: 'Leitura', questoes: 'Questões', revisao: 'Revisão', flashcards: 'Flashcards', listening: 'Listening', conversacao: 'Conversação', simulado: 'Simulado', erros: 'Correção de erros', carreira: 'Carreira' };
             return labels[type] || type || 'Estudo';
@@ -2506,7 +2525,7 @@
         window.addStudyPlanBlock = function() {
             if (!state.studyData.studyPlan) state.studyData.studyPlan = { tracks: [], weeklyBlocks: [] };
             const title = document.getElementById('study-block-title')?.value.trim();
-            const day = document.getElementById('study-block-day')?.value || state.activeTab || 'monday';
+            const selectedDays = window.getSelectedStudyPlanDays();
             const selectedTrackId = document.getElementById('study-block-track')?.value || '';
             const subjectVal = document.getElementById('study-block-subject')?.value || '';
             const selectedSubject = subjectVal ? state.studyData.subjects.find(s => String(s.id) === String(subjectVal)) : null;
@@ -2517,19 +2536,37 @@
             const energyLevel = document.getElementById('study-block-energy')?.value || 'media';
             const notes = document.getElementById('study-block-notes')?.value.trim() || '';
             if (!title) { window.showAlertModal('Digite o tema ou atividade do bloco.'); return; }
+            if (selectedDays.length === 0) { window.showAlertModal('Selecione pelo menos um dia da semana.'); return; }
             if (!trackId) { window.showAlertModal('Escolha uma trilha para o bloco.'); return; }
             if (selectedSubject?.trackId && String(selectedSubject.trackId) !== String(selectedTrackId)) {
                 window.showAlertModal('A disciplina escolhida pertence a outra trilha. Atualize a seleção e tente novamente.');
                 return;
             }
-            const order = window.getStudyBlocksForDay(day).length + 1;
-            state.studyData.studyPlan.weeklyBlocks.push({
-                id: Date.now() + Math.random(), day, trackId, subjectId: selectedSubject ? selectedSubject.id : null,
-                title, studyType, plannedMinutes, priority, energyLevel, notes, status: 'planned', order,
-                linkedSessionId: null, createdAt: new Date().toISOString()
+
+            const seriesId = `study_series_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+            const createdAt = new Date().toISOString();
+            selectedDays.forEach((day, index) => {
+                const order = window.getStudyBlocksForDay(day).length + 1;
+                state.studyData.studyPlan.weeklyBlocks.push({
+                    id: Date.now() + Math.random() + index,
+                    seriesId,
+                    day,
+                    trackId,
+                    subjectId: selectedSubject ? selectedSubject.id : null,
+                    title,
+                    studyType,
+                    plannedMinutes,
+                    priority,
+                    energyLevel,
+                    notes,
+                    status: 'planned',
+                    order,
+                    linkedSessionId: null,
+                    createdAt
+                });
             });
             window.saveState();
-            window.showToast('Bloco planejado', 'Entrou no Plano de Estudos Semanal.', 'calendar-plus', 'text-cyan-400');
+            window.showToast('Planejamento criado', selectedDays.length > 1 ? `O estudo foi adicionado em ${selectedDays.length} dias da semana.` : 'O estudo foi adicionado ao calendário.', 'calendar-plus', 'text-cyan-400');
         };
 
         window.startEditStudyPlanBlock = function(blockId, event = null) {
@@ -2553,11 +2590,12 @@
         };
 
         window.saveStudyPlanBlockChanges = function() {
-            const block = state.studyData?.studyPlan?.weeklyBlocks?.find(b => String(b.id) === String(uiState.editingStudyBlockId));
+            const weeklyBlocks = state.studyData?.studyPlan?.weeklyBlocks || [];
+            const block = weeklyBlocks.find(b => String(b.id) === String(uiState.editingStudyBlockId));
             if (!block) { window.showAlertModal('O bloco que você estava editando não foi encontrado.'); uiState.editingStudyBlockId = null; render(); return; }
 
             const title = document.getElementById('study-block-title')?.value.trim();
-            const day = document.getElementById('study-block-day')?.value || block.day || state.activeTab || 'monday';
+            const selectedDays = window.getSelectedStudyPlanDays();
             const selectedTrackId = document.getElementById('study-block-track')?.value || '';
             const subjectVal = document.getElementById('study-block-subject')?.value || '';
             const selectedSubject = subjectVal ? state.studyData.subjects.find(s => String(s.id) === String(subjectVal)) : null;
@@ -2569,28 +2607,71 @@
             const notes = document.getElementById('study-block-notes')?.value.trim() || '';
 
             if (!title) { window.showAlertModal('Digite o tema ou atividade do bloco.'); return; }
+            if (selectedDays.length === 0) { window.showAlertModal('Selecione pelo menos um dia da semana.'); return; }
             if (!trackId) { window.showAlertModal('Escolha uma trilha para o bloco.'); return; }
             if (selectedSubject?.trackId && String(selectedSubject.trackId) !== String(selectedTrackId)) {
                 window.showAlertModal('A disciplina escolhida pertence a outra trilha. Atualize a seleção e tente novamente.');
                 return;
             }
 
-            const previousDay = block.day;
-            block.title = title;
-            block.day = day;
-            block.trackId = trackId;
-            block.subjectId = selectedSubject ? selectedSubject.id : null;
-            block.studyType = studyType;
-            block.plannedMinutes = plannedMinutes;
-            block.priority = priority;
-            block.energyLevel = energyLevel;
-            block.notes = notes;
-            block.updatedAt = new Date().toISOString();
-            if (previousDay !== day) block.order = window.getStudyBlocksForDay(day).filter(b => String(b.id) !== String(block.id)).length + 1;
+            const now = new Date().toISOString();
+            const seriesId = block.seriesId || `study_series_${block.id}`;
+            const seriesBlocks = block.seriesId
+                ? weeklyBlocks.filter(item => String(item.seriesId || '') === String(block.seriesId))
+                : [block];
+            const unusedExisting = [...seriesBlocks];
+            const keptIds = new Set();
+
+            selectedDays.forEach((day, index) => {
+                let target = unusedExisting.find(item => item.day === day);
+                if (!target) target = unusedExisting.find(item => !keptIds.has(String(item.id)));
+
+                if (target) {
+                    keptIds.add(String(target.id));
+                    target.day = day;
+                    target.seriesId = seriesId;
+                    target.title = title;
+                    target.trackId = trackId;
+                    target.subjectId = selectedSubject ? selectedSubject.id : null;
+                    target.studyType = studyType;
+                    target.plannedMinutes = plannedMinutes;
+                    target.priority = priority;
+                    target.energyLevel = energyLevel;
+                    target.notes = notes;
+                    target.updatedAt = now;
+                    target.order = window.getStudyBlocksForDay(day).filter(item => String(item.id) !== String(target.id)).length + 1;
+                } else {
+                    const newBlock = {
+                        id: Date.now() + Math.random() + index,
+                        seriesId,
+                        day,
+                        trackId,
+                        subjectId: selectedSubject ? selectedSubject.id : null,
+                        title,
+                        studyType,
+                        plannedMinutes,
+                        priority,
+                        energyLevel,
+                        notes,
+                        status: 'planned',
+                        order: window.getStudyBlocksForDay(day).length + 1,
+                        linkedSessionId: null,
+                        createdAt: now,
+                        updatedAt: now
+                    };
+                    weeklyBlocks.push(newBlock);
+                    keptIds.add(String(newBlock.id));
+                }
+            });
+
+            state.studyData.studyPlan.weeklyBlocks = weeklyBlocks.filter(item => {
+                const belongsToEditedSeries = seriesBlocks.some(seriesItem => String(seriesItem.id) === String(item.id));
+                return !belongsToEditedSeries || keptIds.has(String(item.id));
+            });
 
             uiState.editingStudyBlockId = null;
             uiState.studyPlanningTrackId = String(trackId);
-            window.showToast('Planejamento atualizado', 'As alterações do bloco foram salvas.', 'pencil', 'text-cyan-400');
+            window.showToast('Planejamento atualizado', selectedDays.length > 1 ? `A repetição foi ajustada para ${selectedDays.length} dias.` : 'As alterações do bloco foram salvas.', 'pencil', 'text-cyan-400');
             window.saveState();
         };
 
@@ -3447,7 +3528,7 @@
             if (uiState.showStudyModal) {
                 html += `
                 <div class="fixed inset-0 bg-slate-950/95 flex flex-col items-center justify-start p-2 sm:p-6 z-[60] backdrop-blur-lg overflow-y-auto pt-8 font-mono">
-                    <div class="bg-slate-900 border border-cyan-900/50 rounded-2xl w-full max-w-4xl shadow-[0_0_50px_rgba(8,145,178,0.15)] modal-enter relative mb-10">
+                    <div class="bg-slate-900 border border-cyan-900/50 rounded-2xl w-full max-w-5xl shadow-[0_0_50px_rgba(8,145,178,0.15)] modal-enter relative mb-10">
                         <button onclick="window.toggleStudyModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full p-2 hover:bg-red-500/20 hover:text-red-400 transition-colors z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
                         <div class="p-5 sm:p-8">
                             <div class="flex items-center gap-4 mb-6 border-b border-slate-800 pb-4">
@@ -3570,37 +3651,58 @@
 
         function renderStudyPlanBlockCard(block, compact = false) {
             const track = window.getStudyTrack(block.trackId);
-            const subject = block.subjectId ? state.studyData.subjects.find(s => s.id === block.subjectId) : null;
+            const subject = block.subjectId ? state.studyData.subjects.find(s => String(s.id) === String(block.subjectId)) : null;
             const statusClass = window.getStudyBlockStatusClass(block.status);
-            const priorityClass = block.priority === 'alta' ? 'text-red-300 border-red-900/50 bg-red-950/20' : block.priority === 'baixa' ? 'text-slate-400 border-slate-800 bg-slate-950' : 'text-yellow-300 border-yellow-900/50 bg-yellow-950/20';
+            const priorityTextClass = block.priority === 'alta' ? 'text-red-300' : block.priority === 'baixa' ? 'text-slate-300' : 'text-yellow-300';
+            const energyLabel = block.energyLevel === 'alta' ? 'Alta' : block.energyLevel === 'baixa' ? 'Baixa' : 'Média';
+            const repeatDays = window.getStudySeriesDayIds(block);
+            const repeatLabel = repeatDays.length > 1
+                ? repeatDays.map(dayId => daysOfWeek.find(day => day.id === dayId)?.label?.slice(0, 3) || dayId).join(' · ')
+                : '';
+            const completed = block.status === 'completed';
             return `
-                <div class="${track.bg} border ${track.border} rounded-xl p-3 ${block.status === 'completed' ? 'opacity-75' : ''}">
-                    <div class="flex items-start justify-between gap-2 mb-2">
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2 mb-1">
-                                <i data-lucide="${track.icon || 'book-open'}" class="w-4 h-4 ${track.color}"></i>
-                                <span class="text-[10px] font-black uppercase tracking-widest ${track.color}">${window.escapeHtml(track.name)}</span>
+                <div class="${track.bg} border ${track.border} rounded-2xl p-4 ${completed ? 'opacity-80' : ''} shadow-sm">
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-2 mb-2">
+                                <span class="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest ${track.color}"><i data-lucide="${track.icon || 'book-open'}" class="w-4 h-4"></i>${window.escapeHtml(track.name)}</span>
+                                ${repeatLabel ? `<span class="inline-flex items-center gap-1 text-[10px] text-indigo-300 bg-indigo-950/40 border border-indigo-900/60 rounded-full px-2 py-1"><i data-lucide="repeat-2" class="w-3 h-3"></i>${repeatLabel}</span>` : ''}
                             </div>
-                            <h4 class="text-sm font-black text-white leading-tight">${window.escapeHtml(block.title)}</h4>
-                            ${subject ? `<p class="text-[11px] text-slate-400 mt-1">Matéria: ${window.escapeHtml(subject.name)}</p>` : ''}
+                            <h4 class="text-base font-black text-white leading-snug break-words">${window.escapeHtml(block.title)}</h4>
+                            ${subject ? `<p class="text-xs text-slate-400 mt-1.5 flex items-start gap-1.5"><i data-lucide="book-marked" class="w-3.5 h-3.5 mt-0.5 shrink-0"></i><span>${window.escapeHtml(subject.name)}</span></p>` : '<p class="text-xs text-slate-600 mt-1.5">Sem disciplina vinculada</p>'}
                         </div>
                         <div class="flex items-center gap-1 shrink-0">
-                            <button onclick="window.startEditStudyPlanBlock('${block.id}', event)" class="text-slate-500 hover:text-cyan-300 p-1" title="Editar planejamento"><i data-lucide="pencil" class="w-4 h-4"></i></button>
-                            <button onclick="window.deleteStudyPlanBlock('${block.id}')" class="text-slate-600 hover:text-red-400 p-1" title="Excluir bloco"><i data-lucide="x" class="w-4 h-4"></i></button>
+                            <button onclick="window.startEditStudyPlanBlock('${block.id}', event)" class="text-slate-400 hover:text-cyan-300 hover:bg-cyan-950/40 p-2 rounded-lg transition-colors" title="Editar planejamento"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                            <button onclick="window.deleteStudyPlanBlock('${block.id}')" class="text-slate-500 hover:text-red-400 hover:bg-red-950/30 p-2 rounded-lg transition-colors" title="Excluir este dia"><i data-lucide="x" class="w-4 h-4"></i></button>
                         </div>
                     </div>
-                    <div class="flex flex-wrap gap-1.5 mb-3">
-                        <span class="text-[10px] px-2 py-1 rounded-full border ${statusClass} font-bold">${window.getStudyBlockStatusLabel(block.status)}</span>
-                        <span class="text-[10px] px-2 py-1 rounded-full border border-slate-800 bg-slate-950 text-slate-400 font-bold">${window.getStudyTypeLabel(block.studyType)}</span>
-                        <span class="text-[10px] px-2 py-1 rounded-full border border-slate-800 bg-slate-950 text-cyan-300 font-bold">${block.plannedMinutes} min</span>
-                        <span class="text-[10px] px-2 py-1 rounded-full border ${priorityClass} font-bold">${block.priority}</span>
+
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+                        <div class="rounded-xl border ${statusClass} p-2.5">
+                            <div class="text-[9px] uppercase tracking-widest opacity-70 font-bold">Status</div>
+                            <div class="text-xs font-black mt-0.5">${window.getStudyBlockStatusLabel(block.status)}</div>
+                        </div>
+                        <div class="rounded-xl border border-slate-800 bg-slate-950/70 p-2.5">
+                            <div class="text-[9px] uppercase tracking-widest text-slate-600 font-bold">Método</div>
+                            <div class="text-xs font-black text-slate-300 mt-0.5">${window.getStudyTypeLabel(block.studyType)}</div>
+                        </div>
+                        <div class="rounded-xl border border-cyan-900/50 bg-cyan-950/20 p-2.5">
+                            <div class="text-[9px] uppercase tracking-widest text-cyan-700 font-bold">Duração</div>
+                            <div class="text-xs font-black text-cyan-300 mt-0.5">${block.plannedMinutes} minutos</div>
+                        </div>
+                        <div class="rounded-xl border border-slate-800 bg-slate-950/70 p-2.5">
+                            <div class="text-[9px] uppercase tracking-widest text-slate-600 font-bold">Carga</div>
+                            <div class="text-xs font-black mt-0.5 ${priorityTextClass}">${block.priority || 'média'} · energia ${energyLabel.toLowerCase()}</div>
+                        </div>
                     </div>
-                    ${block.notes && !compact ? `<p class="text-[11px] text-slate-500 bg-slate-950/60 border border-slate-800 rounded-lg p-2 mb-3">${window.escapeHtml(block.notes)}</p>` : ''}
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        <button onclick="window.prefillStudySessionFromPlan('${block.id}')" class="bg-cyan-700 hover:bg-cyan-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg py-2 flex items-center justify-center gap-1"><i data-lucide="clipboard-pen" class="w-3 h-3"></i> Sessão</button>
-                        <button onclick="window.updateStudyBlockStatus('${block.id}','completed')" class="bg-emerald-700 hover:bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg py-2 flex items-center justify-center gap-1"><i data-lucide="check" class="w-3 h-3"></i> Feito</button>
-                        <button onclick="window.updateStudyBlockStatus('${block.id}','partial')" class="bg-yellow-700 hover:bg-yellow-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg py-2 flex items-center justify-center gap-1"><i data-lucide="circle-dot" class="w-3 h-3"></i> Parcial</button>
-                        <button onclick="window.rescheduleStudyBlockToNextDay('${block.id}')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-black uppercase tracking-widest rounded-lg py-2 flex items-center justify-center gap-1"><i data-lucide="calendar-clock" class="w-3 h-3"></i> Remarcar</button>
+
+                    ${block.notes && !compact ? `<p class="text-xs text-slate-400 bg-slate-950/60 border border-slate-800 rounded-xl p-3 mb-4 leading-relaxed">${window.escapeHtml(block.notes)}</p>` : ''}
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="window.prefillStudySessionFromPlan('${block.id}')" class="min-h-[42px] bg-cyan-700 hover:bg-cyan-600 text-white text-[11px] font-black rounded-xl px-3 py-2.5 flex items-center justify-center gap-2 transition-colors"><i data-lucide="clipboard-pen" class="w-4 h-4"></i>Registrar sessão</button>
+                        <button onclick="window.updateStudyBlockStatus('${block.id}','completed')" class="min-h-[42px] ${completed ? 'bg-emerald-900/60 text-emerald-200' : 'bg-emerald-700 hover:bg-emerald-600 text-white'} text-[11px] font-black rounded-xl px-3 py-2.5 flex items-center justify-center gap-2 transition-colors"><i data-lucide="check" class="w-4 h-4"></i>${completed ? 'Concluído' : 'Concluir'}</button>
+                        <button onclick="window.updateStudyBlockStatus('${block.id}','partial')" class="min-h-[40px] bg-yellow-950/50 hover:bg-yellow-900/60 border border-yellow-900/60 text-yellow-200 text-[11px] font-bold rounded-xl px-3 py-2 flex items-center justify-center gap-2 transition-colors"><i data-lucide="circle-dot" class="w-4 h-4"></i>Marcar parcial</button>
+                        <button onclick="window.rescheduleStudyBlockToNextDay('${block.id}')" class="min-h-[40px] bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[11px] font-bold rounded-xl px-3 py-2 flex items-center justify-center gap-2 transition-colors"><i data-lucide="calendar-clock" class="w-4 h-4"></i>Remarcar</button>
                     </div>
                 </div>`;
         }
@@ -3641,7 +3743,8 @@
             const planningTrack = planningTrackId ? window.getStudyTrack(planningTrackId) : null;
             const planningSubjects = planningTrackId ? window.getStudySubjects(planningTrackId) : [];
             const editingMode = Boolean(editingBlock);
-            const formDay = editingBlock?.day || state.activeTab || 'monday';
+            const editingSeriesBlocks = editingBlock ? window.getStudySeriesBlocks(editingBlock) : [];
+            const formDays = new Set(editingMode ? editingSeriesBlocks.map(item => item.day) : [state.activeTab || 'monday']);
             const formType = editingBlock?.studyType || 'teoria';
             const formPriority = editingBlock?.priority || 'media';
             const formEnergy = editingBlock?.energyLevel || 'media';
@@ -3687,11 +3790,17 @@
                             <h4 class="text-xs font-black ${editingMode ? 'text-cyan-300' : 'text-slate-300'} uppercase tracking-widest flex items-center gap-2"><i data-lucide="${editingMode ? 'pencil' : 'calendar-plus'}" class="w-4 h-4 text-cyan-400"></i> ${editingMode ? 'Editar estudo do calendário' : 'Adicionar estudo ao calendário'}</h4>
                             ${editingMode ? `<span class="text-[9px] px-2 py-1 rounded-full border border-cyan-900/60 bg-cyan-950/30 text-cyan-300 font-black uppercase tracking-widest">Modo de edição</span>` : ''}
                         </div>
-                        ${editingMode ? `<div class="mb-3 rounded-lg border border-cyan-900/50 bg-cyan-950/20 p-3"><p class="text-[11px] text-cyan-200 font-bold">Editando: ${window.escapeHtml(editingBlock.title)}</p><p class="text-[10px] text-slate-500 mt-1">Altere qualquer campo abaixo e clique em “Salvar alterações”. O histórico e o status atual do bloco serão preservados.</p></div>` : ''}
+                        ${editingMode ? `<div class="mb-3 rounded-lg border border-cyan-900/50 bg-cyan-950/20 p-3"><p class="text-[11px] text-cyan-200 font-bold">Editando: ${window.escapeHtml(editingBlock.title)}</p><p class="text-[10px] text-slate-500 mt-1">Altere os dados e marque todos os dias em que este estudo deve aparecer. Dias já existentes preservam o status; novos dias começam como planejados.</p></div>` : ''}
                         <div class="grid grid-cols-2 gap-2 mb-2">
                             <input id="study-block-title" value="${window.escapeHtml(editingBlock?.title || '')}" placeholder="Tema/atividade" class="col-span-2 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
-                            <div><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Dia</label><select id="study-block-day" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">${daysOfWeek.map(d => `<option value="${d.id}" ${d.id === formDay ? 'selected' : ''}>${d.label}</option>`).join('')}</select></div>
-                            <div><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Trilha</label><select id="study-block-track" onchange="window.setStudyPlanningTrack(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="" ${!planningTrackId ? 'selected' : ''} disabled>Escolha a trilha</option>${tracks.map(t => `<option value="${t.id}" ${String(t.id) === String(planningTrackId) ? 'selected' : ''}>${window.escapeHtml(t.name)}</option>`).join('')}</select></div>
+                            <div class="col-span-2">
+                                <div class="flex items-center justify-between gap-2 mb-2"><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Dias da semana</label><span class="text-[9px] text-cyan-700">Marque um ou vários dias</span></div>
+                                <div class="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                                    ${daysOfWeek.map(d => `<label class="cursor-pointer"><input type="checkbox" name="study-block-days" value="${d.id}" class="peer sr-only" ${formDays.has(d.id) ? 'checked' : ''}><span class="flex items-center justify-center min-h-[38px] rounded-lg border border-slate-700 bg-slate-900 text-[10px] font-black text-slate-400 peer-checked:border-cyan-500 peer-checked:bg-cyan-950/60 peer-checked:text-cyan-200 transition-colors">${d.label.slice(0, 3)}</span></label>`).join('')}
+                                </div>
+                                <p class="text-[9px] text-slate-600 mt-1.5">Exemplo: para uma aula que se repete, marque Ter e Qui. O sistema criará um card em cada dia, ligados à mesma repetição.</p>
+                            </div>
+                            <div class="col-span-2"><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Trilha</label><select id="study-block-track" onchange="window.setStudyPlanningTrack(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="" ${!planningTrackId ? 'selected' : ''} disabled>Escolha a trilha</option>${tracks.map(t => `<option value="${t.id}" ${String(t.id) === String(planningTrackId) ? 'selected' : ''}>${window.escapeHtml(t.name)}</option>`).join('')}</select></div>
                             <div class="col-span-2"><label id="study-block-subject-label" class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">${planningTrack ? `Disciplina de ${window.escapeHtml(planningTrack.name)}` : 'Disciplina da trilha'}</label><select id="study-block-subject" ${planningTrackId ? '' : 'disabled'} class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none disabled:opacity-50 disabled:cursor-not-allowed">${planningTrackId ? window.renderStudySubjectOptions({ trackId: planningTrackId, selectedId: editingBlock?.subjectId || '', includeEmpty: true, emptyLabel: 'Sem disciplina vinculada' }) : '<option value="">Escolha primeiro uma trilha</option>'}</select><p id="study-block-subject-helper" class="text-[9px] text-slate-600 mt-1">${planningTrackId ? (planningSubjects.length ? `${planningSubjects.length} disciplina${planningSubjects.length === 1 ? '' : 's'} encontrada${planningSubjects.length === 1 ? '' : 's'} em ${window.escapeHtml(planningTrack.name)}.` : `Nenhuma disciplina está vinculada à trilha ${window.escapeHtml(planningTrack.name)}. Confira o Arsenal.`) : 'Selecione uma trilha para carregar somente as disciplinas vinculadas a ela.'}</p></div>
                             <select id="study-block-type" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="teoria" ${formType === 'teoria' ? 'selected' : ''}>Teoria</option><option value="questoes" ${formType === 'questoes' ? 'selected' : ''}>Questões</option><option value="revisao" ${formType === 'revisao' ? 'selected' : ''}>Revisão</option><option value="flashcards" ${formType === 'flashcards' ? 'selected' : ''}>Flashcards</option><option value="listening" ${formType === 'listening' ? 'selected' : ''}>Listening</option><option value="conversacao" ${formType === 'conversacao' ? 'selected' : ''}>Conversação</option><option value="leitura" ${formType === 'leitura' ? 'selected' : ''}>Leitura</option><option value="simulado" ${formType === 'simulado' ? 'selected' : ''}>Simulado</option><option value="erros" ${formType === 'erros' ? 'selected' : ''}>Correção de erros</option><option value="carreira" ${formType === 'carreira' ? 'selected' : ''}>Carreira técnica</option></select>
                             <input id="study-block-minutes" type="number" value="${editingBlock?.plannedMinutes || 30}" min="5" max="480" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
@@ -3699,7 +3808,7 @@
                             <select id="study-block-energy" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="alta" ${formEnergy === 'alta' ? 'selected' : ''}>Energia alta</option><option value="media" ${formEnergy === 'media' ? 'selected' : ''}>Energia média</option><option value="baixa" ${formEnergy === 'baixa' ? 'selected' : ''}>Energia baixa</option></select>
                             <input id="study-block-notes" value="${window.escapeHtml(editingBlock?.notes || '')}" placeholder="Observação opcional" class="col-span-2 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
                         </div>
-                        ${editingMode ? `<div class="grid grid-cols-2 gap-2 mb-2"><button onclick="window.saveStudyPlanBlockChanges()" class="bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-black uppercase tracking-widest rounded-lg py-2.5 flex items-center justify-center gap-2"><i data-lucide="save" class="w-4 h-4"></i> Salvar alterações</button><button onclick="window.cancelEditStudyPlanBlock()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-black uppercase tracking-widest rounded-lg py-2.5">Cancelar</button></div>` : `<button onclick="window.addStudyPlanBlock()" class="w-full bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-black uppercase tracking-widest rounded-lg py-2 mb-2">Adicionar bloco</button>`}
+                        ${editingMode ? `<div class="grid grid-cols-2 gap-2 mb-2"><button onclick="window.saveStudyPlanBlockChanges()" class="bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-black uppercase tracking-widest rounded-lg py-2.5 flex items-center justify-center gap-2"><i data-lucide="save" class="w-4 h-4"></i> Salvar alterações</button><button onclick="window.cancelEditStudyPlanBlock()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-black uppercase tracking-widest rounded-lg py-2.5">Cancelar</button></div>` : `<button onclick="window.addStudyPlanBlock()" class="w-full bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-black uppercase tracking-widest rounded-lg py-2 mb-2">Adicionar ao calendário</button>`}
                         ${!editingMode ? `<div class="grid grid-cols-2 gap-2"><button onclick="window.applyStudyTemplate('balanced')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-black uppercase rounded-lg py-2">Template equilibrado</button><button onclick="window.applyStudyTemplate('maintenance')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-black uppercase rounded-lg py-2">Semana leve</button></div>` : ''}
                     </div>
                 </div>
@@ -3709,7 +3818,7 @@
                     <div class="space-y-3">${trackMinutes.map(row => { const pct = plannedMinutes ? Math.round((row.minutes / plannedMinutes) * 100) : 0; return `<div><div class="flex justify-between text-[11px] mb-1"><span class="font-bold ${row.track.color}">${window.escapeHtml(row.track.name)}</span><span class="text-slate-500">${row.minutes} min · meta ${row.track.weeklyGoalMinutes || 0} min</span></div><div class="w-full bg-slate-900 rounded-full h-2 border border-slate-800"><div class="bg-cyan-500 h-full rounded-full" style="width:${Math.min(100,pct)}%"></div></div></div>`; }).join('')}</div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     ${daysOfWeek.map(day => { const dayBlocks = window.getStudyBlocksForDay(day.id); return `<div class="bg-slate-950 border border-slate-800 rounded-xl p-4"><div class="flex items-center justify-between mb-3"><h4 class="text-sm font-black text-white">${day.label}</h4><span class="text-[10px] text-slate-500 font-bold uppercase">${dayBlocks.length} bloco${dayBlocks.length !== 1 ? 's' : ''}</span></div><div class="space-y-3">${dayBlocks.length ? dayBlocks.map(b => renderStudyPlanBlockCard(b)).join('') : `<p class="text-xs text-slate-600 italic border border-dashed border-slate-800 rounded-lg p-4 text-center">Sem estudo planejado.</p>`}</div></div>`; }).join('')}
                 </div>
             </div>`;
