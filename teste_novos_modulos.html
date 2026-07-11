@@ -259,6 +259,108 @@
             return Math.min(correctLevel, RANKS.length);
         }
 
+
+        function getMondayStartDate(date = new Date()) {
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            const jsDay = d.getDay(); // domingo=0, segunda=1...
+            const diff = jsDay === 0 ? -6 : 1 - jsDay;
+            d.setDate(d.getDate() + diff);
+            return d;
+        }
+
+        function addDaysToDate(date, days) {
+            const d = new Date(date);
+            d.setDate(d.getDate() + days);
+            return d;
+        }
+
+        function dateKeyFromDate(date) {
+            const d = new Date(date);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function dateFromDateKey(dateKey) {
+            const [year, month, day] = String(dateKey || '').split('-').map(Number);
+            if (!year || !month || !day) return getMondayStartDate(new Date());
+            return new Date(year, month - 1, day);
+        }
+
+        function formatPtShortDate(date, withWeekday = false) {
+            const options = withWeekday
+                ? { weekday: 'short', day: '2-digit', month: '2-digit' }
+                : { day: '2-digit', month: '2-digit' };
+            return new Date(date).toLocaleDateString('pt-BR', options).replace('.', '');
+        }
+
+        window.getCurrentCalendarWeekStartKey = function() {
+            return dateKeyFromDate(getMondayStartDate(new Date()));
+        };
+
+        window.getNextCalendarWeekStartKey = function() {
+            return dateKeyFromDate(addDaysToDate(getMondayStartDate(new Date()), 7));
+        };
+
+        window.getActivePlanningWeekStartDate = function() {
+            if (!state.currentPlanningWeekStart) state.currentPlanningWeekStart = window.getCurrentCalendarWeekStartKey();
+            return dateFromDateKey(state.currentPlanningWeekStart);
+        };
+
+        window.setPlanningCalendarWeek = function(mode) {
+            const current = getMondayStartDate(new Date());
+            const active = window.getActivePlanningWeekStartDate();
+            if (mode === 'current') state.currentPlanningWeekStart = dateKeyFromDate(current);
+            else if (mode === 'next') state.currentPlanningWeekStart = dateKeyFromDate(addDaysToDate(current, 7));
+            else if (mode === 'prev') state.currentPlanningWeekStart = dateKeyFromDate(addDaysToDate(active, -7));
+            else if (mode === 'forward') state.currentPlanningWeekStart = dateKeyFromDate(addDaysToDate(active, 7));
+            else state.currentPlanningWeekStart = dateKeyFromDate(current);
+            uiState.mainView = 'week';
+            render();
+        };
+
+        window.prepareNextWeekPlanning = function() {
+            const nextMondayKey = window.getNextCalendarWeekStartKey();
+            window.showConfirmModal('Preparar a próxima semana agora? Isso vai limpar as missões comuns da semana atual, preservar missões recorrentes, zerar o status dos estudos planejados e abrir o calendário da próxima semana. Ideal para usar no domingo, depois de revisar/fechar a semana atual.', () => {
+                const recurringTasks = state.tasks
+                    .filter(t => t.isRecurring || (Array.isArray(t.recurrenceDays) && t.recurrenceDays.length > 0))
+                    .map(t => {
+                        const cleanTask = {
+                            ...t,
+                            completed: false,
+                            skipped: false,
+                            subtasks: (Array.isArray(t.subtasks) ? t.subtasks : []).map(st => ({ ...st, completed: false }))
+                        };
+                        delete cleanTask.rewardedXp;
+                        delete cleanTask.rewardedCoins;
+                        delete cleanTask.rewardedEnergyCost;
+                        return cleanTask;
+                    });
+
+                if (state.studyData?.studyPlan?.weeklyBlocks) {
+                    state.studyData.studyPlan.weeklyBlocks.forEach(block => {
+                        if (block.status !== 'cancelled') block.status = 'planned';
+                        delete block.linkedSessionId;
+                        delete block.completedAt;
+                        delete block.partialAt;
+                        delete block.remarkedAt;
+                        delete block.lastActionAt;
+                    });
+                }
+
+                state.tasks = recurringTasks;
+                state.quickTasks = [];
+                state.combo = 0;
+                state.waterCount = 0;
+                state.energy = 100;
+                state.activeTab = 'monday';
+                state.currentFilter = 'all';
+                state.currentPlanningWeekStart = nextMondayKey;
+                uiState.mainView = 'week';
+                window.saveState();
+                window.showToast('Próxima semana preparada', `${recurringTasks.length} missão(ões) recorrente(s) preservada(s). Estudos voltaram para planejado.`, 'calendar-plus', 'text-cyan-300');
+            });
+        };
+
         window.validateState = function() {
             if (!state) {
                 state = {
@@ -275,6 +377,8 @@
             if (!state.quickTasks) state.quickTasks = [];
             if (!state.unlockedBadges) state.unlockedBadges = [];
             if (!state.tasks) state.tasks = []; 
+            if (!state.currentPlanningWeekStart) state.currentPlanningWeekStart = window.getCurrentCalendarWeekStartKey();
+            if (Number.isNaN(dateFromDateKey(state.currentPlanningWeekStart).getTime())) state.currentPlanningWeekStart = window.getCurrentCalendarWeekStartKey();
             if (!state.currentFilter) state.currentFilter = 'all';
             if (!Array.isArray(state.deletedTaskCategoryIds)) state.deletedTaskCategoryIds = [];
             if (!state.taskCategories || !Array.isArray(state.taskCategories)) state.taskCategories = [];
@@ -1626,7 +1730,7 @@
                         return cleanTask;
                     });
                 const preservedCount = recurringTasks.length;
-                state.tasks = recurringTasks; state.quickTasks = []; state.combo = 0; state.waterCount = 0; state.energy = 100; state.activeTab = 'monday'; state.currentFilter = 'all';
+                state.tasks = recurringTasks; state.quickTasks = []; state.combo = 0; state.waterCount = 0; state.energy = 100; state.activeTab = 'monday'; state.currentFilter = 'all'; state.currentPlanningWeekStart = window.getCurrentCalendarWeekStartKey(); uiState.mainView = 'week';
                 window.saveState(); window.showToast("Quartel General: Nova Semana!", preservedCount ? `Quadro limpo. ${preservedCount} missão(ões) recorrente(s) preservada(s).` : "Quadro limpo.", "sparkles", "text-yellow-400");
             }); 
         };
@@ -3212,7 +3316,7 @@
                         <div class="min-w-0">
                             <h3 class="text-sm font-black text-white uppercase tracking-widest">${uiState.mainView === 'week' ? 'Você está vendo a Semana Geral' : 'Você está vendo a Rotina do Dia'}</h3>
                             <p class="text-xs text-slate-400 leading-relaxed mt-1">
-                                ${uiState.mainView === 'week' ? 'Mapa completo da semana: missões, estudos, rituais e pendências em uma visão só.' : 'Execução do dia selecionado. Use Semana Geral para enxergar toda a carga da semana antes de decidir o próximo foco.'}
+                                ${uiState.mainView === 'week' ? 'Mapa completo da semana: missões do board e estudos planejados em uma visão só.' : 'Execução do dia selecionado. Use Semana Geral para enxergar toda a carga da semana antes de decidir o próximo foco.'}
                             </p>
                         </div>
                     </div>
@@ -3853,268 +3957,238 @@
         function renderWeeklyPlanningOverview() {
             const tasks = Array.isArray(state.tasks) ? state.tasks : [];
             const studyBlocks = (state.studyData?.studyPlan?.weeklyBlocks || []).filter(b => b.status !== 'cancelled');
-            const rituals = (state.routineData?.rituals || []).filter(r => r.active !== false);
-            const quickTasks = Array.isArray(state.quickTasks) ? state.quickTasks : [];
+            const subjects = state.studyData?.subjects || [];
 
-            const totalTasks = tasks.length;
-            const completedTasks = tasks.filter(t => t.completed).length;
-            const totalStudies = studyBlocks.length;
-            const completedStudies = studyBlocks.filter(b => b.status === 'completed').length;
-            const partialStudies = studyBlocks.filter(b => b.status === 'partial').length;
-            const plannedStudyMinutes = studyBlocks.reduce((acc, b) => acc + (parseInt(b.plannedMinutes, 10) || 0), 0);
-            const totalItems = totalTasks + totalStudies;
-            const doneItems = completedTasks + completedStudies;
-            const progressPct = totalItems ? Math.round((doneItems / totalItems) * 100) : 0;
+            const weekStart = window.getActivePlanningWeekStartDate();
+            const weekEnd = addDaysToDate(weekStart, 6);
+            const currentWeekKey = window.getCurrentCalendarWeekStartKey();
+            const nextWeekKey = window.getNextCalendarWeekStartKey();
+            const activeWeekKey = dateKeyFromDate(weekStart);
+            const todayKey = dateKeyFromDate(new Date());
+            const weekLabel = `${formatPtShortDate(weekStart)} a ${formatPtShortDate(weekEnd)}`;
+            const isCurrentCalendarWeek = activeWeekKey === currentWeekKey;
+            const isNextCalendarWeek = activeWeekKey === nextWeekKey;
 
-            const todayJs = new Date().getDay();
-            const todayId = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][todayJs];
-            const dayIndex = dayId => daysOfWeek.findIndex(day => day.id === dayId);
             const priorityRank = { essencial: 4, alta: 3, media: 2, baixa: 1 };
-            const priorityColors = { essencial: 'text-purple-300 border-purple-900/60 bg-purple-950/30', alta: 'text-red-300 border-red-900/60 bg-red-950/25', media: 'text-yellow-300 border-yellow-900/60 bg-yellow-950/20', baixa: 'text-slate-400 border-slate-800 bg-slate-950' };
-            const statusIcon = (done) => done ? 'check-circle-2' : 'circle';
-            const dayShort = label => String(label || '').slice(0, 3);
+            const priorityLabel = { essencial: 'Essencial', alta: 'Alta', media: 'Média', baixa: 'Baixa' };
+            const priorityChip = {
+                essencial: 'text-purple-200 border-purple-800/70 bg-purple-950/40',
+                alta: 'text-red-200 border-red-800/70 bg-red-950/35',
+                media: 'text-yellow-200 border-yellow-800/70 bg-yellow-950/25',
+                baixa: 'text-slate-300 border-slate-700 bg-slate-900/80'
+            };
+            const statusLabel = (status) => window.getStudyBlockStatusLabel ? window.getStudyBlockStatusLabel(status) : (status === 'completed' ? 'Concluído' : status === 'partial' ? 'Parcial' : 'Planejado');
+            const shortDay = label => String(label || '').slice(0, 3);
+            const safePct = (done, total) => total ? Math.round((done / total) * 100) : 0;
 
-            const buildDay = (day) => {
+            const buildDay = (day, index) => {
+                const date = addDaysToDate(weekStart, index);
+                const dateKey = dateKeyFromDate(date);
                 const dayTasks = tasks
                     .filter(t => t.day === day.id)
                     .sort((a, b) => {
-                        const pa = priorityRank[a.priority] || 0;
-                        const pb = priorityRank[b.priority] || 0;
-                        if ((a.completed ? 1 : 0) !== (b.completed ? 1 : 0)) return (a.completed ? 1 : 0) - (b.completed ? 1 : 0);
-                        if (pb !== pa) return pb - pa;
-                        return ((typeof a.order === 'number' ? a.order : 999999) - (typeof b.order === 'number' ? b.order : 999999)) || ((a.id || 0) - (b.id || 0));
+                        const doneDelta = (a.completed ? 1 : 0) - (b.completed ? 1 : 0);
+                        if (doneDelta !== 0) return doneDelta;
+                        const priorityDelta = (priorityRank[b.priority] || 0) - (priorityRank[a.priority] || 0);
+                        if (priorityDelta !== 0) return priorityDelta;
+                        return ((typeof a.order === 'number' ? a.order : 999999) - (typeof b.order === 'number' ? b.order : 999999)) || String(a.text || '').localeCompare(String(b.text || ''));
                     });
                 const dayStudies = studyBlocks
                     .filter(b => b.day === day.id)
                     .sort((a, b) => {
-                        if ((a.status === 'completed' ? 1 : 0) !== (b.status === 'completed' ? 1 : 0)) return (a.status === 'completed' ? 1 : 0) - (b.status === 'completed' ? 1 : 0);
+                        const doneDelta = (a.status === 'completed' ? 1 : 0) - (b.status === 'completed' ? 1 : 0);
+                        if (doneDelta !== 0) return doneDelta;
+                        const priorityDelta = (priorityRank[b.priority] || 0) - (priorityRank[a.priority] || 0);
+                        if (priorityDelta !== 0) return priorityDelta;
                         return (a.order || 9999) - (b.order || 9999) || String(a.title || '').localeCompare(String(b.title || ''));
                     });
-                const completed = dayTasks.filter(t => t.completed).length + dayStudies.filter(b => b.status === 'completed').length;
+                const completedTasks = dayTasks.filter(t => t.completed).length;
+                const completedStudies = dayStudies.filter(b => b.status === 'completed').length;
                 const total = dayTasks.length + dayStudies.length;
+                const completed = completedTasks + completedStudies;
+                const pending = total - completed;
                 const minutes = dayStudies.reduce((acc, b) => acc + (parseInt(b.plannedMinutes, 10) || 0), 0);
-                const heavy = dayTasks.filter(t => ['essencial','alta'].includes(t.priority)).length + dayStudies.filter(b => ['essencial','alta'].includes(b.priority) || b.energyLevel === 'alta').length;
-                const partial = dayStudies.filter(b => b.status === 'partial').length;
-                const pct = total ? Math.round((completed / total) * 100) : 0;
-                const loadScore = total + Math.ceil(minutes / 45) + heavy;
-                return { day, dayTasks, dayStudies, completed, total, minutes, heavy, partial, pct, loadScore };
+                return { day, date, dateKey, dayTasks, dayStudies, total, completed, pending, minutes, pct: safePct(completed, total) };
             };
 
-            const dayRows = daysOfWeek.map(buildDay);
-            const maxLoadScore = Math.max(1, ...dayRows.map(row => row.loadScore));
-            const busiestDays = [...dayRows].filter(row => row.total || row.minutes).sort((a,b) => b.loadScore - a.loadScore).slice(0, 3);
-            const pendingToday = dayRows.find(row => row.day.id === todayId) || dayRows[0];
-            const totalHighLoad = dayRows.reduce((acc, row) => acc + row.heavy, 0);
-            const emptyWeek = !totalItems && !rituals.length && !quickTasks.length;
+            const rows = daysOfWeek.map(buildDay);
+            const totalTasks = rows.reduce((acc, row) => acc + row.dayTasks.length, 0);
+            const totalStudies = rows.reduce((acc, row) => acc + row.dayStudies.length, 0);
+            const totalItems = rows.reduce((acc, row) => acc + row.total, 0);
+            const completedItems = rows.reduce((acc, row) => acc + row.completed, 0);
+            const pendingItems = rows.reduce((acc, row) => acc + row.pending, 0);
+            const plannedMinutes = rows.reduce((acc, row) => acc + row.minutes, 0);
+            const progressPct = safePct(completedItems, totalItems);
 
-            const renderTaskMini = (task) => {
+            const renderMiniMetric = (icon, value, label, cls = 'text-slate-200') => `
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/75 p-3 min-w-0">
+                    <div class="flex items-center gap-2 ${cls}"><i data-lucide="${icon}" class="w-4 h-4 shrink-0"></i><span class="text-xl font-black">${value}</span></div>
+                    <div class="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-1 truncate">${label}</div>
+                </div>`;
+
+            const renderTaskAgendaItem = (task) => {
                 const cat = window.getTaskCategory(task.category);
-                const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
-                const doneSubs = subtasks.filter(st => st.completed).length;
-                const isDone = Boolean(task.completed);
-                return `<div class="group rounded-xl border ${isDone ? 'border-emerald-900/40 bg-emerald-950/10 opacity-75' : 'border-slate-800 bg-slate-950/80 hover:border-indigo-800/70'} p-3 transition-colors">
+                const done = Boolean(task.completed);
+                const subCount = Array.isArray(task.subtasks) ? task.subtasks.length : 0;
+                const doneSubs = subCount ? task.subtasks.filter(st => st.completed).length : 0;
+                return `<div class="group rounded-xl border ${done ? 'border-emerald-900/30 bg-emerald-950/10 opacity-65' : 'border-slate-800 bg-slate-950/70 hover:border-indigo-800/70'} p-2.5 transition-colors">
                     <div class="flex items-start gap-2">
-                        <i data-lucide="${statusIcon(isDone)}" class="w-4 h-4 mt-0.5 ${isDone ? 'text-emerald-400' : 'text-slate-500'} shrink-0"></i>
+                        <i data-lucide="${done ? 'check-circle-2' : 'circle'}" class="w-4 h-4 mt-0.5 ${done ? 'text-emerald-400' : 'text-indigo-400'} shrink-0"></i>
                         <div class="min-w-0 flex-1">
-                            <p class="text-xs font-black ${isDone ? 'text-slate-500 line-through' : 'text-white'} leading-snug break-words">${window.escapeHtml(task.text || 'Missão sem título')}</p>
-                            <div class="flex flex-wrap gap-1.5 mt-2">
-                                <span class="inline-flex items-center gap-1 text-[9px] font-black uppercase rounded-full border px-2 py-0.5 ${priorityColors[task.priority] || priorityColors.media}">${task.priority || 'média'}</span>
-                                <span class="inline-flex items-center gap-1 text-[9px] font-black uppercase rounded-full border border-slate-800 bg-slate-900 px-2 py-0.5 ${cat.color || 'text-slate-400'}"><i data-lucide="${cat.icon || 'target'}" class="w-3 h-3"></i>${window.escapeHtml(cat.label || 'Geral')}</span>
-                                ${subtasks.length ? `<span class="inline-flex items-center gap-1 text-[9px] font-black uppercase rounded-full border border-cyan-900/50 bg-cyan-950/20 text-cyan-300 px-2 py-0.5"><i data-lucide="list-checks" class="w-3 h-3"></i>${doneSubs}/${subtasks.length}</span>` : ''}
+                            <div class="text-xs font-bold leading-snug ${done ? 'text-slate-500 line-through' : 'text-slate-100'} break-words">${window.escapeHtml(task.text || 'Missão sem título')}</div>
+                            <div class="flex flex-wrap gap-1.5 mt-1.5">
+                                <span class="inline-flex items-center gap-1 rounded-full border border-slate-800 bg-slate-900 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${cat.color || 'text-slate-400'}"><i data-lucide="${cat.icon || 'target'}" class="w-2.5 h-2.5"></i>${window.escapeHtml(cat.label || 'Geral')}</span>
+                                <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${priorityChip[task.priority] || priorityChip.media}">${priorityLabel[task.priority] || 'Média'}</span>
+                                ${subCount ? `<span class="inline-flex items-center gap-1 rounded-full border border-cyan-900/50 bg-cyan-950/20 text-cyan-300 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider">${doneSubs}/${subCount}</span>` : ''}
                             </div>
                         </div>
-                        <button type="button" onclick="window.openEditTaskModal(${task.id}, event)" class="text-slate-600 hover:text-amber-300 p-1 rounded-lg hover:bg-slate-900 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" title="Editar missão"><i data-lucide="pencil" class="w-4 h-4"></i></button>
                     </div>
                 </div>`;
             };
 
-            const renderStudyMini = (block) => {
+            const renderStudyAgendaItem = (block) => {
                 const track = window.getStudyTrack(block.trackId);
-                const subject = block.subjectId ? state.studyData.subjects.find(s => String(s.id) === String(block.subjectId)) : null;
-                const statusClass = window.getStudyBlockStatusClass(block.status);
+                const subject = block.subjectId ? subjects.find(s => String(s.id) === String(block.subjectId)) : null;
                 const done = block.status === 'completed';
-                const icon = done ? 'check-circle-2' : block.status === 'partial' ? 'circle-dot' : block.status === 'rescheduled' ? 'calendar-clock' : 'book-open-check';
-                return `<div class="group rounded-xl border ${track.border || 'border-cyan-900/40'} ${track.bg || 'bg-cyan-950/10'} p-3 transition-colors">
+                const partial = block.status === 'partial';
+                const icon = done ? 'check-circle-2' : partial ? 'circle-dot' : 'book-open-check';
+                return `<div class="group rounded-xl border ${track.border || 'border-cyan-900/50'} ${track.bg || 'bg-cyan-950/10'} ${done ? 'opacity-65' : ''} p-2.5 transition-colors">
                     <div class="flex items-start gap-2">
-                        <i data-lucide="${icon}" class="w-4 h-4 mt-0.5 ${done ? 'text-emerald-400' : (track.color || 'text-cyan-400')} shrink-0"></i>
+                        <i data-lucide="${icon}" class="w-4 h-4 mt-0.5 ${done ? 'text-emerald-400' : (track.color || 'text-cyan-300')} shrink-0"></i>
                         <div class="min-w-0 flex-1">
-                            <p class="text-xs font-black ${done ? 'text-slate-400 line-through' : 'text-white'} leading-snug break-words">${window.escapeHtml(block.title || 'Estudo sem título')}</p>
-                            <p class="text-[10px] text-slate-500 mt-1 leading-snug">${subject ? window.escapeHtml(subject.name) : 'Sem disciplina vinculada'}</p>
-                            <div class="flex flex-wrap gap-1.5 mt-2">
-                                <span class="inline-flex items-center gap-1 text-[9px] font-black uppercase rounded-full border px-2 py-0.5 ${statusClass}">${window.getStudyBlockStatusLabel(block.status)}</span>
-                                <span class="inline-flex items-center gap-1 text-[9px] font-black uppercase rounded-full border border-slate-800 bg-slate-950/70 px-2 py-0.5 ${track.color || 'text-cyan-300'}"><i data-lucide="${track.icon || 'route'}" class="w-3 h-3"></i>${window.escapeHtml(track.name || 'Trilha')}</span>
-                                <span class="inline-flex items-center gap-1 text-[9px] font-black uppercase rounded-full border border-cyan-900/50 bg-cyan-950/20 text-cyan-300 px-2 py-0.5"><i data-lucide="clock" class="w-3 h-3"></i>${parseInt(block.plannedMinutes, 10) || 0} min</span>
+                            <div class="text-xs font-bold leading-snug ${done ? 'text-slate-500 line-through' : 'text-slate-100'} break-words">${window.escapeHtml(block.title || 'Estudo sem título')}</div>
+                            <div class="text-[10px] text-slate-500 truncate mt-0.5">${subject ? window.escapeHtml(subject.name) : 'Sem disciplina vinculada'}</div>
+                            <div class="flex flex-wrap gap-1.5 mt-1.5">
+                                <span class="inline-flex items-center gap-1 rounded-full border border-slate-800 bg-slate-950/70 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${track.color || 'text-cyan-300'}"><i data-lucide="${track.icon || 'route'}" class="w-2.5 h-2.5"></i>${window.escapeHtml(track.name || 'Trilha')}</span>
+                                <span class="inline-flex items-center gap-1 rounded-full border border-cyan-900/50 bg-cyan-950/20 text-cyan-300 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider">${parseInt(block.plannedMinutes, 10) || 0} min</span>
+                                <span class="inline-flex items-center gap-1 rounded-full border border-slate-800 bg-slate-900 text-slate-300 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider">${statusLabel(block.status)}</span>
                             </div>
                         </div>
-                        <button type="button" onclick="window.startEditStudyPlanBlock('${block.id}', event)" class="text-slate-600 hover:text-cyan-300 p-1 rounded-lg hover:bg-slate-900 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" title="Editar estudo"><i data-lucide="pencil" class="w-4 h-4"></i></button>
                     </div>
                 </div>`;
             };
 
-            const renderDaySummaryCard = (row) => {
-                const loadPct = Math.round((row.loadScore / maxLoadScore) * 100);
-                const isToday = row.day.id === todayId;
-                const hasPlan = row.total > 0;
-                const loadLabel = row.loadScore >= maxLoadScore && hasPlan ? 'mais carregado' : row.loadScore >= 6 ? 'carga alta' : row.loadScore >= 3 ? 'carga média' : hasPlan ? 'carga leve' : 'livre';
-                const loadColor = row.loadScore >= 6 ? 'bg-red-500/70' : row.loadScore >= 3 ? 'bg-yellow-500/70' : hasPlan ? 'bg-emerald-500/70' : 'bg-slate-700';
-                return `<button type="button" onclick="window.setTab('${row.day.id}'); window.setMainView('day')" class="text-left rounded-2xl border ${isToday ? 'border-cyan-500/70 bg-cyan-950/25 shadow-lg shadow-cyan-950/20' : hasPlan ? 'border-slate-800 bg-slate-950/70 hover:border-indigo-700/70' : 'border-dashed border-slate-800 bg-slate-950/30 hover:bg-slate-950/60'} p-3 transition-all min-h-[142px]">
-                    <div class="flex items-start justify-between gap-2 mb-3">
-                        <div>
-                            <div class="text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-cyan-300' : 'text-slate-500'}">${isToday ? 'Hoje' : 'Dia'}</div>
-                            <div class="text-sm font-black text-white uppercase tracking-widest">${row.day.label}</div>
-                        </div>
-                        <span class="text-[10px] font-black rounded-full border px-2 py-1 ${row.pct === 100 && row.total ? 'bg-emerald-950/40 border-emerald-900/60 text-emerald-300' : row.pct > 0 ? 'bg-indigo-950/40 border-indigo-900/60 text-indigo-300' : 'bg-slate-900 border-slate-800 text-slate-500'}">${row.completed}/${row.total}</span>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2 text-[10px] font-bold mb-3">
-                        <div class="rounded-lg bg-slate-900/80 border border-slate-800 px-2 py-1.5 text-slate-300"><span class="text-indigo-300">${row.dayTasks.length}</span> missões</div>
-                        <div class="rounded-lg bg-slate-900/80 border border-slate-800 px-2 py-1.5 text-slate-300"><span class="text-cyan-300">${row.dayStudies.length}</span> estudos</div>
-                    </div>
-                    <div class="flex items-center justify-between text-[10px] text-slate-500 mb-1"><span>${loadLabel}</span><span>${row.minutes ? `${row.minutes} min` : 'sem estudo'}</span></div>
-                    <div class="h-2 rounded-full bg-slate-900 border border-slate-800 overflow-hidden"><div class="h-full ${loadColor} rounded-full" style="width:${hasPlan ? Math.max(8, loadPct) : 0}%"></div></div>
-                    ${row.heavy ? `<div class="mt-2 text-[10px] text-red-300 font-bold flex items-center gap-1"><i data-lucide="alert-triangle" class="w-3 h-3"></i>${row.heavy} item${row.heavy === 1 ? '' : 's'} de alta carga</div>` : ''}
-                </button>`;
-            };
-
-            const renderDayTimeline = (row) => {
-                const isToday = row.day.id === todayId;
-                return `<section class="rounded-2xl border ${isToday ? 'border-cyan-700/60 bg-cyan-950/10' : 'border-slate-800 bg-slate-900'} overflow-hidden">
-                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 p-4 border-b border-slate-800/80 ${isToday ? 'bg-cyan-950/10' : 'bg-slate-950/40'}">
-                        <div class="flex items-start gap-3">
-                            <div class="w-12 h-12 rounded-2xl flex items-center justify-center border ${isToday ? 'border-cyan-700 bg-cyan-950/40 text-cyan-300' : 'border-slate-800 bg-slate-950 text-slate-400'} font-black">${dayShort(row.day.label)}</div>
-                            <div>
-                                <h3 class="text-base font-black text-white uppercase tracking-widest flex flex-wrap items-center gap-2">${row.day.label}${isToday ? `<span class="text-[10px] px-2 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-300">Hoje</span>` : ''}</h3>
-                                <p class="text-xs text-slate-500 mt-1">${row.dayTasks.length} missão${row.dayTasks.length === 1 ? '' : 'ões'} · ${row.dayStudies.length} estudo${row.dayStudies.length === 1 ? '' : 's'}${row.minutes ? ` · ${row.minutes} min de estudo` : ''}${row.partial ? ` · ${row.partial} parcial${row.partial === 1 ? '' : 'is'}` : ''}</p>
+            const renderDayCard = (row) => {
+                const isToday = row.dateKey === todayKey;
+                const hasItems = row.total > 0;
+                const dateNumber = String(row.date.getDate()).padStart(2, '0');
+                const monthNumber = String(row.date.getMonth() + 1).padStart(2, '0');
+                return `<section class="rounded-3xl border ${isToday ? 'border-cyan-500/70 bg-cyan-950/15 shadow-lg shadow-cyan-950/10' : hasItems ? 'border-slate-800 bg-slate-900' : 'border-slate-800/70 bg-slate-950/50'} overflow-hidden min-h-[360px] flex flex-col">
+                    <div class="p-4 border-b ${isToday ? 'border-cyan-900/60' : 'border-slate-800'} bg-slate-950/55">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-cyan-200' : 'text-slate-400'}">${row.day.label}</span>
+                                    ${isToday ? `<span class="text-[8px] font-black uppercase tracking-widest text-cyan-100 bg-cyan-700/50 border border-cyan-500/50 rounded-full px-2 py-0.5">Hoje</span>` : ''}
+                                </div>
+                                <div class="text-2xl font-black text-white leading-none">${dateNumber}/${monthNumber}</div>
                             </div>
+                            <button type="button" onclick="window.setTab('${row.day.id}'); window.setMainView('day')" class="rounded-xl bg-slate-900 hover:bg-indigo-600 text-slate-300 hover:text-white border border-slate-800 hover:border-indigo-500 px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors">Abrir</button>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-[10px] font-black uppercase rounded-full px-3 py-1.5 border ${row.pct === 100 && row.total ? 'bg-emerald-950/30 border-emerald-900/50 text-emerald-300' : row.pct > 0 ? 'bg-indigo-950/30 border-indigo-900/50 text-indigo-300' : 'bg-slate-950 border-slate-800 text-slate-500'}">${row.pct}% feito</span>
-                            <button onclick="window.setTab('${row.day.id}'); window.setMainView('day')" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><i data-lucide="external-link" class="w-3.5 h-3.5"></i>Abrir dia</button>
+                        <div class="mt-4 flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
+                            <span class="text-slate-500">${row.pending} pend. · ${row.completed}/${row.total || 0}</span>
+                            <span class="${row.pct >= 100 && row.total ? 'text-emerald-300' : row.pct >= 50 ? 'text-cyan-300' : 'text-slate-400'}">${row.total ? `${row.pct}%` : 'Livre'}</span>
                         </div>
+                        <div class="h-2 bg-slate-800 rounded-full overflow-hidden mt-2"><div class="h-full rounded-full ${row.pct >= 100 && row.total ? 'bg-emerald-500' : row.pct >= 50 ? 'bg-cyan-500' : 'bg-indigo-500'}" style="width:${row.total ? row.pct : 0}%"></div></div>
                     </div>
-                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 p-4">
+                    <div class="p-3 sm:p-4 space-y-4 flex-1">
                         <div>
-                            <div class="text-[10px] font-black uppercase tracking-widest text-indigo-300 mb-2 flex items-center gap-1.5"><i data-lucide="target" class="w-3.5 h-3.5"></i> Missões do board</div>
-                            <div class="space-y-2">${row.dayTasks.length ? row.dayTasks.map(renderTaskMini).join('') : `<div class="border border-dashed border-slate-800 rounded-xl p-4 text-center text-xs text-slate-600 italic">Nenhuma missão neste dia.</div>`}</div>
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                <h4 class="text-[10px] font-black uppercase tracking-widest text-indigo-300 flex items-center gap-1.5"><i data-lucide="target" class="w-3.5 h-3.5"></i> Missões</h4>
+                                <span class="text-[9px] text-slate-600 font-black">${row.dayTasks.length}</span>
+                            </div>
+                            <div class="space-y-2">${row.dayTasks.length ? row.dayTasks.map(renderTaskAgendaItem).join('') : `<div class="rounded-xl border border-dashed border-slate-800 bg-slate-950/50 p-3 text-[11px] text-slate-600 italic">Sem missões.</div>`}</div>
                         </div>
                         <div>
-                            <div class="text-[10px] font-black uppercase tracking-widest text-cyan-300 mb-2 flex items-center gap-1.5"><i data-lucide="book-open-check" class="w-3.5 h-3.5"></i> Estudos planejados</div>
-                            <div class="space-y-2">${row.dayStudies.length ? row.dayStudies.map(renderStudyMini).join('') : `<div class="border border-dashed border-slate-800 rounded-xl p-4 text-center text-xs text-slate-600 italic">Nenhum estudo planejado.</div>`}</div>
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                <h4 class="text-[10px] font-black uppercase tracking-widest text-cyan-300 flex items-center gap-1.5"><i data-lucide="book-open-check" class="w-3.5 h-3.5"></i> Estudos</h4>
+                                <span class="text-[9px] text-slate-600 font-black">${row.minutes ? `${row.minutes} min` : row.dayStudies.length}</span>
+                            </div>
+                            <div class="space-y-2">${row.dayStudies.length ? row.dayStudies.map(renderStudyAgendaItem).join('') : `<div class="rounded-xl border border-dashed border-slate-800 bg-slate-950/50 p-3 text-[11px] text-slate-600 italic">Sem estudos.</div>`}</div>
                         </div>
                     </div>
                 </section>`;
             };
 
-            if (emptyWeek) {
-                return `<div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 mb-8 font-mono text-center">
-                    <div class="w-16 h-16 rounded-3xl bg-cyan-950/40 border border-cyan-900/50 text-cyan-300 flex items-center justify-center mx-auto mb-4"><i data-lucide="calendar-plus" class="w-8 h-8"></i></div>
-                    <h2 class="text-xl font-black text-white uppercase tracking-widest mb-2">Semana Geral vazia</h2>
-                    <p class="text-sm text-slate-400 max-w-xl mx-auto leading-relaxed">Quando você criar missões no board, blocos de estudo no Centro de Inteligência, rituais ou itens rápidos, tudo aparecerá aqui em um mapa semanal único.</p>
-                    <div class="flex flex-col sm:flex-row justify-center gap-3 mt-6">
-                        <button onclick="window.setMainView('day')" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2"><i data-lucide="layout-list" class="w-4 h-4"></i> Voltar ao dia</button>
-                        <button onclick="window.toggleCreateTaskModal()" class="bg-emerald-700 hover:bg-emerald-600 text-white px-5 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2"><i data-lucide="plus-circle" class="w-4 h-4"></i> Criar missão</button>
-                    </div>
+            if (totalItems === 0) {
+                return `<div class="space-y-5 font-mono">
+                    <section class="rounded-3xl border border-cyan-900/50 bg-slate-900 p-5 sm:p-6">
+                        <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                            <div>
+                                <div class="text-[10px] font-black uppercase tracking-widest text-cyan-300 mb-2">Agenda semanal · ${weekLabel}</div>
+                                <h2 class="text-2xl sm:text-3xl font-black text-white">Semana sem demandas</h2>
+                                <p class="text-sm text-slate-400 mt-2 max-w-2xl leading-relaxed">Quando você criar missões no board ou estudos no Centro de Inteligência, eles aparecerão aqui em formato de agenda semanal.</p>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="window.setPlanningCalendarWeek('current')" class="bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest">Semana atual</button>
+                                <button onclick="window.prepareNextWeekPlanning()" class="bg-cyan-700 hover:bg-cyan-600 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest">Planejar próxima semana</button>
+                            </div>
+                        </div>
+                    </section>
                 </div>`;
             }
 
-            let html = `
-                <div class="space-y-5 mb-8 font-mono">
-                    <section class="relative overflow-hidden rounded-3xl border border-cyan-800/50 bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/30 p-5 sm:p-6 shadow-xl">
-                        <div class="absolute right-0 top-0 w-40 h-40 bg-cyan-500/10 blur-3xl rounded-full"></div>
-                        <div class="relative z-10 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5">
-                            <div class="max-w-3xl">
-                                <div class="inline-flex items-center gap-2 rounded-full border border-cyan-800/60 bg-cyan-950/30 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-cyan-300 mb-3">
-                                    <i data-lucide="calendar-range" class="w-3.5 h-3.5"></i> Mapa operacional da semana
-                                </div>
-                                <h2 class="text-2xl sm:text-3xl font-black text-white leading-tight">Semana Geral</h2>
-                                <p class="text-sm text-slate-400 mt-2 leading-relaxed">Uma visão única para enxergar missões, estudos, rituais e pendências antes de entrar no detalhe de cada dia.</p>
+            return `<div class="space-y-5 font-mono">
+                <section class="rounded-3xl border border-cyan-900/50 bg-slate-900 p-4 sm:p-5">
+                    <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2 mb-2">
+                                <span class="inline-flex items-center gap-1.5 rounded-full border border-cyan-900/60 bg-cyan-950/30 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-cyan-200"><i data-lucide="calendar-range" class="w-3.5 h-3.5"></i> Agenda semanal</span>
+                                ${isCurrentCalendarWeek ? `<span class="inline-flex items-center rounded-full border border-emerald-900/50 bg-emerald-950/25 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-200">Semana corrente</span>` : ''}
+                                ${isNextCalendarWeek ? `<span class="inline-flex items-center rounded-full border border-purple-900/50 bg-purple-950/25 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-purple-200">Próxima semana</span>` : ''}
                             </div>
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 min-w-full xl:min-w-[520px]">
-                                <div class="rounded-2xl bg-slate-950/80 border border-slate-800 p-3"><div class="text-2xl font-black text-white">${totalItems}</div><div class="text-[10px] text-slate-500 font-black uppercase tracking-widest">itens</div></div>
-                                <div class="rounded-2xl bg-slate-950/80 border border-slate-800 p-3"><div class="text-2xl font-black text-emerald-300">${progressPct}%</div><div class="text-[10px] text-slate-500 font-black uppercase tracking-widest">feito</div></div>
-                                <div class="rounded-2xl bg-slate-950/80 border border-slate-800 p-3"><div class="text-2xl font-black text-cyan-300">${(plannedStudyMinutes / 60).toFixed(1)}h</div><div class="text-[10px] text-slate-500 font-black uppercase tracking-widest">estudo</div></div>
-                                <div class="rounded-2xl bg-slate-950/80 border border-slate-800 p-3"><div class="text-2xl font-black text-red-300">${totalHighLoad}</div><div class="text-[10px] text-slate-500 font-black uppercase tracking-widest">alta carga</div></div>
-                            </div>
+                            <h2 class="text-2xl sm:text-3xl font-black text-white leading-tight">${weekLabel}</h2>
+                            <p class="text-xs text-slate-500 mt-2 leading-relaxed max-w-3xl">Visão de agenda da semana ativa: apenas missões do board e estudos planejados. Rituais e descarga cognitiva não entram aqui.</p>
                         </div>
-                        <div class="relative z-10 mt-5">
-                            <div class="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1"><span>Execução geral</span><span>${doneItems}/${totalItems}</span></div>
-                            <div class="w-full h-3 rounded-full bg-slate-950 border border-slate-800 overflow-hidden"><div class="h-full bg-gradient-to-r from-indigo-600 via-cyan-500 to-emerald-500 rounded-full" style="width:${progressPct}%"></div></div>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="window.setPlanningCalendarWeek('current')" class="bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><i data-lucide="calendar-check" class="w-3.5 h-3.5"></i> Semana atual</button>
+                            <button onclick="window.setPlanningCalendarWeek('prev')" class="bg-slate-950 hover:bg-slate-800 text-slate-400 border border-slate-800 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i> Anterior</button>
+                            <button onclick="window.setPlanningCalendarWeek('forward')" class="bg-slate-950 hover:bg-slate-800 text-slate-400 border border-slate-800 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">Próxima <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
+                            <button onclick="window.prepareNextWeekPlanning()" class="bg-cyan-700 hover:bg-cyan-600 text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><i data-lucide="calendar-plus" class="w-3.5 h-3.5"></i> Planejar próxima</button>
                         </div>
-                    </section>
-
-                    <section class="grid grid-cols-1 lg:grid-cols-[1.2fr_.8fr] gap-4">
-                        <div class="rounded-3xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-                                <div>
-                                    <h3 class="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2"><i data-lucide="layout-dashboard" class="w-4 h-4 text-cyan-300"></i> Raio-X da semana</h3>
-                                    <p class="text-[11px] text-slate-500 mt-1">Clique em qualquer dia para abrir o board dele.</p>
-                                </div>
-                                <button onclick="window.setMainView('day')" class="bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"><i data-lucide="layout-list" class="w-3.5 h-3.5"></i> Ver rotina do dia</button>
-                            </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                                ${dayRows.map(renderDaySummaryCard).join('')}
-                            </div>
-                        </div>
-
-                        <aside class="rounded-3xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
-                            <h3 class="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2 mb-3"><i data-lucide="alert-circle" class="w-4 h-4 text-yellow-300"></i> Pontos de atenção</h3>
-                            <div class="space-y-3">
-                                <div class="rounded-2xl bg-slate-950 border border-slate-800 p-3">
-                                    <div class="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Hoje</div>
-                                    <div class="text-sm font-black text-white">${pendingToday.day.label}</div>
-                                    <p class="text-xs text-slate-400 mt-1">${pendingToday.total ? `${pendingToday.total - pendingToday.completed} pendente${(pendingToday.total - pendingToday.completed) === 1 ? '' : 's'} de ${pendingToday.total}` : 'Nada planejado para hoje.'}</p>
-                                </div>
-                                <div class="rounded-2xl bg-slate-950 border border-slate-800 p-3">
-                                    <div class="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2">Dias mais carregados</div>
-                                    ${busiestDays.length ? busiestDays.map(row => `<button type="button" onclick="window.setTab('${row.day.id}'); window.setMainView('day')" class="w-full flex items-center justify-between gap-3 py-2 border-b border-slate-800 last:border-0 text-left"><span class="text-xs font-bold text-slate-300">${row.day.label}</span><span class="text-[10px] text-slate-500">${row.total} itens · ${row.minutes} min</span></button>`).join('') : `<p class="text-xs text-slate-600 italic">Sem carga registrada.</p>`}
-                                </div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div class="rounded-2xl bg-slate-950 border border-slate-800 p-3"><div class="text-xl font-black text-indigo-300">${totalTasks}</div><div class="text-[10px] text-slate-500 uppercase font-black tracking-widest">missões</div></div>
-                                    <div class="rounded-2xl bg-slate-950 border border-slate-800 p-3"><div class="text-xl font-black text-cyan-300">${totalStudies}</div><div class="text-[10px] text-slate-500 uppercase font-black tracking-widest">estudos</div></div>
-                                    <div class="rounded-2xl bg-slate-950 border border-slate-800 p-3"><div class="text-xl font-black text-yellow-300">${partialStudies}</div><div class="text-[10px] text-slate-500 uppercase font-black tracking-widest">parciais</div></div>
-                                    <div class="rounded-2xl bg-slate-950 border border-slate-800 p-3"><div class="text-xl font-black text-emerald-300">${completedTasks + completedStudies}</div><div class="text-[10px] text-slate-500 uppercase font-black tracking-widest">feitos</div></div>
-                                </div>
-                            </div>
-                        </aside>
-                    </section>
-
-                    <section class="rounded-3xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
-                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-                            <div>
-                                <h3 class="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2"><i data-lucide="list-tree" class="w-4 h-4 text-cyan-300"></i> Linha do tempo semanal</h3>
-                                <p class="text-[11px] text-slate-500 mt-1">Resumo organizado por dia, separando missões e estudos para reduzir poluição visual.</p>
-                            </div>
-                            <div class="flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-widest">
-                                <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-indigo-900/50 bg-indigo-950/30 text-indigo-300"><i data-lucide="target" class="w-3 h-3"></i> Missões</span>
-                                <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-cyan-900/50 bg-cyan-950/30 text-cyan-300"><i data-lucide="book-open-check" class="w-3 h-3"></i> Estudos</span>
-                                <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-red-900/50 bg-red-950/30 text-red-300"><i data-lucide="alert-triangle" class="w-3 h-3"></i> Alta carga</span>
-                            </div>
-                        </div>
-                        <div class="space-y-4">
-                            ${dayRows.map(renderDayTimeline).join('')}
-                        </div>
-                    </section>`;
-
-            if (rituals.length || quickTasks.length) {
-                const morning = rituals.filter(r => r.period === 'morning');
-                const night = rituals.filter(r => r.period === 'night');
-                html += `<section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div class="bg-slate-900 border border-emerald-900/40 rounded-3xl p-4 sm:p-5">
-                        <h3 class="text-sm font-black uppercase tracking-widest text-emerald-300 mb-3 flex items-center gap-2"><i data-lucide="clipboard-check" class="w-4 h-4"></i> Rituais fixos</h3>
-                        ${rituals.length ? `<div class="space-y-2">
-                            ${morning.length ? `<div class="text-[10px] text-yellow-300 font-black uppercase tracking-widest mt-1">Manhã</div>${morning.map(r => `<div class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 flex justify-between gap-3"><span>${window.escapeHtml(r.title)}</span><span class="text-slate-500 shrink-0">${r.xp || 0} XP</span></div>`).join('')}` : ''}
-                            ${night.length ? `<div class="text-[10px] text-indigo-300 font-black uppercase tracking-widest mt-3">Noite</div>${night.map(r => `<div class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 flex justify-between gap-3"><span>${window.escapeHtml(r.title)}</span><span class="text-slate-500 shrink-0">${r.xp || 0} XP</span></div>`).join('')}` : ''}
-                        </div>` : `<p class="text-xs text-slate-600 italic">Nenhum ritual ativo.</p>`}
                     </div>
-                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-5">
-                        <h3 class="text-sm font-black uppercase tracking-widest text-slate-300 mb-3 flex items-center gap-2"><i data-lucide="inbox" class="w-4 h-4 text-cyan-400"></i> Descarga cognitiva</h3>
-                        ${quickTasks.length ? `<div class="space-y-2">${quickTasks.map(q => `<div class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs flex items-center gap-2 ${q.done ? 'text-slate-600 line-through' : 'text-slate-300'}"><i data-lucide="${q.done ? 'check-circle' : 'circle'}" class="w-4 h-4 ${q.done ? 'text-emerald-500' : 'text-slate-600'}"></i>${window.escapeHtml(q.text)}</div>`).join('')}</div>` : `<p class="text-xs text-slate-600 italic">Nenhuma tarefa rápida solta.</p>`}
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
+                        ${renderMiniMetric('list-checks', totalItems, 'demandas')}
+                        ${renderMiniMetric('target', totalTasks, 'missões', 'text-indigo-200')}
+                        ${renderMiniMetric('book-open-check', totalStudies, 'estudos', 'text-cyan-200')}
+                        ${renderMiniMetric('clock', `${(plannedMinutes/60).toFixed(1)}h`, 'estudo planejado', 'text-emerald-200')}
                     </div>
-                </section>`;
-            }
+                    <div class="mt-4">
+                        <div class="flex items-center justify-between text-[10px] font-black uppercase tracking-widest mb-1"><span class="text-slate-500">Execução da semana</span><span class="text-slate-300">${completedItems}/${totalItems} · ${progressPct}%</span></div>
+                        <div class="h-2.5 bg-slate-800 rounded-full overflow-hidden"><div class="h-full rounded-full ${progressPct >= 100 ? 'bg-emerald-500' : progressPct >= 50 ? 'bg-cyan-500' : 'bg-indigo-500'}" style="width:${progressPct}%"></div></div>
+                    </div>
+                </section>
 
-            html += `</div>`;
-            return html;
+                <section class="rounded-3xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
+                    <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 mb-4">
+                        <div>
+                            <h3 class="text-sm font-black uppercase tracking-widest text-white flex items-center gap-2"><i data-lucide="calendar-days" class="w-4 h-4 text-cyan-300"></i> Calendário operacional</h3>
+                            <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Consulte a semana por dia. Pendências ficam no topo; concluídos aparecem apagados.</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-widest">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-indigo-900/50 bg-indigo-950/30 text-indigo-300"><i data-lucide="target" class="w-3 h-3"></i> Missões</span>
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-cyan-900/50 bg-cyan-950/30 text-cyan-300"><i data-lucide="book-open-check" class="w-3 h-3"></i> Estudos</span>
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-emerald-900/50 bg-emerald-950/30 text-emerald-300"><i data-lucide="check-circle-2" class="w-3 h-3"></i> ${completedItems} concluído${completedItems === 1 ? '' : 's'}</span>
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-800 bg-slate-950 text-slate-400"><i data-lucide="circle" class="w-3 h-3"></i> ${pendingItems} pendente${pendingItems === 1 ? '' : 's'}</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-7 gap-4">
+                        ${rows.map(renderDayCard).join('')}
+                    </div>
+                </section>
+
+                <section class="rounded-3xl border border-slate-800 bg-slate-950/70 p-4 sm:p-5">
+                    <div class="flex items-start gap-3">
+                        <div class="p-2 rounded-xl border border-cyan-900/50 bg-cyan-950/30 text-cyan-300"><i data-lucide="calendar-plus" class="w-5 h-5"></i></div>
+                        <div>
+                            <h3 class="text-sm font-black uppercase tracking-widest text-white">Como planejar a próxima semana</h3>
+                            <p class="text-xs text-slate-400 leading-relaxed mt-2">No domingo, revise a semana atual. Depois clique em <strong>Planejar próxima</strong>. O app vira o calendário para a segunda-feira seguinte, preserva missões recorrentes, limpa missões comuns e volta os estudos para o status planejado. Aí você monta a nova semana sem precisar criar planilha.</p>
+                        </div>
+                    </div>
+                </section>
+            </div>`;
         }
+
 
         function renderStudyPlanningContent() {
             const tracks = window.getStudyTracks();
