@@ -227,6 +227,7 @@
             showEditTaskModal: false, editingTaskId: null,
             showStudyModal: false, studyTab: 'plano',
             studyPlanningTrackId: '',
+            studyPlanningView: 'board',
             editingStudyBlockId: null,
             showHealthModal: false, healthTab: 'dashboard',
             showFinanceModal: false, financeTab: 'dashboard',
@@ -2458,6 +2459,11 @@
             return blocks.filter(b => b.day === dayId).sort((a,b) => (a.order || 9999) - (b.order || 9999) || String(a.title).localeCompare(String(b.title)));
         };
 
+        window.setStudyPlanningView = function(view) {
+            uiState.studyPlanningView = view === 'overview' ? 'overview' : 'board';
+            render();
+        };
+
 
         window.getSelectedStudyPlanDays = function() {
             return Array.from(document.querySelectorAll('input[name="study-block-days"]:checked')).map(el => el.value);
@@ -3802,6 +3808,94 @@
             </div>`;
         }
 
+        function renderStudyWeeklyOverviewContent(blocks) {
+            const activeBlocks = (blocks || []).filter(b => b.status !== 'cancelled');
+            const dayIndex = dayId => daysOfWeek.findIndex(day => day.id === dayId);
+            const sortedBlocks = [...activeBlocks].sort((a, b) => {
+                const byDay = dayIndex(a.day) - dayIndex(b.day);
+                if (byDay !== 0) return byDay;
+                return (a.order || 9999) - (b.order || 9999) || String(a.title || '').localeCompare(String(b.title || ''));
+            });
+            const totalMinutes = activeBlocks.reduce((acc, block) => acc + (parseInt(block.plannedMinutes) || 0), 0);
+            const completedMinutes = activeBlocks.filter(block => block.status === 'completed').reduce((acc, block) => acc + (parseInt(block.plannedMinutes) || 0), 0);
+            const partialCount = activeBlocks.filter(block => block.status === 'partial').length;
+            const rescheduledCount = activeBlocks.filter(block => block.status === 'rescheduled').length;
+            const highEnergyCount = activeBlocks.filter(block => block.energyLevel === 'alta').length;
+            const executionPct = totalMinutes ? Math.round((completedMinutes / totalMinutes) * 100) : 0;
+            const dayStats = daysOfWeek.map(day => {
+                const dayBlocks = activeBlocks.filter(block => block.day === day.id);
+                const minutes = dayBlocks.reduce((acc, block) => acc + (parseInt(block.plannedMinutes) || 0), 0);
+                const completed = dayBlocks.filter(block => block.status === 'completed').reduce((acc, block) => acc + (parseInt(block.plannedMinutes) || 0), 0);
+                const heavy = dayBlocks.filter(block => block.energyLevel === 'alta').length;
+                return { day, blocks: dayBlocks, minutes, completed, heavy };
+            });
+            const maxDayMinutes = Math.max(1, ...dayStats.map(row => row.minutes));
+            const trackStats = window.getStudyTracks(true).map(track => {
+                const trackBlocks = activeBlocks.filter(block => String(block.trackId) === String(track.id));
+                const minutes = trackBlocks.reduce((acc, block) => acc + (parseInt(block.plannedMinutes) || 0), 0);
+                const completed = trackBlocks.filter(block => block.status === 'completed').reduce((acc, block) => acc + (parseInt(block.plannedMinutes) || 0), 0);
+                return { track, blocks: trackBlocks, minutes, completed };
+            }).filter(row => row.blocks.length || row.minutes);
+            const maxTrackMinutes = Math.max(1, ...trackStats.map(row => row.minutes));
+            const seriesMap = new Map();
+            sortedBlocks.forEach(block => {
+                const key = block.seriesId ? String(block.seriesId) : `single_${block.id}`;
+                if (!seriesMap.has(key)) seriesMap.set(key, []);
+                seriesMap.get(key).push(block);
+            });
+            const seriesRows = Array.from(seriesMap.values()).map(seriesBlocks => {
+                const ordered = [...seriesBlocks].sort((a, b) => dayIndex(a.day) - dayIndex(b.day));
+                const base = ordered[0];
+                const minutes = ordered.reduce((acc, block) => acc + (parseInt(block.plannedMinutes) || 0), 0);
+                const completed = ordered.filter(block => block.status === 'completed').length;
+                const partial = ordered.filter(block => block.status === 'partial').length;
+                return { base, blocks: ordered, minutes, completed, partial };
+            });
+
+            if (!activeBlocks.length) {
+                return `<div class="border border-dashed border-slate-800 rounded-2xl p-8 text-center bg-slate-950"><i data-lucide="calendar-plus" class="w-10 h-10 text-slate-600 mx-auto mb-3"></i><h4 class="text-sm font-black text-slate-300 uppercase tracking-widest mb-1">Semana ainda vazia</h4><p class="text-xs text-slate-500 max-w-md mx-auto">Adicione um estudo ao calendário para visualizar a semana completa por carga, trilha, dia e recorrência.</p></div>`;
+            }
+
+            return `
+                <div class="space-y-5">
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-4"><div class="text-2xl font-black text-white">${activeBlocks.length}</div><div class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Blocos na semana</div></div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-4"><div class="text-2xl font-black text-cyan-300">${(totalMinutes / 60).toFixed(1)}h</div><div class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Carga planejada</div></div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-4"><div class="text-2xl font-black text-emerald-300">${executionPct}%</div><div class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Realizado</div></div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-4"><div class="text-2xl font-black text-yellow-300">${partialCount}</div><div class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Parciais · ${highEnergyCount} alta energia</div></div>
+                    </div>
+
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
+                            <div class="flex items-start justify-between gap-3 mb-4">
+                                <div><h4 class="text-xs font-black text-slate-300 uppercase tracking-widest flex items-center gap-2"><i data-lucide="calendar-range" class="w-4 h-4 text-cyan-400"></i> Carga por dia</h4><p class="text-[10px] text-slate-600 mt-1">Ajuda a perceber dias sobrecarregados antes de a semana começar.</p></div>
+                                ${rescheduledCount ? `<span class="text-[10px] px-2 py-1 rounded-full border border-blue-900/60 bg-blue-950/30 text-blue-300 font-bold">${rescheduledCount} remarcado${rescheduledCount === 1 ? '' : 's'}</span>` : ''}
+                            </div>
+                            <div class="space-y-3">
+                                ${dayStats.map(row => { const pct = Math.round((row.minutes / maxDayMinutes) * 100); const donePct = row.minutes ? Math.round((row.completed / row.minutes) * 100) : 0; return `<div><div class="flex items-center justify-between text-[11px] mb-1"><span class="font-black text-white w-20">${row.day.label}</span><span class="text-slate-500">${row.blocks.length} bloco${row.blocks.length === 1 ? '' : 's'} · ${row.minutes} min ${row.heavy ? `· ${row.heavy} pesado${row.heavy === 1 ? '' : 's'}` : ''}</span></div><div class="h-3 bg-slate-900 border border-slate-800 rounded-full overflow-hidden"><div class="h-full bg-cyan-700/70 rounded-full" style="width:${pct}%"><div class="h-full bg-emerald-500/60 rounded-full" style="width:${donePct}%"></div></div></div></div>`; }).join('')}
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
+                            <h4 class="text-xs font-black text-slate-300 uppercase tracking-widest mb-4 flex items-center gap-2"><i data-lucide="route" class="w-4 h-4 text-cyan-400"></i> Resumo por trilha</h4>
+                            <div class="space-y-3">
+                                ${trackStats.length ? trackStats.map(row => { const pct = Math.round((row.minutes / maxTrackMinutes) * 100); const goal = parseInt(row.track.weeklyGoalMinutes) || 0; const goalPct = goal ? Math.round((row.minutes / goal) * 100) : 0; return `<div class="rounded-xl border ${row.track.border} ${row.track.bg} p-3"><div class="flex items-center justify-between gap-3 mb-2"><div class="flex items-center gap-2 min-w-0"><i data-lucide="${row.track.icon || 'book-open'}" class="w-4 h-4 ${row.track.color}"></i><span class="font-black text-sm text-white truncate">${window.escapeHtml(row.track.name)}</span></div><span class="text-[10px] text-slate-400 font-bold">${row.minutes} min${goal ? ` · ${goalPct}% da meta` : ''}</span></div><div class="h-2 bg-slate-950/70 border border-slate-800 rounded-full overflow-hidden"><div class="h-full bg-cyan-500/70 rounded-full" style="width:${pct}%"></div></div></div>`; }).join('') : `<p class="text-xs text-slate-600 italic border border-dashed border-slate-800 rounded-lg p-4 text-center">Sem trilhas com blocos planejados.</p>`}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                            <div><h4 class="text-xs font-black text-slate-300 uppercase tracking-widest flex items-center gap-2"><i data-lucide="list-checks" class="w-4 h-4 text-cyan-400"></i> Lista semanal consolidada</h4><p class="text-[10px] text-slate-600 mt-1">Estudos repetidos aparecem em uma linha com os dias marcados, para você enxergar a semana inteira sem procurar card por card.</p></div>
+                            <button type="button" onclick="window.setStudyPlanningView('board')" class="text-[10px] font-black uppercase tracking-widest text-cyan-300 hover:text-cyan-200">Ver board por dia</button>
+                        </div>
+                        <div class="space-y-3">
+                            ${seriesRows.map(row => { const track = window.getStudyTrack(row.base.trackId); const subject = row.base.subjectId ? state.studyData.subjects.find(s => String(s.id) === String(row.base.subjectId)) : null; const allDone = row.completed === row.blocks.length; const hasPartial = row.partial > 0; return `<div class="rounded-2xl border ${track.border} ${track.bg} p-4"><div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3"><div class="min-w-0"><div class="flex flex-wrap items-center gap-2 mb-2"><span class="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest ${track.color}"><i data-lucide="${track.icon || 'book-open'}" class="w-4 h-4"></i>${window.escapeHtml(track.name)}</span><span class="inline-flex items-center gap-1 text-[10px] text-slate-300 bg-slate-950/70 border border-slate-800 rounded-full px-2 py-1">${window.getStudyTypeLabel(row.base.studyType)}</span><span class="inline-flex items-center gap-1 text-[10px] text-cyan-300 bg-cyan-950/30 border border-cyan-900/50 rounded-full px-2 py-1">${row.minutes} min semanais</span></div><h5 class="text-sm font-black text-white leading-snug break-words">${window.escapeHtml(row.base.title)}</h5><p class="text-[11px] text-slate-500 mt-1">${subject ? `Disciplina: ${window.escapeHtml(subject.name)}` : 'Sem disciplina vinculada'} · prioridade ${row.base.priority || 'média'} · energia ${row.base.energyLevel || 'média'}</p></div><div class="flex flex-wrap gap-1.5 lg:justify-end">${row.blocks.map(block => { const day = daysOfWeek.find(d => d.id === block.day); const statusClass = window.getStudyBlockStatusClass(block.status); return `<span class="inline-flex items-center gap-1 rounded-full border ${statusClass} px-2.5 py-1 text-[10px] font-black"><i data-lucide="${block.status === 'completed' ? 'check' : block.status === 'partial' ? 'circle-dot' : block.status === 'rescheduled' ? 'calendar-clock' : 'calendar'}" class="w-3 h-3"></i>${day?.label?.slice(0, 3) || block.day}</span>`; }).join('')}</div></div><div class="flex flex-wrap items-center justify-between gap-2 mt-4 pt-3 border-t border-slate-800/70"><span class="text-[10px] font-bold ${allDone ? 'text-emerald-300' : hasPartial ? 'text-yellow-300' : 'text-slate-500'}">${row.completed}/${row.blocks.length} concluído${row.blocks.length === 1 ? '' : 's'}${hasPartial ? ` · ${row.partial} parcial${row.partial === 1 ? '' : 'is'}` : ''}</span><div class="flex gap-2"><button type="button" onclick="window.startEditStudyPlanBlock('${row.base.id}', event)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><i data-lucide="pencil" class="w-3.5 h-3.5"></i> Editar</button><button type="button" onclick="window.prefillStudySessionFromPlan('${row.base.id}')" class="bg-cyan-700 hover:bg-cyan-600 text-white rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><i data-lucide="clipboard-pen" class="w-3.5 h-3.5"></i> Registrar</button></div></div></div>`; }).join('')}
+                        </div>
+                    </div>
+                </div>`;
+        }
+
         function renderStudyPlanningContent() {
             const tracks = window.getStudyTracks();
             const allTracks = window.getStudyTracks(true);
@@ -3889,9 +3983,17 @@
                     <div class="space-y-3">${trackMinutes.map(row => { const pct = plannedMinutes ? Math.round((row.minutes / plannedMinutes) * 100) : 0; return `<div><div class="flex justify-between text-[11px] mb-1"><span class="font-bold ${row.track.color}">${window.escapeHtml(row.track.name)}</span><span class="text-slate-500">${row.minutes} min · meta ${row.track.weeklyGoalMinutes || 0} min</span></div><div class="w-full bg-slate-900 rounded-full h-2 border border-slate-800"><div class="bg-cyan-500 h-full rounded-full" style="width:${Math.min(100,pct)}%"></div></div></div>`; }).join('')}</div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    ${daysOfWeek.map(day => { const dayBlocks = window.getStudyBlocksForDay(day.id); return `<div class="bg-slate-950 border border-slate-800 rounded-xl p-4"><div class="flex items-center justify-between mb-3"><h4 class="text-sm font-black text-white">${day.label}</h4><span class="text-[10px] text-slate-500 font-bold uppercase">${dayBlocks.length} bloco${dayBlocks.length !== 1 ? 's' : ''}</span></div><div class="space-y-3">${dayBlocks.length ? dayBlocks.map(b => renderStudyPlanBlockCard(b)).join('') : `<p class="text-xs text-slate-600 italic border border-dashed border-slate-800 rounded-lg p-4 text-center">Sem estudo planejado.</p>`}</div></div>`; }).join('')}
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="window.setStudyPlanningView('overview')" class="rounded-lg px-3 py-2 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 ${uiState.studyPlanningView === 'overview' ? 'bg-cyan-900/70 text-cyan-100 border border-cyan-700' : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-200'}"><i data-lucide="table-2" class="w-4 h-4"></i> Visão semanal</button>
+                        <button type="button" onclick="window.setStudyPlanningView('board')" class="rounded-lg px-3 py-2 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 ${(uiState.studyPlanningView || 'board') === 'board' ? 'bg-cyan-900/70 text-cyan-100 border border-cyan-700' : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-200'}"><i data-lucide="layout-dashboard" class="w-4 h-4"></i> Board por dia</button>
+                    </div>
+                    <p class="text-[10px] text-slate-600 mt-2 px-1">Use a visão semanal para enxergar tudo o que foi planejado de uma vez; use o board para mexer nos cards por dia.</p>
                 </div>
+
+                ${(uiState.studyPlanningView === 'overview') ? renderStudyWeeklyOverviewContent(blocks) : `<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    ${daysOfWeek.map(day => { const dayBlocks = window.getStudyBlocksForDay(day.id); return `<div class="bg-slate-950 border border-slate-800 rounded-xl p-4"><div class="flex items-center justify-between mb-3"><h4 class="text-sm font-black text-white">${day.label}</h4><span class="text-[10px] text-slate-500 font-bold uppercase">${dayBlocks.length} bloco${dayBlocks.length !== 1 ? 's' : ''}</span></div><div class="space-y-3">${dayBlocks.length ? dayBlocks.map(b => renderStudyPlanBlockCard(b)).join('') : `<p class="text-xs text-slate-600 italic border border-dashed border-slate-800 rounded-lg p-4 text-center">Sem estudo planejado.</p>`}</div></div>`; }).join('')}
+                </div>`}
             </div>`;
             return html;
         }
