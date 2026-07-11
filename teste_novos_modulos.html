@@ -3176,6 +3176,9 @@
                             <button onclick="window.endDay()" class="flex items-center gap-2 px-3 py-2 bg-indigo-950/40 text-indigo-400 border border-indigo-900/50 rounded-lg text-sm font-bold justify-center hover:bg-indigo-900 hover:text-white transition-colors">
                                 <i data-lucide="moon" class="w-4 h-4"></i>
                             </button>
+                            <button onclick="window.setMainView('week')" class="flex items-center gap-2 px-3 py-2 bg-cyan-950/50 text-cyan-300 border border-cyan-900/60 rounded-lg text-sm font-black justify-center hover:bg-cyan-900 hover:text-white transition-colors" title="Abrir Semana Geral: tudo que está planejado na semana">
+                                <i data-lucide="calendar-days" class="w-4 h-4"></i><span class="hidden sm:inline">Semana</span>
+                            </button>
                         </div>
                     </div>
 
@@ -3200,10 +3203,23 @@
             </div>`;
 
             // VISÃO PRINCIPAL: DIA OU SEMANA
-            html += `<div class="bg-slate-900 border border-slate-800 rounded-xl p-2 mb-4 font-mono">
-                <div class="grid grid-cols-2 gap-2">
-                    <button onclick="window.setMainView('day')" class="rounded-lg py-2.5 text-xs font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-2 ${uiState.mainView !== 'week' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}"><i data-lucide="layout-list" class="w-4 h-4"></i> Rotina do Dia</button>
-                    <button onclick="window.setMainView('week')" class="rounded-lg py-2.5 text-xs font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-2 ${uiState.mainView === 'week' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800'}"><i data-lucide="calendar-range" class="w-4 h-4"></i> Semana Geral</button>
+            html += `<div class="mb-4 rounded-2xl border ${uiState.mainView === 'week' ? 'border-cyan-700/60 bg-cyan-950/20' : 'border-slate-800 bg-slate-900'} p-3 shadow-lg font-mono">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                    <div class="flex items-start gap-3">
+                        <div class="p-2 rounded-xl border ${uiState.mainView === 'week' ? 'border-cyan-700 bg-cyan-950/50 text-cyan-300' : 'border-slate-700 bg-slate-950 text-slate-400'}">
+                            <i data-lucide="calendar-range" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-black text-white uppercase tracking-widest">Visão principal</h3>
+                            <p class="text-xs text-slate-400 leading-relaxed mt-1">
+                                <strong class="text-cyan-300">Semana Geral</strong> mostra tudo que está planejado na semana: missões do board, estudos, rituais e itens soltos.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full lg:w-[460px]">
+                        <button onclick="window.setMainView('day')" class="rounded-xl py-3 px-3 text-xs font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-2 border ${uiState.mainView !== 'week' ? 'bg-indigo-600 text-white border-indigo-500 shadow-md' : 'bg-slate-950 text-slate-400 border-slate-800 hover:bg-slate-800'}"><i data-lucide="layout-list" class="w-4 h-4"></i> Rotina do Dia</button>
+                        <button onclick="window.setMainView('week')" class="rounded-xl py-3 px-3 text-xs font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-2 border ${uiState.mainView === 'week' ? 'bg-cyan-600 text-white border-cyan-400 shadow-md shadow-cyan-950/40' : 'bg-cyan-950/40 text-cyan-300 border-cyan-900/60 hover:bg-cyan-900 hover:text-white'}"><i data-lucide="calendar-days" class="w-4 h-4"></i> Abrir Semana Geral</button>
+                    </div>
                 </div>
             </div>`;
 
