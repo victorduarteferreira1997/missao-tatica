@@ -3971,15 +3971,15 @@
 
             const priorityRank = { essencial: 4, alta: 3, media: 2, baixa: 1 };
             const priorityLabel = { essencial: 'Essencial', alta: 'Alta', media: 'Média', baixa: 'Baixa' };
-            const priorityChip = {
-                essencial: 'text-purple-200 border-purple-800/70 bg-purple-950/40',
-                alta: 'text-red-200 border-red-800/70 bg-red-950/35',
-                media: 'text-yellow-200 border-yellow-800/70 bg-yellow-950/25',
-                baixa: 'text-slate-300 border-slate-700 bg-slate-900/80'
+            const priorityColor = {
+                essencial: 'text-purple-200 bg-purple-950/40 border-purple-900/60',
+                alta: 'text-red-200 bg-red-950/35 border-red-900/60',
+                media: 'text-yellow-200 bg-yellow-950/25 border-yellow-900/60',
+                baixa: 'text-slate-300 bg-slate-900 border-slate-800'
             };
             const statusLabel = (status) => window.getStudyBlockStatusLabel ? window.getStudyBlockStatusLabel(status) : (status === 'completed' ? 'Concluído' : status === 'partial' ? 'Parcial' : 'Planejado');
-            const shortDay = label => String(label || '').slice(0, 3);
             const safePct = (done, total) => total ? Math.round((done / total) * 100) : 0;
+            const plural = (n, singular, pluralText) => `${n} ${n === 1 ? singular : pluralText}`;
 
             const buildDay = (day, index) => {
                 const date = addDaysToDate(weekStart, index);
@@ -4008,7 +4008,7 @@
                 const completed = completedTasks + completedStudies;
                 const pending = total - completed;
                 const minutes = dayStudies.reduce((acc, b) => acc + (parseInt(b.plannedMinutes, 10) || 0), 0);
-                return { day, date, dateKey, dayTasks, dayStudies, total, completed, pending, minutes, pct: safePct(completed, total) };
+                return { day, date, dateKey, dayTasks, dayStudies, completedTasks, completedStudies, total, completed, pending, minutes, pct: safePct(completed, total) };
             };
 
             const rows = daysOfWeek.map(buildDay);
@@ -4020,26 +4020,40 @@
             const plannedMinutes = rows.reduce((acc, row) => acc + row.minutes, 0);
             const progressPct = safePct(completedItems, totalItems);
 
-            const renderMiniMetric = (icon, value, label, cls = 'text-slate-200') => `
-                <div class="rounded-2xl border border-slate-800 bg-slate-950/75 p-3 min-w-0">
-                    <div class="flex items-center gap-2 ${cls}"><i data-lucide="${icon}" class="w-4 h-4 shrink-0"></i><span class="text-xl font-black">${value}</span></div>
-                    <div class="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-1 truncate">${label}</div>
-                </div>`;
+            const renderWeekDayShortcut = (row) => {
+                const isToday = row.dateKey === todayKey;
+                const dateLabel = `${String(row.date.getDate()).padStart(2, '0')}/${String(row.date.getMonth() + 1).padStart(2, '0')}`;
+                const loadClass = row.total === 0 ? 'bg-slate-950/70 border-slate-800 text-slate-500' : row.pending === 0 ? 'bg-emerald-950/20 border-emerald-900/50 text-emerald-200' : row.total >= 5 ? 'bg-red-950/20 border-red-900/50 text-red-200' : row.total >= 3 ? 'bg-yellow-950/20 border-yellow-900/50 text-yellow-200' : 'bg-cyan-950/20 border-cyan-900/50 text-cyan-200';
+                return `<button type="button" onclick="window.setTab('${row.day.id}'); window.setMainView('day')" class="text-left rounded-2xl border ${isToday ? 'border-cyan-400 bg-cyan-950/30 ring-1 ring-cyan-500/30' : loadClass} p-3 hover:border-cyan-400/70 hover:bg-cyan-950/25 transition-colors min-h-[102px]">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <div class="text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-cyan-100' : 'text-slate-400'}">${row.day.label}</div>
+                            <div class="text-lg font-black text-white leading-tight mt-1">${dateLabel}</div>
+                        </div>
+                        ${isToday ? `<span class="rounded-full bg-cyan-600 text-white px-2 py-0.5 text-[8px] font-black uppercase tracking-widest">Hoje</span>` : ''}
+                    </div>
+                    <div class="mt-3 flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
+                        <span>${row.total ? `${row.pending} pend.` : 'Livre'}</span>
+                        <span class="text-slate-500">${row.completed}/${row.total}</span>
+                    </div>
+                    <div class="h-1.5 bg-slate-800/80 rounded-full overflow-hidden mt-2"><div class="h-full rounded-full ${row.pct >= 100 && row.total ? 'bg-emerald-500' : row.pct >= 50 ? 'bg-cyan-500' : 'bg-indigo-500'}" style="width:${row.total ? row.pct : 0}%"></div></div>
+                </button>`;
+            };
 
             const renderTaskAgendaItem = (task) => {
                 const cat = window.getTaskCategory(task.category);
                 const done = Boolean(task.completed);
                 const subCount = Array.isArray(task.subtasks) ? task.subtasks.length : 0;
                 const doneSubs = subCount ? task.subtasks.filter(st => st.completed).length : 0;
-                return `<div class="group rounded-xl border ${done ? 'border-emerald-900/30 bg-emerald-950/10 opacity-65' : 'border-slate-800 bg-slate-950/70 hover:border-indigo-800/70'} p-2.5 transition-colors">
-                    <div class="flex items-start gap-2">
-                        <i data-lucide="${done ? 'check-circle-2' : 'circle'}" class="w-4 h-4 mt-0.5 ${done ? 'text-emerald-400' : 'text-indigo-400'} shrink-0"></i>
+                return `<div class="rounded-2xl border ${done ? 'border-emerald-900/30 bg-emerald-950/10 opacity-60' : 'border-slate-800 bg-slate-950/75'} p-3">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="${done ? 'check-circle-2' : 'circle'}" class="w-4 h-4 mt-0.5 ${done ? 'text-emerald-400' : 'text-indigo-300'} shrink-0"></i>
                         <div class="min-w-0 flex-1">
-                            <div class="text-xs font-bold leading-snug ${done ? 'text-slate-500 line-through' : 'text-slate-100'} break-words">${window.escapeHtml(task.text || 'Missão sem título')}</div>
-                            <div class="flex flex-wrap gap-1.5 mt-1.5">
-                                <span class="inline-flex items-center gap-1 rounded-full border border-slate-800 bg-slate-900 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${cat.color || 'text-slate-400'}"><i data-lucide="${cat.icon || 'target'}" class="w-2.5 h-2.5"></i>${window.escapeHtml(cat.label || 'Geral')}</span>
-                                <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${priorityChip[task.priority] || priorityChip.media}">${priorityLabel[task.priority] || 'Média'}</span>
-                                ${subCount ? `<span class="inline-flex items-center gap-1 rounded-full border border-cyan-900/50 bg-cyan-950/20 text-cyan-300 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider">${doneSubs}/${subCount}</span>` : ''}
+                            <div class="text-sm font-bold leading-snug ${done ? 'text-slate-500 line-through' : 'text-slate-100'} break-words">${window.escapeHtml(task.text || 'Missão sem título')}</div>
+                            <div class="flex flex-wrap items-center gap-2 mt-2 text-[10px] font-bold uppercase tracking-wider">
+                                <span class="inline-flex items-center gap-1 text-slate-400"><i data-lucide="${cat.icon || 'target'}" class="w-3 h-3 ${cat.color || 'text-slate-400'}"></i>${window.escapeHtml(cat.label || 'Geral')}</span>
+                                <span class="inline-flex items-center rounded-full border px-2 py-0.5 ${priorityColor[task.priority] || priorityColor.media}">${priorityLabel[task.priority] || 'Média'}</span>
+                                ${subCount ? `<span class="inline-flex items-center text-cyan-300">${doneSubs}/${subCount} subtarefas</span>` : ''}
                             </div>
                         </div>
                     </div>
@@ -4052,81 +4066,100 @@
                 const done = block.status === 'completed';
                 const partial = block.status === 'partial';
                 const icon = done ? 'check-circle-2' : partial ? 'circle-dot' : 'book-open-check';
-                return `<div class="group rounded-xl border ${track.border || 'border-cyan-900/50'} ${track.bg || 'bg-cyan-950/10'} ${done ? 'opacity-65' : ''} p-2.5 transition-colors">
-                    <div class="flex items-start gap-2">
+                return `<div class="rounded-2xl border ${done ? 'border-emerald-900/30 bg-emerald-950/10 opacity-60' : (track.border || 'border-cyan-900/50')} ${done ? '' : (track.bg || 'bg-cyan-950/10')} p-3">
+                    <div class="flex items-start gap-3">
                         <i data-lucide="${icon}" class="w-4 h-4 mt-0.5 ${done ? 'text-emerald-400' : (track.color || 'text-cyan-300')} shrink-0"></i>
                         <div class="min-w-0 flex-1">
-                            <div class="text-xs font-bold leading-snug ${done ? 'text-slate-500 line-through' : 'text-slate-100'} break-words">${window.escapeHtml(block.title || 'Estudo sem título')}</div>
-                            <div class="text-[10px] text-slate-500 truncate mt-0.5">${subject ? window.escapeHtml(subject.name) : 'Sem disciplina vinculada'}</div>
-                            <div class="flex flex-wrap gap-1.5 mt-1.5">
-                                <span class="inline-flex items-center gap-1 rounded-full border border-slate-800 bg-slate-950/70 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${track.color || 'text-cyan-300'}"><i data-lucide="${track.icon || 'route'}" class="w-2.5 h-2.5"></i>${window.escapeHtml(track.name || 'Trilha')}</span>
-                                <span class="inline-flex items-center gap-1 rounded-full border border-cyan-900/50 bg-cyan-950/20 text-cyan-300 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider">${parseInt(block.plannedMinutes, 10) || 0} min</span>
-                                <span class="inline-flex items-center gap-1 rounded-full border border-slate-800 bg-slate-900 text-slate-300 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider">${statusLabel(block.status)}</span>
+                            <div class="text-sm font-bold leading-snug ${done ? 'text-slate-500 line-through' : 'text-slate-100'} break-words">${window.escapeHtml(block.title || 'Estudo sem título')}</div>
+                            <div class="text-[11px] text-slate-500 mt-1 truncate">${subject ? window.escapeHtml(subject.name) : 'Sem disciplina vinculada'}</div>
+                            <div class="flex flex-wrap items-center gap-2 mt-2 text-[10px] font-bold uppercase tracking-wider">
+                                <span class="inline-flex items-center gap-1 ${track.color || 'text-cyan-300'}"><i data-lucide="${track.icon || 'route'}" class="w-3 h-3"></i>${window.escapeHtml(track.name || 'Trilha')}</span>
+                                <span class="inline-flex items-center text-cyan-300">${parseInt(block.plannedMinutes, 10) || 0} min</span>
+                                <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-900 text-slate-300 px-2 py-0.5">${statusLabel(block.status)}</span>
                             </div>
                         </div>
                     </div>
                 </div>`;
             };
 
-            const renderDayCard = (row) => {
+            const renderSectionList = (items, renderer, emptyText) => {
+                if (!items.length) {
+                    return `<div class="rounded-2xl border border-dashed border-slate-800 bg-slate-950/45 p-4 text-[12px] text-slate-600 italic">${emptyText}</div>`;
+                }
+                return `<div class="space-y-2.5">${items.map(renderer).join('')}</div>`;
+            };
+
+            const renderDayAgendaPanel = (row) => {
                 const isToday = row.dateKey === todayKey;
-                const hasItems = row.total > 0;
-                const dateNumber = String(row.date.getDate()).padStart(2, '0');
-                const monthNumber = String(row.date.getMonth() + 1).padStart(2, '0');
-                return `<section class="rounded-3xl border ${isToday ? 'border-cyan-500/70 bg-cyan-950/15 shadow-lg shadow-cyan-950/10' : hasItems ? 'border-slate-800 bg-slate-900' : 'border-slate-800/70 bg-slate-950/50'} overflow-hidden min-h-[360px] flex flex-col">
-                    <div class="p-4 border-b ${isToday ? 'border-cyan-900/60' : 'border-slate-800'} bg-slate-950/55">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="min-w-0">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <span class="text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-cyan-200' : 'text-slate-400'}">${row.day.label}</span>
-                                    ${isToday ? `<span class="text-[8px] font-black uppercase tracking-widest text-cyan-100 bg-cyan-700/50 border border-cyan-500/50 rounded-full px-2 py-0.5">Hoje</span>` : ''}
+                const dateLabel = `${String(row.date.getDate()).padStart(2, '0')}/${String(row.date.getMonth() + 1).padStart(2, '0')}`;
+                const emptyDay = row.total === 0;
+                return `<section class="rounded-3xl border ${isToday ? 'border-cyan-500/70 bg-cyan-950/10 shadow-lg shadow-cyan-950/10' : emptyDay ? 'border-slate-800/60 bg-slate-950/45' : 'border-slate-800 bg-slate-900'} overflow-hidden">
+                    <div class="px-4 py-4 sm:px-5 border-b ${isToday ? 'border-cyan-900/60 bg-cyan-950/20' : 'border-slate-800 bg-slate-950/45'}">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                            <div class="flex items-center gap-4 min-w-0">
+                                <div class="w-14 h-14 rounded-2xl border ${isToday ? 'border-cyan-500/70 bg-cyan-900/30' : 'border-slate-800 bg-slate-900'} flex flex-col items-center justify-center shrink-0">
+                                    <span class="text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-cyan-200' : 'text-slate-500'}">${row.day.label.slice(0,3)}</span>
+                                    <span class="text-lg font-black text-white leading-none">${dateLabel}</span>
                                 </div>
-                                <div class="text-2xl font-black text-white leading-none">${dateNumber}/${monthNumber}</div>
+                                <div class="min-w-0">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <h3 class="text-lg font-black text-white">${row.day.label}</h3>
+                                        ${isToday ? `<span class="rounded-full bg-cyan-600 text-white px-2 py-0.5 text-[9px] font-black uppercase tracking-widest">Hoje</span>` : ''}
+                                        ${emptyDay ? `<span class="rounded-full border border-slate-800 text-slate-500 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest">Livre</span>` : ''}
+                                    </div>
+                                    <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-[11px] text-slate-400 font-bold">
+                                        <span>${plural(row.dayTasks.length, 'missão', 'missões')}</span>
+                                        <span>${plural(row.dayStudies.length, 'estudo', 'estudos')}</span>
+                                        ${row.minutes ? `<span>${row.minutes} min de estudo</span>` : ''}
+                                        ${row.total ? `<span>${row.pending} pendente${row.pending === 1 ? '' : 's'}</span>` : ''}
+                                    </div>
+                                </div>
                             </div>
-                            <button type="button" onclick="window.setTab('${row.day.id}'); window.setMainView('day')" class="rounded-xl bg-slate-900 hover:bg-indigo-600 text-slate-300 hover:text-white border border-slate-800 hover:border-indigo-500 px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors">Abrir</button>
+                            <div class="flex items-center gap-3">
+                                <div class="min-w-[120px]">
+                                    <div class="flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1"><span>Progresso</span><span>${row.total ? `${row.pct}%` : '—'}</span></div>
+                                    <div class="h-2 bg-slate-800 rounded-full overflow-hidden"><div class="h-full rounded-full ${row.pct >= 100 && row.total ? 'bg-emerald-500' : row.pct >= 50 ? 'bg-cyan-500' : 'bg-indigo-500'}" style="width:${row.total ? row.pct : 0}%"></div></div>
+                                </div>
+                                <button type="button" onclick="window.setTab('${row.day.id}'); window.setMainView('day')" class="rounded-xl bg-slate-950 hover:bg-indigo-600 text-slate-300 hover:text-white border border-slate-800 hover:border-indigo-500 px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-colors">Abrir dia</button>
+                            </div>
                         </div>
-                        <div class="mt-4 flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
-                            <span class="text-slate-500">${row.pending} pend. · ${row.completed}/${row.total || 0}</span>
-                            <span class="${row.pct >= 100 && row.total ? 'text-emerald-300' : row.pct >= 50 ? 'text-cyan-300' : 'text-slate-400'}">${row.total ? `${row.pct}%` : 'Livre'}</span>
-                        </div>
-                        <div class="h-2 bg-slate-800 rounded-full overflow-hidden mt-2"><div class="h-full rounded-full ${row.pct >= 100 && row.total ? 'bg-emerald-500' : row.pct >= 50 ? 'bg-cyan-500' : 'bg-indigo-500'}" style="width:${row.total ? row.pct : 0}%"></div></div>
                     </div>
-                    <div class="p-3 sm:p-4 space-y-4 flex-1">
-                        <div>
-                            <div class="flex items-center justify-between gap-2 mb-2">
-                                <h4 class="text-[10px] font-black uppercase tracking-widest text-indigo-300 flex items-center gap-1.5"><i data-lucide="target" class="w-3.5 h-3.5"></i> Missões</h4>
-                                <span class="text-[9px] text-slate-600 font-black">${row.dayTasks.length}</span>
+                    <div class="p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div class="rounded-2xl border border-indigo-900/30 bg-indigo-950/10 p-3 sm:p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="text-[11px] font-black uppercase tracking-widest text-indigo-300 flex items-center gap-2"><i data-lucide="target" class="w-4 h-4"></i> Missões</h4>
+                                <span class="rounded-full bg-slate-950/70 border border-slate-800 px-2 py-0.5 text-[10px] font-black text-slate-400">${row.dayTasks.length}</span>
                             </div>
-                            <div class="space-y-2">${row.dayTasks.length ? row.dayTasks.map(renderTaskAgendaItem).join('') : `<div class="rounded-xl border border-dashed border-slate-800 bg-slate-950/50 p-3 text-[11px] text-slate-600 italic">Sem missões.</div>`}</div>
+                            ${renderSectionList(row.dayTasks, renderTaskAgendaItem, 'Sem missões neste dia.')}
                         </div>
-                        <div>
-                            <div class="flex items-center justify-between gap-2 mb-2">
-                                <h4 class="text-[10px] font-black uppercase tracking-widest text-cyan-300 flex items-center gap-1.5"><i data-lucide="book-open-check" class="w-3.5 h-3.5"></i> Estudos</h4>
-                                <span class="text-[9px] text-slate-600 font-black">${row.minutes ? `${row.minutes} min` : row.dayStudies.length}</span>
+                        <div class="rounded-2xl border border-cyan-900/30 bg-cyan-950/10 p-3 sm:p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="text-[11px] font-black uppercase tracking-widest text-cyan-300 flex items-center gap-2"><i data-lucide="book-open-check" class="w-4 h-4"></i> Estudos</h4>
+                                <span class="rounded-full bg-slate-950/70 border border-slate-800 px-2 py-0.5 text-[10px] font-black text-slate-400">${row.minutes ? `${row.minutes} min` : row.dayStudies.length}</span>
                             </div>
-                            <div class="space-y-2">${row.dayStudies.length ? row.dayStudies.map(renderStudyAgendaItem).join('') : `<div class="rounded-xl border border-dashed border-slate-800 bg-slate-950/50 p-3 text-[11px] text-slate-600 italic">Sem estudos.</div>`}</div>
+                            ${renderSectionList(row.dayStudies, renderStudyAgendaItem, 'Sem estudos planejados neste dia.')}
                         </div>
                     </div>
                 </section>`;
             };
 
-            if (totalItems === 0) {
-                return `<div class="space-y-5 font-mono">
-                    <section class="rounded-3xl border border-cyan-900/50 bg-slate-900 p-5 sm:p-6">
-                        <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
-                            <div>
-                                <div class="text-[10px] font-black uppercase tracking-widest text-cyan-300 mb-2">Agenda semanal · ${weekLabel}</div>
-                                <h2 class="text-2xl sm:text-3xl font-black text-white">Semana sem demandas</h2>
-                                <p class="text-sm text-slate-400 mt-2 max-w-2xl leading-relaxed">Quando você criar missões no board ou estudos no Centro de Inteligência, eles aparecerão aqui em formato de agenda semanal.</p>
-                            </div>
-                            <div class="flex flex-wrap gap-2">
-                                <button onclick="window.setPlanningCalendarWeek('current')" class="bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest">Semana atual</button>
-                                <button onclick="window.prepareNextWeekPlanning()" class="bg-cyan-700 hover:bg-cyan-600 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest">Planejar próxima semana</button>
-                            </div>
+            const emptyState = `<div class="space-y-5 font-mono">
+                <section class="rounded-3xl border border-cyan-900/50 bg-slate-900 p-5 sm:p-6">
+                    <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                        <div>
+                            <div class="text-[10px] font-black uppercase tracking-widest text-cyan-300 mb-2">Agenda semanal · ${weekLabel}</div>
+                            <h2 class="text-2xl sm:text-3xl font-black text-white">Semana sem demandas</h2>
+                            <p class="text-sm text-slate-400 mt-2 max-w-2xl leading-relaxed">Quando você criar missões no board ou estudos no Centro de Inteligência, eles aparecerão aqui em formato de agenda semanal.</p>
                         </div>
-                    </section>
-                </div>`;
-            }
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="window.setPlanningCalendarWeek('current')" class="bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest">Semana atual</button>
+                            <button onclick="window.prepareNextWeekPlanning()" class="bg-cyan-700 hover:bg-cyan-600 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest">Planejar próxima semana</button>
+                        </div>
+                    </div>
+                </section>
+            </div>`;
+
+            if (totalItems === 0) return emptyState;
 
             return `<div class="space-y-5 font-mono">
                 <section class="rounded-3xl border border-cyan-900/50 bg-slate-900 p-4 sm:p-5">
@@ -4138,7 +4171,7 @@
                                 ${isNextCalendarWeek ? `<span class="inline-flex items-center rounded-full border border-purple-900/50 bg-purple-950/25 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-purple-200">Próxima semana</span>` : ''}
                             </div>
                             <h2 class="text-2xl sm:text-3xl font-black text-white leading-tight">${weekLabel}</h2>
-                            <p class="text-xs text-slate-500 mt-2 leading-relaxed max-w-3xl">Visão de agenda da semana ativa: apenas missões do board e estudos planejados. Rituais e descarga cognitiva não entram aqui.</p>
+                            <p class="text-xs text-slate-500 mt-2 leading-relaxed max-w-3xl">Agenda limpa da semana: missões do board e estudos planejados, separados por dia.</p>
                         </div>
                         <div class="flex flex-wrap gap-2">
                             <button onclick="window.setPlanningCalendarWeek('current')" class="bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><i data-lucide="calendar-check" class="w-3.5 h-3.5"></i> Semana atual</button>
@@ -4148,13 +4181,13 @@
                         </div>
                     </div>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
-                        ${renderMiniMetric('list-checks', totalItems, 'demandas')}
-                        ${renderMiniMetric('target', totalTasks, 'missões', 'text-indigo-200')}
-                        ${renderMiniMetric('book-open-check', totalStudies, 'estudos', 'text-cyan-200')}
-                        ${renderMiniMetric('clock', `${(plannedMinutes/60).toFixed(1)}h`, 'estudo planejado', 'text-emerald-200')}
+                        <div class="rounded-2xl border border-slate-800 bg-slate-950/75 p-3"><div class="text-xl font-black text-white">${totalItems}</div><div class="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-1">demandas</div></div>
+                        <div class="rounded-2xl border border-slate-800 bg-slate-950/75 p-3"><div class="text-xl font-black text-indigo-200">${totalTasks}</div><div class="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-1">missões</div></div>
+                        <div class="rounded-2xl border border-slate-800 bg-slate-950/75 p-3"><div class="text-xl font-black text-cyan-200">${totalStudies}</div><div class="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-1">estudos</div></div>
+                        <div class="rounded-2xl border border-slate-800 bg-slate-950/75 p-3"><div class="text-xl font-black text-emerald-200">${(plannedMinutes/60).toFixed(1)}h</div><div class="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-1">estudo</div></div>
                     </div>
                     <div class="mt-4">
-                        <div class="flex items-center justify-between text-[10px] font-black uppercase tracking-widest mb-1"><span class="text-slate-500">Execução da semana</span><span class="text-slate-300">${completedItems}/${totalItems} · ${progressPct}%</span></div>
+                        <div class="flex items-center justify-between text-[10px] font-black uppercase tracking-widest mb-1"><span class="text-slate-500">Execução da semana</span><span class="text-slate-300">${completedItems}/${totalItems} · ${progressPct}% · ${pendingItems} pendente${pendingItems === 1 ? '' : 's'}</span></div>
                         <div class="h-2.5 bg-slate-800 rounded-full overflow-hidden"><div class="h-full rounded-full ${progressPct >= 100 ? 'bg-emerald-500' : progressPct >= 50 ? 'bg-cyan-500' : 'bg-indigo-500'}" style="width:${progressPct}%"></div></div>
                     </div>
                 </section>
@@ -4162,33 +4195,26 @@
                 <section class="rounded-3xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
                     <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 mb-4">
                         <div>
-                            <h3 class="text-sm font-black uppercase tracking-widest text-white flex items-center gap-2"><i data-lucide="calendar-days" class="w-4 h-4 text-cyan-300"></i> Calendário operacional</h3>
-                            <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Consulte a semana por dia. Pendências ficam no topo; concluídos aparecem apagados.</p>
-                        </div>
-                        <div class="flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-widest">
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-indigo-900/50 bg-indigo-950/30 text-indigo-300"><i data-lucide="target" class="w-3 h-3"></i> Missões</span>
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-cyan-900/50 bg-cyan-950/30 text-cyan-300"><i data-lucide="book-open-check" class="w-3 h-3"></i> Estudos</span>
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-emerald-900/50 bg-emerald-950/30 text-emerald-300"><i data-lucide="check-circle-2" class="w-3 h-3"></i> ${completedItems} concluído${completedItems === 1 ? '' : 's'}</span>
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-800 bg-slate-950 text-slate-400"><i data-lucide="circle" class="w-3 h-3"></i> ${pendingItems} pendente${pendingItems === 1 ? '' : 's'}</span>
+                            <h3 class="text-sm font-black uppercase tracking-widest text-white flex items-center gap-2"><i data-lucide="calendar-days" class="w-4 h-4 text-cyan-300"></i> Navegação rápida da semana</h3>
+                            <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Use esta faixa para localizar rapidamente o dia mais carregado e abrir o board do dia.</p>
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-7 gap-4">
-                        ${rows.map(renderDayCard).join('')}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7 gap-3">
+                        ${rows.map(renderWeekDayShortcut).join('')}
                     </div>
                 </section>
 
-                <section class="rounded-3xl border border-slate-800 bg-slate-950/70 p-4 sm:p-5">
-                    <div class="flex items-start gap-3">
-                        <div class="p-2 rounded-xl border border-cyan-900/50 bg-cyan-950/30 text-cyan-300"><i data-lucide="calendar-plus" class="w-5 h-5"></i></div>
+                <section class="space-y-4">
+                    <div class="flex items-center justify-between gap-3 px-1">
                         <div>
-                            <h3 class="text-sm font-black uppercase tracking-widest text-white">Como planejar a próxima semana</h3>
-                            <p class="text-xs text-slate-400 leading-relaxed mt-2">No domingo, revise a semana atual. Depois clique em <strong>Planejar próxima</strong>. O app vira o calendário para a segunda-feira seguinte, preserva missões recorrentes, limpa missões comuns e volta os estudos para o status planejado. Aí você monta a nova semana sem precisar criar planilha.</p>
+                            <h3 class="text-sm font-black uppercase tracking-widest text-white flex items-center gap-2"><i data-lucide="list-tree" class="w-4 h-4 text-cyan-300"></i> Agenda detalhada</h3>
+                            <p class="text-[11px] text-slate-500 mt-1">Cada dia ocupa uma linha grande. Missões ficam à esquerda; estudos à direita.</p>
                         </div>
                     </div>
+                    ${rows.map(renderDayAgendaPanel).join('')}
                 </section>
             </div>`;
         }
-
 
         function renderStudyPlanningContent() {
             const tracks = window.getStudyTracks();
