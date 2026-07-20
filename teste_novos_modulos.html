@@ -356,6 +356,43 @@
             };
         };
 
+
+        window.getCalendarSortMinutes = function(item) {
+            const minutes = minutesFromClock(item?.startTime);
+            return minutes === null ? 99999 : minutes;
+        };
+
+        window.hasCalendarTime = function(item) {
+            return window.getCalendarSortMinutes(item) < 99999;
+        };
+
+        window.compareCalendarItems = function(a, b, options = {}) {
+            const aTime = window.getCalendarSortMinutes(a);
+            const bTime = window.getCalendarSortMinutes(b);
+            if (aTime !== bTime) return aTime - bTime;
+            const completedStatus = options.completedStatus;
+            if (completedStatus) {
+                const aDone = completedStatus(a) ? 1 : 0;
+                const bDone = completedStatus(b) ? 1 : 0;
+                if (aDone !== bDone) return aDone - bDone;
+            }
+            const aOrder = typeof a?.order === 'number' ? a.order : 999999;
+            const bOrder = typeof b?.order === 'number' ? b.order : 999999;
+            if (aOrder !== bOrder) return aOrder - bOrder;
+            const priorityRank = { essencial: 4, alta: 3, media: 2, baixa: 1 };
+            const priorityDelta = (priorityRank[b?.priority] || 0) - (priorityRank[a?.priority] || 0);
+            if (priorityDelta !== 0) return priorityDelta;
+            return String(a?.text || a?.title || '').localeCompare(String(b?.text || b?.title || ''));
+        };
+
+        window.sortTasksBySchedule = function(tasks = []) {
+            return [...tasks].sort((a, b) => window.compareCalendarItems(a, b, { completedStatus: item => Boolean(item.completed) }));
+        };
+
+        window.sortStudyBlocksBySchedule = function(blocks = []) {
+            return [...blocks].sort((a, b) => window.compareCalendarItems(a, b, { completedStatus: item => item.status === 'completed' }));
+        };
+
         window.getCurrentCalendarWeekStartKey = function() {
             return dateKeyFromDate(getMondayStartDate(new Date()));
         };
@@ -1249,9 +1286,7 @@
         };
 
         window.sortTasksForDay = function(dayId) {
-            return state.tasks
-                .filter(t => t.day === dayId)
-                .sort((a, b) => ((typeof a.order === 'number' ? a.order : 999999) - (typeof b.order === 'number' ? b.order : 999999)) || ((a.id || 0) - (b.id || 0)));
+            return window.sortTasksBySchedule(state.tasks.filter(t => t.day === dayId));
         };
 
         window.reindexTaskOrderForDay = function(dayId) {
@@ -1841,7 +1876,7 @@
             }
             uiState.showEditTaskModal = false;
             uiState.editingTaskId = null;
-            window.showToast('Missão atualizada', 'Dificuldade, tempo, categoria e recorrência foram ajustados.', 'pencil', 'text-amber-400');
+            window.showToast('Missão atualizada', 'Horário, dificuldade, tempo, categoria e recorrência foram ajustados. O dia será reordenado automaticamente.', 'pencil', 'text-amber-400');
             window.saveState();
         };
         
@@ -2786,7 +2821,7 @@
 
         window.getStudyBlocksForDay = function(dayId) {
             const blocks = state.studyData?.studyPlan?.weeklyBlocks || [];
-            return blocks.filter(b => b.day === dayId).sort((a,b) => (a.order || 9999) - (b.order || 9999) || String(a.title).localeCompare(String(b.title)));
+            return window.sortStudyBlocksBySchedule(blocks.filter(b => b.day === dayId));
         };
 
         window.setStudyPlanningView = function(view) {
@@ -3291,9 +3326,7 @@
         // ==========================================
         function render() {
             const appDiv = document.getElementById('app');
-            const dailyTasks = state.tasks
-                .filter(t => t.day === state.activeTab)
-                .sort((a, b) => ((typeof a.order === 'number' ? a.order : 999999) - (typeof b.order === 'number' ? b.order : 999999)) || ((a.id || 0) - (b.id || 0)));
+            const dailyTasks = window.sortTasksForDay(state.activeTab);
             let filteredTasks = dailyTasks;
             if (state.currentFilter && state.currentFilter !== 'all') filteredTasks = dailyTasks.filter(t => t.category === state.currentFilter);
             const xpPercent = Math.min(100, (state.xp / window.getXpForCurrentLevel()) * 100);
@@ -3742,8 +3775,8 @@
 
                 html += `<div class="bg-slate-900 rounded-xl border border-slate-800 p-2 sm:p-4 space-y-2 mb-8 font-mono">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-2 pb-2 border-b border-slate-800/70 mb-2">
-                        <div class="text-[10px] uppercase tracking-widest font-black text-slate-500 flex items-center gap-2"><i data-lucide="grip-vertical" class="w-3.5 h-3.5 text-cyan-400"></i> Arraste as missões para reorganizar o dia</div>
-                        <div class="text-[10px] text-slate-600 font-bold">Também há setas ↑ ↓ para ajustes rápidos</div>
+                        <div class="text-[10px] uppercase tracking-widest font-black text-slate-500 flex items-center gap-2"><i data-lucide="calendar-clock" class="w-3.5 h-3.5 text-cyan-400"></i> Ordenado por horário quando houver agenda</div>
+                        <div class="text-[10px] text-slate-600 font-bold">Arrastar e setas continuam disponíveis para ajustar a ordem dentro do mesmo horário ou itens sem horário</div>
                     </div>`;
                 if (filteredTasks.length === 0) {
                     html += `<div class="text-center p-6 text-slate-500">Nenhuma missão. Use “Nova Missão” no topo.</div>`;
@@ -3761,6 +3794,7 @@
                         const recurrenceDays = Array.isArray(task.recurrenceDays) ? task.recurrenceDays : [];
                         const isRecurringTask = task.isRecurring || recurrenceDays.length > 0;
                         const recurrenceLabel = window.getRecurringDaysLabel(recurrenceDays);
+                        const taskScheduleLabel = window.hasCalendarTime(task) ? window.getCalendarTimeLabel(task, extractMinutesFromTask(task)) : '';
 
                         html += `
                         <div onclick="window.toggleTask(${task.id}, event)" draggable="true" ondragstart="window.handleTaskDragStart(${task.id}, event)" ondragend="window.handleTaskDragEnd(event)" ondragover="window.handleTaskDragOver(${task.id}, event)" ondragleave="window.handleTaskDragLeave(event)" ondrop="window.handleTaskDrop(${task.id}, event)" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg cursor-pointer transition-all ${bgClass} group relative">
@@ -3769,6 +3803,7 @@
                                     <div class="drag-handle mt-0.5 text-slate-600 hover:text-cyan-400 transition-colors" title="Arraste para reorganizar" onclick="event.stopPropagation()"><i data-lucide="grip-vertical" class="w-5 h-5"></i></div>
                                     <div class="mt-0.5"><i data-lucide="${task.completed ? 'check-circle' : 'circle'}" class="${iconColor} w-5 h-5"></i></div>
                                     <div>
+                                        ${taskScheduleLabel ? `<div class="mb-2 inline-flex items-center gap-1.5 rounded-full border border-cyan-800/70 bg-cyan-950/40 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-cyan-200"><i data-lucide="calendar-clock" class="w-3.5 h-3.5"></i>${taskScheduleLabel}</div>` : ''}
                                         <span class="text-sm md:text-base font-medium flex items-center gap-2 ${textClass}">
                                             <i data-lucide="${taskCategory.icon || ICONS.default}" class="w-4 h-4 ${taskCategory.color || 'text-slate-500'}"></i> ${task.text}
                                         </span>
@@ -4195,7 +4230,7 @@
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                     <div>
                         <h3 class="text-sm font-black text-cyan-300 uppercase tracking-widest flex items-center gap-2"><i data-lucide="calendar-check" class="w-4 h-4"></i> Plano de Estudos do Dia</h3>
-                        <p class="text-[11px] text-slate-500 mt-1">Blocos criados no Centro de Inteligência para ${daysOfWeek.find(d => d.id === state.activeTab)?.label || 'hoje'}.</p>
+                        <p class="text-[11px] text-slate-500 mt-1">Blocos criados no Centro de Inteligência para ${daysOfWeek.find(d => d.id === state.activeTab)?.label || 'hoje'}, ordenados por horário.</p>
                     </div>
                     <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest">
                         <span class="bg-slate-950 border border-slate-800 text-slate-400 px-2 py-1 rounded-lg">${completed}/${activeBlocks.length} blocos</span>
@@ -4237,24 +4272,8 @@
             const buildDay = (day, index) => {
                 const date = addDaysToDate(weekStart, index);
                 const dateKey = dateKeyFromDate(date);
-                const dayTasks = tasks
-                    .filter(t => t.day === day.id)
-                    .sort((a, b) => {
-                        const doneDelta = (a.completed ? 1 : 0) - (b.completed ? 1 : 0);
-                        if (doneDelta !== 0) return doneDelta;
-                        const priorityDelta = (priorityRank[b.priority] || 0) - (priorityRank[a.priority] || 0);
-                        if (priorityDelta !== 0) return priorityDelta;
-                        return ((typeof a.order === 'number' ? a.order : 999999) - (typeof b.order === 'number' ? b.order : 999999)) || String(a.text || '').localeCompare(String(b.text || ''));
-                    });
-                const dayStudies = studyBlocks
-                    .filter(b => b.day === day.id)
-                    .sort((a, b) => {
-                        const doneDelta = (a.status === 'completed' ? 1 : 0) - (b.status === 'completed' ? 1 : 0);
-                        if (doneDelta !== 0) return doneDelta;
-                        const priorityDelta = (priorityRank[b.priority] || 0) - (priorityRank[a.priority] || 0);
-                        if (priorityDelta !== 0) return priorityDelta;
-                        return (a.order || 9999) - (b.order || 9999) || String(a.title || '').localeCompare(String(b.title || ''));
-                    });
+                const dayTasks = window.sortTasksBySchedule(tasks.filter(t => t.day === day.id));
+                const dayStudies = window.sortStudyBlocksBySchedule(studyBlocks.filter(b => b.day === day.id));
                 const completedTasks = dayTasks.filter(t => t.completed).length;
                 const completedStudies = dayStudies.filter(b => b.status === 'completed').length;
                 const total = dayTasks.length + dayStudies.length;
@@ -4306,7 +4325,7 @@
                             <div class="flex flex-wrap items-center gap-2 mt-2 text-[10px] font-bold uppercase tracking-wider">
                                 <span class="inline-flex items-center gap-1 text-slate-400"><i data-lucide="${cat.icon || 'target'}" class="w-3 h-3 ${cat.color || 'text-slate-400'}"></i>${window.escapeHtml(cat.label || 'Geral')}</span>
                                 <span class="inline-flex items-center rounded-full border px-2 py-0.5 ${priorityColor[task.priority] || priorityColor.media}">${priorityLabel[task.priority] || 'Média'}</span>
-                                ${task.startTime ? `<span class="inline-flex items-center gap-1 text-cyan-300"><i data-lucide="calendar-clock" class="w-3 h-3"></i>${window.getCalendarTimeLabel(task, extractMinutesFromTask(task))}</span>` : ''}
+                                <span class="inline-flex items-center gap-1 ${task.startTime ? 'text-cyan-300' : 'text-slate-500'}"><i data-lucide="calendar-clock" class="w-3 h-3"></i>${task.startTime ? window.getCalendarTimeLabel(task, extractMinutesFromTask(task)) : 'Sem horário'}</span>
                                 ${subCount ? `<span class="inline-flex items-center text-cyan-300">${doneSubs}/${subCount} subtarefas</span>` : ''}
                             </div>
                         </div>
@@ -4329,7 +4348,7 @@
                             <div class="flex flex-wrap items-center gap-2 mt-2 text-[10px] font-bold uppercase tracking-wider">
                                 <span class="inline-flex items-center gap-1 ${track.color || 'text-cyan-300'}"><i data-lucide="${track.icon || 'route'}" class="w-3 h-3"></i>${window.escapeHtml(track.name || 'Trilha')}</span>
                                 <span class="inline-flex items-center text-cyan-300">${parseInt(block.plannedMinutes, 10) || 0} min</span>
-                                ${block.startTime ? `<span class="inline-flex items-center gap-1 text-cyan-200"><i data-lucide="calendar-clock" class="w-3 h-3"></i>${window.getCalendarTimeLabel(block, block.plannedMinutes)}</span>` : ''}
+                                <span class="inline-flex items-center gap-1 ${block.startTime ? 'text-cyan-200' : 'text-slate-500'}"><i data-lucide="calendar-clock" class="w-3 h-3"></i>${block.startTime ? window.getCalendarTimeLabel(block, block.plannedMinutes) : 'Sem horário'}</span>
                                 <span class="inline-flex items-center rounded-full border border-slate-800 bg-slate-900 text-slate-300 px-2 py-0.5">${statusLabel(block.status)}</span>
                             </div>
                         </div>
@@ -4427,7 +4446,7 @@
                                 ${isNextCalendarWeek ? `<span class="inline-flex items-center rounded-full border border-purple-900/50 bg-purple-950/25 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-purple-200">Próxima semana</span>` : ''}
                             </div>
                             <h2 class="text-2xl sm:text-3xl font-black text-white leading-tight">${weekLabel}</h2>
-                            <p class="text-xs text-slate-500 mt-2 leading-relaxed max-w-3xl">Agenda limpa da semana: missões do board e estudos planejados, separados por dia.</p>
+                            <p class="text-xs text-slate-500 mt-2 leading-relaxed max-w-3xl">Agenda limpa da semana: missões e estudos organizados por dia e por horário. Itens sem horário ficam no final do dia.</p>
                         </div>
                         <div class="flex flex-wrap gap-2">
                             <button onclick="window.setPlanningCalendarWeek('current')" class="bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><i data-lucide="calendar-check" class="w-3.5 h-3.5"></i> Semana atual</button>
@@ -4465,7 +4484,7 @@
                     <div class="flex items-center justify-between gap-3 px-1">
                         <div>
                             <h3 class="text-sm font-black uppercase tracking-widest text-white flex items-center gap-2"><i data-lucide="list-tree" class="w-4 h-4 text-cyan-300"></i> Agenda detalhada</h3>
-                            <p class="text-[11px] text-slate-500 mt-1">Cada dia ocupa uma linha grande. Missões ficam à esquerda; estudos à direita.</p>
+                            <p class="text-[11px] text-slate-500 mt-1">Cada dia ocupa uma linha grande. Missões e estudos aparecem do horário mais cedo para o mais tarde.</p>
                         </div>
                     </div>
                     ${rows.map(renderDayAgendaPanel).join('')}
