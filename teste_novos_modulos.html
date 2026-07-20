@@ -963,10 +963,29 @@
             return Number.isFinite(raw) && raw > 0 ? raw : 30;
         }
 
-        function buildIcsEvent({ uid, summary, date, startTime, endTime, durationMinutes, description }) {
+        function getIcsByDay(dayId) {
+            const map = { monday: 'MO', tuesday: 'TU', wednesday: 'WE', thursday: 'TH', friday: 'FR', saturday: 'SA', sunday: 'SU' };
+            return map[dayId] || '';
+        }
+
+        function sortDayIdsByWeek(dayIds = []) {
+            const order = new Map(daysOfWeek.map((day, index) => [day.id, index]));
+            return [...new Set((dayIds || []).filter(dayId => order.has(dayId)))]
+                .sort((a, b) => order.get(a) - order.get(b));
+        }
+
+        function buildWeeklyRecurrenceRule(dayIds = [], count = 0) {
+            const sortedDays = sortDayIdsByWeek(dayIds);
+            if (sortedDays.length <= 1 || count <= 1) return '';
+            const byday = sortedDays.map(getIcsByDay).filter(Boolean).join(',');
+            return byday ? `FREQ=WEEKLY;COUNT=${count};BYDAY=${byday}` : '';
+        }
+
+        function buildIcsEvent({ uid, summary, date, startTime, endTime, durationMinutes, description, recurrenceRule }) {
             const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
             const cleanStart = normalizeClockTime(startTime);
             const cleanEnd = normalizeClockTime(endTime);
+            const cleanRecurrenceRule = String(recurrenceRule || '').trim();
             const lines = ['BEGIN:VEVENT', `UID:${icsEscape(uid)}`, `DTSTAMP:${now}`];
             if (cleanStart) {
                 const finalEnd = cleanEnd || addMinutesToClock(cleanStart, durationMinutes || 60);
@@ -976,6 +995,7 @@
                 lines.push(`DTSTART;VALUE=DATE:${formatIcsDate(date)}`);
                 lines.push(`DTEND;VALUE=DATE:${formatIcsDate(addDaysToDate(date, 1))}`);
             }
+            if (cleanRecurrenceRule) lines.push(`RRULE:${cleanRecurrenceRule}`);
             lines.push(`SUMMARY:${icsEscape(summary)}`);
             if (description) lines.push(`DESCRIPTION:${icsEscape(description)}`);
             lines.push('CATEGORIES:Missão Tática');
@@ -984,53 +1004,141 @@
         }
 
         window.exportVisibleWeekToIcs = function() {
+            if (typeof window.normalizeRecurringTaskSchedules === 'function') window.normalizeRecurringTaskSchedules();
+
             const tasks = Array.isArray(state.tasks) ? state.tasks : [];
             const studyBlocks = (state.studyData?.studyPlan?.weeklyBlocks || []).filter(b => b.status !== 'cancelled');
             const subjects = state.studyData?.subjects || [];
             const weekStart = window.getActivePlanningWeekStartDate();
             const weekEnd = addDaysToDate(weekStart, 6);
             const weekLabel = `${formatPtShortDate(weekStart)} a ${formatPtShortDate(weekEnd)}`;
+            const dayIndexMap = new Map(daysOfWeek.map((day, index) => [day.id, index]));
             const items = [];
 
-            daysOfWeek.forEach((day, index) => {
-                const date = addDaysToDate(weekStart, index);
-                tasks.filter(t => t.day === day.id).forEach(task => {
-                    const cat = window.getTaskCategory(task.category);
-                    const duration = extractMinutesFromTask(task);
-                    const subtasks = Array.isArray(task.subtasks) && task.subtasks.length
-                        ? `\nSubtarefas: ${task.subtasks.map(st => `${st.completed ? '✓' : '○'} ${st.text}`).join(' | ')}`
-                        : '';
-                    items.push({
-                        type: 'task',
-                        id: task.id,
-                        day: day.id,
-                        date,
-                        startTime: task.startTime,
-                        endTime: task.endTime,
-                        sortTime: normalizeClockTime(task.startTime) || '99:99',
-                        summary: `Missão Tática — ${task.text || 'Missão'}`,
-                        description: `Origem: Missão Tática\nTipo: Missão do board\nDia: ${day.label}\nCategoria: ${cat.label || 'Geral'}\nPrioridade: ${task.priority || 'média'}\nStatus: ${task.completed ? 'Concluída' : 'Pendente'}\nDuração estimada: ${duration} min${subtasks}`,
-                        durationMinutes: duration
-                    });
-                });
+            const getDayDate = (dayId) => addDaysToDate(weekStart, dayIndexMap.get(dayId) || 0);
+            const getDayLabel = (dayId) => daysOfWeek.find(day => day.id === dayId)?.label || dayId;
+            const getVisibleDaysFromTasks = (groupTasks, fallbackDays = []) => {
+                const taskDays = groupTasks.map(t => t.day).filter(dayId => dayIndexMap.has(dayId));
+                const declaredDays = (fallbackDays || []).filter(dayId => dayIndexMap.has(dayId));
+                return sortDayIdsByWeek(taskDays.length ? taskDays : declaredDays);
+            };
 
-                studyBlocks.filter(b => b.day === day.id).forEach(block => {
-                    const track = window.getStudyTrack(block.trackId);
-                    const subject = block.subjectId ? subjects.find(s => String(s.id) === String(block.subjectId)) : null;
-                    const duration = parseInt(block.plannedMinutes, 10) || 30;
-                    items.push({
-                        type: 'study',
-                        id: block.id,
-                        day: day.id,
-                        date,
-                        startTime: block.startTime,
-                        endTime: block.endTime,
-                        sortTime: normalizeClockTime(block.startTime) || '99:99',
-                        summary: `Missão Tática — Estudo: ${block.title || 'Bloco de estudo'}`,
-                        description: `Origem: Missão Tática\nTipo: Estudo planejado\nDia: ${day.label}\nTrilha: ${track.name || 'Trilha'}\nDisciplina: ${subject ? subject.name : 'Sem disciplina vinculada'}\nMétodo: ${window.getStudyTypeLabel(block.studyType)}\nStatus: ${window.getStudyBlockStatusLabel(block.status)}\nDuração planejada: ${duration} min${block.notes ? `\nObservações: ${block.notes}` : ''}`,
-                        durationMinutes: duration
-                    });
+            const addTaskItem = (task, options = {}) => {
+                if (!task || !dayIndexMap.has(task.day)) return;
+                const cat = window.getTaskCategory(task.category);
+                const duration = extractMinutesFromTask(task);
+                const subtasks = Array.isArray(task.subtasks) && task.subtasks.length
+                    ? `\nSubtarefas: ${task.subtasks.map(st => `${st.completed ? '✓' : '○'} ${st.text}`).join(' | ')}`
+                    : '';
+                const recurrenceDescription = options.recurrenceDayIds?.length > 1
+                    ? `\nRecorrência no arquivo: ${options.recurrenceDayIds.map(getDayLabel).join(', ')}\nObservação: ao editar no Google Agenda, escolha “todos os eventos da série” para aplicar a todos os dias importados.`
+                    : '';
+                items.push({
+                    type: 'task',
+                    id: options.id || task.id,
+                    day: task.day,
+                    date: options.date || getDayDate(task.day),
+                    startTime: task.startTime,
+                    endTime: task.endTime,
+                    sortTime: normalizeClockTime(task.startTime) || '99:99',
+                    summary: `Missão Tática — ${task.text || 'Missão'}`,
+                    description: `Origem: Missão Tática\nTipo: Missão do board\nDia: ${getDayLabel(task.day)}\nCategoria: ${cat.label || 'Geral'}\nPrioridade: ${task.priority || 'média'}\nStatus: ${task.completed ? 'Concluída' : 'Pendente'}\nDuração estimada: ${duration} min${recurrenceDescription}${subtasks}`,
+                    durationMinutes: duration,
+                    recurrenceRule: options.recurrenceRule || '',
+                    recurrenceDayIds: options.recurrenceDayIds || null,
+                    uid: options.uid || null
                 });
+            };
+
+            const exportedTaskGroups = new Set();
+            tasks.forEach(task => {
+                if (!task || !dayIndexMap.has(task.day)) return;
+                const recurrenceDays = Array.isArray(task.recurrenceDays) ? task.recurrenceDays.filter(dayId => dayIndexMap.has(dayId)) : [];
+                const groupId = task.recurrenceGroupId ? String(task.recurrenceGroupId) : '';
+                const isRecurringSeries = Boolean(groupId && (task.isRecurring || recurrenceDays.length > 1));
+
+                if (isRecurringSeries) {
+                    if (exportedTaskGroups.has(groupId)) return;
+                    const groupTasks = tasks.filter(t => String(t.recurrenceGroupId || '') === groupId && dayIndexMap.has(t.day));
+                    const seriesDays = getVisibleDaysFromTasks(groupTasks, recurrenceDays);
+                    const firstDay = seriesDays[0] || task.day;
+                    const source = groupTasks.find(t => t.day === firstDay) || task;
+                    const doneCount = groupTasks.filter(t => t.completed).length;
+                    const recurrenceRule = buildWeeklyRecurrenceRule(seriesDays, seriesDays.length);
+                    addTaskItem(source, {
+                        id: `rec-${groupId}`,
+                        date: getDayDate(firstDay),
+                        recurrenceRule,
+                        recurrenceDayIds: seriesDays,
+                        uid: `missao-tatica-task-series-${groupId}-${dateKeyFromDate(weekStart)}@missao-tatica`
+                    });
+                    const lastItem = items[items.length - 1];
+                    if (lastItem && recurrenceRule) {
+                        lastItem.description += `\nStatus da série na semana: ${doneCount}/${seriesDays.length} ocorrência(s) concluída(s).`;
+                    }
+                    exportedTaskGroups.add(groupId);
+                    return;
+                }
+
+                addTaskItem(task);
+            });
+
+            const addStudyItem = (block, options = {}) => {
+                if (!block || !dayIndexMap.has(block.day)) return;
+                const track = window.getStudyTrack(block.trackId);
+                const subject = block.subjectId ? subjects.find(s => String(s.id) === String(block.subjectId)) : null;
+                const duration = parseInt(block.plannedMinutes, 10) || 30;
+                const recurrenceDescription = options.recurrenceDayIds?.length > 1
+                    ? `\nRecorrência no arquivo: ${options.recurrenceDayIds.map(getDayLabel).join(', ')}\nObservação: ao editar no Google Agenda, escolha “todos os eventos da série” para aplicar a todos os dias importados.`
+                    : '';
+                items.push({
+                    type: 'study',
+                    id: options.id || block.id,
+                    day: block.day,
+                    date: options.date || getDayDate(block.day),
+                    startTime: block.startTime,
+                    endTime: block.endTime,
+                    sortTime: normalizeClockTime(block.startTime) || '99:99',
+                    summary: `Missão Tática — Estudo: ${block.title || 'Bloco de estudo'}`,
+                    description: `Origem: Missão Tática\nTipo: Estudo planejado\nDia: ${getDayLabel(block.day)}\nTrilha: ${track.name || 'Trilha'}\nDisciplina: ${subject ? subject.name : 'Sem disciplina vinculada'}\nMétodo: ${window.getStudyTypeLabel(block.studyType)}\nStatus: ${window.getStudyBlockStatusLabel(block.status)}\nDuração planejada: ${duration} min${recurrenceDescription}${block.notes ? `\nObservações: ${block.notes}` : ''}`,
+                    durationMinutes: duration,
+                    recurrenceRule: options.recurrenceRule || '',
+                    recurrenceDayIds: options.recurrenceDayIds || null,
+                    uid: options.uid || null
+                });
+            };
+
+            const exportedStudySeries = new Set();
+            studyBlocks.forEach(block => {
+                if (!block || !dayIndexMap.has(block.day)) return;
+                const seriesId = block.seriesId ? String(block.seriesId) : '';
+                const seriesBlocks = seriesId
+                    ? studyBlocks.filter(item => String(item.seriesId || '') === seriesId && dayIndexMap.has(item.day))
+                    : [];
+
+                if (seriesId && seriesBlocks.length > 1) {
+                    if (exportedStudySeries.has(seriesId)) return;
+                    const seriesDays = sortDayIdsByWeek(seriesBlocks.map(item => item.day));
+                    const firstDay = seriesDays[0] || block.day;
+                    const source = seriesBlocks.find(item => item.day === firstDay) || block;
+                    const doneCount = seriesBlocks.filter(item => item.status === 'completed').length;
+                    const recurrenceRule = buildWeeklyRecurrenceRule(seriesDays, seriesDays.length);
+                    addStudyItem(source, {
+                        id: `series-${seriesId}`,
+                        date: getDayDate(firstDay),
+                        recurrenceRule,
+                        recurrenceDayIds: seriesDays,
+                        uid: `missao-tatica-study-series-${seriesId}-${dateKeyFromDate(weekStart)}@missao-tatica`
+                    });
+                    const lastItem = items[items.length - 1];
+                    if (lastItem && recurrenceRule) {
+                        lastItem.description += `\nStatus da série na semana: ${doneCount}/${seriesDays.length} ocorrência(s) concluída(s).`;
+                    }
+                    exportedStudySeries.add(seriesId);
+                    return;
+                }
+
+                addStudyItem(block);
             });
 
             if (!items.length) {
@@ -1040,13 +1148,14 @@
 
             items.sort((a, b) => (a.date - b.date) || String(a.sortTime).localeCompare(String(b.sortTime)) || String(a.summary).localeCompare(String(b.summary)));
             const events = items.map(item => buildIcsEvent({
-                uid: `missao-tatica-${item.type}-${item.id}-${dateKeyFromDate(item.date)}@missao-tatica`,
+                uid: item.uid || `missao-tatica-${item.type}-${item.id}-${dateKeyFromDate(item.date)}@missao-tatica`,
                 summary: item.summary,
                 date: item.date,
                 startTime: item.startTime,
                 endTime: item.endTime,
                 durationMinutes: item.durationMinutes,
-                description: item.description
+                description: item.description,
+                recurrenceRule: item.recurrenceRule
             })).join('\r\n');
 
             const calendar = [
@@ -1069,7 +1178,11 @@
             link.click();
             link.remove();
             setTimeout(() => URL.revokeObjectURL(url), 1000);
-            window.showToast('Agenda exportada', `${items.length} evento(s) gerado(s) em .ics para importar no Google Agenda.`, 'calendar-plus', 'text-cyan-300');
+
+            const occurrenceCount = items.reduce((total, item) => total + (Array.isArray(item.recurrenceDayIds) && item.recurrenceDayIds.length > 1 ? item.recurrenceDayIds.length : 1), 0);
+            const seriesCount = items.filter(item => item.recurrenceRule).length;
+            const seriesText = seriesCount ? ` ${seriesCount} série(s) recorrente(s) unificada(s).` : '';
+            window.showToast('Agenda exportada', `${occurrenceCount} ocorrência(s) gerada(s) em ${items.length} evento(s) do .ics.${seriesText}`, 'calendar-plus', 'text-cyan-300');
         };
 
         // ==========================================
