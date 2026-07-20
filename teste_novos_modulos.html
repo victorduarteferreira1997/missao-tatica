@@ -393,6 +393,127 @@
             return [...blocks].sort((a, b) => window.compareCalendarItems(a, b, { completedStatus: item => item.status === 'completed' }));
         };
 
+
+        window.getTaskNextOrderLocal = function(dayId) {
+            const orders = (state.tasks || []).filter(t => t.day === dayId).map(t => typeof t.order === 'number' ? t.order : 0);
+            return orders.length ? Math.max(...orders) + 1 : 1;
+        };
+
+        window.cloneTaskSubtasksForOccurrence = function(subtasks = []) {
+            return (Array.isArray(subtasks) ? subtasks : []).map((st, index) => ({
+                id: Date.now() + Math.random() + index,
+                text: st.text || '',
+                completed: false,
+                createdAt: new Date().toISOString()
+            }));
+        };
+
+        window.cleanTaskRewardFields = function(task) {
+            if (!task) return task;
+            delete task.rewardedXp;
+            delete task.rewardedCoins;
+            delete task.rewardedEnergyCost;
+            delete task.rewardedBadgeIds;
+            return task;
+        };
+
+        window.upsertRecurringTaskOccurrences = function(templateTask, recurrenceDays = [], options = {}) {
+            if (!templateTask || !Array.isArray(state.tasks)) return [];
+            const validDays = daysOfWeek.map(d => d.id);
+            const days = [...new Set((recurrenceDays || []).filter(day => validDays.includes(day)))];
+            if (!days.length) return [templateTask];
+
+            const groupId = templateTask.recurrenceGroupId || options.groupId || `rec-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+            templateTask.recurrenceGroupId = groupId;
+            const templateSubtasks = Array.isArray(templateTask.subtasks) ? templateTask.subtasks : [];
+
+            if (options.removeUnselected !== false) {
+                state.tasks = state.tasks.filter(t => !(String(t.recurrenceGroupId || '') === String(groupId) && !days.includes(t.day)));
+            }
+
+            const applyFullTemplate = (target, targetDay, isNew = false) => {
+                target.day = targetDay;
+                target.category = templateTask.category;
+                target.text = templateTask.text;
+                target.xp = templateTask.xp;
+                target.energyCost = templateTask.energyCost;
+                target.priority = templateTask.priority;
+                target.time = templateTask.time;
+                target.complexity = templateTask.complexity;
+                target.impactType = templateTask.impactType;
+                target.startTime = normalizeClockTime(templateTask.startTime);
+                target.endTime = target.startTime ? normalizeClockTime(templateTask.endTime) : '';
+                if (target.startTime && target.endTime && !isValidClockRange(target.startTime, target.endTime)) target.endTime = '';
+                target.isRecurring = true;
+                target.recurrenceDays = [...days];
+                target.recurrenceGroupId = groupId;
+                if (typeof target.order !== 'number') target.order = window.getTaskNextOrderLocal(targetDay);
+                if (isNew) {
+                    target.completed = false;
+                    target.skipped = false;
+                    target.subtasks = window.cloneTaskSubtasksForOccurrence(templateSubtasks);
+                    target.createdAt = target.createdAt || new Date().toISOString();
+                    window.cleanTaskRewardFields(target);
+                }
+                return target;
+            };
+
+            const touched = [];
+            days.forEach((dayId, index) => {
+                let occurrence = state.tasks.find(t => String(t.recurrenceGroupId || '') === String(groupId) && t.day === dayId);
+                if (!occurrence) {
+                    occurrence = {
+                        ...templateTask,
+                        id: Date.now() + Math.random() + index,
+                        order: window.getTaskNextOrderLocal(dayId)
+                    };
+                    window.cleanTaskRewardFields(occurrence);
+                    state.tasks.push(occurrence);
+                    applyFullTemplate(occurrence, dayId, true);
+                } else {
+                    applyFullTemplate(occurrence, dayId, false);
+                }
+                touched.push(occurrence);
+            });
+
+            // Evita cards duplicados do mesmo grupo no mesmo dia, mantendo o primeiro encontrado.
+            const seen = new Set();
+            state.tasks = state.tasks.filter(t => {
+                if (String(t.recurrenceGroupId || '') !== String(groupId)) return true;
+                const key = `${groupId}::${t.day}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+
+            days.forEach(dayId => {
+                if (typeof window.reindexTaskOrderForDay === 'function') window.reindexTaskOrderForDay(dayId);
+            });
+            return touched;
+        };
+
+        window.normalizeRecurringTaskSchedules = function() {
+            if (!Array.isArray(state.tasks)) return;
+            const validDays = daysOfWeek.map(d => d.id);
+            const groups = new Map();
+            state.tasks.forEach(t => {
+                if (!t) return;
+                const days = Array.isArray(t.recurrenceDays) ? t.recurrenceDays.filter(day => validDays.includes(day)) : [];
+                if (!t.recurrenceGroupId || !(t.isRecurring || days.length)) return;
+                const key = String(t.recurrenceGroupId);
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key).push(t);
+            });
+            groups.forEach(groupTasks => {
+                const days = [...new Set(groupTasks.flatMap(t => Array.isArray(t.recurrenceDays) ? t.recurrenceDays : []).filter(day => validDays.includes(day)))];
+                if (!days.length) return;
+                const source = groupTasks.find(t => normalizeClockTime(t.startTime)) || groupTasks[0];
+                source.recurrenceDays = [...days];
+                source.isRecurring = true;
+                window.upsertRecurringTaskOccurrences(source, days, { removeUnselected: false });
+            });
+        };
+
         window.getCurrentCalendarWeekStartKey = function() {
             return dateKeyFromDate(getMondayStartDate(new Date()));
         };
@@ -421,6 +542,7 @@
         window.prepareNextWeekPlanning = function() {
             const nextMondayKey = window.getNextCalendarWeekStartKey();
             window.showConfirmModal('Preparar a próxima semana agora? Isso vai limpar as missões comuns da semana atual, preservar missões recorrentes, zerar o status dos estudos planejados e abrir o calendário da próxima semana. Ideal para usar no domingo, depois de revisar/fechar a semana atual.', () => {
+                window.normalizeRecurringTaskSchedules();
                 const recurringTasks = state.tasks
                     .filter(t => t.isRecurring || (Array.isArray(t.recurrenceDays) && t.recurrenceDays.length > 0))
                     .map(t => {
@@ -520,6 +642,7 @@
                 const categoryExistsForTask = state.taskCategories.some(c => c.id === t.category);
                 if (!categoryExistsForTask) t.category = state.taskCategories.find(c => c.active !== false)?.id || 'geral';
             });
+            window.normalizeRecurringTaskSchedules();
             if (state.currentFilter !== 'all' && !state.taskCategories.some(c => c.id === state.currentFilter && c.active !== false)) state.currentFilter = 'all';
             
             if (!state.customRewards) state.customRewards = [];
@@ -1853,21 +1976,49 @@
                 .filter(d => document.getElementById(`et-repeat-${d.id}`)?.checked)
                 .map(d => d.id);
             const isRecurring = recurrenceDays.length > 0;
-            task.text = text;
-            task.day = newDay;
-            task.category = selectedCategory;
-            task.priority = priority;
-            task.complexity = complexity;
-            task.time = `${timeVal} min`;
-            task.impactType = impactType;
-            task.startTime = calendarTime.startTime;
-            task.endTime = calendarTime.endTime;
-            task.xp = cost.xp;
-            task.energyCost = cost.hp;
-            task.isRecurring = isRecurring;
-            task.recurrenceDays = isRecurring ? [...recurrenceDays] : [];
-            if (isRecurring && !task.recurrenceGroupId) task.recurrenceGroupId = `rec-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-            if (!isRecurring) delete task.recurrenceGroupId;
+
+            const applyValues = (target, targetDay) => {
+                target.text = text;
+                target.day = targetDay;
+                target.category = selectedCategory;
+                target.priority = priority;
+                target.complexity = complexity;
+                target.time = `${timeVal} min`;
+                target.impactType = impactType;
+                target.startTime = calendarTime.startTime;
+                target.endTime = calendarTime.endTime;
+                target.xp = cost.xp;
+                target.energyCost = cost.hp;
+                return target;
+            };
+
+            if (isRecurring) {
+                const groupId = task.recurrenceGroupId || `rec-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+                const oldGroupDays = state.tasks
+                    .filter(t => String(t.recurrenceGroupId || '') === String(groupId) || String(t.id) === String(task.id))
+                    .map(t => t.day)
+                    .filter(Boolean);
+
+                applyValues(task, recurrenceDays.includes(newDay) ? newDay : recurrenceDays[0]);
+                task.isRecurring = true;
+                task.recurrenceDays = [...recurrenceDays];
+                task.recurrenceGroupId = groupId;
+
+                window.upsertRecurringTaskOccurrences(task, recurrenceDays, { removeUnselected: true });
+                [...new Set([...oldGroupDays, ...recurrenceDays, oldDay])].forEach(dayId => {
+                    if (typeof window.reindexTaskOrderForDay === 'function') window.reindexTaskOrderForDay(dayId);
+                });
+                uiState.showEditTaskModal = false;
+                uiState.editingTaskId = null;
+                window.showToast('Recorrência atualizada', `Horário sincronizado em ${recurrenceDays.length} dia(s): ${window.getRecurringDaysLabel(recurrenceDays)}.`, 'repeat', 'text-violet-300');
+                window.saveState();
+                return;
+            }
+
+            applyValues(task, newDay);
+            task.isRecurring = false;
+            task.recurrenceDays = [];
+            delete task.recurrenceGroupId;
             if (oldDay !== newDay) {
                 task.order = window.getNextTaskOrder(newDay);
                 window.reindexTaskOrderForDay(oldDay);
@@ -1876,7 +2027,7 @@
             }
             uiState.showEditTaskModal = false;
             uiState.editingTaskId = null;
-            window.showToast('Missão atualizada', 'Horário, dificuldade, tempo, categoria e recorrência foram ajustados. O dia será reordenado automaticamente.', 'pencil', 'text-amber-400');
+            window.showToast('Missão atualizada', 'Horário, dificuldade, tempo e categoria foram ajustados. O dia será reordenado automaticamente.', 'pencil', 'text-amber-400');
             window.saveState();
         };
         
@@ -1948,6 +2099,11 @@
                 });
             });
 
+            if (isRecurring) {
+                const firstOccurrence = state.tasks.find(t => String(t.recurrenceGroupId || '') === String(recurrenceGroupId));
+                if (firstOccurrence) window.upsertRecurringTaskOccurrences(firstOccurrence, recurrenceDays, { removeUnselected: true });
+            }
+
             uiState.showCreateTaskModal = false;
             const recurrenceMsg = isRecurring ? ` Missão recorrente: ${window.getRecurringDaysLabel(recurrenceDays)}.` : '';
             window.showToast('Missão Alistada!', `${daysToCreate.length} missão(ões) adicionada(s).${baseSubtasks.length ? ` ${baseSubtasks.length} subtarefa(s).` : ''}${recurrenceMsg}`, 'crosshair', 'text-emerald-400');
@@ -1975,6 +2131,7 @@
         
         window.resetSystem = function() { 
             window.showConfirmModal("Deseja reiniciar a semana? Missões comuns serão apagadas, mas missões recorrentes serão preservadas e marcadas como pendentes para a nova semana.", () => { 
+                window.normalizeRecurringTaskSchedules();
                 const recurringTasks = state.tasks
                     .filter(t => t.isRecurring || (Array.isArray(t.recurrenceDays) && t.recurrenceDays.length > 0))
                     .map(t => {
