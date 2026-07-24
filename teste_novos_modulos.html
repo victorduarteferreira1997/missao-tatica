@@ -225,6 +225,8 @@
             showLevelUp: false, showStatsModal: false, statsTab: 'roadmap',
             showCreateTaskModal: false,
             showEditTaskModal: false, editingTaskId: null,
+            showProfileModal: false,
+            deleteTaskPrompt: { show: false, taskId: null },
             showStudyModal: false, studyTab: 'plano',
             studyPlanningTrackId: '',
             studyPlanningView: 'board',
@@ -597,6 +599,11 @@
             }
             if (!state.stats) state.stats = { pomodorosCompleted: 0, tasksMoved: 0, maxComboReached: 0, rewardsBought: 0 };
             if (!state.quickTasks) state.quickTasks = [];
+            if (!state.userProfile) state.userProfile = { displayName: '', gender: '', configured: false };
+            state.userProfile.displayName = String(state.userProfile.displayName || '').trim();
+            if (!['masculino', 'feminino'].includes(state.userProfile.gender)) state.userProfile.gender = '';
+            state.userProfile.configured = Boolean(state.userProfile.displayName && state.userProfile.gender);
+            if (!Array.isArray(state.taskDeletionLog)) state.taskDeletionLog = [];
             if (!state.unlockedBadges) state.unlockedBadges = [];
             if (!state.tasks) state.tasks = []; 
             if (!state.currentPlanningWeekStart) state.currentPlanningWeekStart = window.getCurrentCalendarWeekStartKey();
@@ -1286,7 +1293,52 @@
         window.getComboMultiplier = function() { return state.combo === 0 ? 1 : 1 + (state.combo * 0.1); };
         window.breakCombo = function() { if (state.combo > 0) { state.combo = 0; window.showToast('Frenesi Quebrado', 'Combo zerado, mas a integridade continua ativa.', 'activity', 'text-slate-500'); } };
         window.getXpForCurrentLevel = function() { return (RANKS.find(r => r.level === state.level) || RANKS[RANKS.length - 1]).max; };
-        window.getRankName = function(lvl = state.level) { return (RANKS.find(r => r.level === lvl) || RANKS[RANKS.length - 1]).name; };
+        window.getRankName = function(lvl = state.level) {
+            const rank = (RANKS.find(r => r.level === lvl) || RANKS[RANKS.length - 1]).name;
+            const gender = state?.userProfile?.gender || 'masculino';
+            const feminineMap = {
+                'Soldado': 'Soldada',
+                'Cabo': 'Cabo',
+                'Sargento': 'Sargenta',
+                'Tenente': 'Tenente',
+                'Capitão': 'Capitã',
+                'Major': 'Major',
+                'Coronel': 'Coronela',
+                'General': 'Generala',
+                'Comandante Supremo': 'Comandante Suprema',
+                'Estrategista Mestre': 'Estrategista Mestra',
+                'Lenda Tática': 'Lenda Tática',
+                'Mito da Produtividade': 'Mito da Produtividade',
+                'Titã Executivo': 'Titã Executiva',
+                'Deus do Foco': 'Deusa do Foco'
+            };
+            return gender === 'feminino' ? (feminineMap[rank] || rank) : rank;
+        };
+
+        window.getUserDisplayName = function() {
+            return String(state?.userProfile?.displayName || '').trim() || 'Comandante';
+        };
+
+        window.getCommanderGreeting = function() {
+            return state?.userProfile?.gender === 'feminino' ? 'Comandante' : 'Comandante';
+        };
+
+        window.openProfileModal = function() { uiState.showProfileModal = true; render(); };
+        window.closeProfileModal = function() {
+            if (!state?.userProfile?.configured) return;
+            uiState.showProfileModal = false;
+            render();
+        };
+        window.saveUserProfile = function() {
+            const name = document.getElementById('profile-display-name')?.value.trim();
+            const gender = document.querySelector('input[name="profile-gender"]:checked')?.value || '';
+            if (!name) { window.showAlertModal('Digite como você gostaria de ser chamado(a).'); return; }
+            if (!['masculino', 'feminino'].includes(gender)) { window.showAlertModal('Selecione feminino ou masculino para ajustar linguagem e patentes.'); return; }
+            state.userProfile = { displayName: name, gender, configured: true, updatedAt: new Date().toISOString() };
+            uiState.showProfileModal = false;
+            window.saveState();
+            window.showToast('Perfil atualizado', `Bem-vindo(a), ${name}.`, 'user-check', 'text-emerald-400');
+        };
 
         window.checkLevelUp = function() {
             let nextMax = window.getXpForCurrentLevel(); let levelChanged = false;
@@ -1411,8 +1463,47 @@
         };
 
         window.deleteMainTask = function(taskId, event) {
-            if (event) event.stopPropagation();
-            window.showConfirmModal("Tem certeza que deseja excluir esta missão?", () => { state.tasks = state.tasks.filter(t => t.id != taskId); window.breakCombo(); window.saveState(); });
+            if (event) { event.stopPropagation(); event.preventDefault(); }
+            const task = state.tasks.find(t => String(t.id) === String(taskId));
+            if (!task) { window.showAlertModal('Missão não encontrada.'); return; }
+            uiState.deleteTaskPrompt = { show: true, taskId: task.id };
+            render();
+        };
+
+        window.cancelDeleteTaskPrompt = function() {
+            uiState.deleteTaskPrompt = { show: false, taskId: null };
+            render();
+        };
+
+        window.confirmDeleteMainTask = function(reason = 'cancelada', event = null) {
+            if (event) { event.stopPropagation(); event.preventDefault(); }
+            const taskId = uiState.deleteTaskPrompt?.taskId;
+            const task = state.tasks.find(t => String(t.id) === String(taskId));
+            if (!task) { uiState.deleteTaskPrompt = { show: false, taskId: null }; render(); return; }
+            const reasonLabels = {
+                substituida: 'Substituída por outra missão',
+                nao_fiz: 'Não fiz / não vou conseguir fazer',
+                cancelada: 'Cancelada ou perdeu prioridade'
+            };
+            const preserveCombo = reason === 'substituida';
+            if (!Array.isArray(state.taskDeletionLog)) state.taskDeletionLog = [];
+            state.taskDeletionLog.push({
+                id: Date.now() + Math.random(),
+                deletedAt: new Date().toISOString(),
+                reason,
+                reasonLabel: reasonLabels[reason] || 'Excluída',
+                preserveCombo,
+                comboBefore: state.combo || 0,
+                taskSnapshot: {
+                    id: task.id, text: task.text, day: task.day, category: task.category, startTime: task.startTime || '', endTime: task.endTime || '',
+                    completed: Boolean(task.completed), isRecurring: Boolean(task.isRecurring), recurrenceGroupId: task.recurrenceGroupId || null
+                }
+            });
+            state.tasks = state.tasks.filter(t => String(t.id) !== String(taskId));
+            if (!preserveCombo) window.breakCombo();
+            uiState.deleteTaskPrompt = { show: false, taskId: null };
+            window.saveState();
+            window.showToast('Missão excluída', preserveCombo ? 'Substituição registrada. Frenesi preservado.' : 'Exclusão registrada. Frenesi ajustado.', 'trash-2', preserveCombo ? 'text-cyan-300' : 'text-orange-300');
         };
 
         window.getTaskCategories = function(includeInactive = false) {
@@ -1521,12 +1612,24 @@
             return orders.length ? Math.max(...orders) + 1 : 1;
         };
 
+        window.sortTasksByManualOrder = function(tasks = []) {
+            return [...tasks].sort((a, b) => {
+                const aOrder = typeof a?.order === 'number' ? a.order : 999999;
+                const bOrder = typeof b?.order === 'number' ? b.order : 999999;
+                if (aOrder !== bOrder) return aOrder - bOrder;
+                const aTime = window.getCalendarSortMinutes(a);
+                const bTime = window.getCalendarSortMinutes(b);
+                if (aTime !== bTime) return aTime - bTime;
+                return String(a?.text || '').localeCompare(String(b?.text || ''));
+            });
+        };
+
         window.sortTasksForDay = function(dayId) {
-            return window.sortTasksBySchedule(state.tasks.filter(t => t.day === dayId));
+            return window.sortTasksByManualOrder(state.tasks.filter(t => t.day === dayId));
         };
 
         window.reindexTaskOrderForDay = function(dayId) {
-            window.sortTasksForDay(dayId).forEach((t, index) => { t.order = index + 1; });
+            window.sortTasksBySchedule(state.tasks.filter(t => t.day === dayId)).forEach((t, index) => { t.order = index + 1; });
         };
 
         window.handleTaskDragStart = function(taskId, event) {
@@ -2135,8 +2238,10 @@
             if (oldDay !== newDay) {
                 task.order = window.getNextTaskOrder(newDay);
                 window.reindexTaskOrderForDay(oldDay);
-            } else if (typeof task.order !== 'number') {
-                task.order = window.getNextTaskOrder(newDay);
+                window.reindexTaskOrderForDay(newDay);
+            } else {
+                if (typeof task.order !== 'number') task.order = window.getNextTaskOrder(newDay);
+                window.reindexTaskOrderForDay(newDay);
             }
             uiState.showEditTaskModal = false;
             uiState.editingTaskId = null;
@@ -2216,6 +2321,7 @@
                 const firstOccurrence = state.tasks.find(t => String(t.recurrenceGroupId || '') === String(recurrenceGroupId));
                 if (firstOccurrence) window.upsertRecurringTaskOccurrences(firstOccurrence, recurrenceDays, { removeUnselected: true });
             }
+            [...new Set(daysToCreate)].forEach(dayId => { if (typeof window.reindexTaskOrderForDay === 'function') window.reindexTaskOrderForDay(dayId); });
 
             uiState.showCreateTaskModal = false;
             const recurrenceMsg = isRecurring ? ` Missão recorrente: ${window.getRecurringDaysLabel(recurrenceDays)}.` : '';
@@ -2695,7 +2801,7 @@
                             </div>
                         </div>
                         <div class="text-xs text-indigo-300 mt-3 border-t border-slate-800 pt-2 font-medium">
-                            <strong class="text-white">${greeting}, Comandante.</strong> <span class="text-slate-500">${contextMsg}</span>
+                            <strong class="text-white">${greeting}, ${window.escapeHtml(window.getUserDisplayName())}.</strong> <span class="text-slate-500">${contextMsg}</span>
                         </div>
                     `;
                     // Refresh icon only if needed, but since it's static we can skip re-creating lucide inside setInterval usually.
@@ -3629,6 +3735,80 @@
                 </div>`;
             }
 
+
+            const profileNeedsSetup = !state?.userProfile?.configured;
+            if (profileNeedsSetup || uiState.showProfileModal) {
+                const profileName = window.escapeHtml(state?.userProfile?.displayName || '');
+                const gender = state?.userProfile?.gender || '';
+                html += `
+                <div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[1000] backdrop-blur-md font-mono">
+                    <div class="bg-slate-900 border border-indigo-800/60 rounded-2xl p-6 max-w-md w-full shadow-[0_0_50px_rgba(79,70,229,0.18)] modal-enter">
+                        <div class="flex items-start justify-between gap-4 mb-5">
+                            <div>
+                                <h3 class="text-xl font-black text-white flex items-center gap-2"><i data-lucide="user-round-cog" class="text-indigo-400"></i> Identificação do Operador</h3>
+                                <p class="text-slate-400 text-xs mt-1 leading-relaxed">Personalize nome, linguagem e patentes. Dá para editar depois pelo botão de perfil no topo.</p>
+                            </div>
+                            ${profileNeedsSetup ? '' : '<button onclick="window.closeProfileModal()" class="text-slate-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>'}
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-400 uppercase">Como você quer ser chamado(a)?</label>
+                                <input id="profile-display-name" type="text" value="${profileName}" placeholder="Ex.: Victor, Ana, Dr. Victor..." class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-400 uppercase">Linguagem das patentes</label>
+                                <div class="grid grid-cols-2 gap-3 mt-2">
+                                    <label class="bg-slate-950 border ${gender === 'feminino' ? 'border-pink-500 text-pink-200' : 'border-slate-800 text-slate-300'} rounded-xl p-3 cursor-pointer hover:border-pink-500/70 transition-colors flex items-center gap-2"><input type="radio" name="profile-gender" value="feminino" class="accent-pink-500" ${gender === 'feminino' ? 'checked' : ''}> Feminino</label>
+                                    <label class="bg-slate-950 border ${gender === 'masculino' ? 'border-blue-500 text-blue-200' : 'border-slate-800 text-slate-300'} rounded-xl p-3 cursor-pointer hover:border-blue-500/70 transition-colors flex items-center gap-2"><input type="radio" name="profile-gender" value="masculino" class="accent-blue-500" ${gender === 'masculino' ? 'checked' : ''}> Masculino</label>
+                                </div>
+                            </div>
+                            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3 text-[11px] text-slate-400 leading-relaxed">
+                                Exemplo: <strong class="text-white">${gender === 'feminino' ? 'Capitã / Comandante Suprema / Deusa do Foco' : 'Capitão / Comandante Supremo / Deus do Foco'}</strong>.
+                            </div>
+                            <button onclick="window.saveUserProfile()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-3 rounded-xl transition-colors flex items-center justify-center gap-2"><i data-lucide="save" class="w-4 h-4"></i> Salvar perfil</button>
+                        </div>
+                    </div>
+                </div>`;
+            }
+
+            if (uiState.deleteTaskPrompt?.show) {
+                const delTask = state.tasks.find(t => String(t.id) === String(uiState.deleteTaskPrompt.taskId));
+                if (delTask) {
+                    html += `
+                    <div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[1000] backdrop-blur-md font-mono">
+                        <div class="bg-slate-900 border border-red-900/60 rounded-2xl p-6 max-w-lg w-full shadow-[0_0_50px_rgba(127,29,29,0.18)] modal-enter">
+                            <div class="flex items-start justify-between gap-4 mb-5">
+                                <div>
+                                    <h3 class="text-xl font-black text-white flex items-center gap-2"><i data-lucide="trash-2" class="text-red-400"></i> Excluir missão</h3>
+                                    <p class="text-slate-400 text-xs mt-1 leading-relaxed">Escolha o motivo. Substituição preserva o Frenesi; cancelamento ou não execução quebram o combo.</p>
+                                </div>
+                                <button onclick="window.cancelDeleteTaskPrompt()" class="text-slate-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+                            </div>
+                            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-4">
+                                <div class="text-[10px] uppercase tracking-widest text-slate-500 font-black mb-1">Missão</div>
+                                <div class="font-bold text-white">${window.escapeHtml(delTask.text)}</div>
+                                <div class="text-[11px] text-slate-500 mt-1">${window.getTaskCategoryLabel(delTask.category)} • ${delTask.startTime ? window.getCalendarTimeLabel(delTask, extractMinutesFromTask(delTask)) : 'Sem horário'}</div>
+                            </div>
+                            <div class="grid grid-cols-1 gap-3">
+                                <button onclick="window.confirmDeleteMainTask('substituida', event)" class="text-left bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-900/60 rounded-xl p-4 transition-colors">
+                                    <div class="font-black text-cyan-200 flex items-center gap-2"><i data-lucide="replace" class="w-4 h-4"></i> Substituída por outra missão</div>
+                                    <div class="text-[11px] text-cyan-100/70 mt-1">Exclui sem quebrar o Frenesi.</div>
+                                </button>
+                                <button onclick="window.confirmDeleteMainTask('nao_fiz', event)" class="text-left bg-orange-950/25 hover:bg-orange-900/45 border border-orange-900/60 rounded-xl p-4 transition-colors">
+                                    <div class="font-black text-orange-200 flex items-center gap-2"><i data-lucide="activity" class="w-4 h-4"></i> Não fiz / não vou conseguir fazer</div>
+                                    <div class="text-[11px] text-orange-100/70 mt-1">Exclui e quebra o Frenesi.</div>
+                                </button>
+                                <button onclick="window.confirmDeleteMainTask('cancelada', event)" class="text-left bg-red-950/25 hover:bg-red-900/45 border border-red-900/60 rounded-xl p-4 transition-colors">
+                                    <div class="font-black text-red-200 flex items-center gap-2"><i data-lucide="ban" class="w-4 h-4"></i> Cancelada ou perdeu prioridade</div>
+                                    <div class="text-[11px] text-red-100/70 mt-1">Exclui e quebra o Frenesi.</div>
+                                </button>
+                            </div>
+                            <button onclick="window.cancelDeleteTaskPrompt()" class="w-full mt-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl transition-colors">Voltar sem excluir</button>
+                        </div>
+                    </div>`;
+                }
+            }
+
             if (uiState.customPrompt.show) {
                 if(uiState.customPrompt.type === 'reviewDifficulty') {
                     html += `
@@ -3754,7 +3934,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.1</span></div>
+                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.5</span></div>
                             <div class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">Quartel operacional</div>
                         </div>
                     </div>
@@ -3762,6 +3942,9 @@
                         <div id="sync-status" class="flex items-center gap-1.5 px-2 py-1 bg-slate-950 rounded-md text-[10px] font-bold text-slate-400 uppercase tracking-wider border border-slate-800 shrink-0">
                             <span class="w-2 h-2 rounded-full shrink-0" id="sync-indicator"></span><span id="sync-text"></span>
                         </div>
+                        <button onclick="window.openProfileModal()" class="flex items-center justify-center bg-slate-950 hover:bg-indigo-900/50 hover:text-indigo-300 text-slate-500 px-3 py-2 rounded-lg transition-colors border border-slate-800" title="Editar perfil">
+                            <i data-lucide="user-cog" class="w-4 h-4"></i>
+                        </button>
                         <button onclick="window.logout()" class="flex items-center justify-center bg-slate-950 hover:bg-red-900/50 hover:text-red-400 text-slate-500 px-3 py-2 rounded-lg transition-colors border border-slate-800" title="Sair da Conta">
                             <i data-lucide="log-out" class="w-4 h-4"></i>
                         </button>
@@ -3802,7 +3985,7 @@
                         <div>
                             <p class="text-slate-400 font-medium flex items-center gap-2">
                                 <span class="bg-indigo-900 text-indigo-300 text-xs px-2 py-1 rounded uppercase font-bold">Nível ${state.level}</span>
-                                ${window.getRankName()} Victor
+                                ${window.getRankName()} ${window.escapeHtml(window.getUserDisplayName())}
                             </p>
                         </div>
                         <div class="flex flex-wrap gap-2 w-full sm:w-auto">
@@ -4542,7 +4725,7 @@
             const buildDay = (day, index) => {
                 const date = addDaysToDate(weekStart, index);
                 const dateKey = dateKeyFromDate(date);
-                const dayTasks = window.sortTasksBySchedule(tasks.filter(t => t.day === day.id));
+                const dayTasks = window.sortTasksForDay(day.id);
                 const dayStudies = window.sortStudyBlocksBySchedule(studyBlocks.filter(b => b.day === day.id));
                 const completedTasks = dayTasks.filter(t => t.completed).length;
                 const completedStudies = dayStudies.filter(b => b.status === 'completed').length;
