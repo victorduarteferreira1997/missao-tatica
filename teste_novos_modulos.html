@@ -845,7 +845,12 @@
         };
 
         window.logout = async function() {
-            try { await signOut(auth); } catch (error) { console.error("Erro no logout", error); }
+            try {
+                if (currentUser && typeof window.saveStateNow === 'function') {
+                    await window.saveStateNow(true);
+                }
+                await signOut(auth);
+            } catch (error) { console.error("Erro no logout", error); }
         };
 
         async function loadFromFirestore(uid) {
@@ -866,24 +871,45 @@
             render();
         }
 
+        async function writeStateToFirestore(userSnapshot = currentUser) {
+            if (!userSnapshot) return false;
+            try {
+                window.updateSyncStatus('Salvando...');
+                const userRef = doc(db, 'users', userSnapshot.uid);
+                await setDoc(userRef, { email: userSnapshot.email, displayName: userSnapshot.displayName || '', updatedAt: new Date().toISOString(), app: 'missao-tatica' }, { merge: true });
+                const stateRef = doc(db, 'users', userSnapshot.uid, 'state', 'main');
+                await setDoc(stateRef, { data: JSON.stringify(state), updatedAt: new Date().toISOString() }, { merge: true });
+                window.updateSyncStatus('Salvo na nuvem');
+                return true;
+            } catch (e) {
+                console.error('Erro ao salvar no Firestore', e);
+                window.updateSyncStatus('Erro ao salvar');
+                return false;
+            }
+        }
+
         window.saveToFirestore = function() {
             if (!currentUser) return;
+            const userSnapshot = currentUser;
             window.updateSyncStatus('Salvando...');
             clearTimeout(saveTimeout);
             saveTimeout = setTimeout(async () => {
-                try {
-                    const userRef = doc(db, 'users', currentUser.uid);
-                    await setDoc(userRef, { email: currentUser.email, displayName: currentUser.displayName || '', updatedAt: new Date().toISOString(), app: 'missao-tatica' }, { merge: true });
-                    const stateRef = doc(db, 'users', currentUser.uid, 'state', 'main');
-                    await setDoc(stateRef, { data: JSON.stringify(state), updatedAt: new Date().toISOString() }, { merge: true });
-                    window.updateSyncStatus('Salvo na nuvem');
-                } catch (e) { window.updateSyncStatus('Erro ao salvar'); }
+                saveTimeout = null;
+                await writeStateToFirestore(userSnapshot);
             }, 1000);
         };
 
         window.saveState = function(skipRender = false) {
             localStorage.setItem('planeamento_semanal_v11', JSON.stringify(state));
             window.saveToFirestore();
+            if(!skipRender) render();
+        };
+
+        window.saveStateNow = async function(skipRender = false) {
+            localStorage.setItem('planeamento_semanal_v11', JSON.stringify(state));
+            clearTimeout(saveTimeout);
+            saveTimeout = null;
+            await writeStateToFirestore(currentUser);
             if(!skipRender) render();
         };
 
@@ -1475,7 +1501,7 @@
             render();
         };
 
-        window.confirmDeleteMainTask = function(reason = 'cancelada', event = null) {
+        window.confirmDeleteMainTask = async function(reason = 'cancelada', event = null) {
             if (event) { event.stopPropagation(); event.preventDefault(); }
             const taskId = uiState.deleteTaskPrompt?.taskId;
             const task = state.tasks.find(t => String(t.id) === String(taskId));
@@ -1487,6 +1513,9 @@
             };
             const preserveCombo = reason === 'substituida';
             if (!Array.isArray(state.taskDeletionLog)) state.taskDeletionLog = [];
+            const recurrenceGroupId = task.recurrenceGroupId || null;
+            const deletedDay = task.day;
+            const wasRecurring = Boolean(task.isRecurring || (Array.isArray(task.recurrenceDays) && task.recurrenceDays.length));
             state.taskDeletionLog.push({
                 id: Date.now() + Math.random(),
                 deletedAt: new Date().toISOString(),
@@ -1496,13 +1525,38 @@
                 comboBefore: state.combo || 0,
                 taskSnapshot: {
                     id: task.id, text: task.text, day: task.day, category: task.category, startTime: task.startTime || '', endTime: task.endTime || '',
-                    completed: Boolean(task.completed), isRecurring: Boolean(task.isRecurring), recurrenceGroupId: task.recurrenceGroupId || null
+                    completed: Boolean(task.completed), isRecurring: Boolean(task.isRecurring), recurrenceGroupId: task.recurrenceGroupId || null,
+                    recurrenceDays: Array.isArray(task.recurrenceDays) ? [...task.recurrenceDays] : []
                 }
             });
+
             state.tasks = state.tasks.filter(t => String(t.id) !== String(taskId));
+
+            // Correção crítica: se a missão fazia parte de uma recorrência, remover apenas o dia excluído
+            // da série. Sem isso, a validação/relogin recriava a ocorrência apagada.
+            if (wasRecurring && recurrenceGroupId && deletedDay) {
+                const validDays = daysOfWeek.map(d => d.id);
+                const groupTasks = state.tasks.filter(t => String(t.recurrenceGroupId || '') === String(recurrenceGroupId));
+                const remainingDays = [...new Set(groupTasks
+                    .flatMap(t => Array.isArray(t.recurrenceDays) ? t.recurrenceDays : [t.day])
+                    .filter(day => validDays.includes(day) && day !== deletedDay)
+                )];
+
+                if (!remainingDays.length) {
+                    state.tasks = state.tasks.filter(t => String(t.recurrenceGroupId || '') !== String(recurrenceGroupId));
+                } else {
+                    state.tasks.forEach(t => {
+                        if (String(t.recurrenceGroupId || '') === String(recurrenceGroupId)) {
+                            t.recurrenceDays = [...remainingDays];
+                            t.isRecurring = true;
+                        }
+                    });
+                }
+            }
+
             if (!preserveCombo) window.breakCombo();
             uiState.deleteTaskPrompt = { show: false, taskId: null };
-            window.saveState();
+            await window.saveStateNow();
             window.showToast('Missão excluída', preserveCombo ? 'Substituição registrada. Frenesi preservado.' : 'Exclusão registrada. Frenesi ajustado.', 'trash-2', preserveCombo ? 'text-cyan-300' : 'text-orange-300');
         };
 
