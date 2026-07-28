@@ -866,11 +866,28 @@
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {
                     const cloudState = JSON.parse(docSnap.data().data);
-                    state = { ...state, ...cloudState };
-                    window.validateState();
-                    localStorage.setItem('planeamento_semanal_v11', JSON.stringify(state));
-                    window.updateSyncStatus('Conectado');
+                    const localState = state ? JSON.parse(JSON.stringify(state)) : null;
+                    const localSavedAt = Date.parse(localState?.lastSavedAt || localState?.updatedAt || 0);
+                    const cloudSavedAt = Date.parse(cloudState?.lastSavedAt || cloudState?.updatedAt || docSnap.data().updatedAt || 0);
+                    const localBelongsToThisUser = localState?.ownerUid && String(localState.ownerUid) === String(uid);
+
+                    // Proteção contra perda de dados: se o navegador tem um estado local mais novo
+                    // do mesmo usuário, ele não é sobrescrito por uma cópia antiga da nuvem.
+                    if (localBelongsToThisUser && localSavedAt && cloudSavedAt && localSavedAt > cloudSavedAt + 1500) {
+                        state = localState;
+                        window.validateState();
+                        localStorage.setItem('planeamento_semanal_v11', JSON.stringify(state));
+                        await writeStateToFirestore(user);
+                        window.updateSyncStatus('Salvo na nuvem');
+                    } else {
+                        state = { ...state, ...cloudState };
+                        state.ownerUid = uid;
+                        window.validateState();
+                        localStorage.setItem('planeamento_semanal_v11', JSON.stringify(state));
+                        window.updateSyncStatus('Conectado');
+                    }
                 } else {
+                    state.ownerUid = uid;
                     window.validateState(); window.saveToFirestore();
                 }
             } catch(e) { window.updateSyncStatus('Erro de conexão'); }
@@ -905,18 +922,36 @@
             }, 1000);
         };
 
-        window.saveState = function(skipRender = false) {
+        window.touchState = function(reason = '') {
+            if (!state) return;
+            const now = new Date().toISOString();
+            state.updatedAt = now;
+            state.lastSavedAt = now;
+            if (currentUser?.uid) state.ownerUid = currentUser.uid;
+            if (reason) state.lastSaveReason = reason;
+        };
+
+        window.saveState = function(skipRender = false, reason = '') {
+            window.touchState(reason);
             localStorage.setItem('planeamento_semanal_v11', JSON.stringify(state));
             window.saveToFirestore();
             if(!skipRender) render();
         };
 
-        window.saveStateNow = async function(skipRender = false) {
+        window.saveStateNow = async function(skipRender = false, reason = '') {
+            window.touchState(reason);
             localStorage.setItem('planeamento_semanal_v11', JSON.stringify(state));
             clearTimeout(saveTimeout);
             saveTimeout = null;
             await writeStateToFirestore(currentUser);
             if(!skipRender) render();
+        };
+
+        window.saveStudyPlanningState = function(skipRender = false) {
+            window.saveState(skipRender, 'study-planning');
+            if (typeof window.saveStateNow === 'function') {
+                window.saveStateNow(true, 'study-planning-immediate').catch(err => console.error('Erro ao salvar planejamento imediatamente', err));
+            }
         };
 
         onAuthStateChanged(auth, async (user) => {
@@ -1403,6 +1438,7 @@
                 window.checkGameTriggers();
                 task.rewardedBadgeIds = state.unlockedBadges.filter(badgeId => !badgesBefore.includes(badgeId));
                 window.spawnFloatingText(event, `+${finalXp} XP`, 'text-indigo-400');
+                if (typeof window.playMissionCompleteSound === 'function') window.playMissionCompleteSound();
             }
             window.checkLevelUp(); window.saveState();
         };
@@ -1413,8 +1449,15 @@
             toast.className = `bg-slate-900 border border-slate-700 rounded-lg p-3 shadow-2xl flex items-center gap-3 toast-enter max-w-xs pointer-events-auto`;
             toast.innerHTML = `<div class="bg-slate-950 p-2 rounded-full border border-slate-800 shrink-0"><i data-lucide="${iconName}" class="${colorClass} w-6 h-6"></i></div><div><h4 class="text-sm font-bold text-white">${title}</h4><p class="text-xs text-slate-400 leading-tight">${desc}</p></div>`;
             container.appendChild(toast); lucide.createIcons({root: toast});
-            try { new Audio('https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3').play(); } catch(e) {}
             setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 4000);
+        };
+
+        window.playMissionCompleteSound = function() {
+            try {
+                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3');
+                audio.volume = 0.35;
+                audio.play();
+            } catch(e) {}
         };
 
         window.buyReward = function(rewardId) {
@@ -2886,7 +2929,7 @@
             state.studyData.subjects.push({ id: Date.now(), name, trackId, color, createdAt: new Date().toISOString() });
             const track = window.getStudyTrack(trackId);
             window.showToast('Disciplina adicionada', `${name} entrou na trilha ${track.name}.`, 'book', track.color || 'text-cyan-400');
-            window.saveState();
+            window.saveStudyPlanningState();
         };
 
         window.getStudySubjects = function(trackId = null) {
@@ -2927,7 +2970,7 @@
             (state.studyData.studyPlan?.weeklyBlocks || []).forEach(block => {
                 if (String(block.subjectId) === String(subject.id)) block.trackId = track.id;
             });
-            window.saveState();
+            window.saveStudyPlanningState();
             window.showToast('Disciplina reorganizada', `${subject.name} agora pertence à trilha ${track.name}.`, 'route', track.color || 'text-cyan-400');
         };
 
@@ -2980,7 +3023,7 @@
                 (state.studyData.studyPlan?.weeklyBlocks || []).forEach(block => {
                     if (String(block.subjectId) === String(id)) block.subjectId = null;
                 });
-                window.saveState();
+                window.saveStudyPlanningState();
             });
         };
 
@@ -3320,7 +3363,7 @@
                 border: color.includes('blue') ? 'border-blue-900/50' : color.includes('purple') ? 'border-purple-900/50' : color.includes('emerald') ? 'border-emerald-900/50' : color.includes('yellow') ? 'border-yellow-900/50' : 'border-cyan-900/50',
                 weeklyGoalMinutes: Math.max(0, Math.min(3000, goal)), priority: 'media', active: true, system: false, createdAt: new Date().toISOString()
             });
-            window.saveState();
+            window.saveStudyPlanningState();
             window.showToast('Trilha criada', 'Nova frente de estudo adicionada ao planejamento.', 'route', 'text-cyan-400');
         };
 
@@ -3329,7 +3372,7 @@
             window.showConfirmModal(`Arquivar a trilha "${track.name}"? Os blocos antigos serão preservados, mas ela sairá da criação de novos blocos.`, () => {
                 const found = state.studyData.studyPlan.tracks.find(t => String(t.id) === String(trackId));
                 if (found) found.active = false;
-                window.saveState();
+                window.saveStudyPlanningState();
                 window.showToast('Trilha arquivada', 'Planejamento histórico preservado.', 'archive', 'text-slate-300');
             });
         };
@@ -3381,7 +3424,7 @@
                     createdAt
                 });
             });
-            window.saveState();
+            window.saveStudyPlanningState();
             window.showToast('Planejamento criado', selectedDays.length > 1 ? `O estudo foi adicionado em ${selectedDays.length} dias da semana.` : 'O estudo foi adicionado ao calendário.', 'calendar-plus', 'text-cyan-400');
         };
 
@@ -3494,7 +3537,7 @@
             uiState.editingStudyBlockId = null;
             uiState.studyPlanningTrackId = String(trackId);
             window.showToast('Planejamento atualizado', selectedDays.length > 1 ? `A repetição foi ajustada para ${selectedDays.length} dias.` : 'As alterações do bloco foram salvas.', 'pencil', 'text-cyan-400');
-            window.saveState();
+            window.saveStudyPlanningState();
         };
 
         window.captureStudyPlanViewPosition = function(blockId) {
@@ -3559,7 +3602,7 @@
                 delete block.completedAt;
             }
 
-            window.saveState();
+            window.saveStudyPlanningState();
             window.restoreStudyPlanViewPosition(viewPosition);
 
             if (removingPartial) {
@@ -3583,7 +3626,7 @@
             block.day = daysOfWeek[(idx + 1 + daysOfWeek.length) % daysOfWeek.length].id;
             block.status = 'rescheduled';
             block.updatedAt = new Date().toISOString();
-            window.saveState();
+            window.saveStudyPlanningState();
             window.restoreStudyPlanViewPosition(viewPosition);
             window.showToast('Bloco remarcado', 'Movido para o próximo dia da semana.', 'calendar-clock', 'text-blue-400');
         };
@@ -3592,7 +3635,7 @@
             window.showConfirmModal('Excluir este bloco de planejamento?', () => {
                 state.studyData.studyPlan.weeklyBlocks = state.studyData.studyPlan.weeklyBlocks.filter(b => String(b.id) !== String(blockId));
                 if (String(uiState.editingStudyBlockId || '') === String(blockId)) uiState.editingStudyBlockId = null;
-                window.saveState();
+                window.saveStudyPlanningState();
             });
         };
 
@@ -3613,7 +3656,7 @@
                 if (topicEl) topicEl.value = block.title;
                 block.status = block.status === 'planned' ? 'partial' : block.status;
                 block.updatedAt = new Date().toISOString();
-                window.saveState(true);
+                window.saveStudyPlanningState(true);
             }, 80);
         };
 
@@ -3640,7 +3683,7 @@
                 const [day, trackKey, title, studyType, plannedMinutes, priority, energyLevel] = row;
                 state.studyData.studyPlan.weeklyBlocks.push({ id: Date.now() + Math.random() + idx, day, trackId: getTrack(trackKey), subjectId: null, title, studyType, plannedMinutes, priority, energyLevel, status: 'planned', notes: 'Criado por template psicopedagógico semanal.', order: existing + idx + 1, createdAt: new Date().toISOString() });
             });
-            window.saveState();
+            window.saveStudyPlanningState();
             window.showToast('Template aplicado', 'Planejamento semanal inicial criado.', 'calendar-check', 'text-cyan-400');
         };
 
