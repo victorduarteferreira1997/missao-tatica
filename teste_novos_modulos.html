@@ -180,6 +180,39 @@
             recurringFollowupMultiplier: 0.5
         };
 
+        const TASK_NATURES = {
+            normal: {
+                id: 'normal',
+                label: 'Missão Normal',
+                shortLabel: 'Normal',
+                desc: 'Drena energia, gera XP, moedas e conta para combo.',
+                icon: 'swords',
+                color: 'text-indigo-300',
+                border: 'border-indigo-900/50',
+                bg: 'bg-indigo-950/30'
+            },
+            neutral: {
+                id: 'neutral',
+                label: 'Missão Neutra / Logística',
+                shortLabel: 'Logística',
+                desc: 'Aparece na agenda, mas não dá XP, moedas, som, combo nem altera HP.',
+                icon: 'route',
+                color: 'text-slate-300',
+                border: 'border-slate-700',
+                bg: 'bg-slate-900'
+            },
+            recharge: {
+                id: 'recharge',
+                label: 'Missão de Recarga',
+                shortLabel: 'Recarga',
+                desc: 'Recupera bateria, mas não dá XP, moedas, som nem combo.',
+                icon: 'battery-charging',
+                color: 'text-emerald-300',
+                border: 'border-emerald-900/50',
+                bg: 'bg-emerald-950/30'
+            }
+        };
+
         const SESSION_TYPES = {
             'leitura': { label: 'Leitura passiva', mult: 0.7, hp: 8 },
             'teoria': { label: 'Teoria ativa', mult: 1.0, hp: 15 },
@@ -663,7 +696,57 @@
             return true;
         };
 
+        window.getTaskNature = function(task) {
+            const raw = String(task?.missionNature || task?.nature || '').toLowerCase();
+            if (TASK_NATURES[raw]) return raw;
+            if (task?.impactType === 'recharge' || Number(task?.energyCost) < 0) return 'recharge';
+            return 'normal';
+        };
+
+        window.getTaskNatureMeta = function(taskOrNature) {
+            const nature = typeof taskOrNature === 'string' ? taskOrNature : window.getTaskNature(taskOrNature);
+            return TASK_NATURES[nature] || TASK_NATURES.normal;
+        };
+
+        window.isNormalMission = function(task) {
+            return window.getTaskNature(task) === 'normal';
+        };
+
+        window.updateTaskNatureButtons = function(prefix) {
+            const selected = document.getElementById(`${prefix}-nature`)?.value || 'normal';
+            ['normal', 'neutral', 'recharge'].forEach(nature => {
+                const btn = document.getElementById(`${prefix}-nature-btn-${nature}`);
+                if (!btn) return;
+                const meta = TASK_NATURES[nature] || TASK_NATURES.normal;
+                const active = selected === nature;
+                btn.className = `text-left rounded-xl border p-3 transition-all ${active ? `${meta.bg} ${meta.border} ring-2 ring-cyan-400/40` : 'bg-slate-900/70 border-slate-800 hover:border-slate-600'}`;
+                const badge = btn.querySelector('[data-nature-badge]');
+                if (badge) badge.className = `text-[9px] font-black uppercase tracking-widest ${active ? meta.color : 'text-slate-500'}`;
+            });
+        };
+
+        window.setTaskNature = function(prefix, nature) {
+            const normalized = TASK_NATURES[nature] ? nature : 'normal';
+            const select = document.getElementById(`${prefix}-nature`);
+            if (select) select.value = normalized;
+            window.handleTaskNatureChange(prefix);
+        };
+
+        window.handleTaskNatureChange = function(prefix) {
+            const nature = document.getElementById(`${prefix}-nature`)?.value || 'normal';
+            const impactEl = document.getElementById(`${prefix}-impact-type`);
+            if (impactEl) {
+                if (nature === 'recharge') impactEl.value = 'recharge';
+                else if (nature === 'neutral') impactEl.value = 'drain';
+                else if (!impactEl.value || impactEl.value === 'neutral') impactEl.value = 'drain';
+            }
+            window.updateTaskNatureButtons(prefix);
+            if (prefix === 'ct' && typeof window.updatePreviewCalc === 'function') window.updatePreviewCalc();
+            if (prefix === 'et' && typeof window.updateEditPreviewCalc === 'function') window.updateEditPreviewCalc();
+        };
+
         window.getTaskCoinReward = function(task) {
+            if (!window.isNormalMission(task)) return 0;
             const economy = window.normalizeEconomy();
             const priority = String(task?.priority || 'media').toLowerCase();
             let base = economy.rules.taskCoins[priority] ?? economy.rules.taskCoins.media ?? 5;
@@ -812,6 +895,17 @@
                 if (!Array.isArray(t.subtasks)) t.subtasks = []; 
                 if (!Array.isArray(t.recurrenceDays)) t.recurrenceDays = []; 
                 if (typeof t.isRecurring === 'undefined') t.isRecurring = t.recurrenceDays.length > 0;
+                if (!TASK_NATURES[t.missionNature]) t.missionNature = (t.impactType === 'recharge' || Number(t.energyCost) < 0) ? 'recharge' : 'normal';
+                if (t.missionNature === 'neutral' && !t.completed) {
+                    t.xp = 0;
+                    t.energyCost = 0;
+                    t.impactType = 'drain';
+                }
+                if (t.missionNature === 'recharge' && !t.completed) {
+                    t.xp = 0;
+                    t.impactType = 'recharge';
+                    if (!(Number(t.energyCost) < 0)) t.energyCost = -20;
+                }
                 t.startTime = normalizeClockTime(t.startTime);
                 t.endTime = t.startTime ? normalizeClockTime(t.endTime) : '';
                 if (t.startTime && t.endTime && !isValidClockRange(t.startTime, t.endTime)) t.endTime = '';
@@ -1588,24 +1682,66 @@
             const task = state.tasks.find(t => t.id == taskId);
             if (!task) return;
 
+            const nature = window.getTaskNature(task);
+
             if (task.completed) {
                 task.completed = false; task.skipped = false;
-                const deductedXp = task.rewardedXp || task.xp; const deductedCoins = task.rewardedCoins || 0;
+                const deductedXp = task.rewardedXp || 0;
+                const deductedCoins = task.rewardedCoins || 0;
                 const energyToRestore = typeof task.rewardedEnergyCost === 'number' ? task.rewardedEnergyCost : task.energyCost;
-                state.xp = Math.max(0, state.xp - deductedXp); window.revokeTacticalCoins(deductedCoins, 'missao-desmarcada');
-                window.changeEnergy(energyToRestore); state.combo = Math.max(0, state.combo - 1);
-                window.rollbackTaskBadges(task);
+                const affectedCombo = typeof task.rewardedAffectsCombo === 'boolean' ? task.rewardedAffectsCombo : (deductedXp > 0 || deductedCoins > 0);
+
+                if (deductedXp > 0) state.xp = Math.max(0, state.xp - deductedXp);
+                if (deductedCoins > 0) window.revokeTacticalCoins(deductedCoins, 'missao-desmarcada');
+                if (energyToRestore) window.changeEnergy(energyToRestore);
+                if (affectedCombo) state.combo = Math.max(0, state.combo - 1);
+                if (affectedCombo) window.rollbackTaskBadges(task);
                 if (typeof getCorrectLevel === 'function') state.level = getCorrectLevel(state.xp);
-                window.spawnFloatingText(event, `-${deductedXp} XP`, 'text-red-400');
+
+                delete task.rewardedXp;
+                delete task.rewardedCoins;
+                delete task.rewardedEnergyCost;
+                delete task.rewardedAffectsCombo;
+                delete task.rewardedNature;
+
+                const undoText = deductedXp > 0 ? `-${deductedXp} XP` : 'Missão reaberta';
+                window.spawnFloatingText(event, undoText, deductedXp > 0 ? 'text-red-400' : 'text-slate-400');
             } else {
-                const badgesBefore = [...state.unlockedBadges];
-                const multiplier = window.getComboMultiplier(); const finalXp = Math.round(task.xp * multiplier); const baseCoins = window.getTaskCoinReward(task); const earnedCoins = window.awardTacticalCoins(baseCoins, 'missao-concluida', { taskId: task.id, title: task.text, priority: task.priority, recurring: Boolean(task.isRecurring), showCapToast: true }); 
-                task.completed = true; task.rewardedXp = finalXp; task.rewardedCoins = earnedCoins; task.rewardedEnergyCost = task.energyCost; 
-                state.xp += finalXp; window.changeEnergy(-task.energyCost); state.combo += 1;
-                window.checkGameTriggers();
-                task.rewardedBadgeIds = state.unlockedBadges.filter(badgeId => !badgesBefore.includes(badgeId));
-                window.spawnFloatingText(event, `+${finalXp} XP${earnedCoins ? ` / +${earnedCoins} MT` : ''}`, 'text-indigo-400');
-                if (typeof window.playMissionCompleteSound === 'function') window.playMissionCompleteSound();
+                task.completed = true;
+                task.rewardedNature = nature;
+
+                if (nature === 'neutral') {
+                    task.rewardedXp = 0;
+                    task.rewardedCoins = 0;
+                    task.rewardedEnergyCost = 0;
+                    task.rewardedAffectsCombo = false;
+                    window.spawnFloatingText(event, 'Logística concluída', 'text-slate-300');
+                } else if (nature === 'recharge') {
+                    const rechargeAmount = Math.max(0, Math.abs(task.energyCost || 0));
+                    task.rewardedXp = 0;
+                    task.rewardedCoins = 0;
+                    task.rewardedEnergyCost = -rechargeAmount;
+                    task.rewardedAffectsCombo = false;
+                    if (rechargeAmount > 0) window.changeEnergy(rechargeAmount);
+                    window.spawnFloatingText(event, rechargeAmount ? `+${rechargeAmount} HP` : 'Recarga concluída', 'text-emerald-400');
+                } else {
+                    const badgesBefore = [...state.unlockedBadges];
+                    const multiplier = window.getComboMultiplier();
+                    const finalXp = Math.round(task.xp * multiplier);
+                    const baseCoins = window.getTaskCoinReward(task);
+                    const earnedCoins = window.awardTacticalCoins(baseCoins, 'missao-concluida', { taskId: task.id, title: task.text, priority: task.priority, recurring: Boolean(task.isRecurring), showCapToast: true }); 
+                    task.rewardedXp = finalXp;
+                    task.rewardedCoins = earnedCoins;
+                    task.rewardedEnergyCost = task.energyCost;
+                    task.rewardedAffectsCombo = true;
+                    state.xp += finalXp;
+                    window.changeEnergy(-task.energyCost);
+                    state.combo += 1;
+                    window.checkGameTriggers();
+                    task.rewardedBadgeIds = state.unlockedBadges.filter(badgeId => !badgesBefore.includes(badgeId));
+                    window.spawnFloatingText(event, `+${finalXp} XP${earnedCoins ? ` / +${earnedCoins} MT` : ''}`, 'text-indigo-400');
+                    if (typeof window.playMissionCompleteSound === 'function') window.playMissionCompleteSound();
+                }
             }
             window.checkLevelUp(); window.saveState();
         };
@@ -2391,7 +2527,7 @@
         };
 
         window.drinkWater = function(event) { state.waterCount++; window.changeEnergy(10); state.xp += 15; window.spawnFloatingText(event, `+10 HP`, 'text-emerald-400'); window.checkGameTriggers(); window.checkLevelUp(); window.saveState(); }
-        window.toggleCreateTaskModal = function() { uiState.showCreateTaskModal = !uiState.showCreateTaskModal; render(); };
+        window.toggleCreateTaskModal = function() { uiState.showCreateTaskModal = !uiState.showCreateTaskModal; render(); setTimeout(() => { window.updateTaskNatureButtons?.('ct'); window.updatePreviewCalc?.(); }, 50); };
 
         window.escapeHtml = function(value) {
             return String(value ?? '').replace(/[&<>'"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[ch]));
@@ -2404,7 +2540,7 @@
             uiState.editingTaskId = task.id;
             uiState.showEditTaskModal = true;
             render();
-            setTimeout(() => window.updateEditPreviewCalc(), 50);
+            setTimeout(() => { window.updateTaskNatureButtons?.('et'); window.updateEditPreviewCalc?.(); }, 50);
         };
 
         window.closeEditTaskModal = function() {
@@ -2421,16 +2557,25 @@
         };
 
         window.updateEditPreviewCalc = function() {
+            const nature = document.getElementById('et-nature')?.value || 'normal';
             const prio = document.getElementById('et-priority')?.value || 'media';
             const comp = document.getElementById('et-complexity')?.value || 1;
             const time = document.getElementById('et-time')?.value || 30;
             const impactType = document.getElementById('et-impact-type')?.value || 'drain';
-            const cost = window.calculateTaskCost(prio, comp, time, impactType);
+            const cost = window.calculateTaskCost(prio, comp, time, impactType, nature);
             const xpPreview = document.getElementById('et-xp-preview');
             const hpPreview = document.getElementById('et-hp-preview');
-            if (xpPreview) xpPreview.innerText = `+${cost.xp} XP`;
+            if (xpPreview) {
+                xpPreview.innerText = nature === 'neutral' ? `0 XP (Neutra)` : `+${cost.xp} XP`;
+                xpPreview.className = nature === 'neutral' || nature === 'recharge'
+                    ? "bg-slate-800 text-slate-300 px-3 py-1 rounded-md text-xs font-bold"
+                    : "bg-indigo-900/50 text-indigo-400 px-3 py-1 rounded-md text-xs font-bold";
+            }
             if (hpPreview) {
-                if (cost.hp < 0) {
+                if (cost.hp === 0) {
+                    hpPreview.innerText = `0 HP (Logística)`;
+                    hpPreview.className = "bg-slate-800 text-slate-300 px-3 py-1 rounded-md text-xs font-bold";
+                } else if (cost.hp < 0) {
                     hpPreview.innerText = `+${Math.abs(cost.hp)} HP (Recarga)`;
                     hpPreview.className = "bg-emerald-900/50 text-emerald-400 px-3 py-1 rounded-md text-xs font-bold";
                 } else {
@@ -2453,7 +2598,8 @@
             const complexity = parseInt(document.getElementById('et-complexity')?.value, 10) || 1;
             const timeVal = parseInt(document.getElementById('et-time')?.value, 10) || 30;
             const impactType = document.getElementById('et-impact-type')?.value || 'drain';
-            const cost = window.calculateTaskCost(priority, complexity, timeVal, impactType);
+            const missionNature = document.getElementById('et-nature')?.value || document.querySelector('[id^="et-nature-btn-"].ring-2')?.id?.replace('et-nature-btn-', '') || window.getTaskNature(task);
+            const cost = window.calculateTaskCost(priority, complexity, timeVal, impactType, missionNature);
             const calendarTime = window.readCalendarTimeFields('et', timeVal);
             if (!calendarTime) return;
             const recurrenceDays = daysOfWeek
@@ -2469,6 +2615,7 @@
                 target.complexity = complexity;
                 target.time = `${timeVal} min`;
                 target.impactType = impactType;
+                target.missionNature = missionNature;
                 target.startTime = calendarTime.startTime;
                 target.endTime = calendarTime.endTime;
                 target.xp = cost.xp;
@@ -2517,32 +2664,53 @@
             window.saveState();
         };
         
-        window.calculateTaskCost = function(priority, complexity, time, impactType) {
-            const prioMult = { 'essencial': 1.5, 'alta': 1.2, 'media': 1.0, 'baixa': 0.8 }[priority] || 1.0;
-            const compVal = parseInt(complexity) || 1; const timeVal = parseInt(time) || 15;
-            let calcXp = Math.round((20 + (compVal * 15) + (timeVal * 1.5)) * prioMult);
+        window.calculateTaskCost = function(priority, complexity, time, impactType, missionNature = 'normal') {
+            const nature = TASK_NATURES[missionNature] ? missionNature : 'normal';
+            const compVal = parseInt(complexity) || 1;
+            const timeVal = parseInt(time) || 15;
+
+            if (nature === 'neutral') {
+                return { xp: 0, hp: 0, nature };
+            }
+
             let calcHp = Math.round((compVal * 5) + (timeVal * 0.4));
-            if(priority === 'essencial') calcHp = Math.round(calcHp * 0.8);
-            if(priority === 'baixa') calcHp = Math.round(calcHp * 1.2); 
-            calcHp = Math.min(calcHp, 60); if (impactType === 'recharge') calcHp = -Math.round(calcHp * 0.8); 
-            return { xp: calcXp, hp: calcHp };
+            if (priority === 'essencial') calcHp = Math.round(calcHp * 0.8);
+            if (priority === 'baixa') calcHp = Math.round(calcHp * 1.2);
+            calcHp = Math.min(calcHp, 60);
+
+            if (nature === 'recharge') {
+                return { xp: 0, hp: -Math.max(5, Math.round(calcHp * 0.8)), nature };
+            }
+
+            const prioMult = { 'essencial': 1.5, 'alta': 1.2, 'media': 1.0, 'baixa': 0.8 }[priority] || 1.0;
+            const calcXp = Math.round((20 + (compVal * 15) + (timeVal * 1.5)) * prioMult);
+            if (impactType === 'recharge') calcHp = -Math.max(5, Math.round(calcHp * 0.8));
+            return { xp: calcXp, hp: calcHp, nature };
         };
 
         window.updatePreviewCalc = function() {
+            const nature = document.getElementById('ct-nature')?.value || 'normal';
             const prio = document.getElementById('ct-priority')?.value || 'media'; const comp = document.getElementById('ct-complexity')?.value || 1;
             const time = document.getElementById('ct-time')?.value || 30; const impactType = document.getElementById('ct-impact-type')?.value || 'drain';
-            const cost = window.calculateTaskCost(prio, comp, time, impactType);
+            const cost = window.calculateTaskCost(prio, comp, time, impactType, nature);
             const xpPreview = document.getElementById('ct-xp-preview'); const hpPreview = document.getElementById('ct-hp-preview');
-            if(xpPreview) xpPreview.innerText = `+${cost.xp} XP`;
+            if (xpPreview) {
+                xpPreview.innerText = nature === 'neutral' ? `0 XP (Neutra)` : `+${cost.xp} XP`;
+                xpPreview.className = nature === 'neutral' || nature === 'recharge'
+                    ? "bg-slate-800 text-slate-300 px-3 py-1 rounded-md text-xs font-bold"
+                    : "bg-indigo-900/50 text-indigo-400 px-3 py-1 rounded-md text-xs font-bold";
+            }
             if(hpPreview) {
-                if (cost.hp < 0) { hpPreview.innerText = `+${Math.abs(cost.hp)} HP (Recarga)`; hpPreview.className = "bg-emerald-900/50 text-emerald-400 px-3 py-1 rounded-md text-xs font-bold"; } 
+                if (cost.hp === 0) { hpPreview.innerText = `0 HP (Logística)`; hpPreview.className = "bg-slate-800 text-slate-300 px-3 py-1 rounded-md text-xs font-bold"; }
+                else if (cost.hp < 0) { hpPreview.innerText = `+${Math.abs(cost.hp)} HP (Recarga)`; hpPreview.className = "bg-emerald-900/50 text-emerald-400 px-3 py-1 rounded-md text-xs font-bold"; } 
                 else { hpPreview.innerText = `-${cost.hp} HP (Dreno)`; hpPreview.className = "bg-red-900/50 text-red-400 px-3 py-1 rounded-md text-xs font-bold"; }
             }
         };
 
         window.saveNewTask = function() {
             const text = document.getElementById('ct-text').value.trim(); if (!text) { window.showAlertModal('Título vazio.'); return; }
-            const cost = window.calculateTaskCost(document.getElementById('ct-priority').value, document.getElementById('ct-complexity').value, document.getElementById('ct-time').value, document.getElementById('ct-impact-type').value);
+            const missionNature = document.getElementById('ct-nature')?.value || document.querySelector('[id^="ct-nature-btn-"].ring-2')?.id?.replace('ct-nature-btn-', '') || 'normal';
+            const cost = window.calculateTaskCost(document.getElementById('ct-priority').value, document.getElementById('ct-complexity').value, document.getElementById('ct-time').value, document.getElementById('ct-impact-type').value, missionNature);
             const rawSubtasks = document.getElementById('ct-subtasks')?.value || '';
             const baseSubtasks = rawSubtasks.split('\n').map(t => t.trim()).filter(Boolean).map((subText, index) => ({
                 id: Date.now() + index + Math.random(),
@@ -2575,6 +2743,7 @@
                     time: document.getElementById('ct-time').value + ' min',
                     complexity: parseInt(document.getElementById('ct-complexity').value) || 1,
                     impactType: document.getElementById('ct-impact-type').value,
+                    missionNature,
                     startTime: calendarTime.startTime,
                     endTime: calendarTime.endTime,
                     order: window.getNextTaskOrder(targetDay),
@@ -4432,8 +4601,9 @@
                         <div class="bg-slate-800 border-2 border-slate-700 p-4 rounded-lg">
                             <p class="text-lg font-bold text-white mb-4">${pendingTask.text}</p>
                             <div class="flex flex-wrap gap-2 mb-4">
-                                <span class="text-xs font-bold text-slate-300 bg-slate-900 px-2 py-1 rounded border border-slate-700"><i data-lucide="zap" class="inline w-3 h-3 text-indigo-400 mr-1"></i>+${pendingTask.xp} XP</span>
-                                <span class="text-xs font-bold ${pendingTask.energyCost < 0 ? 'text-emerald-400' : 'text-orange-400'} bg-slate-900 px-2 py-1 rounded border border-slate-700"><i data-lucide="battery" class="inline w-3 h-3 mr-1"></i>${pendingTask.energyCost < 0 ? '+' : '-'}${Math.abs(pendingTask.energyCost)} HP</span>
+                                ${window.getTaskNature(pendingTask) !== 'normal' ? `<span class="text-xs font-bold ${window.getTaskNatureMeta(pendingTask).color} ${window.getTaskNatureMeta(pendingTask).bg} px-2 py-1 rounded border ${window.getTaskNatureMeta(pendingTask).border}"><i data-lucide="${window.getTaskNatureMeta(pendingTask).icon}" class="inline w-3 h-3 mr-1"></i>${window.getTaskNatureMeta(pendingTask).shortLabel}</span>` : ''}
+                                <span class="text-xs font-bold text-slate-300 bg-slate-900 px-2 py-1 rounded border border-slate-700"><i data-lucide="zap" class="inline w-3 h-3 text-indigo-400 mr-1"></i>+${pendingTask.xp || 0} XP</span>
+                                <span class="text-xs font-bold ${(pendingTask.energyCost || 0) < 0 ? 'text-emerald-400' : ((pendingTask.energyCost || 0) === 0 ? 'text-slate-400' : 'text-orange-400')} bg-slate-900 px-2 py-1 rounded border border-slate-700"><i data-lucide="battery" class="inline w-3 h-3 mr-1"></i>${(pendingTask.energyCost || 0) === 0 ? '0' : ((pendingTask.energyCost || 0) < 0 ? '+' : '-') + Math.abs(pendingTask.energyCost || 0)} HP</span>
                                 ${focusSubtasks.length ? `<span class="text-xs font-bold text-cyan-400 bg-slate-900 px-2 py-1 rounded border border-cyan-900/50"><i data-lucide="list-checks" class="inline w-3 h-3 mr-1"></i>${focusDoneSubtasks}/${focusSubtasks.length} subtarefas</span>` : ''}
                             </div>
 
@@ -4527,6 +4697,8 @@
                         const isRecurringTask = task.isRecurring || recurrenceDays.length > 0;
                         const recurrenceLabel = window.getRecurringDaysLabel(recurrenceDays);
                         const taskScheduleLabel = window.hasCalendarTime(task) ? window.getCalendarTimeLabel(task, extractMinutesFromTask(task)) : '';
+                        const taskNature = window.getTaskNature(task);
+                        const taskNatureMeta = window.getTaskNatureMeta(taskNature);
 
                         html += `
                         <div onclick="window.toggleTask(${task.id}, event)" draggable="true" ondragstart="window.handleTaskDragStart(${task.id}, event)" ondragend="window.handleTaskDragEnd(event)" ondragover="window.handleTaskDragOver(${task.id}, event)" ondragleave="window.handleTaskDragLeave(event)" ondrop="window.handleTaskDrop(${task.id}, event)" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg cursor-pointer transition-all ${bgClass} group relative">
@@ -4543,8 +4715,9 @@
                                         <div class="flex gap-2 mt-2">
                                             <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${prioColors[task.priority]}">${task.priority}</span>
                                             <span class="text-[10px] uppercase font-bold ${taskCategory.color || 'text-slate-400'} bg-slate-900 px-2 py-0.5 rounded border border-slate-700"><i data-lucide="${taskCategory.icon || 'target'}" class="inline w-3 h-3 mr-1"></i>${taskCategory.label}</span>
-                                            <span class="text-[10px] uppercase font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-700"><i data-lucide="zap" class="inline w-3 h-3 text-indigo-400 mr-1"></i>${task.xp}</span>
-                                            <span class="text-[10px] uppercase font-bold ${task.energyCost < 0 ? 'text-emerald-400' : 'text-orange-400'} bg-slate-900 px-2 py-0.5 rounded border border-slate-700"><i data-lucide="battery" class="inline w-3 h-3 mr-1"></i>${task.energyCost < 0 ? '+' : '-'}${Math.abs(task.energyCost)}</span>
+                                            ${taskNature !== 'normal' ? `<span class="text-[10px] uppercase font-bold ${taskNatureMeta.color} ${taskNatureMeta.bg} px-2 py-0.5 rounded border ${taskNatureMeta.border}"><i data-lucide="${taskNatureMeta.icon}" class="inline w-3 h-3 mr-1"></i>${taskNatureMeta.shortLabel}</span>` : ''}
+                                            <span class="text-[10px] uppercase font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-700"><i data-lucide="zap" class="inline w-3 h-3 text-indigo-400 mr-1"></i>${task.xp || 0}</span>
+                                            <span class="text-[10px] uppercase font-bold ${(task.energyCost || 0) < 0 ? 'text-emerald-400' : ((task.energyCost || 0) === 0 ? 'text-slate-400' : 'text-orange-400')} bg-slate-900 px-2 py-0.5 rounded border border-slate-700"><i data-lucide="battery" class="inline w-3 h-3 mr-1"></i>${(task.energyCost || 0) === 0 ? '0' : ((task.energyCost || 0) < 0 ? '+' : '-') + Math.abs(task.energyCost || 0)}</span>
                                             ${isRecurringTask ? `<span class="text-[10px] uppercase font-bold text-violet-300 bg-slate-900 px-2 py-0.5 rounded border border-violet-900/50"><i data-lucide="repeat" class="inline w-3 h-3 mr-1"></i>${recurrenceLabel || 'Recorrente'}</span>` : ''}
                                             ${subtasks.length ? `<span class="text-[10px] uppercase font-bold text-cyan-400 bg-slate-900 px-2 py-0.5 rounded border border-cyan-900/50"><i data-lucide="list-checks" class="inline w-3 h-3 mr-1"></i>${doneSubtasks}/${subtasks.length}</span>` : ''}
                                         </div>` : ''}
@@ -4628,6 +4801,20 @@
                         <div class="space-y-4">
                             <div><label class="text-xs font-bold text-slate-400 uppercase">Título</label><input type="text" id="ct-text" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-emerald-500 outline-none"></div>
                             <div><label class="text-xs font-bold text-slate-400 uppercase">Subtarefas iniciais <span class="text-slate-600 normal-case">(opcional, uma por linha)</span></label><textarea id="ct-subtasks" rows="3" placeholder="Ex.: Separar documentos&#10;Escrever minuta&#10;Revisar antes de enviar" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-cyan-500 outline-none resize-y"></textarea></div>
+                            <div class="bg-cyan-950/10 border border-cyan-800/50 rounded-xl p-3">
+                                <label class="text-xs font-black text-cyan-300 uppercase flex items-center gap-2"><i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-cyan-300"></i> Natureza da missão</label>
+                                <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Escolha antes de salvar. Para levar as meninas na terapia, use <strong class="text-slate-300">Neutra / Logística</strong>.</p>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+                                    <button type="button" id="ct-nature-btn-normal" onclick="window.setTaskNature('ct','normal')" class="text-left rounded-xl border p-3 transition-all bg-indigo-950/30 border-indigo-900/50 ring-2 ring-cyan-400/40"><span data-nature-badge class="text-[9px] font-black uppercase tracking-widest text-indigo-300">Normal</span><div class="text-xs font-bold text-white mt-1">XP + moedas</div><p class="text-[10px] text-slate-500 mt-1">Drena HP e conta combo.</p></button>
+                                    <button type="button" id="ct-nature-btn-neutral" onclick="window.setTaskNature('ct','neutral')" class="text-left rounded-xl border p-3 transition-all bg-slate-900/70 border-slate-800 hover:border-slate-600"><span data-nature-badge class="text-[9px] font-black uppercase tracking-widest text-slate-500">Logística</span><div class="text-xs font-bold text-white mt-1">0 XP / 0 HP</div><p class="text-[10px] text-slate-500 mt-1">Agenda sem gamificar.</p></button>
+                                    <button type="button" id="ct-nature-btn-recharge" onclick="window.setTaskNature('ct','recharge')" class="text-left rounded-xl border p-3 transition-all bg-slate-900/70 border-slate-800 hover:border-slate-600"><span data-nature-badge class="text-[9px] font-black uppercase tracking-widest text-slate-500">Recarga</span><div class="text-xs font-bold text-white mt-1">Recupera HP</div><p class="text-[10px] text-slate-500 mt-1">Sem XP e sem moedas.</p></button>
+                                </div>
+                                <select id="ct-nature" onchange="window.handleTaskNatureChange('ct')" class="w-full mt-3 bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">
+                                    <option value="normal" selected>Missão normal — XP, moedas, combo e HP</option>
+                                    <option value="neutral">Neutra / logística — agenda sem XP, moedas ou HP</option>
+                                    <option value="recharge">Recarga — recupera HP sem XP, moedas ou combo</option>
+                                </select>
+                            </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div><label class="text-xs font-bold text-slate-400 uppercase">Dia</label><select id="ct-day" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">${daysOfWeek.map(d => `<option value="${d.id}" ${d.id === state.activeTab ? 'selected' : ''}>${d.label}</option>`).join('')}<option value="next_week">Próxima Semana</option></select></div>
                                 <div><label class="text-xs font-bold text-slate-400 uppercase">Categoria</label>
@@ -4683,6 +4870,7 @@
                     const rawTime = parseInt(String(task.time || '30').replace(/[^0-9]/g, ''), 10) || 30;
                     const currentComplexity = task.complexity || 2;
                     const currentImpactType = task.impactType || (task.energyCost < 0 ? 'recharge' : 'drain');
+                    const currentNature = window.getTaskNature(task);
                     const recurrenceDays = Array.isArray(task.recurrenceDays) ? task.recurrenceDays : [];
                     html += `
                     <div class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm font-mono">
@@ -4693,6 +4881,20 @@
                             </div>
                             <div class="space-y-4">
                                 <div><label class="text-xs font-bold text-slate-400 uppercase">Título</label><input type="text" id="et-text" value="${taskText}" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-amber-500 outline-none"></div>
+                                <div class="bg-cyan-950/10 border border-cyan-800/50 rounded-xl p-3">
+                                    <label class="text-xs font-black text-cyan-300 uppercase flex items-center gap-2"><i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-cyan-300"></i> Natureza da missão</label>
+                                    <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Use <strong class="text-slate-300">Neutra / Logística</strong> para compromissos que precisam aparecer na agenda sem XP, moedas ou HP.</p>
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+                                        <button type="button" id="et-nature-btn-normal" onclick="window.setTaskNature('et','normal')" class="text-left rounded-xl border p-3 transition-all"><span data-nature-badge class="text-[9px] font-black uppercase tracking-widest">Normal</span><div class="text-xs font-bold text-white mt-1">XP + moedas</div><p class="text-[10px] text-slate-500 mt-1">Drena HP e conta combo.</p></button>
+                                        <button type="button" id="et-nature-btn-neutral" onclick="window.setTaskNature('et','neutral')" class="text-left rounded-xl border p-3 transition-all"><span data-nature-badge class="text-[9px] font-black uppercase tracking-widest">Logística</span><div class="text-xs font-bold text-white mt-1">0 XP / 0 HP</div><p class="text-[10px] text-slate-500 mt-1">Agenda sem gamificar.</p></button>
+                                        <button type="button" id="et-nature-btn-recharge" onclick="window.setTaskNature('et','recharge')" class="text-left rounded-xl border p-3 transition-all"><span data-nature-badge class="text-[9px] font-black uppercase tracking-widest">Recarga</span><div class="text-xs font-bold text-white mt-1">Recupera HP</div><p class="text-[10px] text-slate-500 mt-1">Sem XP e sem moedas.</p></button>
+                                    </div>
+                                    <select id="et-nature" onchange="window.handleTaskNatureChange('et')" class="w-full mt-3 bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">
+                                        <option value="normal" ${currentNature === 'normal' ? 'selected' : ''}>Missão normal — XP, moedas, combo e HP</option>
+                                        <option value="neutral" ${currentNature === 'neutral' ? 'selected' : ''}>Neutra / logística — agenda sem XP, moedas ou HP</option>
+                                        <option value="recharge" ${currentNature === 'recharge' ? 'selected' : ''}>Recarga — recupera HP sem XP, moedas ou combo</option>
+                                    </select>
+                                </div>
                                 <div class="grid grid-cols-2 gap-3">
                                     <div><label class="text-xs font-bold text-slate-400 uppercase">Dia</label><select id="et-day" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">${daysOfWeek.map(d => `<option value="${d.id}" ${d.id === task.day ? 'selected' : ''}>${d.label}</option>`).join('')}</select></div>
                                     <div><label class="text-xs font-bold text-slate-400 uppercase">Categoria</label>
