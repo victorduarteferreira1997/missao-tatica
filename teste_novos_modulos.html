@@ -159,11 +159,26 @@
         ];
 
         const REWARDS_SHOP = [
-            { id: 'r1', icon: 'tv', title: '1 Episódio de Série', cost: 150, desc: 'Assista sem culpa nenhuma.' },
-            { id: 'r2', icon: 'gamepad-2', title: '30 min de Videogame', cost: 200, desc: 'Mergulho em dopamina virtual.' },
-            { id: 'r3', icon: 'coffee', title: 'Pausa Total (30 min)', cost: 100, desc: 'Fazer absolutamente nada no sofá.' },
-            { id: 'r4', icon: 'cookie', title: 'Comer um Doce/Junk Food', cost: 80, desc: 'Recompensa de glicose tática.' }
+            { id: 'r1', icon: 'tv', title: '1 Episódio de Série', cost: 180, desc: 'Descanso curto e consciente, sem culpa.' },
+            { id: 'r2', icon: 'gamepad-2', title: '30 min de Videogame', cost: 220, desc: 'Lazer controlado com tempo definido.' },
+            { id: 'r3', icon: 'coffee', title: 'Pausa Total (30 min)', cost: 120, desc: 'Pausa real para recuperar energia mental.' },
+            { id: 'r4', icon: 'cookie', title: 'Doce/Junk Food Controlado', cost: 100, desc: 'Recompensa pequena, sem virar fuga.' },
+            { id: 'r5', icon: 'ticket', title: 'Cinema / Passeio Especial', cost: 600, desc: 'Recompensa média para mirar durante a semana.' },
+            { id: 'r6', icon: 'shopping-bag', title: 'Compra Pequena Planejada', cost: 900, desc: 'Algo útil ou simbólico, comprado com intenção.' },
+            { id: 'r7', icon: 'gem', title: 'Recompensa Grande', cost: 1800, desc: 'Meta de várias semanas usando a Reserva Tática.' }
         ];
+
+        const ECONOMY_DEFAULTS = {
+            version: '2.0',
+            weeklyCap: 250,
+            reserveCap: 1000,
+            rolloverToReservePercent: 0.5,
+            taskCoins: { baixa: 2, media: 5, alta: 10, essencial: 15, critica: 15 },
+            studyCoins: { baixa: 3, media: 4, alta: 5 },
+            quickTaskCoins: 1,
+            pomodoroCoins: 2,
+            recurringFollowupMultiplier: 0.5
+        };
 
         const SESSION_TYPES = {
             'leitura': { label: 'Leitura passiva', mult: 0.7, hp: 8 },
@@ -547,6 +562,154 @@
             render();
         };
 
+
+        window.normalizeEconomy = function() {
+            if (!state.economy || typeof state.economy !== 'object') state.economy = {};
+            const defaults = ECONOMY_DEFAULTS;
+            state.economy.version = defaults.version;
+            state.economy.weeklyCap = Math.max(50, parseInt(state.economy.weeklyCap, 10) || defaults.weeklyCap);
+            state.economy.reserveCap = Math.max(0, parseInt(state.economy.reserveCap, 10) || defaults.reserveCap);
+            state.economy.tacticalReserve = Math.max(0, Math.min(state.economy.reserveCap, parseInt(state.economy.tacticalReserve, 10) || 0));
+            state.economy.weeklyCoinsEarned = Math.max(0, parseInt(state.economy.weeklyCoinsEarned, 10) || 0);
+            state.economy.weeklyCoinsEarned = Math.min(state.economy.weeklyCoinsEarned, state.economy.weeklyCap);
+            state.economy.weekStartKey = state.economy.weekStartKey || window.getCurrentCalendarWeekStartKey();
+            state.economy.rules = state.economy.rules || {};
+            state.economy.rules.taskCoins = { ...defaults.taskCoins, ...(state.economy.rules.taskCoins || {}) };
+            state.economy.rules.studyCoins = { ...defaults.studyCoins, ...(state.economy.rules.studyCoins || {}) };
+            state.economy.rules.quickTaskCoins = Math.max(0, parseInt(state.economy.rules.quickTaskCoins ?? defaults.quickTaskCoins, 10) || 0);
+            state.economy.rules.pomodoroCoins = Math.max(0, parseInt(state.economy.rules.pomodoroCoins ?? defaults.pomodoroCoins, 10) || 0);
+            state.economy.rules.recurringFollowupMultiplier = Number.isFinite(Number(state.economy.rules.recurringFollowupMultiplier)) ? Number(state.economy.rules.recurringFollowupMultiplier) : defaults.recurringFollowupMultiplier;
+            if (!Array.isArray(state.economy.history)) state.economy.history = [];
+            if (!Array.isArray(state.economy.resetLog)) state.economy.resetLog = [];
+            if (typeof state.coins !== 'number' || Number.isNaN(state.coins)) state.coins = parseInt(state.coins, 10) || 0;
+            state.coins = Math.max(0, Math.round(state.coins));
+            return state.economy;
+        };
+
+        window.rollOverEconomyWeekIfNeeded = function() {
+            const economy = window.normalizeEconomy();
+            const currentWeekKey = window.getCurrentCalendarWeekStartKey();
+            if (!economy.weekStartKey) economy.weekStartKey = currentWeekKey;
+            if (economy.weekStartKey === currentWeekKey) return;
+
+            const leftover = Math.max(0, parseInt(state.coins, 10) || 0);
+            const reserveRoom = Math.max(0, economy.reserveCap - economy.tacticalReserve);
+            const transfer = Math.min(Math.floor(leftover * ECONOMY_DEFAULTS.rolloverToReservePercent), reserveRoom);
+            if (transfer > 0) economy.tacticalReserve += transfer;
+            economy.history.unshift({
+                id: Date.now(),
+                type: 'weekly-rollover',
+                weekFrom: economy.weekStartKey,
+                weekTo: currentWeekKey,
+                leftover,
+                transferredToReserve: transfer,
+                expired: Math.max(0, leftover - transfer),
+                date: new Date().toISOString()
+            });
+            economy.history = economy.history.slice(0, 80);
+            state.coins = 0;
+            economy.weeklyCoinsEarned = 0;
+            economy.weekStartKey = currentWeekKey;
+        };
+
+        window.getTotalTacticalCoins = function() {
+            const economy = window.normalizeEconomy();
+            return (parseInt(state.coins, 10) || 0) + (parseInt(economy.tacticalReserve, 10) || 0);
+        };
+
+        window.awardTacticalCoins = function(amount, reason = 'missao', details = {}) {
+            const economy = window.normalizeEconomy();
+            window.rollOverEconomyWeekIfNeeded();
+            amount = Math.max(0, Math.round(Number(amount) || 0));
+            if (amount <= 0) return 0;
+            const remaining = Math.max(0, economy.weeklyCap - economy.weeklyCoinsEarned);
+            const awarded = Math.min(amount, remaining);
+            if (awarded > 0) {
+                state.coins = Math.max(0, (parseInt(state.coins, 10) || 0) + awarded);
+                economy.weeklyCoinsEarned = Math.min(economy.weeklyCap, economy.weeklyCoinsEarned + awarded);
+                economy.history.unshift({ id: Date.now() + Math.random(), type: 'earn', reason, amount: awarded, requested: amount, details, date: new Date().toISOString() });
+                economy.history = economy.history.slice(0, 80);
+            } else if (details.showCapToast) {
+                window.showToast('Teto semanal atingido', 'Você continua ganhando XP, mas as moedas da semana já chegaram ao limite.', 'lock', 'text-yellow-400');
+            }
+            return awarded;
+        };
+
+        window.revokeTacticalCoins = function(amount, reason = 'reversao') {
+            const economy = window.normalizeEconomy();
+            amount = Math.max(0, Math.round(Number(amount) || 0));
+            if (amount <= 0) return 0;
+            const removed = Math.min(amount, parseInt(state.coins, 10) || 0);
+            state.coins = Math.max(0, (parseInt(state.coins, 10) || 0) - removed);
+            economy.weeklyCoinsEarned = Math.max(0, economy.weeklyCoinsEarned - removed);
+            if (removed > 0) {
+                economy.history.unshift({ id: Date.now() + Math.random(), type: 'revoke', reason, amount: removed, date: new Date().toISOString() });
+                economy.history = economy.history.slice(0, 80);
+            }
+            return removed;
+        };
+
+        window.spendTacticalCoins = function(cost, reason = 'reward') {
+            const economy = window.normalizeEconomy();
+            cost = Math.max(0, Math.round(Number(cost) || 0));
+            if (cost <= 0) return true;
+            if (window.getTotalTacticalCoins() < cost) return false;
+            const fromWeek = Math.min(cost, parseInt(state.coins, 10) || 0);
+            const fromReserve = cost - fromWeek;
+            state.coins = Math.max(0, (parseInt(state.coins, 10) || 0) - fromWeek);
+            economy.tacticalReserve = Math.max(0, (parseInt(economy.tacticalReserve, 10) || 0) - fromReserve);
+            economy.history.unshift({ id: Date.now() + Math.random(), type: 'spend', reason, cost, fromWeek, fromReserve, date: new Date().toISOString() });
+            economy.history = economy.history.slice(0, 80);
+            return true;
+        };
+
+        window.getTaskCoinReward = function(task) {
+            const economy = window.normalizeEconomy();
+            const priority = String(task?.priority || 'media').toLowerCase();
+            let base = economy.rules.taskCoins[priority] ?? economy.rules.taskCoins.media ?? 5;
+            if (task?.isRecurring && task?.recurrenceGroupId) {
+                const completedSameSeries = (state.tasks || []).some(t => String(t.id) !== String(task.id) && String(t.recurrenceGroupId || '') === String(task.recurrenceGroupId) && t.completed && (t.rewardedCoins || 0) > 0);
+                if (completedSameSeries) base = Math.max(1, Math.ceil(base * economy.rules.recurringFollowupMultiplier));
+            }
+            return Math.max(0, Math.round(base));
+        };
+
+        window.getStudyBlockCoinReward = function(block) {
+            const economy = window.normalizeEconomy();
+            const priority = String(block?.priority || 'media').toLowerCase();
+            return Math.max(0, Math.round(economy.rules.studyCoins[priority] ?? economy.rules.studyCoins.media ?? 4));
+        };
+
+        window.setRewardTarget = function(type, id) {
+            const source = type === 'custom' ? (state.customRewards || []).find(r => String(r.id) === String(id) && r.active !== false) : REWARDS_SHOP.find(r => String(r.id) === String(id));
+            if (!source) { window.showAlertModal('Recompensa não encontrada.'); return; }
+            const economy = window.normalizeEconomy();
+            economy.targetReward = { type, id: String(id), title: source.title, cost: parseInt(source.cost, 10) || 0, icon: source.icon || 'gift', updatedAt: new Date().toISOString() };
+            window.showToast('Recompensa-alvo definida', `${source.title} virou o seu objetivo de moedas.`, 'target', 'text-yellow-400');
+            window.saveState();
+        };
+
+        window.clearRewardTarget = function() {
+            const economy = window.normalizeEconomy();
+            economy.targetReward = null;
+            window.showToast('Alvo removido', 'A meta de recompensa foi limpa.', 'x-circle', 'text-slate-400');
+            window.saveState();
+        };
+
+        window.resetTacticalCoins = function() {
+            window.showConfirmModal('Zerar todas as moedas atuais? Isso vai colocar as Moedas da Semana e a Reserva Tática em 0. XP, patentes, tarefas e histórico continuam preservados.', () => {
+                const economy = window.normalizeEconomy();
+                economy.resetLog.unshift({ id: Date.now(), previousCoins: state.coins || 0, previousReserve: economy.tacticalReserve || 0, date: new Date().toISOString() });
+                economy.resetLog = economy.resetLog.slice(0, 30);
+                state.coins = 0;
+                economy.tacticalReserve = 0;
+                economy.weeklyCoinsEarned = 0;
+                economy.targetReward = null;
+                window.showToast('Moedas zeradas', 'Economia reiniciada sem mexer no XP nem nas missões.', 'refresh-ccw', 'text-yellow-400');
+                window.saveState();
+            });
+        };
+
         window.prepareNextWeekPlanning = function() {
             const nextMondayKey = window.getNextCalendarWeekStartKey();
             window.showConfirmModal('Preparar a próxima semana agora? Isso vai limpar as missões comuns da semana atual, preservar missões recorrentes, zerar o status dos estudos planejados e abrir o calendário da próxima semana. Ideal para usar no domingo, depois de revisar/fechar a semana atual.', () => {
@@ -581,6 +744,7 @@
                 state.quickTasks = [];
                 state.combo = 0;
                 state.waterCount = 0;
+                window.rollOverEconomyWeekIfNeeded();
                 state.energy = 100;
                 state.activeTab = 'monday';
                 state.currentFilter = 'all';
@@ -660,6 +824,10 @@
             
             if (!state.customRewards) state.customRewards = [];
             if (!state.rewardPurchases) state.rewardPurchases = [];
+            if (typeof window.normalizeEconomy === 'function') {
+                window.normalizeEconomy();
+                window.rollOverEconomyWeekIfNeeded();
+            }
 
             // Validação Módulo de Rituais
             if (!state.routineData) state.routineData = {};
@@ -877,7 +1045,7 @@
                         state = localState;
                         window.validateState();
                         localStorage.setItem('planeamento_semanal_v11', JSON.stringify(state));
-                        await writeStateToFirestore(user);
+                        await writeStateToFirestore(currentUser);
                         window.updateSyncStatus('Salvo na nuvem');
                     } else {
                         state = { ...state, ...cloudState };
@@ -1297,7 +1465,7 @@
         window.unlockBadge = function(badgeId) {
             if (!state.unlockedBadges.includes(badgeId)) {
                 state.unlockedBadges.push(badgeId); const b = BADGES_DB.find(x => x.id === badgeId);
-                if (b) { window.showToast(`Conquista Desbloqueada!`, b.title, b.icon, b.color); state.xp += 100; state.coins += 50; }
+                if (b) { window.showToast(`Conquista Desbloqueada!`, b.title, b.icon, b.color); state.xp += 100; }
             }
         };
 
@@ -1342,7 +1510,6 @@
             if (badgesToRemove.length > 0) {
                 state.unlockedBadges = state.unlockedBadges.filter(badgeId => !badgesToRemove.includes(badgeId));
                 state.xp = Math.max(0, state.xp - (badgesToRemove.length * 100));
-                state.coins = Math.max(0, state.coins - (badgesToRemove.length * 50));
                 if (typeof getCorrectLevel === 'function') state.level = getCorrectLevel(state.xp);
                 const names = badgesToRemove.map(id => BADGES_DB.find(b => b.id === id)?.title || id).join(', ');
                 window.showToast('Conquista revertida', `${names}. A medalha saiu porque a missão foi desmarcada.`, 'rotate-ccw', 'text-orange-400');
@@ -1423,21 +1590,21 @@
 
             if (task.completed) {
                 task.completed = false; task.skipped = false;
-                const deductedXp = task.rewardedXp || task.xp; const deductedCoins = task.rewardedCoins || Math.round(task.xp * 0.2);
+                const deductedXp = task.rewardedXp || task.xp; const deductedCoins = task.rewardedCoins || 0;
                 const energyToRestore = typeof task.rewardedEnergyCost === 'number' ? task.rewardedEnergyCost : task.energyCost;
-                state.xp = Math.max(0, state.xp - deductedXp); state.coins = Math.max(0, state.coins - deductedCoins);
+                state.xp = Math.max(0, state.xp - deductedXp); window.revokeTacticalCoins(deductedCoins, 'missao-desmarcada');
                 window.changeEnergy(energyToRestore); state.combo = Math.max(0, state.combo - 1);
                 window.rollbackTaskBadges(task);
                 if (typeof getCorrectLevel === 'function') state.level = getCorrectLevel(state.xp);
                 window.spawnFloatingText(event, `-${deductedXp} XP`, 'text-red-400');
             } else {
                 const badgesBefore = [...state.unlockedBadges];
-                const multiplier = window.getComboMultiplier(); const finalXp = Math.round(task.xp * multiplier); const earnedCoins = Math.round(finalXp * 0.2); 
+                const multiplier = window.getComboMultiplier(); const finalXp = Math.round(task.xp * multiplier); const baseCoins = window.getTaskCoinReward(task); const earnedCoins = window.awardTacticalCoins(baseCoins, 'missao-concluida', { taskId: task.id, title: task.text, priority: task.priority, recurring: Boolean(task.isRecurring), showCapToast: true }); 
                 task.completed = true; task.rewardedXp = finalXp; task.rewardedCoins = earnedCoins; task.rewardedEnergyCost = task.energyCost; 
-                state.xp += finalXp; state.coins += earnedCoins; window.changeEnergy(-task.energyCost); state.combo += 1;
+                state.xp += finalXp; window.changeEnergy(-task.energyCost); state.combo += 1;
                 window.checkGameTriggers();
                 task.rewardedBadgeIds = state.unlockedBadges.filter(badgeId => !badgesBefore.includes(badgeId));
-                window.spawnFloatingText(event, `+${finalXp} XP`, 'text-indigo-400');
+                window.spawnFloatingText(event, `+${finalXp} XP${earnedCoins ? ` / +${earnedCoins} MT` : ''}`, 'text-indigo-400');
                 if (typeof window.playMissionCompleteSound === 'function') window.playMissionCompleteSound();
             }
             window.checkLevelUp(); window.saveState();
@@ -1462,8 +1629,8 @@
 
         window.buyReward = function(rewardId) {
             const r = REWARDS_SHOP.find(x => x.id === rewardId);
-            if (state.coins >= r.cost) {
-                state.coins -= r.cost; window.changeEnergy(20); state.stats.rewardsBought = (state.stats.rewardsBought || 0) + 1;
+            if (window.spendTacticalCoins(r.cost, 'recompensa-oficial')) {
+                window.changeEnergy(20); state.stats.rewardsBought = (state.stats.rewardsBought || 0) + 1;
                 
                 state.rewardPurchases.push({
                     id: Date.now(), rewardId: r.id, title: r.title, cost: r.cost, type: "default", date: new Date().toISOString()
@@ -1471,7 +1638,7 @@
                 
                 window.checkGameTriggers();
                 window.unlockBadge('shopaholic'); window.showToast('Recompensa Resgatada!', `Aproveite seu: ${r.title}`, 'gift', 'text-emerald-400'); window.saveState();
-            } else { window.showAlertModal(`Saldo insuficiente. Faltam ${r.cost - state.coins} MT.`); }
+            } else { window.showAlertModal(`Saldo insuficiente. Faltam ${r.cost - window.getTotalTacticalCoins()} MT.`); }
         };
         
         window.addCustomReward = function() {
@@ -1480,7 +1647,7 @@
             const desc = document.getElementById('custom-reward-desc')?.value.trim() || '';
             
             if (!title) { window.showAlertModal("Título é obrigatório."); return; }
-            if (!cost || cost <= 0) { window.showAlertModal("Custo deve ser maior que zero."); return; }
+            if (!cost || cost < 50) { window.showAlertModal("Use custo mínimo de 50 MT para evitar recompensas baratas demais."); return; }
             
             state.customRewards.push({
                 id: Date.now(), title, cost, desc, icon: "gift", createdAt: new Date().toISOString(), active: true
@@ -1504,8 +1671,7 @@
             const reward = state.customRewards.find(r => r.id === id && r.active);
             if (!reward) { window.showAlertModal("Recompensa não encontrada ou inativa."); return; }
             
-            if (state.coins >= reward.cost) {
-                state.coins -= reward.cost;
+            if (window.spendTacticalCoins(reward.cost, 'recompensa-personalizada')) {
                 window.changeEnergy(20);
                 state.stats.rewardsBought = (state.stats.rewardsBought || 0) + 1;
                 
@@ -1517,7 +1683,7 @@
                 window.showToast("Recompensa resgatada", reward.title, "gift", "text-emerald-400");
                 window.saveState();
             } else {
-                window.showAlertModal(`Saldo insuficiente. Faltam ${reward.cost - state.coins} MT.`);
+                window.showAlertModal(`Saldo insuficiente. Faltam ${reward.cost - window.getTotalTacticalCoins()} MT.`);
             }
         };
 
@@ -1925,9 +2091,8 @@
                     pomodoro.timeLeft = s.shortBreak * 60; 
                 }
                 const earnedXP = 30 * window.getComboMultiplier(); 
-                const earnedCoins = 10;
+                const earnedCoins = window.awardTacticalCoins(state.economy?.rules?.pomodoroCoins ?? ECONOMY_DEFAULTS.pomodoroCoins, 'pomodoro', { showCapToast: false });
                 state.xp += Math.round(earnedXP); 
-                state.coins += earnedCoins; 
                 state.stats.pomodorosCompleted = (state.stats.pomodorosCompleted || 0) + 1; 
                 window.changeEnergy(-5); 
                 pomodoro.currentFocusStartedAt = null;
@@ -3585,13 +3750,24 @@
 
             const viewPosition = window.captureStudyPlanViewPosition(blockId);
             const now = new Date().toISOString();
+            const previousStatus = block.status || 'planned';
+            const wasCompleted = previousStatus === 'completed';
             const removingPartial = status === 'partial' && block.status === 'partial';
             const nextStatus = removingPartial ? 'planned' : status;
+
+            if (wasCompleted && nextStatus !== 'completed') {
+                window.revokeTacticalCoins(block.rewardedCoins || 0, 'estudo-desmarcado');
+                delete block.rewardedCoins;
+            }
 
             block.status = nextStatus;
             block.updatedAt = now;
 
             if (nextStatus === 'completed') {
+                if (!wasCompleted) {
+                    const studyCoins = window.getStudyBlockCoinReward(block);
+                    block.rewardedCoins = window.awardTacticalCoins(studyCoins, 'estudo-planejado-concluido', { blockId: block.id, title: block.title, priority: block.priority, showCapToast: false });
+                }
                 block.completedAt = now;
                 delete block.partialAt;
             } else if (nextStatus === 'partial') {
@@ -4092,7 +4268,7 @@
                             </p>
                         </div>
                         <div class="flex flex-wrap gap-2 w-full sm:w-auto">
-                            <div class="flex items-center gap-2 px-3 py-2 bg-yellow-950/30 text-yellow-500 border border-yellow-900/50 rounded-lg text-sm font-bold justify-center" title="Moedas Táticas">
+                            <div class="flex items-center gap-2 px-3 py-2 bg-yellow-950/30 text-yellow-500 border border-yellow-900/50 rounded-lg text-sm font-bold justify-center" title="Moedas da Semana + Reserva Tática">
                                 <i data-lucide="coins" class="w-4 h-4"></i><span>${state.coins} MT</span>
                             </div>
                             <button onclick="window.drinkWater(event)" class="flex items-center gap-2 px-3 py-2 bg-blue-950/40 text-blue-400 border border-blue-900/50 rounded-lg text-sm font-bold justify-center hover:bg-blue-900 hover:text-white transition-colors">
@@ -5196,24 +5372,46 @@
             } else if (uiState.statsTab === 'performance') {
                 return window.renderQGPerformanceDashboard ? window.renderQGPerformanceDashboard() : '<div class="text-slate-500 text-sm">Painel de desempenho indisponível.</div>';
             } else if (uiState.statsTab === 'shop') {
+                window.normalizeEconomy();
+                const economy = state.economy;
+                const weeklyPct = economy.weeklyCap ? Math.min(100, Math.round((economy.weeklyCoinsEarned / economy.weeklyCap) * 100)) : 0;
+                const target = economy.targetReward || null;
+                const totalCoins = window.getTotalTacticalCoins();
+                const targetPct = target?.cost ? Math.min(100, Math.round((totalCoins / target.cost) * 100)) : 0;
                 let html = `
-                <div class="bg-yellow-950/20 border border-yellow-900/50 p-4 rounded-xl mb-6 flex justify-between items-center">
-                    <div><h3 class="text-yellow-500 font-black uppercase text-sm">Seu Saldo</h3><p class="text-xs text-slate-400">Pague pelo seu merecido lazer acumulando moedas!</p></div>
-                    <div class="text-3xl font-black text-yellow-400 flex items-center gap-2"><i data-lucide="coins"></i> ${state.coins}</div>
+                <div class="bg-yellow-950/20 border border-yellow-900/50 p-4 rounded-xl mb-4">
+                    <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                        <div>
+                            <h3 class="text-yellow-500 font-black uppercase text-sm flex items-center gap-2"><i data-lucide="coins" class="w-4 h-4"></i> Economia Tática 2.0</h3>
+                            <p class="text-xs text-slate-400 mt-1">XP mede evolução. Moedas agora são recurso escasso para recompensas reais.</p>
+                        </div>
+                        <button onclick="window.resetTacticalCoins()" class="bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-900/60 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1 self-start"><i data-lucide="refresh-ccw" class="w-3 h-3"></i> Resetar moedas</button>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-3"><p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Moedas da semana</p><div class="text-2xl font-black text-yellow-400 mt-1">${state.coins} MT</div></div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-3"><p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Reserva Tática</p><div class="text-2xl font-black text-amber-300 mt-1">${economy.tacticalReserve}/${economy.reserveCap}</div></div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-3"><p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Teto semanal</p><div class="text-2xl font-black text-cyan-300 mt-1">${economy.weeklyCoinsEarned}/${economy.weeklyCap}</div><div class="w-full bg-slate-800 h-1.5 rounded-full mt-2"><div class="bg-cyan-400 h-1.5 rounded-full" style="width:${weeklyPct}%"></div></div></div>
+                    </div>
+                    ${target ? `<div class="mt-4 bg-slate-950 border border-yellow-900/40 rounded-xl p-4"><div class="flex items-center justify-between gap-3 mb-2"><div><p class="text-[10px] text-yellow-500 uppercase font-black tracking-widest">Recompensa-alvo</p><h4 class="text-sm font-bold text-white flex items-center gap-2"><i data-lucide="${target.icon || 'target'}" class="w-4 h-4 text-yellow-300"></i>${target.title}</h4></div><button onclick="window.clearRewardTarget()" class="text-[10px] text-slate-500 hover:text-red-300 uppercase font-bold">limpar</button></div><div class="flex items-center gap-3"><div class="flex-1 bg-slate-800 h-2 rounded-full"><div class="bg-yellow-400 h-2 rounded-full" style="width:${targetPct}%"></div></div><span class="text-xs font-bold text-yellow-300">${totalCoins}/${target.cost} MT</span></div></div>` : `<div class="mt-4 bg-slate-950 border border-dashed border-slate-800 rounded-xl p-4 text-xs text-slate-500">Escolha uma recompensa-alvo para dar sentido às moedas acumuladas.</div>`}
                 </div>
                 
                 <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 mt-6 flex items-center gap-2"><i data-lucide="star" class="w-4 h-4 text-yellow-500"></i> Oficiais</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">`;
                 
                 REWARDS_SHOP.forEach(r => {
-                    const canAfford = state.coins >= r.cost;
+                    const canAfford = window.getTotalTacticalCoins() >= r.cost;
+                    const isTarget = state.economy?.targetReward?.type === 'default' && String(state.economy.targetReward.id) === String(r.id);
                     html += `
-                    <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col justify-between hover:border-slate-500 transition-colors">
+                    <div class="bg-slate-800 border ${isTarget ? 'border-yellow-500/70' : 'border-slate-700'} p-4 rounded-xl flex flex-col justify-between hover:border-slate-500 transition-colors">
                         <div>
                             <div class="flex justify-between items-start mb-2"><i data-lucide="${r.icon}" class="text-white w-6 h-6"></i><span class="bg-slate-950 text-yellow-400 text-xs font-bold px-2 py-1 rounded border border-yellow-900/50">${r.cost} MT</span></div>
                             <h4 class="font-bold text-white text-sm">${r.title}</h4><p class="text-xs text-slate-400 mt-1 leading-tight">${r.desc}</p>
+                            ${isTarget ? `<span class="inline-flex items-center gap-1 mt-2 text-[10px] uppercase font-black text-yellow-300 bg-yellow-950/40 px-2 py-1 rounded border border-yellow-900/50"><i data-lucide="target" class="w-3 h-3"></i> Alvo atual</span>` : ''}
                         </div>
-                        <button onclick="window.buyReward('${r.id}')" class="mt-4 w-full py-2 rounded-lg text-xs font-bold transition-colors ${canAfford ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-slate-900 text-slate-500 cursor-not-allowed'}">${canAfford ? 'Resgatar' : 'Faltam Moedas'}</button>
+                        <div class="grid grid-cols-2 gap-2 mt-4">
+                            <button onclick="window.setRewardTarget('default','${r.id}')" class="py-2 rounded-lg text-[10px] font-black uppercase tracking-widest bg-slate-900 hover:bg-slate-700 text-slate-300 border border-slate-700">Alvo</button>
+                            <button onclick="window.buyReward('${r.id}')" class="py-2 rounded-lg text-xs font-bold transition-colors ${canAfford ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-slate-900 text-slate-500 cursor-not-allowed'}">${canAfford ? 'Resgatar' : 'Faltam'}</button>
+                        </div>
                     </div>`;
                 });
                 html += `</div>`;
@@ -5222,15 +5420,20 @@
                 html += `<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">`;
                 if (state.customRewards) {
                     state.customRewards.filter(r => r.active !== false).forEach(r => {
-                        const canAfford = state.coins >= r.cost;
+                        const canAfford = window.getTotalTacticalCoins() >= r.cost;
+                        const isTarget = state.economy?.targetReward?.type === 'custom' && String(state.economy.targetReward.id) === String(r.id);
                         html += `
-                        <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col justify-between hover:border-slate-500 transition-colors relative group">
+                        <div class="bg-slate-800 border ${isTarget ? 'border-yellow-500/70' : 'border-slate-700'} p-4 rounded-xl flex flex-col justify-between hover:border-slate-500 transition-colors relative group">
                             <button onclick="window.deleteCustomReward(${r.id})" class="absolute top-2 right-2 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="x" class="w-4 h-4"></i></button>
                             <div>
                                 <div class="flex justify-between items-start mb-2"><i data-lucide="${r.icon}" class="text-white w-6 h-6"></i><span class="bg-slate-950 text-yellow-400 text-xs font-bold px-2 py-1 rounded border border-yellow-900/50">${r.cost} MT</span></div>
                                 <h4 class="font-bold text-white text-sm">${r.title}</h4><p class="text-xs text-slate-400 mt-1 leading-tight">${r.desc}</p>
+                                ${isTarget ? `<span class="inline-flex items-center gap-1 mt-2 text-[10px] uppercase font-black text-yellow-300 bg-yellow-950/40 px-2 py-1 rounded border border-yellow-900/50"><i data-lucide="target" class="w-3 h-3"></i> Alvo atual</span>` : ''}
                             </div>
-                            <button onclick="window.buyCustomReward(${r.id})" class="mt-4 w-full py-2 rounded-lg text-xs font-bold transition-colors ${canAfford ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-slate-900 text-slate-500 cursor-not-allowed'}">${canAfford ? 'Resgatar' : 'Faltam Moedas'}</button>
+                            <div class="grid grid-cols-2 gap-2 mt-4">
+                                <button onclick="window.setRewardTarget('custom','${r.id}')" class="py-2 rounded-lg text-[10px] font-black uppercase tracking-widest bg-slate-900 hover:bg-slate-700 text-slate-300 border border-slate-700">Alvo</button>
+                                <button onclick="window.buyCustomReward(${r.id})" class="py-2 rounded-lg text-xs font-bold transition-colors ${canAfford ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-slate-900 text-slate-500 cursor-not-allowed'}">${canAfford ? 'Resgatar' : 'Faltam'}</button>
+                            </div>
                         </div>`;
                     });
                 }
@@ -5241,7 +5444,7 @@
                     <h4 class="text-sm font-bold text-slate-300 mb-3">Criar Nova Recompensa</h4>
                     <div class="grid grid-cols-2 gap-3 mb-3">
                         <input type="text" id="custom-reward-title" placeholder="Título (ex: Pedir Pizza)" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none">
-                        <input type="number" id="custom-reward-cost" placeholder="Custo (MT)" min="1" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none">
+                        <input type="number" id="custom-reward-cost" placeholder="Custo (ex: 300, 600, 1200)" min="50" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none">
                     </div>
                     <input type="text" id="custom-reward-desc" placeholder="Descrição opcional..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white mb-3 outline-none">
                     <button onclick="window.addCustomReward()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2 rounded-lg border border-slate-600 text-xs transition-colors">Criar Recompensa</button>
