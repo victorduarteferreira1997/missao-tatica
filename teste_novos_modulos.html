@@ -718,19 +718,22 @@
                 normal: {
                     icon: 'swords',
                     title: 'Missão normal',
-                    desc: 'Use para trabalho, estudo ativo, treino e tarefas que realmente consomem energia. Conta XP, moedas, combo e drena HP.',
+                    desc: 'Trabalho, estudo ativo, treino ou tarefa que exige esforço real.',
+                    result: '+XP · +MT · combo · drena HP',
                     box: 'border-indigo-900/50 bg-indigo-950/20 text-indigo-100'
                 },
                 neutral: {
                     icon: 'route',
                     title: 'Logística / compromisso',
-                    desc: 'Use para deslocamento, presença obrigatória e agenda. Aparece no dia e no Google Calendar, mas não dá XP, moedas, combo, som nem altera HP.',
+                    desc: 'Deslocamento, presença obrigatória, levar/buscar alguém ou compromisso que só precisa estar na agenda.',
+                    result: '0 XP · 0 MT · 0 HP · sem combo',
                     box: 'border-slate-700 bg-slate-950 text-slate-200'
                 },
                 recharge: {
                     icon: 'battery-charging',
                     title: 'Recarga',
-                    desc: 'Use para ações restauradoras. Recupera HP, mas não dá XP, moedas, combo nem som de conquista.',
+                    desc: 'Ação restauradora: pausa, oração, descanso, caminhada leve ou recuperação.',
+                    result: '+HP · 0 XP · 0 MT · sem combo',
                     box: 'border-emerald-900/50 bg-emerald-950/20 text-emerald-100'
                 }
             };
@@ -739,15 +742,28 @@
                 if (!btn) return;
                 const meta = TASK_NATURES[nature] || TASK_NATURES.normal;
                 const active = selected === nature;
-                btn.className = `flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[11px] font-black uppercase tracking-widest transition-all ${active ? `${meta.bg} ${meta.border} ${meta.color} ring-2 ring-cyan-400/40` : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-200 hover:border-slate-600'}`;
+                btn.className = `flex flex-col items-start gap-1 rounded-xl border px-3 py-3 text-left transition-all ${active ? `${meta.bg} ${meta.border} ${meta.color} ring-2 ring-cyan-400/40 shadow-lg shadow-cyan-950/20` : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-200 hover:border-slate-600'}`;
                 btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+                const check = btn.querySelector('[data-nature-check]');
+                if (check) {
+                    check.setAttribute('data-lucide', active ? 'check-circle-2' : 'circle');
+                    check.className = `w-4 h-4 ${active ? meta.color : 'text-slate-700'}`;
+                }
             });
             const summary = document.getElementById(`${prefix}-nature-summary`);
             if (summary) {
                 const data = summaries[selected] || summaries.normal;
-                summary.className = `rounded-lg border p-3 text-[11px] leading-relaxed ${data.box}`;
-                summary.innerHTML = `<div class="flex items-start gap-2"><i data-lucide="${data.icon}" class="w-4 h-4 mt-0.5 shrink-0"></i><div><strong class="block text-xs uppercase tracking-widest mb-1">${data.title}</strong><span class="text-slate-400">${data.desc}</span></div></div>`;
+                summary.className = `rounded-xl border p-3 text-[11px] leading-relaxed ${data.box}`;
+                summary.innerHTML = `<div class="flex items-start gap-3"><i data-lucide="${data.icon}" class="w-4 h-4 mt-0.5 shrink-0"></i><div class="min-w-0"><div class="flex flex-wrap items-center gap-2 mb-1"><strong class="text-xs uppercase tracking-widest">${data.title}</strong><span class="rounded-full bg-black/25 border border-white/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest">${data.result}</span></div><span class="text-slate-400">${data.desc}</span></div></div>`;
                 if (window.lucide?.createIcons) window.lucide.createIcons({ root: summary });
+            }
+            const effortNote = document.getElementById(`${prefix}-effort-note`);
+            if (effortNote) {
+                effortNote.textContent = selected === 'neutral'
+                    ? 'Na logística, prioridade e dificuldade ficam apenas como organização visual; não geram XP, moedas ou gasto de HP.'
+                    : selected === 'recharge'
+                        ? 'Na recarga, o tempo e a dificuldade ajudam a calcular quanto HP será recuperado.'
+                        : 'Na missão normal, prioridade, dificuldade e tempo calculam XP, moedas e custo de HP.';
             }
         };
 
@@ -4821,72 +4837,104 @@
             // MODAL CRIAR TAREFA
             if (uiState.showCreateTaskModal) {
                 html += `
-                <div class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm font-mono">
-                    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-md w-full shadow-2xl modal-enter overflow-y-auto max-h-[90vh]">
-                        <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3"><h2 class="text-lg font-black text-emerald-400 flex items-center gap-2"><i data-lucide="plus-circle"></i> Criar Missão</h2><button onclick="window.toggleCreateTaskModal()" class="text-slate-500 hover:text-white"><i data-lucide="x"></i></button></div>
-                        <div class="space-y-4">
-                            <div><label class="text-xs font-bold text-slate-400 uppercase">Título</label><input type="text" id="ct-text" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-emerald-500 outline-none"></div>
-                            <div><label class="text-xs font-bold text-slate-400 uppercase">Subtarefas iniciais <span class="text-slate-600 normal-case">(opcional, uma por linha)</span></label><textarea id="ct-subtasks" rows="3" placeholder="Ex.: Separar documentos&#10;Escrever minuta&#10;Revisar antes de enviar" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-cyan-500 outline-none resize-y"></textarea></div>
-                            <div class="bg-slate-950/70 border border-cyan-900/40 rounded-xl p-3 space-y-3">
+                <div class="fixed inset-0 bg-black/80 flex items-center justify-center p-3 sm:p-4 z-50 backdrop-blur-sm font-mono">
+                    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full shadow-2xl modal-enter overflow-hidden max-h-[92vh] flex flex-col">
+                        <div class="bg-slate-950/70 border-b border-slate-800 p-4 sm:p-5 flex items-start justify-between gap-4">
+                            <div>
+                                <h2 class="text-xl font-black text-emerald-400 flex items-center gap-2"><i data-lucide="plus-circle"></i> Criar Missão</h2>
+                                <p class="text-[11px] text-slate-500 mt-1">Preencha o essencial primeiro. Horário, recorrência e subtarefas são opcionais.</p>
+                            </div>
+                            <button onclick="window.toggleCreateTaskModal()" class="text-slate-500 hover:text-white bg-slate-900 border border-slate-800 rounded-full p-1.5"><i data-lucide="x"></i></button>
+                        </div>
+                        <div class="p-4 sm:p-5 overflow-y-auto space-y-4">
+                            <section class="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 space-y-3">
+                                <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-300"><span class="bg-emerald-950/50 border border-emerald-800/60 rounded-full w-6 h-6 flex items-center justify-center">1</span> Identidade</div>
                                 <div>
-                                    <label class="text-xs font-black text-cyan-300 uppercase flex items-center gap-2"><i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i> Tipo de missão</label>
-                                    <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Escolha um único tipo. Ele define automaticamente XP, moedas, combo e HP.</p>
+                                    <label class="text-xs font-bold text-slate-400 uppercase">Título</label>
+                                    <input type="text" id="ct-text" placeholder="Ex.: Levar meninas na terapia" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white focus:border-emerald-500 outline-none">
                                 </div>
+                                <details class="group bg-slate-900/50 border border-slate-800 rounded-xl">
+                                    <summary class="cursor-pointer select-none px-3 py-2.5 text-xs font-bold text-slate-300 flex items-center justify-between">Subtarefas iniciais <span class="text-[10px] text-slate-600 font-black uppercase tracking-widest">opcional</span></summary>
+                                    <div class="px-3 pb-3">
+                                        <textarea id="ct-subtasks" rows="3" placeholder="Uma por linha:&#10;Separar documentos&#10;Enviar mensagem&#10;Revisar antes de finalizar" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-cyan-500 outline-none resize-y"></textarea>
+                                    </div>
+                                </details>
+                            </section>
+
+                            <section class="bg-cyan-950/10 border border-cyan-900/40 rounded-2xl p-4 space-y-3">
+                                <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-cyan-300"><span class="bg-cyan-950/50 border border-cyan-800/60 rounded-full w-6 h-6 flex items-center justify-center">2</span> Tipo de missão</div>
                                 <input type="hidden" id="ct-nature" value="normal">
-                                <div class="grid grid-cols-3 gap-2">
-                                    <button type="button" id="ct-nature-btn-normal" onclick="window.setTaskNature('ct','normal')" class="flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[11px] font-black uppercase tracking-widest transition-all bg-indigo-950/30 border-indigo-900/50 text-indigo-300 ring-2 ring-cyan-400/40"><i data-lucide="swords" class="w-3.5 h-3.5"></i> Normal</button>
-                                    <button type="button" id="ct-nature-btn-neutral" onclick="window.setTaskNature('ct','neutral')" class="flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[11px] font-black uppercase tracking-widest transition-all bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-200 hover:border-slate-600"><i data-lucide="route" class="w-3.5 h-3.5"></i> Logística</button>
-                                    <button type="button" id="ct-nature-btn-recharge" onclick="window.setTaskNature('ct','recharge')" class="flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[11px] font-black uppercase tracking-widest transition-all bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-200 hover:border-slate-600"><i data-lucide="battery-charging" class="w-3.5 h-3.5"></i> Recarga</button>
+                                <input type="hidden" id="ct-impact-type" value="drain">
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                    <button type="button" id="ct-nature-btn-normal" onclick="window.setTaskNature('ct','normal')" class="flex flex-col items-start gap-1 rounded-xl border px-3 py-3 text-left transition-all bg-indigo-950/30 border-indigo-900/50 text-indigo-300 ring-2 ring-cyan-400/40 shadow-lg shadow-cyan-950/20"><div class="flex items-center justify-between w-full"><span class="text-[11px] font-black uppercase tracking-widest">Normal</span><i data-nature-check data-lucide="check-circle-2" class="w-4 h-4 text-indigo-300"></i></div><span class="text-[10px] text-slate-400">XP, MT, combo e HP</span></button>
+                                    <button type="button" id="ct-nature-btn-neutral" onclick="window.setTaskNature('ct','neutral')" class="flex flex-col items-start gap-1 rounded-xl border px-3 py-3 text-left transition-all bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-200 hover:border-slate-600"><div class="flex items-center justify-between w-full"><span class="text-[11px] font-black uppercase tracking-widest">Logística</span><i data-nature-check data-lucide="circle" class="w-4 h-4 text-slate-700"></i></div><span class="text-[10px] text-slate-400">Agenda sem gamificar</span></button>
+                                    <button type="button" id="ct-nature-btn-recharge" onclick="window.setTaskNature('ct','recharge')" class="flex flex-col items-start gap-1 rounded-xl border px-3 py-3 text-left transition-all bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-200 hover:border-slate-600"><div class="flex items-center justify-between w-full"><span class="text-[11px] font-black uppercase tracking-widest">Recarga</span><i data-nature-check data-lucide="circle" class="w-4 h-4 text-slate-700"></i></div><span class="text-[10px] text-slate-400">Recupera bateria</span></button>
                                 </div>
-                                <div id="ct-nature-summary" class="rounded-lg border border-indigo-900/50 bg-indigo-950/20 p-3 text-[11px] leading-relaxed text-indigo-100">
-                                    <div class="flex items-start gap-2"><i data-lucide="swords" class="w-4 h-4 mt-0.5 shrink-0"></i><div><strong class="block text-xs uppercase tracking-widest mb-1">Missão normal</strong><span class="text-slate-400">Use para trabalho, estudo ativo, treino e tarefas que realmente consomem energia. Conta XP, moedas, combo e drena HP.</span></div></div>
+                                <div id="ct-nature-summary" class="rounded-xl border border-indigo-900/50 bg-indigo-950/20 p-3 text-[11px] leading-relaxed text-indigo-100">
+                                    <div class="flex items-start gap-3"><i data-lucide="swords" class="w-4 h-4 mt-0.5 shrink-0"></i><div class="min-w-0"><div class="flex flex-wrap items-center gap-2 mb-1"><strong class="text-xs uppercase tracking-widest">Missão normal</strong><span class="rounded-full bg-black/25 border border-white/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest">+XP · +MT · combo · drena HP</span></div><span class="text-slate-400">Trabalho, estudo ativo, treino ou tarefa que exige esforço real.</span></div></div>
                                 </div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div><label class="text-xs font-bold text-slate-400 uppercase">Dia</label><select id="ct-day" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">${daysOfWeek.map(d => `<option value="${d.id}" ${d.id === state.activeTab ? 'selected' : ''}>${d.label}</option>`).join('')}<option value="next_week">Próxima Semana</option></select></div>
-                                <div><label class="text-xs font-bold text-slate-400 uppercase">Categoria</label>
-                                    <select id="ct-category" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">
-                                        ${window.getTaskCategories().map(cat => `<option value="${cat.id}">${cat.label}</option>`).join('')}
-                                    </select>
-                                    <button type="button" onclick="window.toggleCategoryModal()" class="mt-2 text-[10px] text-cyan-400 hover:text-cyan-300 font-bold uppercase tracking-widest">Gerenciar categorias</button>
+                            </section>
+
+                            <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <div class="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 space-y-3">
+                                    <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-300"><span class="bg-slate-900 border border-slate-700 rounded-full w-6 h-6 flex items-center justify-center">3</span> Dia e categoria</div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div><label class="text-xs font-bold text-slate-400 uppercase">Dia</label><select id="ct-day" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none">${daysOfWeek.map(d => `<option value="${d.id}" ${d.id === state.activeTab ? 'selected' : ''}>${d.label}</option>`).join('')}<option value="next_week">Próxima Semana</option></select></div>
+                                        <div><label class="text-xs font-bold text-slate-400 uppercase">Categoria</label><select id="ct-category" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none">${window.getTaskCategories().map(cat => `<option value="${cat.id}">${cat.label}</option>`).join('')}</select></div>
+                                    </div>
+                                    <button type="button" onclick="window.toggleCategoryModal()" class="text-[10px] text-cyan-400 hover:text-cyan-300 font-bold uppercase tracking-widest flex items-center gap-1"><i data-lucide="tags" class="w-3 h-3"></i> Gerenciar categorias</button>
                                 </div>
-                            </div>
-                            <div class="bg-slate-950/70 border border-violet-900/40 rounded-xl p-3 space-y-3">
-                                <div>
-                                    <label class="text-xs font-bold text-violet-300 uppercase flex items-center gap-2"><i data-lucide="repeat" class="w-3.5 h-3.5"></i> Recorrência semanal</label>
-                                    <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Marque os dias em que esta missão deve se repetir. Ao reiniciar a semana, missões recorrentes ficam preservadas e voltam como pendentes.</p>
+
+                                <div class="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 space-y-3" id="ct-effort-panel">
+                                    <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-300"><span class="bg-slate-900 border border-slate-700 rounded-full w-6 h-6 flex items-center justify-center">4</span> Esforço e duração</div>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Prioridade</label><select id="ct-priority" onchange="window.updatePreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-sm text-white outline-none"><option value="essencial">Essencial</option><option value="alta">Alta</option><option value="media" selected>Média</option><option value="baixa">Baixa</option></select></div>
+                                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Dif.</label><input type="number" id="ct-complexity" min="1" max="5" value="2" oninput="window.updatePreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-sm text-white outline-none"></div>
+                                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Min.</label><input type="number" id="ct-time" value="30" step="15" oninput="window.updatePreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-sm text-white outline-none"></div>
+                                    </div>
+                                    <p id="ct-effort-note" class="text-[10px] text-slate-500 leading-relaxed">Na missão normal, prioridade, dificuldade e tempo calculam XP, moedas e custo de HP.</p>
                                 </div>
-                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                    ${daysOfWeek.map(d => `<label class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg px-2 py-2 text-xs text-slate-300 hover:border-violet-700 cursor-pointer"><input id="ct-repeat-${d.id}" type="checkbox" class="accent-violet-500"> ${d.label}</label>`).join('')}
+                            </section>
+
+                            <details class="group bg-slate-950/50 border border-violet-900/40 rounded-2xl p-4">
+                                <summary class="cursor-pointer select-none flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-widest text-violet-300">
+                                    <span class="flex items-center gap-2"><i data-lucide="repeat" class="w-4 h-4"></i> Recorrência semanal</span>
+                                    <span class="text-slate-600">opcional</span>
+                                </summary>
+                                <div class="mt-3 space-y-3">
+                                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                        ${daysOfWeek.map(d => `<label class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg px-2 py-2 text-xs text-slate-300 hover:border-violet-700 cursor-pointer"><input id="ct-repeat-${d.id}" type="checkbox" class="accent-violet-500"> ${d.label}</label>`).join('')}
+                                    </div>
+                                    <div class="flex flex-wrap gap-2">
+                                        <button type="button" onclick="window.setCreateTaskRecurrence('all')" class="text-[10px] bg-violet-900/40 hover:bg-violet-800 text-violet-200 border border-violet-700/50 px-2 py-1 rounded font-bold uppercase">Todos os dias</button>
+                                        <button type="button" onclick="window.setCreateTaskRecurrence('clear')" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 px-2 py-1 rounded font-bold uppercase">Limpar recorrência</button>
+                                    </div>
                                 </div>
-                                <div class="flex flex-wrap gap-2">
-                                    <button type="button" onclick="window.setCreateTaskRecurrence('all')" class="text-[10px] bg-violet-900/40 hover:bg-violet-800 text-violet-200 border border-violet-700/50 px-2 py-1 rounded font-bold uppercase">Todos os dias</button>
-                                    <button type="button" onclick="window.setCreateTaskRecurrence('clear')" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 px-2 py-1 rounded font-bold uppercase">Limpar recorrência</button>
+                            </details>
+
+                            <section class="bg-slate-950/50 border border-cyan-900/40 rounded-2xl p-4 space-y-3">
+                                <div class="flex items-center justify-between gap-3">
+                                    <label class="text-[10px] font-black text-cyan-300 uppercase tracking-widest flex items-center gap-2"><i data-lucide="calendar-clock" class="w-4 h-4"></i> Horário / Google Calendar</label>
+                                    <span class="text-[10px] text-slate-600 font-black uppercase tracking-widest">opcional</span>
                                 </div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div><label class="text-xs font-bold text-slate-400 uppercase">Prioridade</label><select id="ct-priority" onchange="window.updatePreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none"><option value="essencial">Essencial</option><option value="alta">Alta</option><option value="media" selected>Média</option><option value="baixa">Baixa</option></select></div>
-                                <div><label class="text-xs font-bold text-slate-400 uppercase">Dificuldade (1-5)</label><input type="number" id="ct-complexity" min="1" max="5" value="2" oninput="window.updatePreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none"></div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div><label class="text-xs font-bold text-slate-400 uppercase">Tempo (Min)</label><input type="number" id="ct-time" value="30" step="15" oninput="window.updatePreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none"></div>
-                                <div class="bg-slate-950 border border-slate-800 rounded-lg p-3"><input type="hidden" id="ct-impact-type" value="drain"><label class="text-xs font-bold text-slate-400 uppercase">Efeito automático</label><p class="text-[11px] text-slate-500 mt-1 leading-relaxed">O tipo escolhido acima define se drena, zera ou recarrega HP.</p></div>
-                            </div>
-                            <div class="bg-slate-950/70 border border-cyan-900/40 rounded-xl p-3 space-y-3">
-                                <div><label class="text-xs font-bold text-cyan-300 uppercase flex items-center gap-2"><i data-lucide="calendar-clock" class="w-3.5 h-3.5"></i> Agenda / Google Calendar <span class="text-slate-600 normal-case">(opcional)</span></label><p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Sem horário, a missão será exportada como evento de dia inteiro. Com horário inicial, entra no horário definido.</p></div>
                                 <div class="grid grid-cols-2 gap-3">
-                                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Início</label><input type="time" id="ct-start-time" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none"></div>
-                                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Fim</label><input type="time" id="ct-end-time" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none"></div>
+                                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Início</label><input type="time" id="ct-start-time" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-white outline-none"></div>
+                                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Fim</label><input type="time" id="ct-end-time" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-white outline-none"></div>
                                 </div>
-                            </div>
-                            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex justify-between items-center mt-2">
-                                <span class="text-xs font-bold text-slate-400 uppercase">Impacto Projetado:</span>
+                            </section>
+
+                            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Impacto projetado</span>
+                                    <p class="text-[11px] text-slate-600 mt-1">O preview muda conforme o tipo de missão.</p>
+                                </div>
                                 <div class="flex gap-2"><span id="ct-xp-preview" class="bg-indigo-900/50 text-indigo-400 px-3 py-1 rounded-md text-xs font-bold">+0 XP</span><span id="ct-hp-preview" class="bg-red-900/50 text-red-400 px-3 py-1 rounded-md text-xs font-bold">-0 HP</span></div>
                             </div>
-                            <button onclick="window.saveNewTask()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl mt-2 transition-colors">Alistar Missão</button>
+                            <button onclick="window.saveNewTask()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-widest py-3 rounded-xl transition-colors flex items-center justify-center gap-2"><i data-lucide="plus-circle" class="w-4 h-4"></i> Alistar Missão</button>
                         </div>
                     </div>
                 </div>`;
+                setTimeout(() => { window.updateTaskNatureButtons('ct'); window.updatePreviewCalc(); }, 0);
             }
 
             // MODAL EDITAR TAREFA
@@ -4901,7 +4949,7 @@
                     const recurrenceDays = Array.isArray(task.recurrenceDays) ? task.recurrenceDays : [];
                     html += `
                     <div class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm font-mono">
-                        <div class="bg-slate-900 border border-amber-800/60 rounded-2xl p-5 max-w-md w-full shadow-2xl modal-enter overflow-y-auto max-h-[90vh]">
+                        <div class="bg-slate-900 border border-amber-800/60 rounded-2xl p-5 max-w-2xl w-full shadow-2xl modal-enter overflow-y-auto max-h-[90vh]">
                             <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
                                 <h2 class="text-lg font-black text-amber-400 flex items-center gap-2"><i data-lucide="pencil"></i> Editar Missão</h2>
                                 <button onclick="window.closeEditTaskModal()" class="text-slate-500 hover:text-white"><i data-lucide="x"></i></button>
@@ -4911,7 +4959,7 @@
                                 <div class="bg-slate-950/70 border border-cyan-900/40 rounded-xl p-3 space-y-3">
                                     <div>
                                         <label class="text-xs font-black text-cyan-300 uppercase flex items-center gap-2"><i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i> Tipo de missão</label>
-                                        <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Escolha um único tipo. Ele define automaticamente XP, moedas, combo e HP.</p>
+                                        <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Normal, Logística ou Recarga. Sem campos duplicados.</p>
                                     </div>
                                     <input type="hidden" id="et-nature" value="${currentNature}">
                                     <div class="grid grid-cols-3 gap-2">
@@ -4942,13 +4990,17 @@
                                         <button type="button" onclick="window.setEditTaskRecurrence('clear')" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 px-2 py-1 rounded font-bold uppercase">Limpar recorrência</button>
                                     </div>
                                 </div>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div><label class="text-xs font-bold text-slate-400 uppercase">Prioridade</label><select id="et-priority" onchange="window.updateEditPreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none"><option value="essencial" ${task.priority === 'essencial' ? 'selected' : ''}>Essencial</option><option value="alta" ${task.priority === 'alta' ? 'selected' : ''}>Alta</option><option value="media" ${(!task.priority || task.priority === 'media') ? 'selected' : ''}>Média</option><option value="baixa" ${task.priority === 'baixa' ? 'selected' : ''}>Baixa</option></select></div>
-                                    <div><label class="text-xs font-bold text-slate-400 uppercase">Dificuldade (1-5)</label><input type="number" id="et-complexity" min="1" max="5" value="${currentComplexity}" oninput="window.updateEditPreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none"></div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div><label class="text-xs font-bold text-slate-400 uppercase">Tempo (Min)</label><input type="number" id="et-time" value="${rawTime}" step="15" oninput="window.updateEditPreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none"></div>
-                                    <div class="bg-slate-950 border border-slate-800 rounded-lg p-3"><input type="hidden" id="et-impact-type" value="${currentNature === 'recharge' ? 'recharge' : 'drain'}"><label class="text-xs font-bold text-slate-400 uppercase">Efeito automático</label><p class="text-[11px] text-slate-500 mt-1 leading-relaxed">O tipo escolhido acima define se drena, zera ou recarrega HP.</p></div>
+                                <input type="hidden" id="et-impact-type" value="${currentNature === 'recharge' ? 'recharge' : 'drain'}">
+                                <div class="bg-slate-950/50 border border-slate-800 rounded-xl p-3 space-y-3" id="et-effort-panel">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <label class="text-xs font-bold text-slate-400 uppercase">Esforço e duração</label>
+                                        <span id="et-effort-note" class="text-[10px] text-slate-600 text-right">Ajusta o impacto conforme o tipo escolhido.</span>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Prioridade</label><select id="et-priority" onchange="window.updateEditPreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none"><option value="essencial" ${task.priority === 'essencial' ? 'selected' : ''}>Essencial</option><option value="alta" ${task.priority === 'alta' ? 'selected' : ''}>Alta</option><option value="media" ${(!task.priority || task.priority === 'media') ? 'selected' : ''}>Média</option><option value="baixa" ${task.priority === 'baixa' ? 'selected' : ''}>Baixa</option></select></div>
+                                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Dif.</label><input type="number" id="et-complexity" min="1" max="5" value="${currentComplexity}" oninput="window.updateEditPreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none"></div>
+                                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Min.</label><input type="number" id="et-time" value="${rawTime}" step="15" oninput="window.updateEditPreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none"></div>
+                                    </div>
                                 </div>
                                 <div class="bg-slate-950/70 border border-cyan-900/40 rounded-xl p-3 space-y-3">
                                     <div><label class="text-xs font-bold text-cyan-300 uppercase flex items-center gap-2"><i data-lucide="calendar-clock" class="w-3.5 h-3.5"></i> Agenda / Google Calendar <span class="text-slate-600 normal-case">(opcional)</span></label><p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Sem horário, a missão será exportada como evento de dia inteiro. Com horário inicial, entra no horário definido.</p></div>
