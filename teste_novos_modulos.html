@@ -718,14 +718,14 @@
                 normal: {
                     icon: 'swords',
                     title: 'Missão normal',
-                    desc: 'Trabalho, estudo ativo, treino ou tarefa que exige esforço real.',
+                    desc: 'Trabalho, estudo ativo, treino, organização doméstica ou tarefa que exige esforço real.',
                     result: '+XP · +MT · combo · drena HP',
                     box: 'border-indigo-900/50 bg-indigo-950/20 text-indigo-100'
                 },
                 neutral: {
                     icon: 'route',
                     title: 'Logística / compromisso',
-                    desc: 'Deslocamento, presença obrigatória, levar/buscar alguém ou compromisso que só precisa estar na agenda.',
+                    desc: 'Deslocamento, presença obrigatória, compromisso familiar, consulta, reunião externa ou evento que precisa estar na agenda.',
                     result: '0 XP · 0 MT · 0 HP · sem combo',
                     box: 'border-slate-700 bg-slate-950 text-slate-200'
                 },
@@ -769,9 +769,16 @@
 
         window.setTaskNature = function(prefix, nature) {
             const normalized = TASK_NATURES[nature] ? nature : 'normal';
-            const select = document.getElementById(`${prefix}-nature`);
-            if (select) select.value = normalized;
+            let select = document.getElementById(`${prefix}-nature`);
+            if (!select) {
+                select = document.createElement('input');
+                select.type = 'hidden';
+                select.id = `${prefix}-nature`;
+                document.body.appendChild(select);
+            }
+            select.value = normalized;
             window.handleTaskNatureChange(prefix);
+            return false;
         };
 
         window.handleTaskNatureChange = function(prefix) {
@@ -785,6 +792,25 @@
             window.updateTaskNatureButtons(prefix);
             if (prefix === 'ct' && typeof window.updatePreviewCalc === 'function') window.updatePreviewCalc();
             if (prefix === 'et' && typeof window.updateEditPreviewCalc === 'function') window.updateEditPreviewCalc();
+        };
+
+        window.bindTaskNatureControls = function(root = document) {
+            const scope = root || document;
+            scope.querySelectorAll('[data-task-nature-prefix][data-task-nature-value]').forEach(btn => {
+                if (btn.dataset.natureBound === '1') return;
+                btn.dataset.natureBound = '1';
+                const activate = (event) => {
+                    if (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    window.setTaskNature(btn.dataset.taskNaturePrefix, btn.dataset.taskNatureValue);
+                };
+                btn.addEventListener('click', activate);
+                btn.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') activate(event);
+                });
+            });
         };
 
         window.getTaskCoinReward = function(task) {
@@ -4842,7 +4868,7 @@
                         <div class="bg-slate-950/70 border-b border-slate-800 p-4 sm:p-5 flex items-start justify-between gap-4">
                             <div>
                                 <h2 class="text-xl font-black text-emerald-400 flex items-center gap-2"><i data-lucide="plus-circle"></i> Criar Missão</h2>
-                                <p class="text-[11px] text-slate-500 mt-1">Preencha o essencial primeiro. Horário, recorrência e subtarefas são opcionais.</p>
+                                <p class="text-[11px] text-slate-500 mt-1">Preencha o essencial primeiro. Exemplos: reunião, deslocamento, estudo, treino, consulta ou tarefa de trabalho.</p>
                             </div>
                             <button onclick="window.toggleCreateTaskModal()" class="text-slate-500 hover:text-white bg-slate-900 border border-slate-800 rounded-full p-1.5"><i data-lucide="x"></i></button>
                         </div>
@@ -4851,7 +4877,7 @@
                                 <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-300"><span class="bg-emerald-950/50 border border-emerald-800/60 rounded-full w-6 h-6 flex items-center justify-center">1</span> Identidade</div>
                                 <div>
                                     <label class="text-xs font-bold text-slate-400 uppercase">Título</label>
-                                    <input type="text" id="ct-text" placeholder="Ex.: Levar meninas na terapia" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white focus:border-emerald-500 outline-none">
+                                    <input type="text" id="ct-text" placeholder="Ex.: Reunião com cliente, deslocamento, estudo de Português, treino ou consulta" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white focus:border-emerald-500 outline-none">
                                 </div>
                                 <details class="group bg-slate-900/50 border border-slate-800 rounded-xl">
                                     <summary class="cursor-pointer select-none px-3 py-2.5 text-xs font-bold text-slate-300 flex items-center justify-between">Subtarefas iniciais <span class="text-[10px] text-slate-600 font-black uppercase tracking-widest">opcional</span></summary>
@@ -4866,12 +4892,12 @@
                                 <input type="hidden" id="ct-nature" value="normal">
                                 <input type="hidden" id="ct-impact-type" value="drain">
                                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                    <button type="button" id="ct-nature-btn-normal" onclick="window.setTaskNature('ct','normal')" class="flex flex-col items-start gap-1 rounded-xl border px-3 py-3 text-left transition-all bg-indigo-950/30 border-indigo-900/50 text-indigo-300 ring-2 ring-cyan-400/40 shadow-lg shadow-cyan-950/20"><div class="flex items-center justify-between w-full"><span class="text-[11px] font-black uppercase tracking-widest">Normal</span><i data-nature-check data-lucide="check-circle-2" class="w-4 h-4 text-indigo-300"></i></div><span class="text-[10px] text-slate-400">XP, MT, combo e HP</span></button>
-                                    <button type="button" id="ct-nature-btn-neutral" onclick="window.setTaskNature('ct','neutral')" class="flex flex-col items-start gap-1 rounded-xl border px-3 py-3 text-left transition-all bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-200 hover:border-slate-600"><div class="flex items-center justify-between w-full"><span class="text-[11px] font-black uppercase tracking-widest">Logística</span><i data-nature-check data-lucide="circle" class="w-4 h-4 text-slate-700"></i></div><span class="text-[10px] text-slate-400">Agenda sem gamificar</span></button>
-                                    <button type="button" id="ct-nature-btn-recharge" onclick="window.setTaskNature('ct','recharge')" class="flex flex-col items-start gap-1 rounded-xl border px-3 py-3 text-left transition-all bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-200 hover:border-slate-600"><div class="flex items-center justify-between w-full"><span class="text-[11px] font-black uppercase tracking-widest">Recarga</span><i data-nature-check data-lucide="circle" class="w-4 h-4 text-slate-700"></i></div><span class="text-[10px] text-slate-400">Recupera bateria</span></button>
+                                    <button type="button" id="ct-nature-btn-normal" data-task-nature-prefix="ct" data-task-nature-value="normal" onpointerdown="window.setTaskNature('ct','normal'); return false;" onclick="window.setTaskNature('ct','normal')" class="flex flex-col items-start gap-1 rounded-xl border px-3 py-3 text-left transition-all bg-indigo-950/30 border-indigo-900/50 text-indigo-300 ring-2 ring-cyan-400/40 shadow-lg shadow-cyan-950/20"><div class="flex items-center justify-between w-full"><span class="text-[11px] font-black uppercase tracking-widest">Normal</span><i data-nature-check data-lucide="check-circle-2" class="w-4 h-4 text-indigo-300"></i></div><span class="text-[10px] text-slate-400">XP, MT, combo e HP</span></button>
+                                    <button type="button" id="ct-nature-btn-neutral" data-task-nature-prefix="ct" data-task-nature-value="neutral" onpointerdown="window.setTaskNature('ct','neutral'); return false;" onclick="window.setTaskNature('ct','neutral')" class="flex flex-col items-start gap-1 rounded-xl border px-3 py-3 text-left transition-all bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-200 hover:border-slate-600"><div class="flex items-center justify-between w-full"><span class="text-[11px] font-black uppercase tracking-widest">Logística</span><i data-nature-check data-lucide="circle" class="w-4 h-4 text-slate-700"></i></div><span class="text-[10px] text-slate-400">Agenda sem gamificar</span></button>
+                                    <button type="button" id="ct-nature-btn-recharge" data-task-nature-prefix="ct" data-task-nature-value="recharge" onpointerdown="window.setTaskNature('ct','recharge'); return false;" onclick="window.setTaskNature('ct','recharge')" class="flex flex-col items-start gap-1 rounded-xl border px-3 py-3 text-left transition-all bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-200 hover:border-slate-600"><div class="flex items-center justify-between w-full"><span class="text-[11px] font-black uppercase tracking-widest">Recarga</span><i data-nature-check data-lucide="circle" class="w-4 h-4 text-slate-700"></i></div><span class="text-[10px] text-slate-400">Recupera bateria</span></button>
                                 </div>
                                 <div id="ct-nature-summary" class="rounded-xl border border-indigo-900/50 bg-indigo-950/20 p-3 text-[11px] leading-relaxed text-indigo-100">
-                                    <div class="flex items-start gap-3"><i data-lucide="swords" class="w-4 h-4 mt-0.5 shrink-0"></i><div class="min-w-0"><div class="flex flex-wrap items-center gap-2 mb-1"><strong class="text-xs uppercase tracking-widest">Missão normal</strong><span class="rounded-full bg-black/25 border border-white/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest">+XP · +MT · combo · drena HP</span></div><span class="text-slate-400">Trabalho, estudo ativo, treino ou tarefa que exige esforço real.</span></div></div>
+                                    <div class="flex items-start gap-3"><i data-lucide="swords" class="w-4 h-4 mt-0.5 shrink-0"></i><div class="min-w-0"><div class="flex flex-wrap items-center gap-2 mb-1"><strong class="text-xs uppercase tracking-widest">Missão normal</strong><span class="rounded-full bg-black/25 border border-white/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest">+XP · +MT · combo · drena HP</span></div><span class="text-slate-400">Trabalho, estudo ativo, treino, organização doméstica ou tarefa que exige esforço real.</span></div></div>
                                 </div>
                             </section>
 
@@ -4963,9 +4989,9 @@
                                     </div>
                                     <input type="hidden" id="et-nature" value="${currentNature}">
                                     <div class="grid grid-cols-3 gap-2">
-                                        <button type="button" id="et-nature-btn-normal" onclick="window.setTaskNature('et','normal')" class="flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[11px] font-black uppercase tracking-widest transition-all"><i data-lucide="swords" class="w-3.5 h-3.5"></i> Normal</button>
-                                        <button type="button" id="et-nature-btn-neutral" onclick="window.setTaskNature('et','neutral')" class="flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[11px] font-black uppercase tracking-widest transition-all"><i data-lucide="route" class="w-3.5 h-3.5"></i> Logística</button>
-                                        <button type="button" id="et-nature-btn-recharge" onclick="window.setTaskNature('et','recharge')" class="flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[11px] font-black uppercase tracking-widest transition-all"><i data-lucide="battery-charging" class="w-3.5 h-3.5"></i> Recarga</button>
+                                        <button type="button" id="et-nature-btn-normal" data-task-nature-prefix="et" data-task-nature-value="normal" onpointerdown="window.setTaskNature('et','normal'); return false;" onclick="window.setTaskNature('et','normal')" class="flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[11px] font-black uppercase tracking-widest transition-all"><i data-lucide="swords" class="w-3.5 h-3.5"></i> Normal</button>
+                                        <button type="button" id="et-nature-btn-neutral" data-task-nature-prefix="et" data-task-nature-value="neutral" onpointerdown="window.setTaskNature('et','neutral'); return false;" onclick="window.setTaskNature('et','neutral')" class="flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[11px] font-black uppercase tracking-widest transition-all"><i data-lucide="route" class="w-3.5 h-3.5"></i> Logística</button>
+                                        <button type="button" id="et-nature-btn-recharge" data-task-nature-prefix="et" data-task-nature-value="recharge" onpointerdown="window.setTaskNature('et','recharge'); return false;" onclick="window.setTaskNature('et','recharge')" class="flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[11px] font-black uppercase tracking-widest transition-all"><i data-lucide="battery-charging" class="w-3.5 h-3.5"></i> Recarga</button>
                                     </div>
                                     <div id="et-nature-summary" class="rounded-lg border p-3 text-[11px] leading-relaxed"></div>
                                 </div>
@@ -5160,6 +5186,7 @@
 
             appDiv.innerHTML = html;
             lucide.createIcons();
+            if (typeof window.bindTaskNatureControls === 'function') window.bindTaskNatureControls(appDiv);
             
             // Render specific components that require external DOM access safely
             if(!clockInterval && currentUser) startClock();
