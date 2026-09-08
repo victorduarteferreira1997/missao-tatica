@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.1-operational-alerts-followup">
+    <meta name="app-build" content="v1.9.2-cockpit-diario">
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
     <link rel="icon" type="image/png" sizes="64x64" href="data:image/png;base64,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">
@@ -4510,8 +4510,6 @@
             const horizon = Math.max(0, parseInt(window.getOperationalControl().config?.dueSoonDays, 10) || 2);
             const rows = window.getOperationalSignalsForDate(referenceDateKey, horizon);
             const untilDateKey = dateKeyFromDate(addDaysToDate(dateFromDateKey(referenceDateKey), horizon));
-            const selectedDay = daysOfWeek.find(day => day.id === state.activeTab);
-            const dayLabel = selectedDay?.label || 'Dia';
 
             const severityMeta = {
                 critical: { cls: 'border-red-900/60 bg-red-950/20 text-red-300', icon: 'triangle-alert' },
@@ -4520,52 +4518,52 @@
                 info: { cls: 'border-slate-800 bg-slate-900 text-slate-300', icon: 'info' }
             };
 
-            const cards = rows.slice(0, 6).map(row => {
+            if (!rows.length) {
+                return `
+                    <section class="mb-4 rounded-2xl border border-emerald-900/40 bg-emerald-950/10 px-3 py-3 font-mono flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div class="flex items-start gap-2 min-w-0">
+                            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400 mt-0.5 shrink-0"></i>
+                            <div class="min-w-0"><div class="text-xs font-black text-emerald-300">Situação operacional sob controle</div><div class="text-[10px] text-slate-500 mt-0.5">Nenhuma demanda conhecida requer atenção até ${window.formatOperationalDate(untilDateKey)}.</div></div>
+                        </div>
+                        <button onclick="window.setMainView('control')" class="shrink-0 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-sky-300">Abrir Radar</button>
+                    </section>`;
+            }
+
+            const compactRows = rows.slice(0, 4).map(row => {
                 const demand = row.demand;
                 const mainSignal = row.signals[0];
                 const meta = severityMeta[mainSignal.severity] || severityMeta.info;
-                const tags = row.signals.slice(0, 3).map(signal => {
-                    const tagMeta = severityMeta[signal.severity] || severityMeta.info;
-                    return `<span class="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-wide ${tagMeta.cls}"><i data-lucide="${tagMeta.icon}" class="w-3 h-3"></i>${window.escapeHtml(signal.label)}</span>`;
-                }).join('');
                 return `
-                    <div class="rounded-2xl border ${meta.cls} p-3 sm:p-4">
-                        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div class="rounded-xl border ${meta.cls} px-3 py-2.5">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <div class="min-w-0 flex-1">
-                                <div class="flex flex-wrap gap-1.5 mb-2">${tags}</div>
-                                <div class="font-black text-white text-sm leading-snug">${window.escapeHtml(demand.title)}</div>
-                                ${demand.workflowStatus === 'waiting' && demand.waitingFor ? `<div class="text-[10px] text-amber-200/80 mt-1">Aguardando: <span class="font-black">${window.escapeHtml(demand.waitingFor)}</span></div>` : ''}
-                                <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[10px] text-slate-400">
-                                    <span><span class="font-black text-slate-500 uppercase">Follow-up:</span> <span class="text-slate-200">${window.formatOperationalDate(demand.followUpAt)}</span></span>
-                                    <span><span class="font-black text-slate-500 uppercase">Prazo final:</span> <span class="text-slate-200">${window.formatOperationalDate(demand.dueDate)}</span></span>
-                                    <span><span class="font-black text-slate-500 uppercase">Revisão:</span> <span class="text-slate-200">${window.formatOperationalDate(demand.nextReviewAt)}</span></span>
+                                <div class="flex flex-wrap items-center gap-1.5 mb-1">
+                                    <span class="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wide"><i data-lucide="${meta.icon}" class="w-3 h-3"></i>${window.escapeHtml(mainSignal.label)}</span>
+                                    ${demand.workflowStatus === 'waiting' && demand.waitingFor ? `<span class="text-[9px] text-amber-200/80">Aguardando ${window.escapeHtml(demand.waitingFor)}</span>` : ''}
                                 </div>
-                                ${demand.nextAction ? `<div class="text-[11px] text-slate-300 mt-2"><span class="font-black text-slate-500 uppercase">Próxima ação:</span> ${window.escapeHtml(demand.nextAction)}</div>` : ''}
+                                <div class="font-black text-white text-xs sm:text-sm truncate">${window.escapeHtml(demand.title)}</div>
+                                <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[9px] sm:text-[10px] text-slate-400">
+                                    ${demand.followUpAt ? `<span><strong class="text-slate-500 uppercase">Follow-up</strong> ${window.formatOperationalDate(demand.followUpAt)}</span>` : ''}
+                                    ${demand.dueDate ? `<span><strong class="text-slate-500 uppercase">Prazo</strong> ${window.formatOperationalDate(demand.dueDate)}</span>` : ''}
+                                    ${demand.nextReviewAt ? `<span><strong class="text-slate-500 uppercase">Revisão</strong> ${window.formatOperationalDate(demand.nextReviewAt)}</span>` : ''}
+                                </div>
                             </div>
-                            <button onclick="window.openOperationalDemandModal('${String(demand.id)}')" class="shrink-0 rounded-lg border border-slate-700 bg-slate-950/50 px-2.5 py-2 text-[10px] font-black uppercase tracking-wider text-slate-300 hover:text-sky-300 hover:border-sky-700">Editar</button>
+                            <button onclick="window.openOperationalDemandModal('${String(demand.id)}')" class="shrink-0 rounded-lg border border-slate-700 bg-slate-950/50 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-slate-300 hover:text-sky-300 hover:border-sky-700">Ver</button>
                         </div>
                     </div>`;
             }).join('');
 
             return `
-                <section class="mb-4 rounded-3xl border border-sky-900/60 bg-sky-950/10 p-4 sm:p-5 font-mono">
-                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
-                        <div>
-                            <div class="flex items-center gap-2 text-sky-300"><i data-lucide="radar" class="w-4 h-4"></i><span class="text-[10px] font-black uppercase tracking-[0.22em]">Situação Operacional</span></div>
-                            <h3 class="text-sm font-black text-white mt-1">${dayLabel} • ${window.formatOperationalDate(referenceDateKey)}</h3>
-                            <p class="text-[10px] text-slate-500 mt-1">O sistema olha por você: atrasos, follow-ups, revisões e prazos até ${window.formatOperationalDate(untilDateKey)}.</p>
+                <section class="mb-4 rounded-2xl border border-sky-900/50 bg-sky-950/10 p-3 font-mono">
+                    <div class="flex items-center justify-between gap-3 mb-2">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 text-sky-300"><i data-lucide="radar" class="w-4 h-4"></i><span class="text-[10px] font-black uppercase tracking-[0.18em]">Situação Operacional</span></div>
+                            <div class="text-[10px] text-slate-500 mt-0.5">${rows.length} item(ns) conhecido(s) pedem atenção.</div>
                         </div>
-                        <button onclick="window.setMainView('control')" class="inline-flex items-center justify-center gap-1 rounded-lg border border-sky-900/70 bg-sky-950/40 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-sky-300 hover:bg-sky-900/50"><i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>Abrir Radar</button>
+                        <button onclick="window.setMainView('control')" class="shrink-0 inline-flex items-center gap-1 rounded-lg border border-sky-900/70 bg-sky-950/40 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-sky-300 hover:bg-sky-900/50"><i data-lucide="arrow-up-right" class="w-3 h-3"></i>Radar</button>
                     </div>
-                    ${rows.length ? `
-                        <div class="space-y-2">${cards}</div>
-                        ${rows.length > 6 ? `<div class="text-[10px] text-slate-500 mt-2">+ ${rows.length - 6} item(ns) adicional(is) no Radar.</div>` : ''}
-                    ` : `
-                        <div class="rounded-2xl border border-emerald-900/40 bg-emerald-950/10 p-3 flex items-start gap-2">
-                            <i data-lucide="shield" class="w-4 h-4 text-emerald-400 mt-0.5 shrink-0"></i>
-                            <div><div class="text-xs font-black text-emerald-300">Nenhuma demanda conhecida requer atenção neste horizonte.</div><div class="text-[10px] text-slate-500 mt-1">Você não precisa abrir o Radar para conferir novamente agora.</div></div>
-                        </div>
-                    `}
+                    <div class="space-y-1.5">${compactRows}</div>
+                    ${rows.length > 4 ? `<div class="text-[9px] text-slate-500 mt-2">+ ${rows.length - 4} item(ns) adicional(is) no Radar.</div>` : ''}
                 </section>`;
         };
 
@@ -4719,6 +4717,106 @@
                     </div>
                 </section>
             `;
+        };
+
+        // ==========================================
+        // COCKPIT DIÁRIO — APRESENTAÇÃO (v1.9.2)
+        // ==========================================
+        window.renderDailyCategoryBar = function() {
+            const filterCategories = [{ id: 'all', label: 'Tudo' }, ...window.getTaskCategories().map(c => ({ id: c.id, label: c.label }))];
+            return `
+                <div class="mb-3 flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1 font-mono">
+                    <button onclick="window.toggleCategoryModal()" class="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan-300 hover:border-cyan-700"><i data-lucide="tags" class="w-3.5 h-3.5"></i>Categorias</button>
+                    ${filterCategories.map(cat => {
+                        const active = state.currentFilter === cat.id;
+                        return `<button onclick="window.setCategoryFilter('${cat.id}')" class="shrink-0 rounded-full px-3 py-1.5 text-[10px] font-black transition-colors ${active ? 'bg-indigo-600 text-white' : 'border border-slate-800 bg-slate-950 text-slate-500 hover:text-slate-200'}">${window.escapeHtml(cat.label)}</button>`;
+                    }).join('')}
+                </div>`;
+        };
+
+        window.renderDailyMissionBoard = function(filteredTasks) {
+            const tasks = Array.isArray(filteredTasks) ? filteredTasks : [];
+            if (!tasks.length) {
+                return `<div class="rounded-2xl border border-dashed border-slate-800 bg-slate-900/50 p-6 text-center font-mono mb-4"><i data-lucide="circle-dashed" class="w-7 h-7 text-slate-600 mx-auto mb-2"></i><div class="text-sm font-black text-slate-300">Nenhuma missão neste filtro</div><div class="text-[10px] text-slate-500 mt-1">Crie uma missão ou troque a categoria.</div></div>`;
+            }
+
+            const prioColors = { essencial: 'text-purple-300 border-purple-900/60 bg-purple-950/20', alta: 'text-red-300 border-red-900/60 bg-red-950/15', media: 'text-yellow-300 border-yellow-900/60 bg-yellow-950/10', baixa: 'text-slate-400 border-slate-700 bg-slate-950/50' };
+            let out = `<div class="space-y-2 mb-4 font-mono">`;
+
+            tasks.forEach(task => {
+                const taskCategory = window.getTaskCategory(task.category);
+                const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
+                const doneSubtasks = subtasks.filter(st => st.completed).length;
+                const subtaskPercent = subtasks.length ? Math.round((doneSubtasks / subtasks.length) * 100) : 0;
+                const recurrenceDays = Array.isArray(task.recurrenceDays) ? task.recurrenceDays : [];
+                const isRecurringTask = task.isRecurring || recurrenceDays.length > 0;
+                const recurrenceLabel = window.getRecurringDaysLabel(recurrenceDays);
+                const taskScheduleLabel = window.hasCalendarTime(task) ? window.getCalendarTimeLabel(task, extractMinutesFromTask(task)) : '';
+                const taskNature = window.getTaskNature(task);
+                const taskNatureMeta = window.getTaskNatureMeta(taskNature);
+                const daysOptions = daysOfWeek.map(d => `<option value="${d.id}" ${d.id === task.day ? 'disabled' : ''}>${d.label}</option>`).join('') + `<option value="next_week">Próxima Semana</option>`;
+                const completed = !!task.completed;
+                const shell = completed ? 'border-slate-800 bg-slate-950/70 opacity-60' : (taskNature === 'recharge' ? 'border-emerald-900/50 bg-emerald-950/10' : taskNature === 'neutral' ? 'border-slate-700 bg-slate-900' : 'border-slate-800 bg-slate-900 hover:border-indigo-800/70');
+
+                out += `
+                <div onclick="window.toggleTask(${task.id}, event)" draggable="true" ondragstart="window.handleTaskDragStart(${task.id}, event)" ondragend="window.handleTaskDragEnd(event)" ondragover="window.handleTaskDragOver(${task.id}, event)" ondragleave="window.handleTaskDragLeave(event)" ondrop="window.handleTaskDrop(${task.id}, event)" class="rounded-2xl border ${shell} p-3 sm:p-4 transition-all cursor-pointer group">
+                    <div class="flex items-start gap-3">
+                        <div class="drag-handle pt-1 text-slate-700 hover:text-cyan-400 shrink-0" title="Arrastar para reorganizar" onclick="event.stopPropagation()"><i data-lucide="grip-vertical" class="w-4 h-4"></i></div>
+                        <div class="pt-0.5 shrink-0"><i data-lucide="${completed ? 'check-circle-2' : 'circle'}" class="w-5 h-5 ${completed ? 'text-emerald-500' : 'text-slate-500'}"></i></div>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-1.5 mb-1.5">
+                                ${taskScheduleLabel ? `<span class="inline-flex items-center gap-1 rounded-full border border-cyan-900/60 bg-cyan-950/30 px-2 py-0.5 text-[9px] font-black text-cyan-200"><i data-lucide="clock-3" class="w-3 h-3"></i>${taskScheduleLabel}</span>` : ''}
+                                <span class="rounded-full border px-2 py-0.5 text-[9px] font-black uppercase ${prioColors[task.priority] || prioColors.media}">${window.escapeHtml(task.priority || 'media')}</span>
+                                ${taskNature !== 'normal' ? `<span class="rounded-full border px-2 py-0.5 text-[9px] font-black uppercase ${taskNatureMeta.color} ${taskNatureMeta.bg} ${taskNatureMeta.border}"><i data-lucide="${taskNatureMeta.icon}" class="inline w-3 h-3 mr-1"></i>${taskNatureMeta.shortLabel}</span>` : ''}
+                            </div>
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                    <div class="text-sm sm:text-base font-black leading-snug ${completed ? 'line-through text-slate-600' : 'text-slate-100'}">${window.escapeHtml(task.text)}</div>
+                                    <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] text-slate-500">
+                                        <span class="inline-flex items-center gap-1"><i data-lucide="${taskCategory.icon || ICONS.default}" class="w-3 h-3 ${taskCategory.color || 'text-slate-500'}"></i>${window.escapeHtml(taskCategory.label)}</span>
+                                        ${subtasks.length ? `<span>${doneSubtasks}/${subtasks.length} subtarefas</span>` : ''}
+                                        ${isRecurringTask ? `<span class="text-violet-400">↻ ${window.escapeHtml(recurrenceLabel || 'Recorrente')}</span>` : ''}
+                                    </div>
+                                </div>
+                                <details onclick="event.stopPropagation()" class="relative shrink-0">
+                                    <summary class="list-none cursor-pointer rounded-lg border border-slate-800 bg-slate-950 px-2.5 py-1.5 text-slate-500 hover:text-white" title="Mais ações"><i data-lucide="ellipsis" class="w-4 h-4"></i></summary>
+                                    <div class="mt-2 min-w-[220px] rounded-xl border border-slate-700 bg-slate-950 p-2 shadow-xl space-y-1" onclick="event.stopPropagation()">
+                                        <div class="px-2 py-1 text-[9px] text-slate-600 uppercase font-black">${task.xp || 0} XP • ${(task.energyCost || 0) === 0 ? '0 HP' : ((task.energyCost || 0) < 0 ? '+' : '-') + Math.abs(task.energyCost || 0) + ' HP'}</div>
+                                        <button onclick="window.openEditTaskModal(${task.id}, event)" class="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[10px] font-black text-amber-300 hover:bg-slate-900"><i data-lucide="pencil" class="w-3.5 h-3.5"></i>Editar</button>
+                                        <div class="grid grid-cols-2 gap-1"><button onclick="window.moveTaskOrder(${task.id}, -1, event)" class="rounded-lg px-2 py-2 text-[10px] text-slate-400 hover:bg-slate-900">↑ Subir</button><button onclick="window.moveTaskOrder(${task.id}, 1, event)" class="rounded-lg px-2 py-2 text-[10px] text-slate-400 hover:bg-slate-900">↓ Descer</button></div>
+                                        <select onchange="window.moveTaskFromSelect(${task.id}, event, this)" onclick="event.stopPropagation()" class="w-full bg-slate-900 border border-slate-700 text-slate-400 rounded-lg p-2 text-[10px]"><option value="" disabled selected>Mover para…</option>${daysOptions}</select>
+                                        <button onclick="window.deleteMainTask(${task.id}, event)" class="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[10px] font-black text-red-400 hover:bg-red-950/20"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i>Excluir</button>
+                                    </div>
+                                </details>
+                            </div>
+                            ${subtasks.length ? `
+                            <details onclick="event.stopPropagation()" class="mt-2 rounded-lg border border-slate-800 bg-slate-950/40 overflow-hidden">
+                                <summary class="cursor-pointer list-none px-2.5 py-2 flex items-center justify-between gap-2 text-[9px] uppercase font-black tracking-wider text-slate-500"><span>Subtarefas</span><span class="text-cyan-400">${doneSubtasks}/${subtasks.length} • ${subtaskPercent}%</span></summary>
+                                <div class="border-t border-slate-800 p-2 space-y-1">
+                                    <div class="w-full bg-slate-800 rounded-full h-1 mb-2"><div class="bg-cyan-500 h-1 rounded-full" style="width:${subtaskPercent}%"></div></div>
+                                    ${subtasks.map(st => `<div class="flex items-center justify-between gap-2 rounded px-1.5 py-1"><button onclick="window.toggleSubtask(${task.id}, ${st.id}, event)" class="flex items-center gap-2 text-left flex-1 text-xs ${st.completed ? 'text-slate-600 line-through' : 'text-slate-300'}"><i data-lucide="${st.completed ? 'check-square' : 'square'}" class="w-3.5 h-3.5"></i>${window.escapeHtml(st.text)}</button><button onclick="window.deleteSubtask(${task.id}, ${st.id}, event)" class="text-slate-700 hover:text-red-400"><i data-lucide="x" class="w-3.5 h-3.5"></i></button></div>`).join('')}
+                                </div>
+                            </details>` : ''}
+                            <div class="mt-2 flex gap-2" onclick="event.stopPropagation()">
+                                <input id="subtask-input-${task.id}" type="text" placeholder="+ Subtarefa" class="min-w-0 flex-1 bg-transparent border-b border-slate-800 px-1 py-1.5 text-[10px] text-slate-400 outline-none focus:border-cyan-600" onkeypress="if(event.key === 'Enter') { event.stopPropagation(); window.addSubtask(${task.id}); }">
+                                <button onclick="window.addSubtask(${task.id})" class="text-slate-600 hover:text-cyan-400 px-1"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            out += `</div>`;
+            return out;
+        };
+
+        window.renderQuickCapturePanel = function() {
+            const quickTasks = Array.isArray(state.quickTasks) ? state.quickTasks : [];
+            return `
+                <section class="mb-5 rounded-2xl border border-slate-800 bg-slate-900/60 p-3 font-mono">
+                    <div class="flex items-center justify-between gap-2 mb-2"><div class="flex items-center gap-2"><i data-lucide="inbox" class="w-4 h-4 text-cyan-400"></i><span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Descarga Cognitiva</span></div>${quickTasks.length ? `<span class="text-[9px] text-slate-600">${quickTasks.filter(q => !q.done).length} pend.</span>` : ''}</div>
+                    <div class="flex gap-2"><input type="text" id="quick-task-input" placeholder="Capture algo em segundos…" class="min-w-0 flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-600" onkeypress="if(event.key === 'Enter') window.addQuickTask()"><button onclick="window.addQuickTask()" class="bg-cyan-800 hover:bg-cyan-700 text-white px-3 py-2 rounded-lg"><i data-lucide="plus" class="w-4 h-4"></i></button></div>
+                    ${quickTasks.length ? `<div class="mt-2 space-y-1">${quickTasks.map(qt => `<div class="flex items-center justify-between gap-2 rounded-lg bg-slate-950/70 px-2 py-1.5"><button onclick="window.toggleQuickTask(${qt.id})" class="flex items-center gap-2 min-w-0 flex-1 text-left text-xs ${qt.done ? 'line-through text-slate-600' : 'text-slate-300'}"><i data-lucide="${qt.done ? 'check-circle' : 'circle'}" class="w-3.5 h-3.5 shrink-0"></i><span class="truncate">${window.escapeHtml(qt.text)}</span></button><button onclick="window.deleteQuickTask(${qt.id})" class="text-slate-700 hover:text-red-400"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></div>`).join('')}</div>` : `<div class="mt-2 text-[10px] text-slate-600 italic">Mente limpa.</div>`}
+                </section>`;
         };
 
         // ==========================================
@@ -4958,7 +5056,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.5</span></div>
+                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.2</span></div>
                             <div class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">Quartel operacional</div>
                         </div>
                     </div>
@@ -4975,14 +5073,14 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-[1fr_2.4fr] gap-3 mt-3">
-                    <button onclick="window.toggleCreateTaskModal()" class="group bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white rounded-2xl px-4 py-3 border border-emerald-400/20 shadow-lg shadow-emerald-950/20 transition-all text-left flex items-center gap-3">
+                <div class="grid grid-cols-1 lg:grid-cols-[0.8fr_2.6fr] gap-2 mt-2">
+                    <button onclick="window.toggleCreateTaskModal()" class="group bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white rounded-xl px-3 py-2.5 border border-emerald-400/20 shadow-lg shadow-emerald-950/20 transition-all text-left flex items-center gap-3">
                         <div class="bg-white/15 rounded-xl p-2"><i data-lucide="plus-circle" class="w-5 h-5"></i></div>
                         <div><div class="text-sm font-black uppercase tracking-widest">Nova Missão</div><div class="text-[10px] text-emerald-100/80 font-bold uppercase tracking-wider">Criar tarefa</div></div>
                     </button>
 
-                    <div class="bg-slate-950/70 border border-slate-800 rounded-2xl p-2.5">
-                        <div class="text-[10px] text-slate-500 uppercase tracking-widest font-black mb-2 px-1">Módulos táticos</div>
+                    <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-2">
+                        <div class="text-[9px] text-slate-600 uppercase tracking-widest font-black mb-1.5 px-1">Módulos táticos</div>
                         <div class="flex flex-wrap gap-2">
                             <button onclick="window.toggleStudyModal()" class="flex items-center justify-center gap-1.5 bg-cyan-900/30 hover:bg-cyan-800/60 text-cyan-300 border border-cyan-800/60 px-3 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-colors min-w-[124px] flex-1"><i data-lucide="brain-circuit" class="w-4 h-4 shrink-0"></i><span class="truncate">Inteligência</span></button>
                             <button onclick="window.toggleHealthModal()" class="flex items-center justify-center gap-1.5 bg-rose-900/30 hover:bg-rose-800/60 text-rose-300 border border-rose-800/60 px-3 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-colors min-w-[96px] flex-1"><i data-lucide="activity" class="w-4 h-4 shrink-0"></i><span class="truncate">Corpo</span></button>
@@ -5054,56 +5152,22 @@
                 </div>
             </div>`;
 
-            // VISÃO PRINCIPAL: DIA, SEMANA OU SITUAÇÃO OPERACIONAL
-            const mainViewInfo = uiState.mainView === 'week'
-                ? {
-                    border: 'border-cyan-700/70 bg-cyan-950/20 shadow-lg shadow-cyan-950/20',
-                    iconBorder: 'border-cyan-700 bg-cyan-950/50 text-cyan-300',
-                    icon: 'calendar-range',
-                    title: 'Você está vendo a Semana Geral',
-                    description: 'Mapa completo da semana: missões do board e estudos planejados em uma visão só.'
-                }
+            // VISÃO PRINCIPAL: DIA, SEMANA OU SITUAÇÃO OPERACIONAL — navegação compacta
+            const compactViewMeta = uiState.mainView === 'week'
+                ? { icon: 'calendar-days', title: 'Semana Geral', description: 'Visão consolidada do planejamento semanal.', color: 'text-cyan-300' }
                 : uiState.mainView === 'control'
-                    ? {
-                        border: 'border-sky-700/70 bg-sky-950/20 shadow-lg shadow-sky-950/20',
-                        iconBorder: 'border-sky-700 bg-sky-950/50 text-sky-300',
-                        icon: 'radar',
-                        title: 'Você está vendo a Situação Operacional',
-                        description: 'Camada de controle das demandas conhecidas, com monitoramento de follow-ups, revisões e prazos.'
-                    }
-                    : {
-                        border: 'border-slate-800 bg-slate-900',
-                        iconBorder: 'border-indigo-800 bg-indigo-950/30 text-indigo-300',
-                        icon: 'layout-list',
-                        title: 'Você está vendo a Rotina do Dia',
-                        description: 'Execução do dia selecionado. A Situação Operacional abaixo sinaliza automaticamente follow-ups, revisões e prazos relevantes.'
-                    };
+                    ? { icon: 'radar', title: 'Situação Operacional', description: 'Demandas persistentes, follow-ups e prazos.', color: 'text-sky-300' }
+                    : { icon: 'layout-list', title: 'Rotina do Dia', description: 'Seu cockpit de execução: missões primeiro, apoios depois.', color: 'text-indigo-300' };
 
-            html += `<div class="mb-5 rounded-3xl border ${mainViewInfo.border} p-3 sm:p-4 font-mono">
-                <div class="grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-3 lg:items-stretch">
-                    <div class="rounded-2xl bg-slate-950/70 border border-slate-800 p-4 flex items-start gap-3">
-                        <div class="p-2.5 rounded-xl border ${mainViewInfo.iconBorder} shrink-0">
-                            <i data-lucide="${mainViewInfo.icon}" class="w-5 h-5"></i>
-                        </div>
-                        <div class="min-w-0">
-                            <h3 class="text-sm font-black text-white uppercase tracking-widest">${mainViewInfo.title}</h3>
-                            <p class="text-xs text-slate-400 leading-relaxed mt-1">${mainViewInfo.description}</p>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <button onclick="window.setMainView('day')" class="rounded-2xl p-4 text-left border transition-all ${uiState.mainView === 'day' ? 'bg-indigo-600 text-white border-indigo-400 shadow-lg shadow-indigo-950/40 scale-[1.01]' : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-indigo-700 hover:bg-indigo-950/20 hover:text-indigo-200'}">
-                            <div class="flex items-center gap-2 mb-1"><i data-lucide="layout-list" class="w-5 h-5"></i><span class="text-sm font-black uppercase tracking-widest">Rotina do Dia</span></div>
-                            <div class="text-[11px] ${uiState.mainView === 'day' ? 'text-indigo-100' : 'text-slate-500'}">Ver e executar o dia atual.</div>
-                        </button>
-                        <button onclick="window.setMainView('week')" class="rounded-2xl p-4 text-left border transition-all ${uiState.mainView === 'week' ? 'bg-cyan-600 text-white border-cyan-300 shadow-lg shadow-cyan-950/40 scale-[1.01]' : 'bg-cyan-950/30 text-cyan-300 border-cyan-900/60 hover:bg-cyan-900/60 hover:text-white hover:border-cyan-600'}">
-                            <div class="flex items-center gap-2 mb-1"><i data-lucide="calendar-days" class="w-5 h-5"></i><span class="text-sm font-black uppercase tracking-widest">Semana Geral</span></div>
-                            <div class="text-[11px] ${uiState.mainView === 'week' ? 'text-cyan-100' : 'text-cyan-200/70'}">Visualizar tudo que está planejado.</div>
-                        </button>
-                        <button onclick="window.setMainView('control')" class="rounded-2xl p-4 text-left border transition-all ${uiState.mainView === 'control' ? 'bg-sky-600 text-white border-sky-300 shadow-lg shadow-sky-950/40 scale-[1.01]' : 'bg-sky-950/30 text-sky-300 border-sky-900/60 hover:bg-sky-900/60 hover:text-white hover:border-sky-600'}">
-                            <div class="flex items-center gap-2 mb-1"><i data-lucide="radar" class="w-5 h-5"></i><span class="text-sm font-black uppercase tracking-widest">Situação Operacional</span></div>
-                            <div class="text-[11px] ${uiState.mainView === 'control' ? 'text-sky-100' : 'text-sky-200/70'}">Controlar demandas persistentes.</div>
-                        </button>
-                    </div>
+            html += `<div class="mb-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-2.5 sm:p-3 font-mono flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div class="flex items-center gap-2 min-w-0 px-1">
+                    <i data-lucide="${compactViewMeta.icon}" class="w-4 h-4 ${compactViewMeta.color} shrink-0"></i>
+                    <div class="min-w-0"><div class="text-xs font-black text-white uppercase tracking-widest">${compactViewMeta.title}</div><div class="text-[10px] text-slate-500 truncate">${compactViewMeta.description}</div></div>
+                </div>
+                <div class="grid grid-cols-3 gap-1 bg-slate-950 rounded-xl p-1 shrink-0">
+                    <button onclick="window.setMainView('day')" class="rounded-lg px-2.5 py-2 text-[10px] font-black ${uiState.mainView === 'day' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-white hover:bg-slate-800'}"><i data-lucide="layout-list" class="w-3.5 h-3.5 inline mr-1"></i>Hoje</button>
+                    <button onclick="window.setMainView('week')" class="rounded-lg px-2.5 py-2 text-[10px] font-black ${uiState.mainView === 'week' ? 'bg-cyan-700 text-white' : 'text-slate-500 hover:text-white hover:bg-slate-800'}"><i data-lucide="calendar-days" class="w-3.5 h-3.5 inline mr-1"></i>Semana</button>
+                    <button onclick="window.setMainView('control')" class="rounded-lg px-2.5 py-2 text-[10px] font-black ${uiState.mainView === 'control' ? 'bg-sky-700 text-white' : 'text-slate-500 hover:text-white hover:bg-slate-800'}"><i data-lucide="radar" class="w-3.5 h-3.5 inline mr-1"></i>Radar</button>
                 </div>
             </div>`;
 
@@ -5114,41 +5178,32 @@
             } else {
 
             // TABS DIÁRIAS
-            html += `<div class="flex overflow-x-auto pb-2 scrollbar-hide gap-2 bg-slate-900 p-2 rounded-xl border border-slate-800 mb-4 font-mono">`;
+            html += `<div class="flex overflow-x-auto scrollbar-hide gap-1 bg-slate-900 p-1.5 rounded-xl border border-slate-800 mb-3 font-mono">`;
             daysOfWeek.forEach(day => {
-                const activeClass = state.activeTab === day.id ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800';
-                html += `<button onclick="window.setTab('${day.id}')" class="whitespace-nowrap px-4 py-2 rounded-lg font-bold text-sm transition-all ${activeClass}">${day.label}</button>`;
+                const activeClass = state.activeTab === day.id ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200';
+                html += `<button onclick="window.setTab('${day.id}')" class="whitespace-nowrap px-3 py-2 rounded-lg font-black text-xs transition-all ${activeClass}">${day.label}</button>`;
             });
             html += `</div>`;
 
-            // SITUAÇÃO OPERACIONAL AUTOMÁTICA DO DIA
-            html += window.renderOperationalDayPanel();
+            const selectedDayLabel = daysOfWeek.find(d => d.id === state.activeTab)?.label || 'Hoje';
+            const pendingDailyCount = filteredTasks.filter(t => !t.completed).length;
+            const completedDailyCount = filteredTasks.filter(t => t.completed).length;
+            const focusClass = state.focusMode ? 'bg-yellow-500/15 text-yellow-300 border-yellow-700/60' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-yellow-300 hover:border-yellow-800';
 
-            // BARRA DE FILTROS DE CATEGORIA
-            html += `
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-2 mb-4">
-                <div class="flex flex-col sm:flex-row sm:items-center gap-2">
-                    <button onclick="window.toggleCategoryModal()" class="flex items-center justify-center gap-2 bg-slate-950 hover:bg-slate-800 text-cyan-300 border border-slate-800 hover:border-cyan-700 px-3 py-2 rounded-lg text-xs font-black font-mono uppercase tracking-widest transition-all shrink-0">
-                        <i data-lucide="tags" class="w-4 h-4"></i> Categorias
-                    </button>
-                    <div class="flex flex-wrap items-center gap-2 py-1 flex-1 min-w-0">
-                        <span class="text-xs font-bold text-slate-500 uppercase tracking-widest pl-1 shrink-0 font-mono">Filtrar:</span>`;
-            
-            const filterCategories = [{ id: 'all', label: 'Tudo' }, ...window.getTaskCategories().map(c => ({ id: c.id, label: c.label }))];
+            html += `<section class="mb-3 rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-3 sm:p-4 font-mono">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="text-[9px] font-black uppercase tracking-[0.22em] text-indigo-400">Execução do dia</div>
+                        <div class="flex flex-wrap items-baseline gap-2 mt-0.5"><h2 class="text-lg font-black text-white">Missões de ${selectedDayLabel}</h2><span class="text-[10px] text-slate-500">${pendingDailyCount} pend. • ${completedDailyCount} concluída(s)</span></div>
+                    </div>
+                    <div class="flex gap-2 shrink-0">
+                        <button onclick="window.toggleFocusMode()" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-black uppercase tracking-wider ${focusClass}"><i data-lucide="crosshair" class="w-3.5 h-3.5"></i>${state.focusMode ? 'Sair do foco' : 'Foco'}</button>
+                        <button onclick="window.toggleCreateTaskModal()" class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-2 text-[10px] font-black uppercase tracking-wider"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Nova missão</button>
+                    </div>
+                </div>
+            </section>`;
 
-            filterCategories.forEach(cat => {
-                const isActive = state.currentFilter === cat.id;
-                const activeClass = isActive ? 'bg-indigo-600 text-white shadow-inner font-black' : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800';
-                html += `<button onclick="window.setCategoryFilter('${cat.id}')" class="whitespace-nowrap max-w-full px-3 py-1.5 rounded-full text-xs font-bold font-mono transition-all ${activeClass}" title="${cat.label}">${cat.label}</button>`;
-            });
-            html += `</div></div></div>`;
-
-            // PLANO DE ESTUDOS DO DIA INTEGRADO AO Q.G.
-            html += renderDailyStudyPlanSection();
-
-            // MODO FOCO
-            const focusClass = state.focusMode ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' : 'bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800';
-            html += `<button onclick="window.toggleFocusMode()" class="mb-4 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-bold text-sm transition-all border w-full ${focusClass} font-mono"><i data-lucide="crosshair" class="w-4 h-4"></i> ${state.focusMode ? 'Desativar Estação de Foco' : 'Estação de Foco (Pomodoro)'}</button>`;
+            html += window.renderDailyCategoryBar();
 
             if (state.focusMode) {
                 const targetTasks = state.currentFilter === 'all' ? dailyTasks : dailyTasks.filter(t => t.category === state.currentFilter);
@@ -5250,123 +5305,13 @@
                 }
                 html += `</div>`;
             } else {
-                // LISTA GERAL
-                html += `
-                <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm mb-4 font-mono">
-                    <h3 class="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
-                        <i data-lucide="inbox" class="w-4 h-4 text-cyan-400"></i> Descarga Cognitiva (Tarefas Rápidas)
-                    </h3>
-                    <div class="flex gap-2 mb-3">
-                        <input type="text" id="quick-task-input" placeholder="Ex: Emitir NF... (Pressione Enter)" class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500" onkeypress="if(event.key === 'Enter') window.addQuickTask()">
-                        <button onclick="window.addQuickTask()" class="bg-cyan-700 hover:bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">
-                            <i data-lucide="plus" class="w-4 h-4"></i>
-                        </button>
-                    </div>
-                    <div class="space-y-2">`;
-                
-                if (state.quickTasks && state.quickTasks.length > 0) {
-                    state.quickTasks.forEach(qt => {
-                        const textStyle = qt.done ? 'line-through text-slate-500' : 'text-slate-300';
-                        const iconColor = qt.done ? 'text-emerald-500' : 'text-slate-600';
-                        const iconName = qt.done ? 'check-circle' : 'circle';
-                        html += `
-                        <div class="flex items-center justify-between bg-slate-950 p-2 rounded-lg border border-slate-800">
-                            <div class="flex items-center gap-3 flex-1 cursor-pointer" onclick="window.toggleQuickTask(${qt.id})">
-                                <i data-lucide="${iconName}" class="${iconColor} w-4 h-4 shrink-0"></i>
-                                <span class="text-sm ${textStyle}">${qt.text}</span>
-                            </div>
-                            <button onclick="window.deleteQuickTask(${qt.id})" class="text-slate-600 hover:text-red-400 p-1">
-                                <i data-lucide="trash-2" class="w-4 h-4"></i>
-                            </button>
-                        </div>`;
-                    });
-                } else {
-                    html += `<p class="text-xs text-slate-500 italic">Mente limpa.</p>`;
-                }
-                html += `</div></div>`;
-
-                html += `<div class="bg-slate-900 rounded-xl border border-slate-800 p-2 sm:p-4 space-y-2 mb-8 font-mono">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-2 pb-2 border-b border-slate-800/70 mb-2">
-                        <div class="text-[10px] uppercase tracking-widest font-black text-slate-500 flex items-center gap-2"><i data-lucide="calendar-clock" class="w-3.5 h-3.5 text-cyan-400"></i> Ordenado por horário quando houver agenda</div>
-                        <div class="text-[10px] text-slate-600 font-bold">Arrastar e setas continuam disponíveis para ajustar a ordem dentro do mesmo horário ou itens sem horário</div>
-                    </div>`;
-                if (filteredTasks.length === 0) {
-                    html += `<div class="text-center p-6 text-slate-500">Nenhuma missão. Use “Nova Missão” no topo.</div>`;
-                } else {
-                    filteredTasks.forEach(task => {
-                        const bgClass = task.completed ? 'bg-slate-950 opacity-50' : 'bg-slate-800 hover:bg-slate-700';
-                        const iconColor = task.completed ? 'text-emerald-500' : 'text-slate-500';
-                        const textClass = task.completed ? 'line-through text-slate-600' : 'text-slate-200';
-                        const prioColors = { essencial: 'text-purple-400 border-purple-800', alta: 'text-red-400 border-red-800', media: 'text-yellow-400 border-yellow-800', baixa: 'text-slate-400 border-slate-800' };
-                        const daysOptions = daysOfWeek.map(d => `<option value="${d.id}" ${d.id === task.day ? 'disabled' : ''}>${d.label}</option>`).join('') + `<option value="next_week">Próxima Semana</option>`;
-                        const taskCategory = window.getTaskCategory(task.category);
-                        const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
-                        const doneSubtasks = subtasks.filter(st => st.completed).length;
-                        const subtaskPercent = subtasks.length ? Math.round((doneSubtasks / subtasks.length) * 100) : 0;
-                        const recurrenceDays = Array.isArray(task.recurrenceDays) ? task.recurrenceDays : [];
-                        const isRecurringTask = task.isRecurring || recurrenceDays.length > 0;
-                        const recurrenceLabel = window.getRecurringDaysLabel(recurrenceDays);
-                        const taskScheduleLabel = window.hasCalendarTime(task) ? window.getCalendarTimeLabel(task, extractMinutesFromTask(task)) : '';
-                        const taskNature = window.getTaskNature(task);
-                        const taskNatureMeta = window.getTaskNatureMeta(taskNature);
-
-                        html += `
-                        <div onclick="window.toggleTask(${task.id}, event)" draggable="true" ondragstart="window.handleTaskDragStart(${task.id}, event)" ondragend="window.handleTaskDragEnd(event)" ondragover="window.handleTaskDragOver(${task.id}, event)" ondragleave="window.handleTaskDragLeave(event)" ondrop="window.handleTaskDrop(${task.id}, event)" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg cursor-pointer transition-all ${bgClass} group relative">
-                            <div class="flex items-start justify-between gap-3 w-full">
-                                <div class="flex items-start gap-3 flex-1 min-w-0">
-                                    <div class="drag-handle mt-0.5 text-slate-600 hover:text-cyan-400 transition-colors" title="Arraste para reorganizar" onclick="event.stopPropagation()"><i data-lucide="grip-vertical" class="w-5 h-5"></i></div>
-                                    <div class="mt-0.5"><i data-lucide="${task.completed ? 'check-circle' : 'circle'}" class="${iconColor} w-5 h-5"></i></div>
-                                    <div>
-                                        ${taskScheduleLabel ? `<div class="mb-2 inline-flex items-center gap-1.5 rounded-full border border-cyan-800/70 bg-cyan-950/40 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-cyan-200"><i data-lucide="calendar-clock" class="w-3.5 h-3.5"></i>${taskScheduleLabel}</div>` : ''}
-                                        <span class="text-sm md:text-base font-medium flex items-center gap-2 ${textClass}">
-                                            <i data-lucide="${taskCategory.icon || ICONS.default}" class="w-4 h-4 ${taskCategory.color || 'text-slate-500'}"></i> ${task.text}
-                                        </span>
-                                        ${!task.completed ? `
-                                        <div class="flex gap-2 mt-2">
-                                            <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${prioColors[task.priority]}">${task.priority}</span>
-                                            <span class="text-[10px] uppercase font-bold ${taskCategory.color || 'text-slate-400'} bg-slate-900 px-2 py-0.5 rounded border border-slate-700"><i data-lucide="${taskCategory.icon || 'target'}" class="inline w-3 h-3 mr-1"></i>${taskCategory.label}</span>
-                                            ${taskNature !== 'normal' ? `<span class="text-[10px] uppercase font-bold ${taskNatureMeta.color} ${taskNatureMeta.bg} px-2 py-0.5 rounded border ${taskNatureMeta.border}"><i data-lucide="${taskNatureMeta.icon}" class="inline w-3 h-3 mr-1"></i>${taskNatureMeta.shortLabel}</span>` : ''}
-                                            <span class="text-[10px] uppercase font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-700"><i data-lucide="zap" class="inline w-3 h-3 text-indigo-400 mr-1"></i>${task.xp || 0}</span>
-                                            <span class="text-[10px] uppercase font-bold ${(task.energyCost || 0) < 0 ? 'text-emerald-400' : ((task.energyCost || 0) === 0 ? 'text-slate-400' : 'text-orange-400')} bg-slate-900 px-2 py-0.5 rounded border border-slate-700"><i data-lucide="battery" class="inline w-3 h-3 mr-1"></i>${(task.energyCost || 0) === 0 ? '0' : ((task.energyCost || 0) < 0 ? '+' : '-') + Math.abs(task.energyCost || 0)}</span>
-                                            ${isRecurringTask ? `<span class="text-[10px] uppercase font-bold text-violet-300 bg-slate-900 px-2 py-0.5 rounded border border-violet-900/50"><i data-lucide="repeat" class="inline w-3 h-3 mr-1"></i>${recurrenceLabel || 'Recorrente'}</span>` : ''}
-                                            ${subtasks.length ? `<span class="text-[10px] uppercase font-bold text-cyan-400 bg-slate-900 px-2 py-0.5 rounded border border-cyan-900/50"><i data-lucide="list-checks" class="inline w-3 h-3 mr-1"></i>${doneSubtasks}/${subtasks.length}</span>` : ''}
-                                        </div>` : ''}
-                                        ${subtasks.length ? `
-                                        <div class="mt-3 bg-slate-900/60 border border-slate-700 rounded-lg p-2" onclick="event.stopPropagation()">
-                                            <div class="flex items-center justify-between gap-2 mb-2">
-                                                <span class="text-[10px] uppercase tracking-widest font-bold text-slate-500">Subtarefas</span>
-                                                <span class="text-[10px] font-bold text-cyan-400">${doneSubtasks}/${subtasks.length} • ${subtaskPercent}%</span>
-                                            </div>
-                                            <div class="w-full bg-slate-800 rounded-full h-1.5 mb-2"><div class="bg-cyan-500 h-1.5 rounded-full transition-all" style="width: ${subtaskPercent}%"></div></div>
-                                            <div class="space-y-1">
-                                                ${subtasks.map(st => `
-                                                    <div class="flex items-center justify-between gap-2 text-xs bg-slate-950 border border-slate-800 rounded px-2 py-1.5">
-                                                        <button onclick="window.toggleSubtask(${task.id}, ${st.id}, event)" class="flex items-center gap-2 text-left flex-1 ${st.completed ? 'text-slate-500 line-through' : 'text-slate-300 hover:text-white'}">
-                                                            <i data-lucide="${st.completed ? 'check-square' : 'square'}" class="w-3.5 h-3.5 ${st.completed ? 'text-emerald-400' : 'text-slate-500'}"></i> ${st.text}
-                                                        </button>
-                                                        <button onclick="window.deleteSubtask(${task.id}, ${st.id}, event)" class="text-slate-600 hover:text-red-400"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
-                                                    </div>`).join('')}
-                                            </div>
-                                        </div>` : ''}
-                                        <div class="mt-2 flex gap-2" onclick="event.stopPropagation()">
-                                            <input id="subtask-input-${task.id}" type="text" placeholder="Nova subtarefa..." class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-cyan-500" onkeypress="if(event.key === 'Enter') { event.stopPropagation(); window.addSubtask(${task.id}); }">
-                                            <button onclick="window.addSubtask(${task.id})" class="bg-cyan-900/50 hover:bg-cyan-800 text-cyan-300 border border-cyan-700/50 rounded-lg px-2 py-1.5 text-xs font-bold"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-1 opacity-100 transition-opacity shrink-0" onclick="event.stopPropagation()">
-                                    <button onclick="window.openEditTaskModal(${task.id}, event)" class="flex items-center gap-1.5 px-2.5 py-1.5 text-amber-300 bg-amber-950/20 hover:bg-amber-900/40 border border-amber-900/40 hover:border-amber-600 rounded-lg transition-colors text-[11px] font-black uppercase tracking-wider" title="Editar missão"><i data-lucide="pencil" class="w-4 h-4"></i><span>Editar</span></button>
-                                    <button onclick="window.moveTaskOrder(${task.id}, -1, event)" class="p-1.5 text-slate-500 hover:text-cyan-400 hover:bg-slate-900 rounded-lg transition-colors" title="Subir missão"><i data-lucide="arrow-up" class="w-4 h-4"></i></button>
-                                    <button onclick="window.moveTaskOrder(${task.id}, 1, event)" class="p-1.5 text-slate-500 hover:text-cyan-400 hover:bg-slate-900 rounded-lg transition-colors" title="Descer missão"><i data-lucide="arrow-down" class="w-4 h-4"></i></button>
-                                    <select onchange="window.moveTaskFromSelect(${task.id}, event, this)" onclick="event.stopPropagation()" class="bg-slate-900 border border-slate-700 text-slate-400 rounded-lg p-1.5 text-xs focus:outline-none cursor-pointer"><option value="" disabled selected>📅 Mover</option>${daysOptions}</select>
-                                    <button onclick="window.deleteMainTask(${task.id}, event)" class="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-900 rounded-lg transition-colors"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
-                                </div>
-                            </div>
-                        </div>`;
-                    });
-                }
-                html += `</div>`;
+                html += window.renderDailyMissionBoard(filteredTasks);
             }
+
+            // Apoios do dia ficam abaixo das missões, preservando todas as funções existentes.
+            html += window.renderOperationalDayPanel();
+            html += renderDailyStudyPlanSection();
+            html += window.renderQuickCapturePanel();
 
             }
 
@@ -5927,20 +5872,33 @@
             const totalMinutes = activeBlocks.reduce((acc, b) => acc + (parseInt(b.plannedMinutes) || 0), 0);
             const doneMinutes = activeBlocks.filter(b => b.status === 'completed').reduce((acc, b) => acc + (parseInt(b.plannedMinutes) || 0), 0);
             const pct = activeBlocks.length ? Math.round((completed / activeBlocks.length) * 100) : 0;
+            const dayLabel = daysOfWeek.find(d => d.id === state.activeTab)?.label || 'hoje';
+
+            if (!activeBlocks.length) {
+                return `
+                <details class="mb-4 rounded-2xl border border-slate-800 bg-slate-900/60 font-mono overflow-hidden">
+                    <summary class="cursor-pointer list-none px-3 py-3 flex items-center justify-between gap-3 hover:bg-slate-800/40">
+                        <div class="flex items-center gap-2 min-w-0"><i data-lucide="book-open" class="w-4 h-4 text-cyan-400"></i><span class="text-xs font-black text-slate-300">Estudos de ${dayLabel}</span><span class="text-[10px] text-slate-600">0 blocos</span></div>
+                        <span class="text-[9px] text-slate-500 uppercase font-black tracking-wider">Expandir</span>
+                    </summary>
+                    <div class="border-t border-slate-800 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div class="text-[10px] text-slate-500">Nenhum bloco planejado para este dia.</div>
+                        <button onclick="window.toggleStudyModal(); window.setStudyTab('planning')" class="rounded-lg bg-cyan-800 hover:bg-cyan-700 text-white px-3 py-2 text-[10px] font-black uppercase tracking-widest">Criar planejamento</button>
+                    </div>
+                </details>`;
+            }
+
             return `
-            <div class="bg-slate-900 border border-cyan-900/40 rounded-2xl p-4 mb-4 font-mono shadow-lg shadow-cyan-950/10">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div class="bg-slate-900 border border-cyan-900/40 rounded-2xl p-3 sm:p-4 mb-4 font-mono shadow-lg shadow-cyan-950/10">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                     <div>
-                        <h3 class="text-sm font-black text-cyan-300 uppercase tracking-widest flex items-center gap-2"><i data-lucide="calendar-check" class="w-4 h-4"></i> Plano de Estudos do Dia</h3>
-                        <p class="text-[11px] text-slate-500 mt-1">Blocos criados no Centro de Inteligência para ${daysOfWeek.find(d => d.id === state.activeTab)?.label || 'hoje'}, ordenados por horário.</p>
+                        <h3 class="text-xs font-black text-cyan-300 uppercase tracking-widest flex items-center gap-2"><i data-lucide="calendar-check" class="w-4 h-4"></i> Estudos de ${dayLabel}</h3>
+                        <p class="text-[10px] text-slate-500 mt-1">${completed}/${activeBlocks.length} blocos • ${doneMinutes}/${totalMinutes} min.</p>
                     </div>
-                    <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest">
-                        <span class="bg-slate-950 border border-slate-800 text-slate-400 px-2 py-1 rounded-lg">${completed}/${activeBlocks.length} blocos</span>
-                        <span class="bg-cyan-950/40 border border-cyan-900/50 text-cyan-300 px-2 py-1 rounded-lg">${doneMinutes}/${totalMinutes} min</span>
-                        <button onclick="window.toggleStudyModal(); window.setStudyTab('planning')" class="bg-cyan-700 hover:bg-cyan-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> Planejar</button>
-                    </div>
+                    <button onclick="window.toggleStudyModal(); window.setStudyTab('planning')" class="bg-cyan-800 hover:bg-cyan-700 text-white px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> Planejar</button>
                 </div>
-                ${activeBlocks.length ? `<div class="w-full bg-slate-800 rounded-full h-2 mb-4"><div class="bg-cyan-500 h-2 rounded-full transition-all" style="width:${pct}%"></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-3">${activeBlocks.map(b => renderStudyPlanBlockCard(b, true)).join('')}</div>` : `<div class="border border-dashed border-slate-800 rounded-xl p-5 text-center"><i data-lucide="calendar-plus" class="w-8 h-8 text-slate-600 mx-auto mb-2"></i><p class="text-sm text-slate-500 italic mb-3">Nenhum bloco de estudo planejado para este dia.</p><button onclick="window.toggleStudyModal(); window.setStudyTab('planning')" class="bg-cyan-800 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest">Criar planejamento</button></div>`}
+                <div class="w-full bg-slate-800 rounded-full h-1.5 mb-3"><div class="bg-cyan-500 h-1.5 rounded-full transition-all" style="width:${pct}%"></div></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">${activeBlocks.map(b => renderStudyPlanBlockCard(b, true)).join('')}</div>
             </div>`;
         }
 
