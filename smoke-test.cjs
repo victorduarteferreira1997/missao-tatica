@@ -37,7 +37,8 @@ s.energy = 65;
 s.tasks = [
   { id: 101, text: 'Revisar assessment', day: s.activeTab, category: 'work', priority: 'essencial', completed: false, xp: 30, energyCost: 5, time: '30 min', missionNature: 'normal', subtasks: [], order: 1 },
   { id: 102, text: 'Consulta marcada', day: s.activeTab, category: 'life', priority: 'media', completed: false, xp: 0, energyCost: 0, time: '60 min', missionNature: 'neutral', subtasks: [], order: 2 },
-  { id: 103, text: 'Ler material', day: s.activeTab, category: 'study', priority: 'media', completed: false, xp: 20, energyCost: 3, time: '25 min', missionNature: 'normal', subtasks: [], order: 3 }
+  { id: 103, text: 'Ler material', day: s.activeTab, category: 'study', priority: 'media', completed: false, xp: 20, energyCost: 3, time: '25 min', missionNature: 'normal', subtasks: [], order: 3 },
+  { id: 104, text: 'Rotina recorrente', day: s.activeTab, category: 'life', priority: 'baixa', completed: false, xp: 10, energyCost: 2, time: '15 min', missionNature: 'normal', subtasks: [], order: 4, isRecurring: true, recurrenceDays: [s.activeTab], recurrenceGroupId: 'rec-test', progressStatus: 'partial', progressNotes: [{ at: '2026-09-28', text: 'Semana anterior' }] }
 ];
 s.quickTasks = [{ id: 201, text: 'Lembrar documento', done: false }];
 context.showToast = () => {};
@@ -75,6 +76,9 @@ assert(s.tasks.some(t => t.text === 'Ler material' && t.day === 'next_week'));
 assert.equal(s.quickTasks.length, 1);
 assert(s.weeklyMissionArchive.at(-1).tasks.some(t => t.text === 'Revisar assessment'));
 assert.equal(s.combo, combo);
+const renewed = s.tasks.find(t => t.text === 'Rotina recorrente');
+assert.equal(renewed.progressStatus, 'planned');
+assert.equal(renewed.progressNotes.length, 0);
 context.__test.uiState.mainView = 'week';
 context.__test.renderFull();
 assert.match(appElement.innerHTML, /A definir · 2 missão/);

@@ -851,6 +851,9 @@
                             ...t,
                             completed: false,
                             skipped: false,
+                            progressStatus: 'planned',
+                            progressNotes: [],
+                            lastProgressAt: null,
                             subtasks: (Array.isArray(t.subtasks) ? t.subtasks : []).map(st => ({ ...st, completed: false }))
                         };
                         delete cleanTask.rewardedXp;
