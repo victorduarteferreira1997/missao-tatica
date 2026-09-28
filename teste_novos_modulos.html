@@ -286,6 +286,8 @@
             studyPlanningTrackId: '',
             studyPlanningView: 'board',
             mainView: 'day',
+            interruptedDay: false,
+            progressTaskId: null,
             editingStudyBlockId: null,
             showHealthModal: false, healthTab: 'dashboard',
             showFinanceModal: false, financeTab: 'dashboard',
@@ -301,7 +303,7 @@
             pomodoroEvaluationData: null
         };
 
-        let pomodoro = { isRunning: false, timeLeft: 25 * 60, mode: 'focus', cycle: 1, intervalId: null, currentFocusStartedAt: null, currentFocusTaskId: null, currentFocusTaskText: null, currentFocusTaskDay: null, currentFocusTaskCategory: null, focusLock: null };
+        let pomodoro = { isRunning: false, timeLeft: 25 * 60, mode: 'focus', cycle: 1, intervalId: null, sessionMinutes: null, currentFocusStartedAt: null, currentFocusTaskId: null, currentFocusTaskText: null, currentFocusTaskDay: null, currentFocusTaskCategory: null, focusLock: null };
 
         // Função definida cedo para evitar crash no validateState quando já existem tarefas salvas.
         window.getTaskCategory = function(categoryId) {
@@ -834,7 +836,13 @@
 
         window.prepareNextWeekPlanning = function() {
             const nextMondayKey = window.getNextCalendarWeekStartKey();
-            window.showConfirmModal('Preparar a próxima semana agora? Isso vai limpar as missões comuns da semana atual, preservar missões recorrentes, zerar o status dos estudos planejados e abrir o calendário da próxima semana. Ideal para usar no domingo, depois de revisar/fechar a semana atual.', () => {
+            const ordinary = state.tasks.filter(t => !(t.isRecurring || (Array.isArray(t.recurrenceDays) && t.recurrenceDays.length)));
+            const pending = ordinary.filter(t => !t.completed);
+            const completed = ordinary.filter(t => t.completed);
+            window.showConfirmModal(`Preparar a próxima semana? ${pending.length} missão(ões) em aberto irão para “A definir”, preservando o avanço. ${completed.length} concluída(s) irão para o histórico. Recorrências serão renovadas e a Descarga Cognitiva será preservada.`, () => {
+                if (!Array.isArray(state.weeklyMissionArchive)) state.weeklyMissionArchive = [];
+                if (completed.length) state.weeklyMissionArchive.push({ weekStartKey: state.currentPlanningWeekStart || window.getCurrentCalendarWeekStartKey(), archivedAt: new Date().toISOString(), tasks: completed.map(t => ({ id: t.id, text: t.text, day: t.day, category: t.category, completedAt: t.lastProgressAt || null })) });
+                state.weeklyMissionArchive = state.weeklyMissionArchive.slice(-52);
                 window.normalizeRecurringTaskSchedules();
                 const recurringTasks = state.tasks
                     .filter(t => t.isRecurring || (Array.isArray(t.recurrenceDays) && t.recurrenceDays.length > 0))
@@ -862,18 +870,15 @@
                     });
                 }
 
-                state.tasks = recurringTasks;
-                state.quickTasks = [];
-                state.combo = 0;
+                state.tasks = [...recurringTasks, ...pending.map(t => ({ ...t, day: 'next_week', lastReplannedAt: new Date().toISOString() }))];
                 state.waterCount = 0;
                 window.rollOverEconomyWeekIfNeeded();
-                state.energy = 100;
                 state.activeTab = 'monday';
                 state.currentFilter = 'all';
                 state.currentPlanningWeekStart = nextMondayKey;
                 uiState.mainView = 'week';
                 window.saveState();
-                window.showToast('Próxima semana preparada', `${recurringTasks.length} missão(ões) recorrente(s) preservada(s). Estudos voltaram para planejado.`, 'calendar-plus', 'text-cyan-300');
+                window.showToast('Semana preparada', `${pending.length} missão(ões) aguardam distribuição. ${recurringTasks.length} recorrente(s) preservada(s).`, 'calendar-days', 'text-cyan-300');
             });
         };
 
@@ -900,6 +905,7 @@
             if (!['masculino', 'feminino'].includes(state.userProfile.gender)) state.userProfile.gender = '';
             state.userProfile.configured = Boolean(state.userProfile.displayName && state.userProfile.gender);
             if (!Array.isArray(state.taskDeletionLog)) state.taskDeletionLog = [];
+            if (!Array.isArray(state.weeklyMissionArchive)) state.weeklyMissionArchive = [];
             if (!state.unlockedBadges) state.unlockedBadges = [];
             if (!state.tasks) state.tasks = []; 
             if (!state.currentPlanningWeekStart) state.currentPlanningWeekStart = window.getCurrentCalendarWeekStartKey();
@@ -1308,6 +1314,9 @@
                 overlay.style.opacity = '0'; setTimeout(() => { overlay.style.display = 'none'; }, 300);
                 wrapper.style.display = 'block';
                 await loadFromFirestore(user.uid);
+                state.activeTab = daysOfWeek[(new Date().getDay() + 6) % 7].id;
+                state.currentPlanningWeekStart = window.getCurrentCalendarWeekStartKey();
+                render();
                 startClock();
             } else {
                 currentUser = null; window.updateSyncStatus('Desconectado');
@@ -1770,6 +1779,7 @@
 
             if (task.completed) {
                 task.completed = false; task.skipped = false;
+                task.progressStatus = task.progressNotes?.length ? 'partial' : 'planned';
                 const deductedXp = task.rewardedXp || 0;
                 const deductedCoins = task.rewardedCoins || 0;
                 const energyToRestore = typeof task.rewardedEnergyCost === 'number' ? task.rewardedEnergyCost : task.energyCost;
@@ -1792,6 +1802,8 @@
                 window.spawnFloatingText(event, undoText, deductedXp > 0 ? 'text-red-400' : 'text-slate-400');
             } else {
                 task.completed = true;
+                task.progressStatus = 'completed';
+                task.lastProgressAt = new Date().toISOString();
                 task.rewardedNature = nature;
 
                 if (nature === 'neutral') {
@@ -1908,10 +1920,11 @@
         };
 
         window.endDay = function() {
-            window.showConfirmModal("Deseja encerrar o dia e ir dormir? Isso irá recarregar sua Bateria (HP) para 100%.", () => {
-                state.energy = 100; const currentIndex = daysOfWeek.findIndex(d => d.id === state.activeTab);
-                if(currentIndex < daysOfWeek.length - 1) state.activeTab = daysOfWeek[currentIndex + 1].id;
-                window.showToast('Hibernação Concluída', 'Bateria restaurada para 100%.', 'moon', 'text-indigo-400'); window.saveState();
+            const open = window.sortTasksForDay(state.activeTab).filter(t => !t.completed).length;
+            window.showConfirmModal(`Encerrar a revisão de hoje? ${open} missão(ões) continuam disponíveis para revisar ou replanejar. O descanso recarrega o HP, sem mudar o dia selecionado.`, () => {
+                state.energy = 100;
+                state.lastDayReviewAt = new Date().toISOString();
+                window.showToast('Dia revisado', 'Seu plano continua disponível para retomar.', 'moon', 'text-indigo-400'); window.saveState();
             });
         };
 
@@ -1919,7 +1932,7 @@
             if (event) { if (typeof event.stopPropagation === 'function') event.stopPropagation(); if (typeof event.preventDefault === 'function') event.preventDefault(); }
             const targetDay = selectEl.value; if (!targetDay) return;
             const task = state.tasks.find(t => t.id == taskId);
-            if (task) { task.day = targetDay; task.order = window.getNextTaskOrder(targetDay); window.changeEnergy(10); state.stats.tasksMoved = (state.stats.tasksMoved || 0) + 1; window.unlockBadge('estrategista'); window.spawnFloatingText(event, `+10 HP`, 'text-emerald-400'); window.breakCombo(); window.saveState(); }
+            if (task) { task.day = targetDay; task.order = window.getNextTaskOrder(targetDay); task.lastReplannedAt = new Date().toISOString(); state.stats.tasksMoved = (state.stats.tasksMoved || 0) + 1; window.unlockBadge('estrategista'); window.showToast('Missão replanejada', 'Seu avanço foi preservado.', 'calendar-clock', 'text-cyan-300'); window.saveState(); }
             selectEl.value = "";
         };
 
@@ -1989,10 +2002,9 @@
                 }
             }
 
-            if (!preserveCombo) window.breakCombo();
             uiState.deleteTaskPrompt = { show: false, taskId: null };
             await window.saveStateNow();
-            window.showToast('Missão excluída', preserveCombo ? 'Substituição registrada. Frenesi preservado.' : 'Exclusão registrada. Frenesi ajustado.', 'trash-2', preserveCombo ? 'text-cyan-300' : 'text-orange-300');
+            window.showToast('Decisão registrada', 'O histórico da missão foi preservado.', 'archive', 'text-cyan-300');
         };
 
         window.getTaskCategories = function(includeInactive = false) {
@@ -2292,7 +2304,7 @@
             try { new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play(); } catch(e) {}
             const s = state.pomodoroSettings;
             if (pomodoro.mode === 'focus') {
-                const focusMinutes = parseInt(s.focus) || 25;
+                const focusMinutes = pomodoro.sessionMinutes || parseInt(s.focus) || 25;
                 const activeFocusLock = pomodoro.focusLock || null;
                 const lockedTaskId = activeFocusLock ? activeFocusLock.id : pomodoro.currentFocusTaskId;
                 const lockedTaskText = activeFocusLock ? activeFocusLock.text : pomodoro.currentFocusTaskText;
@@ -2310,7 +2322,7 @@
                     pomodoro.mode = 'shortBreak'; 
                     pomodoro.timeLeft = s.shortBreak * 60; 
                 }
-                const earnedXP = 30 * window.getComboMultiplier(); 
+                const earnedXP = 30 * Math.min(1, focusMinutes / (parseInt(s.focus, 10) || 25)) * window.getComboMultiplier();
                 const earnedCoins = window.awardTacticalCoins(state.economy?.rules?.pomodoroCoins ?? ECONOMY_DEFAULTS.pomodoroCoins, 'pomodoro', { showCapToast: false });
                 state.xp += Math.round(earnedXP); 
                 state.stats.pomodorosCompleted = (state.stats.pomodorosCompleted || 0) + 1; 
@@ -2321,6 +2333,7 @@
                 pomodoro.currentFocusTaskDay = null;
                 pomodoro.currentFocusTaskCategory = null;
                 pomodoro.focusLock = null;
+                pomodoro.sessionMinutes = null;
 
                 uiState.pomodoroEvaluationData = {
                     id: Date.now(),
@@ -2364,6 +2377,7 @@
                 pomodoro.currentFocusTaskDay = null;
                 pomodoro.currentFocusTaskCategory = null;
             pomodoro.focusLock = null;
+            pomodoro.sessionMinutes = null;
             pomodoro.timeLeft = state.pomodoroSettings.focus * 60; 
             render(); 
         };
@@ -2693,6 +2707,7 @@
 
             const applyValues = (target, targetDay) => {
                 target.text = text;
+                target.nextAction = document.getElementById('et-next-action')?.value.trim() || '';
                 target.day = targetDay;
                 target.category = selectedCategory;
                 target.priority = priority;
@@ -2842,6 +2857,8 @@
                     day: targetDay,
                     category: selectedCategory,
                     text: text,
+                    nextAction: document.getElementById('ct-next-action')?.value.trim() || '',
+                    progressStatus: 'planned',
                     xp: cost.xp,
                     energyCost: cost.hp,
                     completed: false,
@@ -2886,6 +2903,54 @@
             window.saveState(); 
         };
         window.setTab = function(tabId) { state.activeTab = tabId; window.saveState(); };
+        window.goToToday = function() {
+            state.activeTab = daysOfWeek[(new Date().getDay() + 6) % 7].id;
+            state.currentPlanningWeekStart = window.getCurrentCalendarWeekStartKey();
+            uiState.mainView = 'day';
+            window.saveState();
+        };
+        window.toggleInterruptedDay = function() {
+            uiState.interruptedDay = !uiState.interruptedDay;
+            render();
+        };
+        window.openTaskProgress = function(taskId, event) {
+            event?.stopPropagation();
+            uiState.progressTaskId = String(taskId);
+            render();
+        };
+        window.saveTaskProgress = function() {
+            const task = state.tasks.find(t => String(t.id) === uiState.progressTaskId);
+            const note = document.getElementById('task-progress-note')?.value.trim();
+            const nextAction = document.getElementById('task-progress-next')?.value.trim();
+            if (!task || (!note && !nextAction)) return;
+            if (!Array.isArray(task.progressNotes)) task.progressNotes = [];
+            if (note) task.progressNotes.push({ at: new Date().toISOString(), text: note });
+            if (nextAction) task.nextAction = nextAction;
+            task.progressStatus = 'partial';
+            task.lastProgressAt = new Date().toISOString();
+            uiState.progressTaskId = null;
+            window.showToast('Avanço registrado', 'Você poderá retomar a partir do próximo passo.', 'circle-dot', 'text-cyan-300');
+            window.saveState();
+        };
+        window.startTaskFor15Minutes = function(taskId, event) {
+            event?.stopPropagation();
+            const task = state.tasks.find(t => String(t.id) === String(taskId));
+            if (!task || task.completed) return;
+            if (pomodoro.isRunning || pomodoro.currentFocusStartedAt) {
+                window.showToast('Foco em andamento', 'Encerre ou reinicie o ciclo atual antes de trocar de missão.', 'lock', 'text-amber-300');
+                return;
+            }
+            state.activeTab = task.day;
+            state.focusMode = true;
+            state.focusedTaskId = String(task.id);
+            state.currentFilter = 'all';
+            task.progressStatus = 'in_progress';
+            pomodoro.mode = 'focus';
+            pomodoro.timeLeft = 15 * 60;
+            pomodoro.sessionMinutes = 15;
+            window.saveState(true);
+            window.togglePomodoro(String(task.id));
+        };
         window.toggleFocusMode = function() { state.focusMode = !state.focusMode; if (!state.focusMode && pomodoro.isRunning) window.togglePomodoro(); window.saveState(); };
         window.toggleStatsModal = function() { uiState.showStatsModal = !uiState.showStatsModal; render(); };
         window.setStatsTab = function(tab) { uiState.statsTab = tab; render(); };
@@ -3607,7 +3672,7 @@
             }
 
             if(state.energy < 20) {
-                setTimeout(() => window.showAlertModal("Bateria Executiva Crítica (<20 HP). O sistema recomenda transição para atividades passivas ou encerramento."), 1000);
+                window.showToast('Pode ser hora de reduzir o ritmo', 'HP é apenas uma estimativa. Ajuste o plano ou abra uma recarga se fizer sentido.', 'battery-low', 'text-amber-300');
             }
             window.saveState();
         };
@@ -4517,19 +4582,19 @@
                 }
 
                 if (!String(demand.nextAction || '').trim() && demand.workflowStatus === 'active') {
-                    addSignal(bucket, 'missing-next-action', 'attention', 'Sem próxima ação definida');
+                    addSignal(bucket, 'missing-next-action', 'info', 'Definir próxima ação');
                 }
 
                 if (!String(demand.nextReviewAt || '').trim()) {
-                    addSignal(bucket, 'missing-review', 'attention', 'Sem próxima data de revisão');
+                    addSignal(bucket, 'missing-review', 'info', 'Definir revisão');
                 }
 
                 if (demand.workflowStatus === 'waiting' && !String(demand.waitingFor || '').trim()) {
-                    addSignal(bucket, 'missing-waiting-for', 'attention', 'Aguardando terceiro sem responsável informado');
+                    addSignal(bucket, 'missing-waiting-for', 'info', 'Informar responsável externo');
                 }
 
                 if (demand.workflowStatus === 'waiting' && !String(demand.followUpAt || '').trim()) {
-                    addSignal(bucket, 'missing-followup', 'attention', 'Aguardando sem data de follow-up');
+                    addSignal(bucket, 'missing-followup', 'info', 'Definir follow-up');
                 }
 
                 const evaluateDate = (dateKey, kind, labels, overdueSeverity = 'attention', todaySeverity = 'attention', upcomingSeverity = 'upcoming') => {
@@ -4565,7 +4630,10 @@
                     'attention', 'attention', 'upcoming'
                 );
 
-                if (bucket.signals.length) rows.push(bucket);
+                if (bucket.signals.length) {
+                    bucket.signals.sort((a, b) => ({ critical: 0, attention: 1, upcoming: 2, info: 3 }[a.severity] ?? 9) - ({ critical: 0, attention: 1, upcoming: 2, info: 3 }[b.severity] ?? 9));
+                    rows.push(bucket);
+                }
             });
 
             rows.sort((a, b) =>
@@ -4579,7 +4647,9 @@
         window.renderOperationalDayPanel = function() {
             const referenceDateKey = window.getOperationalDayDateKey(state.activeTab);
             const horizon = Math.max(0, parseInt(window.getOperationalControl().config?.dueSoonDays, 10) || 2);
-            const rows = window.getOperationalSignalsForDate(referenceDateKey, horizon);
+            const allRows = window.getOperationalSignalsForDate(referenceDateKey, horizon);
+            const rows = allRows.filter(row => row.signals.some(signal => signal.severity !== 'info'));
+            const maintenanceCount = allRows.filter(row => row.signals.every(signal => signal.severity === 'info')).length;
             const untilDateKey = dateKeyFromDate(addDaysToDate(dateFromDateKey(referenceDateKey), horizon));
 
             const severityMeta = {
@@ -4594,7 +4664,7 @@
                     <section class="mb-4 rounded-2xl border border-emerald-900/40 bg-emerald-950/10 px-3 py-3 font-mono flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                         <div class="flex items-start gap-2 min-w-0">
                             <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400 mt-0.5 shrink-0"></i>
-                            <div class="min-w-0"><div class="text-xs font-black text-emerald-300">Situação operacional sob controle</div><div class="text-[10px] text-slate-500 mt-0.5">Nenhuma demanda conhecida requer atenção até ${window.formatOperationalDate(untilDateKey)}.</div></div>
+                            <div class="min-w-0"><div class="text-xs font-black text-emerald-300">Sem ação operacional urgente</div><div class="text-[10px] text-slate-500 mt-0.5">Nenhum prazo ou follow-up conhecido exige ação até ${window.formatOperationalDate(untilDateKey)}.${maintenanceCount ? ` ${maintenanceCount} cadastro(s) podem ser completados no Radar.` : ''}</div></div>
                         </div>
                         <button onclick="window.setMainView('control')" class="shrink-0 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-sky-300">Abrir Radar</button>
                     </section>`;
@@ -4635,6 +4705,7 @@
                     </div>
                     <div class="space-y-1.5">${compactRows}</div>
                     ${rows.length > 4 ? `<div class="text-[9px] text-slate-500 mt-2">+ ${rows.length - 4} item(ns) adicional(is) no Radar.</div>` : ''}
+                    ${maintenanceCount ? `<div class="text-[10px] text-slate-500 mt-2">${maintenanceCount} cadastro(s) para completar quando houver tempo.</div>` : ''}
                 </section>`;
         };
 
@@ -4647,7 +4718,9 @@
             const backlog = active.filter(d => d.workflowStatus === 'backlog');
             const immediate = active.filter(d => d.attentionLevel === 'immediate');
             const todayKey = dateKeyFromDate(new Date());
-            const nearTermSignals = window.getOperationalSignalsForDate(todayKey, operationalControl.config?.dueSoonDays ?? 2);
+            const allSignals = window.getOperationalSignalsForDate(todayKey, operationalControl.config?.dueSoonDays ?? 2);
+            const nearTermSignals = allSignals.filter(row => row.signals.some(signal => signal.severity !== 'info'));
+            const maintenanceSignals = allSignals.filter(row => row.signals.every(signal => signal.severity === 'info'));
 
             const attentionOrder = { immediate: 0, attention: 1, controlled: 2 };
             const statusOrder = { active: 0, waiting: 1, backlog: 2 };
@@ -4738,7 +4811,7 @@
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
                         <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4"><div class="text-[9px] text-slate-500 font-black uppercase tracking-widest">Ativas conhecidas</div><div class="text-2xl font-black text-white mt-1">${active.length}</div></div>
                         <div class="rounded-2xl border border-amber-900/50 bg-amber-950/20 p-4"><div class="text-[9px] text-amber-500/80 font-black uppercase tracking-widest">Aguardando</div><div class="text-2xl font-black text-amber-300 mt-1">${waiting.length}</div></div>
-                        <div class="rounded-2xl border border-red-900/50 bg-red-950/20 p-4"><div class="text-[9px] text-red-500/80 font-black uppercase tracking-widest">Exceções próximas</div><div class="text-2xl font-black text-red-300 mt-1">${nearTermSignals.length}</div></div>
+                        <div class="rounded-2xl border border-amber-900/50 bg-amber-950/20 p-4"><div class="text-[9px] text-amber-400 font-black uppercase tracking-widest">Ações próximas</div><div class="text-2xl font-black text-amber-300 mt-1">${nearTermSignals.length}</div></div>
                         <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4"><div class="text-[9px] text-slate-500 font-black uppercase tracking-widest">Encerradas</div><div class="text-2xl font-black text-slate-300 mt-1">${closed.length}</div></div>
                     </div>
 
@@ -4750,6 +4823,7 @@
                     ` : `
                         <div class="rounded-2xl border border-emerald-900/40 bg-emerald-950/10 p-4 flex items-start gap-2"><i data-lucide="shield" class="w-4 h-4 text-emerald-400 mt-0.5"></i><div><div class="text-xs font-black text-emerald-300">Nenhuma demanda conhecida está fora de controle no horizonte atual.</div><div class="text-[10px] text-slate-500 mt-1">O sistema continuará avaliando as datas cadastradas automaticamente.</div></div></div>
                     `}
+                    ${maintenanceSignals.length ? `<details class="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-400"><summary class="cursor-pointer">${maintenanceSignals.length} cadastro(s) para completar</summary><div class="mt-2 space-y-1">${maintenanceSignals.map(row => `<button class="block text-left text-sky-300 hover:underline" onclick="window.openOperationalDemandModal('${String(row.demand.id)}')">${window.escapeHtml(row.demand.title)} · ${window.escapeHtml(row.signals[0].label)}</button>`).join('')}</div></details>` : ''}
 
                     ${active.length === 0 ? `
                         <div class="rounded-3xl border border-dashed border-slate-700 bg-slate-900/50 p-8 text-center">
@@ -4830,10 +4904,10 @@
                 const shell = completed ? 'border-slate-800 bg-slate-950/70 opacity-60' : (taskNature === 'recharge' ? 'border-emerald-900/50 bg-emerald-950/10' : taskNature === 'neutral' ? 'border-slate-700 bg-slate-900' : 'border-slate-800 bg-slate-900 hover:border-indigo-800/70');
 
                 out += `
-                <div onclick="window.toggleTask(${task.id}, event)" draggable="true" ondragstart="window.handleTaskDragStart(${task.id}, event)" ondragend="window.handleTaskDragEnd(event)" ondragover="window.handleTaskDragOver(${task.id}, event)" ondragleave="window.handleTaskDragLeave(event)" ondrop="window.handleTaskDrop(${task.id}, event)" class="rounded-2xl border ${shell} p-3 sm:p-4 transition-all cursor-pointer group">
+                <div draggable="true" ondragstart="window.handleTaskDragStart(${task.id}, event)" ondragend="window.handleTaskDragEnd(event)" ondragover="window.handleTaskDragOver(${task.id}, event)" ondragleave="window.handleTaskDragLeave(event)" ondrop="window.handleTaskDrop(${task.id}, event)" class="rounded-2xl border ${shell} p-3 sm:p-4 transition-all group">
                     <div class="flex items-start gap-3">
                         <div class="drag-handle pt-1 text-slate-700 hover:text-cyan-400 shrink-0" title="Arrastar para reorganizar" onclick="event.stopPropagation()"><i data-lucide="grip-vertical" class="w-4 h-4"></i></div>
-                        <div class="pt-0.5 shrink-0"><i data-lucide="${completed ? 'check-circle-2' : 'circle'}" class="w-5 h-5 ${completed ? 'text-emerald-500' : 'text-slate-500'}"></i></div>
+                        <button type="button" onclick="window.toggleTask(${task.id}, event)" class="pt-0.5 shrink-0" aria-label="${completed ? 'Reabrir' : 'Concluir'} missão ${window.escapeHtml(task.text)}" title="${completed ? 'Reabrir missão' : 'Concluir missão'}"><i data-lucide="${completed ? 'check-circle-2' : 'circle'}" class="w-5 h-5 ${completed ? 'text-emerald-500' : 'text-slate-500'}"></i></button>
                         <div class="min-w-0 flex-1">
                             <div class="flex flex-wrap items-center gap-1.5 mb-1.5">
                                 ${taskScheduleLabel ? `<span class="inline-flex items-center gap-1 rounded-full border border-cyan-900/60 bg-cyan-950/30 px-2 py-0.5 text-[9px] font-black text-cyan-200"><i data-lucide="clock-3" class="w-3 h-3"></i>${taskScheduleLabel}</span>` : ''}
@@ -4848,6 +4922,8 @@
                                         ${subtasks.length ? `<span>${doneSubtasks}/${subtasks.length} subtarefas</span>` : ''}
                                         ${isRecurringTask ? `<span class="text-violet-400">↻ ${window.escapeHtml(recurrenceLabel || 'Recorrente')}</span>` : ''}
                                     </div>
+                                    ${!completed && task.progressStatus === 'partial' ? `<div class="mt-1 text-[10px] font-bold text-cyan-300">Avanço parcial registrado</div>` : ''}
+                                    ${!completed && task.nextAction ? `<div class="mt-2 text-xs text-slate-300"><span class="text-cyan-400 font-bold">Retomar:</span> ${window.escapeHtml(task.nextAction)}</div>` : ''}
                                 </div>
                                 <details onclick="event.stopPropagation()" class="relative shrink-0">
                                     <summary class="list-none cursor-pointer rounded-lg border border-slate-800 bg-slate-950 px-2.5 py-1.5 text-slate-500 hover:text-white" title="Mais ações"><i data-lucide="ellipsis" class="w-4 h-4"></i></summary>
@@ -4872,6 +4948,7 @@
                                 <input id="subtask-input-${task.id}" type="text" placeholder="+ Subtarefa" class="min-w-0 flex-1 bg-transparent border-b border-slate-800 px-1 py-1.5 text-[10px] text-slate-400 outline-none focus:border-cyan-600" onkeypress="if(event.key === 'Enter') { event.stopPropagation(); window.addSubtask(${task.id}); }">
                                 <button onclick="window.addSubtask(${task.id})" class="text-slate-600 hover:text-cyan-400 px-1"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
                             </div>
+                            ${!completed && taskNature === 'normal' ? `<div class="mt-3 flex flex-wrap gap-2"><button type="button" onclick="window.startTaskFor15Minutes(${task.id}, event)" class="rounded-lg bg-indigo-700 hover:bg-indigo-600 px-3 py-2 text-[11px] font-bold text-white">Começar 15 min</button><button type="button" onclick="window.openTaskProgress(${task.id}, event)" class="rounded-lg border border-cyan-900 bg-cyan-950/30 px-3 py-2 text-[11px] font-bold text-cyan-200">Registrar avanço</button></div>` : ''}
                         </div>
                     </div>
                 </div>`;
@@ -4888,6 +4965,20 @@
                     <div class="flex gap-2"><input type="text" id="quick-task-input" placeholder="Capture algo em segundos…" class="min-w-0 flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-600" onkeypress="if(event.key === 'Enter') window.addQuickTask()"><button onclick="window.addQuickTask()" class="bg-cyan-800 hover:bg-cyan-700 text-white px-3 py-2 rounded-lg"><i data-lucide="plus" class="w-4 h-4"></i></button></div>
                     ${quickTasks.length ? `<div class="mt-2 space-y-1">${quickTasks.map(qt => `<div class="flex items-center justify-between gap-2 rounded-lg bg-slate-950/70 px-2 py-1.5"><button onclick="window.toggleQuickTask(${qt.id})" class="flex items-center gap-2 min-w-0 flex-1 text-left text-xs ${qt.done ? 'line-through text-slate-600' : 'text-slate-300'}"><i data-lucide="${qt.done ? 'check-circle' : 'circle'}" class="w-3.5 h-3.5 shrink-0"></i><span class="truncate">${window.escapeHtml(qt.text)}</span></button><button onclick="window.deleteQuickTask(${qt.id})" class="text-slate-700 hover:text-red-400"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></div>`).join('')}</div>` : `<div class="mt-2 text-[10px] text-slate-600 italic">Mente limpa.</div>`}
                 </section>`;
+        };
+
+        window.renderDailyFocusPanel = function() {
+            const pending = window.sortTasksForDay(state.activeTab).filter(t => !t.completed && window.getTaskNature(t) === 'normal');
+            const essential = pending.find(t => t.priority === 'essencial') || pending[0];
+            const other = pending.filter(t => t !== essential).sort((a, b) => ({ alta: 0, media: 1, baixa: 2 }[a.priority] ?? 3) - ({ alta: 0, media: 1, baixa: 2 }[b.priority] ?? 3)).slice(0, uiState.interruptedDay ? 0 : 2);
+            const selectedDate = window.getOperationalDayDateKey(state.activeTab);
+            const isToday = selectedDate === dateKeyFromDate(new Date());
+            return `<section class="mb-4 rounded-2xl border border-indigo-800/60 bg-gradient-to-br from-indigo-950/35 to-slate-900 p-4 font-mono">
+                <div class="flex flex-wrap items-center justify-between gap-2"><div><div class="text-[10px] font-black uppercase tracking-widest text-indigo-300">${isToday ? 'Foco de hoje' : 'Foco do dia selecionado'} · ${window.formatOperationalDate(selectedDate)}</div><h2 class="text-lg font-black text-white mt-1">${uiState.interruptedDay ? 'Plano reduzido' : 'O próximo passo possível'}</h2></div><button type="button" onclick="window.toggleInterruptedDay()" class="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-bold text-slate-300">${uiState.interruptedDay ? 'Ver plano completo' : 'Dia interrompido'}</button></div>
+                ${essential ? `<div class="mt-3 rounded-xl border border-indigo-700/50 bg-slate-950/70 p-3"><div class="text-[10px] font-bold uppercase tracking-widest text-indigo-300">${essential.priority === 'essencial' ? 'Missão essencial de agora' : 'Foco sugerido de agora'}</div><div class="mt-1 text-sm font-black text-white">${window.escapeHtml(essential.text)}</div><div class="mt-1 text-xs text-slate-400">${essential.nextAction ? `Primeiro passo: ${window.escapeHtml(essential.nextAction)}` : 'Defina um primeiro passo pequeno ao registrar o avanço.'}</div><button type="button" onclick="window.startTaskFor15Minutes(${essential.id}, event)" class="mt-3 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white">Começar 15 min</button></div>` : '<p class="mt-3 text-sm text-slate-400">Nenhuma missão de esforço pendente neste dia.</p>'}
+                ${other.length ? `<div class="mt-3 text-xs text-slate-400">Depois, se couber: ${other.map(t => window.escapeHtml(t.text)).join(' · ')}</div>` : ''}
+                ${uiState.interruptedDay ? '<p class="mt-3 text-xs text-cyan-200">As outras missões seguem guardadas. Prazos e follow-ups permanecem visíveis abaixo.</p>' : ''}
+            </section>`;
         };
 
         // ==========================================
@@ -4964,6 +5055,17 @@
                 </div>`;
             }
 
+            if (uiState.progressTaskId) {
+                const progressTask = state.tasks.find(t => String(t.id) === uiState.progressTaskId);
+                if (progressTask) html += `<div class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-[1000] backdrop-blur-sm font-mono">
+                    <div class="bg-slate-900 border border-cyan-900/60 rounded-2xl p-5 max-w-lg w-full space-y-4">
+                        <div><h3 class="text-lg font-black text-white">Registrar avanço</h3><p class="text-xs text-slate-400 mt-1">${window.escapeHtml(progressTask.text)}</p></div>
+                        <div><label for="task-progress-note" class="text-xs font-bold text-slate-300">O que você fez?</label><textarea id="task-progress-note" rows="2" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white" placeholder="Ex.: Revisei os documentos recebidos"></textarea></div>
+                        <div><label for="task-progress-next" class="text-xs font-bold text-slate-300">Por onde retomar?</label><input id="task-progress-next" value="${window.escapeHtml(progressTask.nextAction || '')}" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white" placeholder="Ex.: Redigir o tópico dos fatos"></div>
+                        <div class="flex gap-2"><button onclick="uiState.progressTaskId=null; render()" class="flex-1 rounded-xl bg-slate-800 text-slate-200 p-3 text-sm">Voltar</button><button onclick="window.saveTaskProgress()" class="flex-1 rounded-xl bg-cyan-700 text-white p-3 text-sm font-bold">Salvar avanço</button></div>
+                    </div></div>`;
+            }
+
             if (uiState.deleteTaskPrompt?.show) {
                 const delTask = state.tasks.find(t => String(t.id) === String(uiState.deleteTaskPrompt.taskId));
                 if (delTask) {
@@ -4973,7 +5075,7 @@
                             <div class="flex items-start justify-between gap-4 mb-5">
                                 <div>
                                     <h3 class="text-xl font-black text-white flex items-center gap-2"><i data-lucide="trash-2" class="text-red-400"></i> Excluir missão</h3>
-                                    <p class="text-slate-400 text-xs mt-1 leading-relaxed">Escolha o motivo. Substituição preserva o Frenesi; cancelamento ou não execução quebram o combo.</p>
+                                    <p class="text-slate-400 text-xs mt-1 leading-relaxed">Escolha o motivo para manter um histórico claro. Replanejar ou cancelar não altera seu combo.</p>
                                 </div>
                                 <button onclick="window.cancelDeleteTaskPrompt()" class="text-slate-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
                             </div>
@@ -4985,15 +5087,15 @@
                             <div class="grid grid-cols-1 gap-3">
                                 <button onclick="window.confirmDeleteMainTask('substituida', event)" class="text-left bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-900/60 rounded-xl p-4 transition-colors">
                                     <div class="font-black text-cyan-200 flex items-center gap-2"><i data-lucide="replace" class="w-4 h-4"></i> Substituída por outra missão</div>
-                                    <div class="text-[11px] text-cyan-100/70 mt-1">Exclui sem quebrar o Frenesi.</div>
+                                    <div class="text-[11px] text-cyan-100/70 mt-1">Registra a substituição no histórico.</div>
                                 </button>
                                 <button onclick="window.confirmDeleteMainTask('nao_fiz', event)" class="text-left bg-orange-950/25 hover:bg-orange-900/45 border border-orange-900/60 rounded-xl p-4 transition-colors">
                                     <div class="font-black text-orange-200 flex items-center gap-2"><i data-lucide="activity" class="w-4 h-4"></i> Não fiz / não vou conseguir fazer</div>
-                                    <div class="text-[11px] text-orange-100/70 mt-1">Exclui e quebra o Frenesi.</div>
+                                    <div class="text-[11px] text-orange-100/70 mt-1">Registra a decisão sem penalidade.</div>
                                 </button>
                                 <button onclick="window.confirmDeleteMainTask('cancelada', event)" class="text-left bg-red-950/25 hover:bg-red-900/45 border border-red-900/60 rounded-xl p-4 transition-colors">
                                     <div class="font-black text-red-200 flex items-center gap-2"><i data-lucide="ban" class="w-4 h-4"></i> Cancelada ou perdeu prioridade</div>
-                                    <div class="text-[11px] text-red-100/70 mt-1">Exclui e quebra o Frenesi.</div>
+                                    <div class="text-[11px] text-red-100/70 mt-1">Registra a mudança de prioridade.</div>
                                 </button>
                             </div>
                             <button onclick="window.cancelDeleteTaskPrompt()" class="w-full mt-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl transition-colors">Voltar sem excluir</button>
@@ -5213,7 +5315,7 @@
                         </div>
                         <div>
                             <div class="flex justify-between text-xs mb-1 font-bold">
-                                <span class="${state.energy < 20 ? 'text-red-400 animate-pulse' : 'text-emerald-400'} flex items-center gap-1"><i data-lucide="battery" class="w-3 h-3"></i> Bateria Executiva (HP)</span>
+                                <span class="${state.energy < 20 ? 'text-amber-300' : 'text-emerald-400'} flex items-center gap-1" title="Estimativa para planejar, não avaliação de saúde"><i data-lucide="battery" class="w-3 h-3"></i> Bateria Executiva (HP)</span>
                                 <span class="text-slate-400">${state.energy}%</span>
                             </div>
                             <div class="w-full bg-slate-800 rounded-full h-2"><div class="h-2 rounded-full transition-all ${state.energy > 50 ? 'bg-emerald-500' : (state.energy > 20 ? 'bg-yellow-500' : 'bg-red-500')}" style="width: ${state.energy}%"></div></div>
@@ -5236,11 +5338,13 @@
                     <div class="min-w-0"><div class="text-xs font-black text-white uppercase tracking-widest">${compactViewMeta.title}</div><div class="text-[10px] text-slate-500 truncate">${compactViewMeta.description}</div></div>
                 </div>
                 <div class="grid grid-cols-3 gap-1 bg-slate-950 rounded-xl p-1 shrink-0">
-                    <button onclick="window.setMainView('day')" class="rounded-lg px-2.5 py-2 text-[10px] font-black ${uiState.mainView === 'day' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-white hover:bg-slate-800'}"><i data-lucide="layout-list" class="w-3.5 h-3.5 inline mr-1"></i>Hoje</button>
+                    <button onclick="window.goToToday()" class="rounded-lg px-2.5 py-2 text-[10px] font-black ${uiState.mainView === 'day' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-white hover:bg-slate-800'}"><i data-lucide="layout-list" class="w-3.5 h-3.5 inline mr-1"></i>Hoje</button>
                     <button onclick="window.setMainView('week')" class="rounded-lg px-2.5 py-2 text-[10px] font-black ${uiState.mainView === 'week' ? 'bg-cyan-700 text-white' : 'text-slate-500 hover:text-white hover:bg-slate-800'}"><i data-lucide="calendar-days" class="w-3.5 h-3.5 inline mr-1"></i>Semana</button>
                     <button onclick="window.setMainView('control')" class="rounded-lg px-2.5 py-2 text-[10px] font-black ${uiState.mainView === 'control' ? 'bg-sky-700 text-white' : 'text-slate-500 hover:text-white hover:bg-slate-800'}"><i data-lucide="radar" class="w-3.5 h-3.5 inline mr-1"></i>Radar</button>
                 </div>
             </div>`;
+
+            html += window.renderQuickCapturePanel();
 
             if (uiState.mainView === 'week') {
                 html += renderWeeklyPlanningOverview();
@@ -5256,7 +5360,7 @@
             });
             html += `</div>`;
 
-            const selectedDayLabel = daysOfWeek.find(d => d.id === state.activeTab)?.label || 'Hoje';
+            const selectedDayLabel = `${daysOfWeek.find(d => d.id === state.activeTab)?.label || 'Dia'} · ${window.formatOperationalDate(window.getOperationalDayDateKey(state.activeTab))}`;
             const pendingDailyCount = filteredTasks.filter(t => !t.completed).length;
             const completedDailyCount = filteredTasks.filter(t => t.completed).length;
             const focusClass = state.focusMode ? 'bg-yellow-500/15 text-yellow-300 border-yellow-700/60' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-yellow-300 hover:border-yellow-800';
@@ -5273,6 +5377,9 @@
                     </div>
                 </div>
             </section>`;
+
+            html += window.renderDailyFocusPanel();
+            html += window.renderOperationalDayPanel();
 
             html += window.renderDailyCategoryBar();
 
@@ -5309,7 +5416,7 @@
                         </div>
                     </div>`;
 
-                    html += `
+                    html += `<details class="mb-4 rounded-xl border border-slate-800 bg-slate-950/50"><summary class="cursor-pointer p-3 text-xs font-bold text-slate-400">Configurações e métricas do foco</summary><div class="p-3">
                     <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 mb-6">
                         <div class="flex items-start justify-between gap-3 mb-3">
                             <div>
@@ -5327,6 +5434,7 @@
                     </div>`;
 
                     html += window.renderFocusEfficiencyChart();
+                    html += `</div></details>`;
 
                     if (pendingTask) {
                         const focusSubtasks = Array.isArray(pendingTask.subtasks) ? pendingTask.subtasks : [];
@@ -5368,7 +5476,7 @@
                                 </div>
                             </div>
 
-                            <button onclick="window.toggleTask(${pendingTask.id}, event)" class="bg-emerald-600 hover:bg-emerald-500 text-white p-3 rounded-lg font-bold w-full flex justify-center items-center gap-2"><i data-lucide="check-circle" class="w-5 h-5"></i> CONCLUIR MISSÃO</button>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2"><button onclick="window.openTaskProgress(${pendingTask.id}, event)" class="bg-cyan-950/60 border border-cyan-800 text-cyan-200 p-3 rounded-lg font-bold">REGISTRAR AVANÇO</button><button onclick="window.toggleTask(${pendingTask.id}, event)" class="bg-emerald-600 hover:bg-emerald-500 text-white p-3 rounded-lg font-bold flex justify-center items-center gap-2"><i data-lucide="check-circle" class="w-5 h-5"></i> CONCLUIR MISSÃO</button></div>
                         </div>`;
                     }
                 } else {
@@ -5376,13 +5484,12 @@
                 }
                 html += `</div>`;
             } else {
-                html += window.renderDailyMissionBoard(filteredTasks);
+                const suggested = dailyTasks.find(t => !t.completed && t.priority === 'essencial' && window.getTaskNature(t) === 'normal') || dailyTasks.find(t => !t.completed && window.getTaskNature(t) === 'normal');
+                html += window.renderDailyMissionBoard(uiState.interruptedDay ? filteredTasks.filter(t => t.completed || window.getTaskNature(t) === 'neutral' || t === suggested) : filteredTasks);
             }
 
             // Apoios do dia ficam abaixo das missões, preservando todas as funções existentes.
-            html += window.renderOperationalDayPanel();
-            html += renderDailyStudyPlanSection();
-            html += window.renderQuickCapturePanel();
+            html += uiState.interruptedDay ? `<details class="mb-4 rounded-xl border border-slate-800 p-3"><summary class="cursor-pointer text-xs font-bold text-slate-400">Ver estudos planejados</summary>${renderDailyStudyPlanSection()}</details>` : renderDailyStudyPlanSection();
 
             }
 
@@ -5548,6 +5655,8 @@
                                 <div>
                                     <label class="text-xs font-bold text-slate-400 uppercase">Título</label>
                                     <input type="text" id="ct-text" placeholder="Ex.: Reunião com cliente" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white focus:border-emerald-500 outline-none">
+                                    <label for="ct-next-action" class="block text-xs font-bold text-slate-400 uppercase mt-3">Primeiro passo <span class="normal-case text-slate-600">(opcional)</span></label>
+                                    <input type="text" id="ct-next-action" placeholder="Ex.: Abrir os documentos recebidos" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none">
                                     <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px] leading-relaxed">
                                         <div class="bg-indigo-950/20 border border-indigo-900/40 rounded-lg p-2 text-slate-400"><strong class="text-indigo-300 uppercase tracking-widest block mb-0.5">Normal</strong> estudar, trabalhar, treinar, organizar</div>
                                         <div class="bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-400"><strong class="text-slate-300 uppercase tracking-widest block mb-0.5">Logística</strong> deslocamento, consulta, compromisso</div>
@@ -5562,7 +5671,7 @@
                                 </details>
                             </section>
 
-                            <section class="bg-cyan-950/10 border border-cyan-900/40 rounded-2xl p-4 space-y-3">
+                            <details class="rounded-xl border border-slate-800 p-3"><summary class="cursor-pointer text-xs font-black text-cyan-300">Personalizar tipo, dia, esforço, horário e recorrência</summary><div class="mt-3 space-y-4"><section class="bg-cyan-950/10 border border-cyan-900/40 rounded-2xl p-4 space-y-3">
                                 <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-cyan-300"><span class="bg-cyan-950/50 border border-cyan-800/60 rounded-full w-6 h-6 flex items-center justify-center">2</span> Tipo de missão</div>
                                 <input type="hidden" id="ct-impact-type" value="drain">
                                 <div>
@@ -5633,6 +5742,7 @@
                                 </div>
                                 <div class="flex gap-2"><span id="ct-xp-preview" class="bg-indigo-900/50 text-indigo-400 px-3 py-1 rounded-md text-xs font-bold">+0 XP</span><span id="ct-hp-preview" class="bg-red-900/50 text-red-400 px-3 py-1 rounded-md text-xs font-bold">-0 HP</span></div>
                             </div>
+                            </div></details>
                             <button onclick="window.saveNewTask()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-widest py-3 rounded-xl transition-colors flex items-center justify-center gap-2"><i data-lucide="plus-circle" class="w-4 h-4"></i> Alistar Missão</button>
                         </div>
                     </div>
@@ -5659,6 +5769,7 @@
                             </div>
                             <div class="space-y-4">
                                 <div><label class="text-xs font-bold text-slate-400 uppercase">Título</label><input type="text" id="et-text" value="${taskText}" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-amber-500 outline-none"></div>
+                                <div><label for="et-next-action" class="text-xs font-bold text-slate-400 uppercase">Próximo passo</label><input id="et-next-action" type="text" value="${window.escapeHtml(task.nextAction || '')}" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white" placeholder="Ex.: Abrir os documentos recebidos"></div>
                                 <div class="bg-slate-950/70 border border-cyan-900/40 rounded-xl p-3 space-y-3">
                                     <div>
                                         <label class="text-xs font-black text-cyan-300 uppercase flex items-center gap-2"><i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i> Tipo de missão</label>
@@ -6005,22 +6116,27 @@
                 const completed = completedTasks + completedStudies;
                 const pending = total - completed;
                 const minutes = dayStudies.reduce((acc, b) => acc + (parseInt(b.plannedMinutes, 10) || 0), 0);
-                return { day, date, dateKey, dayTasks, dayStudies, completedTasks, completedStudies, total, completed, pending, minutes, pct: safePct(completed, total) };
+                const commitmentMinutes = dayTasks.filter(t => window.getTaskNature(t) === 'neutral').reduce((acc, t) => acc + (parseInt(t.time, 10) || 0), 0);
+                const effortMinutes = minutes + dayTasks.filter(t => window.getTaskNature(t) === 'normal').reduce((acc, t) => acc + (parseInt(t.time, 10) || 0), 0);
+                return { day, date, dateKey, dayTasks, dayStudies, completedTasks, completedStudies, total, completed, pending, minutes, commitmentMinutes, effortMinutes, pct: safePct(completed, total) };
             };
 
             const rows = daysOfWeek.map(buildDay);
+            const unscheduledTasks = window.sortTasksForDay('next_week').filter(t => !t.completed);
             const totalTasks = rows.reduce((acc, row) => acc + row.dayTasks.length, 0);
             const totalStudies = rows.reduce((acc, row) => acc + row.dayStudies.length, 0);
             const totalItems = rows.reduce((acc, row) => acc + row.total, 0);
             const completedItems = rows.reduce((acc, row) => acc + row.completed, 0);
             const pendingItems = rows.reduce((acc, row) => acc + row.pending, 0);
             const plannedMinutes = rows.reduce((acc, row) => acc + row.minutes, 0);
+            const commitmentMinutes = rows.reduce((acc, row) => acc + row.commitmentMinutes, 0);
+            const partialItems = rows.reduce((acc, row) => acc + row.dayTasks.filter(t => !t.completed && t.progressStatus === 'partial').length + row.dayStudies.filter(b => b.status === 'partial').length, 0);
             const progressPct = safePct(completedItems, totalItems);
 
             const renderWeekDayShortcut = (row) => {
                 const isToday = row.dateKey === todayKey;
                 const dateLabel = `${String(row.date.getDate()).padStart(2, '0')}/${String(row.date.getMonth() + 1).padStart(2, '0')}`;
-                const loadClass = row.total === 0 ? 'bg-slate-950/70 border-slate-800 text-slate-500' : row.pending === 0 ? 'bg-emerald-950/20 border-emerald-900/50 text-emerald-200' : row.total >= 5 ? 'bg-red-950/20 border-red-900/50 text-red-200' : row.total >= 3 ? 'bg-yellow-950/20 border-yellow-900/50 text-yellow-200' : 'bg-cyan-950/20 border-cyan-900/50 text-cyan-200';
+                const loadClass = row.total === 0 ? 'bg-slate-950/70 border-slate-800 text-slate-500' : row.pending === 0 ? 'bg-emerald-950/20 border-emerald-900/50 text-emerald-200' : 'bg-cyan-950/20 border-cyan-900/50 text-cyan-200';
                 return `<button type="button" onclick="window.setTab('${row.day.id}'); window.setMainView('day')" class="text-left rounded-2xl border ${isToday ? 'border-cyan-400 bg-cyan-950/30 ring-1 ring-cyan-500/30' : loadClass} p-3 hover:border-cyan-400/70 hover:bg-cyan-950/25 transition-colors min-h-[102px]">
                     <div class="flex items-start justify-between gap-2">
                         <div>
@@ -6033,6 +6149,7 @@
                         <span>${row.total ? `${row.pending} pend.` : 'Livre'}</span>
                         <span class="text-slate-500">${row.completed}/${row.total}</span>
                     </div>
+                    <div class="mt-1 text-[10px] text-slate-400">${row.effortMinutes} min de esforço · ${row.commitmentMinutes} min de compromissos</div>
                     <div class="h-1.5 bg-slate-800/80 rounded-full overflow-hidden mt-2"><div class="h-full rounded-full ${row.pct >= 100 && row.total ? 'bg-emerald-500' : row.pct >= 50 ? 'bg-cyan-500' : 'bg-indigo-500'}" style="width:${row.total ? row.pct : 0}%"></div></div>
                 </button>`;
             };
@@ -6109,7 +6226,8 @@
                                     <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-[11px] text-slate-400 font-bold">
                                         <span>${plural(row.dayTasks.length, 'missão', 'missões')}</span>
                                         <span>${plural(row.dayStudies.length, 'estudo', 'estudos')}</span>
-                                        ${row.minutes ? `<span>${row.minutes} min de estudo</span>` : ''}
+                                        ${row.effortMinutes ? `<span>${row.effortMinutes} min de esforço planejado</span>` : ''}
+                                        ${row.commitmentMinutes ? `<span>${row.commitmentMinutes} min de compromissos</span>` : ''}
                                         ${row.total ? `<span>${row.pending} pendente${row.pending === 1 ? '' : 's'}</span>` : ''}
                                     </div>
                                 </div>
@@ -6123,7 +6241,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <details ${isToday ? 'open' : ''} class="border-t border-slate-800/60"><summary class="cursor-pointer px-4 py-2 text-xs font-bold text-cyan-300">Ver missões e estudos deste dia</summary><div class="p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <div class="rounded-2xl border border-indigo-900/30 bg-indigo-950/10 p-3 sm:p-4">
                             <div class="flex items-center justify-between mb-3">
                                 <h4 class="text-[11px] font-black uppercase tracking-widest text-indigo-300 flex items-center gap-2"><i data-lucide="target" class="w-4 h-4"></i> Missões</h4>
@@ -6138,7 +6256,7 @@
                             </div>
                             ${renderSectionList(row.dayStudies, renderStudyAgendaItem, 'Sem estudos planejados neste dia.')}
                         </div>
-                    </div>
+                    </div></details>
                 </section>`;
             };
 
@@ -6159,7 +6277,7 @@
                 </section>
             </div>`;
 
-            if (totalItems === 0) return emptyState;
+            if (totalItems === 0 && !unscheduledTasks.length) return emptyState;
 
             return `<div class="space-y-5 font-mono">
                 <section class="rounded-3xl border border-cyan-900/50 bg-slate-900 p-4 sm:p-5">
@@ -6171,7 +6289,7 @@
                                 ${isNextCalendarWeek ? `<span class="inline-flex items-center rounded-full border border-purple-900/50 bg-purple-950/25 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-purple-200">Próxima semana</span>` : ''}
                             </div>
                             <h2 class="text-2xl sm:text-3xl font-black text-white leading-tight">${weekLabel}</h2>
-                            <p class="text-xs text-slate-500 mt-2 leading-relaxed max-w-3xl">Agenda limpa da semana: missões e estudos organizados por dia e por horário. Itens sem horário ficam no final do dia.</p>
+                            <p class="text-xs text-slate-500 mt-2 leading-relaxed max-w-3xl">Veja a distribuição dos dias e abra apenas o detalhe que precisa. Compromissos com horário ocupam espaço na agenda.</p>
                         </div>
                         <div class="flex flex-wrap gap-2">
                             <button onclick="window.setPlanningCalendarWeek('current')" class="bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><i data-lucide="calendar-check" class="w-3.5 h-3.5"></i> Semana atual</button>
@@ -6182,16 +6300,19 @@
                         </div>
                     </div>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
-                        <div class="rounded-2xl border border-slate-800 bg-slate-950/75 p-3"><div class="text-xl font-black text-white">${totalItems}</div><div class="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-1">demandas</div></div>
-                        <div class="rounded-2xl border border-slate-800 bg-slate-950/75 p-3"><div class="text-xl font-black text-indigo-200">${totalTasks}</div><div class="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-1">missões</div></div>
-                        <div class="rounded-2xl border border-slate-800 bg-slate-950/75 p-3"><div class="text-xl font-black text-cyan-200">${totalStudies}</div><div class="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-1">estudos</div></div>
-                        <div class="rounded-2xl border border-slate-800 bg-slate-950/75 p-3"><div class="text-xl font-black text-emerald-200">${(plannedMinutes/60).toFixed(1)}h</div><div class="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-1">estudo</div></div>
+                        <div class="rounded-2xl border border-slate-800 bg-slate-950/75 p-3"><div class="text-xl font-black text-white">${pendingItems}</div><div class="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-1">em aberto</div></div>
+                        <div class="rounded-2xl border border-slate-800 bg-slate-950/75 p-3"><div class="text-xl font-black text-indigo-200">${partialItems}</div><div class="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-1">com avanço parcial</div></div>
+                        <div class="rounded-2xl border border-slate-800 bg-slate-950/75 p-3"><div class="text-xl font-black text-cyan-200">${(commitmentMinutes/60).toFixed(1)}h</div><div class="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-1">compromissos</div></div>
+                        <div class="rounded-2xl border border-slate-800 bg-slate-950/75 p-3"><div class="text-xl font-black text-emerald-200">${(plannedMinutes/60).toFixed(1)}h</div><div class="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-1">estudo planejado</div></div>
                     </div>
                     <div class="mt-4">
                         <div class="flex items-center justify-between text-[10px] font-black uppercase tracking-widest mb-1"><span class="text-slate-500">Execução da semana</span><span class="text-slate-300">${completedItems}/${totalItems} · ${progressPct}% · ${pendingItems} pendente${pendingItems === 1 ? '' : 's'}</span></div>
                         <div class="h-2.5 bg-slate-800 rounded-full overflow-hidden"><div class="h-full rounded-full ${progressPct >= 100 ? 'bg-emerald-500' : progressPct >= 50 ? 'bg-cyan-500' : 'bg-indigo-500'}" style="width:${progressPct}%"></div></div>
                     </div>
                 </section>
+
+                ${unscheduledTasks.length ? `<section class="rounded-2xl border border-amber-900/50 bg-amber-950/10 p-4"><h3 class="text-sm font-black text-amber-200">A definir · ${unscheduledTasks.length} missão(ões)</h3><p class="text-xs text-slate-400 mt-1 mb-3">Pendências preservadas para você distribuir, sem lotar automaticamente a segunda-feira.</p><div class="space-y-2">${unscheduledTasks.map(task => `<div class="flex flex-col sm:flex-row sm:items-center gap-2 rounded-xl bg-slate-950/70 p-3"><div class="flex-1 text-sm text-white">${window.escapeHtml(task.text)}${task.progressStatus === 'partial' ? '<span class="ml-2 text-xs text-cyan-300">avanço parcial</span>' : ''}</div><select aria-label="Definir dia para ${window.escapeHtml(task.text)}" onchange="window.moveTaskFromSelect(${task.id}, event, this)" class="rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-slate-200"><option value="" selected disabled>Escolher dia…</option>${daysOfWeek.map(day => `<option value="${day.id}">${day.label}</option>`).join('')}</select></div>`).join('')}</div></section>` : ''}
+                ${state.weeklyMissionArchive?.length ? `<details class="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><summary class="cursor-pointer text-xs font-bold text-slate-400">Última semana revisada · ${state.weeklyMissionArchive.at(-1).tasks.length} missão(ões) concluída(s)</summary><div class="mt-2 text-xs text-slate-500">${state.weeklyMissionArchive.at(-1).tasks.map(t => window.escapeHtml(t.text)).join(' · ')}</div></details>` : ''}
 
                 <section class="rounded-3xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
                     <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 mb-4">
