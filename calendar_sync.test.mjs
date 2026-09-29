@@ -6,6 +6,7 @@ const { buildWeekEvents, createCalendarSync } = await import(`data:text/javascri
 
 const state = {
     currentPlanningWeekStart: '2026-09-28',
+    calendarSyncTest: { calendarId: 'calendar-1', enabled: true },
     tasks: [{ id: 10, day: 'monday', text: 'Revisar contrato', startTime: '09:00', endTime: '10:00', category: 'work', priority: 'alta' }],
     taskCategories: [{ id: 'work', label: 'Trabalho' }],
     studyData: { subjects: [{ id: 2, name: 'Inglês' }], studyPlan: { tracks: [{ id: 1, name: 'MBA' }], weeklyBlocks: [
@@ -14,7 +15,7 @@ const state = {
 };
 const remote = new Map();
 const requests = [];
-let calendarExists = false;
+let calendarExists = true;
 let authorizedEmail = 'user@example.com';
 const owner = { uid: 'uid-123', email: authorizedEmail };
 
@@ -31,7 +32,8 @@ globalThis.fetch = async (url, options = {}) => {
     if (path.pathname === '/calendar/v3/calendars' && method === 'POST') {
         calendarExists = true; return response({ id: 'calendar-1' });
     }
-    if (path.pathname === '/calendar/v3/calendars/calendar-1') return response(calendarExists ? { id: 'calendar-1' } : { error: { message: 'missing' } }, calendarExists ? 200 : 404);
+    if (path.pathname === '/calendar/v3/calendars/calendar-1' && method === 'PATCH') return response({ id: 'calendar-1', ...JSON.parse(options.body) });
+    if (path.pathname === '/calendar/v3/calendars/calendar-1') return response(calendarExists ? { id: 'calendar-1', summary: 'Missão Tática (Teste)' } : { error: { message: 'missing' } }, calendarExists ? 200 : 404);
     if (path.pathname.endsWith('/events') && method === 'GET') {
         const week = path.searchParams.get('privateExtendedProperty')?.split('=')[1];
         return response({ items: [...remote.values()].filter(item => item.extendedProperties.private.mtWeek === week) });
@@ -53,8 +55,12 @@ sync.setOwner(owner);
 await sync.connect();
 assert.equal(sync.view().status, 'Sincronizado');
 assert.equal(remote.size, 2);
-assert.equal(state.calendarSyncTest.calendarId, 'calendar-1');
+assert.equal(state.calendarSync.calendarId, 'calendar-1');
+assert.equal(state.calendarSyncTest, undefined);
+assert.ok(requests.some(request => request === 'PATCH /calendar/v3/calendars/calendar-1'));
 assert.equal([...remote.values()].find(event => event.summary.includes('Revisar')).start.dateTime, '2026-09-28T12:00:00.000Z');
+assert.equal([...remote.values()].find(event => event.summary.includes('Revisar')).colorId, '9');
+assert.match([...remote.values()].find(event => event.summary.includes('Revisar')).summary, /^💼 TRABALHO/);
 assert.ok([...remote.values()].find(event => event.summary.includes('Leitura')).description.includes('MBA'));
 const taskId = [...remote.values()].find(event => event.summary.includes('Revisar')).id;
 
@@ -62,7 +68,7 @@ state.tasks[0].text = 'Revisar aditivo';
 state.tasks[0].day = 'thursday';
 await sync.syncNow({ force: true });
 assert.equal(remote.size, 2);
-assert.equal(remote.get(taskId).summary, 'Missão Tática — Revisar aditivo');
+assert.equal(remote.get(taskId).summary, '💼 TRABALHO · Revisar aditivo');
 assert.equal(remote.get(taskId).start.dateTime, '2026-10-01T12:00:00.000Z');
 assert.ok(requests.some(request => request.startsWith('PUT ') && request.endsWith(taskId)));
 
