@@ -121,6 +121,16 @@
                 document.open();
                 document.write(source);
                 document.close();
+
+                // Scripts de módulo gravados por document.write após um fetch assíncrono
+                // não são executados em alguns navegadores. Recriá-lo dispara a execução
+                // mantendo a mesma origem autorizada.
+                const pendingModule = document.querySelector('script[type="module"]');
+                if (!pendingModule) throw new Error('Módulo principal não encontrado após preparar o teste.');
+                const executableModule = document.createElement('script');
+                executableModule.type = 'module';
+                executableModule.textContent = pendingModule.textContent;
+                pendingModule.replaceWith(executableModule);
             } catch (error) {
                 console.error('Falha ao preparar a versão de teste', error);
                 const loader = document.getElementById('loader');
