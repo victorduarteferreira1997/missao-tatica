@@ -1,8 +1,40 @@
-// Integração experimental, exclusiva de agenda_teste.html.
+// Integração oficial do Missão Tática com o Google Agenda.
 // O token OAuth fica apenas na memória. Nenhuma chave secreta é usada no navegador.
 const SCOPE = 'https://www.googleapis.com/auth/calendar.app.created https://www.googleapis.com/auth/userinfo.email';
 const API = 'https://www.googleapis.com/calendar/v3';
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+const CATEGORY_STYLE = {
+    work: { colorId: '9', prefix: '💼 TRABALHO' },
+    law: { colorId: '3', prefix: '⚖️ ADVOCACIA' },
+    study: { colorId: '7', prefix: '📚 ESTUDO' },
+    home: { colorId: '10', prefix: '🏠 CASA' },
+    life: { colorId: '4', prefix: '💗 PESSOAL' },
+    personal: { colorId: '4', prefix: '💗 PESSOAL' },
+    health: { colorId: '11', prefix: '🩺 SAÚDE' },
+    finance: { colorId: '5', prefix: '💰 FINANÇAS' },
+    leisure: { colorId: '6', prefix: '🎮 LAZER' },
+    family: { colorId: '2', prefix: '👨‍👩‍👧‍👦 FAMÍLIA' },
+    career: { colorId: '1', prefix: '🚀 CARREIRA' },
+    default: { colorId: '8', prefix: '🎯 MISSÃO' }
+};
+
+function categoryStyle(category) {
+    const id = String(category?.id || '').toLowerCase();
+    if (CATEGORY_STYLE[id]) return CATEGORY_STYLE[id];
+    const label = String(category?.label || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (label.includes('advoc')) return CATEGORY_STYLE.law;
+    if (label.includes('famil')) return CATEGORY_STYLE.family;
+    if (label.includes('saude')) return CATEGORY_STYLE.health;
+    if (label.includes('trabalho')) return CATEGORY_STYLE.work;
+    if (label.includes('estud')) return CATEGORY_STYLE.study;
+    if (label.includes('casa') || label.includes('infra')) return CATEGORY_STYLE.home;
+    if (label.includes('financ')) return CATEGORY_STYLE.finance;
+    if (label.includes('lazer')) return CATEGORY_STYLE.leisure;
+    if (label.includes('carreira')) return CATEGORY_STYLE.career;
+    if (label.includes('pessoal') || label.includes('vida')) return CATEGORY_STYLE.life;
+    return CATEGORY_STYLE.default;
+}
 
 function weekDate(key, offset = 0) {
     const parts = String(key || '').split('-').map(Number);
@@ -55,14 +87,15 @@ export function buildWeekEvents(state, ownerUid, timeZone = Intl.DateTimeFormat(
     const tracks = state.studyData?.studyPlan?.tracks || [];
     const categories = state.taskCategories || [];
 
-    function add(type, item, title, description, duration) {
+    function add(type, item, title, description, duration, style = CATEGORY_STYLE.default) {
         const index = DAYS.indexOf(item?.day);
         if (index < 0 || item?.id == null) return;
         const id = `mt${hash(`${ownerUid}|${week}|${type}|${item.id}`)}`;
         const body = {
             id,
-            summary: `Missão Tática — ${title}`,
+            summary: `${style.prefix} · ${title}`,
             description,
+            colorId: style.colorId,
             ...eventTime(weekDate(week, index), item.startTime, item.endTime, duration, timeZone),
             extendedProperties: { private: { mtWeek: week, mtOwner: ownerUid, mtSource: type } }
         };
@@ -72,6 +105,7 @@ export function buildWeekEvents(state, ownerUid, timeZone = Intl.DateTimeFormat(
 
     for (const task of state.tasks || []) {
         const category = categories.find(cat => String(cat.id) === String(task.category));
+        const style = categoryStyle(category || { id: task.category });
         const subtasks = (task.subtasks || []).map(sub => `${sub.completed ? '✓' : '○'} ${sub.text}`).join(' | ');
         const duration = parseInt(String(task.time || '').replace(/[^0-9]/g, ''), 10) || 30;
         add('task', task, task.text || 'Missão', [
@@ -81,7 +115,7 @@ export function buildWeekEvents(state, ownerUid, timeZone = Intl.DateTimeFormat(
             `Status: ${task.completed ? 'Concluída' : 'Pendente'}`,
             `Duração estimada: ${duration} min`,
             subtasks ? `Subtarefas: ${subtasks}` : ''
-        ].filter(Boolean).join('\n'), duration);
+        ].filter(Boolean).join('\n'), duration, style);
     }
 
     for (const block of state.studyData?.studyPlan?.weeklyBlocks || []) {
@@ -89,14 +123,14 @@ export function buildWeekEvents(state, ownerUid, timeZone = Intl.DateTimeFormat(
         const track = tracks.find(t => String(t.id) === String(block.trackId));
         const subject = subjects.find(s => String(s.id) === String(block.subjectId));
         const duration = parseInt(block.plannedMinutes, 10) || 30;
-        add('study', block, `Estudo: ${block.title || 'Bloco de estudo'}`, [
+        add('study', block, block.title || 'Bloco de estudo', [
             'Origem: Missão Tática', 'Tipo: Estudo planejado',
             `Trilha: ${track?.name || 'Trilha'}`,
             `Disciplina: ${subject?.name || 'Sem disciplina vinculada'}`,
             `Status: ${block.status === 'completed' ? 'Concluído' : block.status === 'partial' ? 'Parcial' : 'Planejado'}`,
             `Duração planejada: ${duration} min`,
             block.notes ? `Observações: ${block.notes}` : ''
-        ].filter(Boolean).join('\n'), duration);
+        ].filter(Boolean).join('\n'), duration, CATEGORY_STYLE.study);
     }
     return result;
 }
@@ -112,7 +146,13 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
     let lastSyncedAt = '';
     let lastSyncedFingerprint = '';
 
-    const config = () => getState()?.calendarSyncTest || {};
+    const config = () => getState()?.calendarSync || getState()?.calendarSyncTest || {};
+    const storeConfig = patch => {
+        const state = getState();
+        state.calendarSync = { ...config(), ...patch };
+        if (state.calendarSyncTest) delete state.calendarSyncTest;
+        saveState();
+    };
     const connected = () => Boolean(token && Date.now() < expiresAt);
     const emit = () => onChange();
     const view = () => ({ status: config().enabled && !connected() && !running ? 'Reconectar' : status, error, enabled: Boolean(config().enabled), connected: connected(), busy: running, lastSyncedAt, calendarId: config().calendarId || '' });
@@ -150,16 +190,25 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
     async function ensureCalendar() {
         let id = config().calendarId;
         if (id) {
-            try { await api(`/calendars/${encodeURIComponent(id)}`); return id; }
+            try {
+                const existing = await api(`/calendars/${encodeURIComponent(id)}`);
+                if (existing?.summary === 'Missão Tática (Teste)') {
+                    await api(`/calendars/${encodeURIComponent(id)}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({ summary: 'Missão Tática', description: 'Blocos pessoais sincronizados pelo Missão Tática. Alterações partem do aplicativo.' })
+                    });
+                }
+                if (!getState().calendarSync || getState().calendarSyncTest) storeConfig({ calendarId: id, enabled: true });
+                return id;
+            }
             catch (e) { if (e.status !== 404) throw e; }
         }
         const calendar = await api('/calendars', {
             method: 'POST',
-            body: JSON.stringify({ summary: 'Missão Tática (Teste)', description: 'Agenda de teste sincronizada pelo Missão Tática. Alterações partem do aplicativo.', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })
+            body: JSON.stringify({ summary: 'Missão Tática', description: 'Blocos pessoais sincronizados pelo Missão Tática. Alterações partem do aplicativo.', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })
         });
         id = calendar.id;
-        getState().calendarSyncTest = { ...config(), calendarId: id, enabled: true };
-        saveState();
+        storeConfig({ calendarId: id, enabled: true });
         return id;
     }
 
@@ -243,8 +292,7 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
             expiresAt = Date.now() + Math.max(0, Number(result.expires_in) - 60) * 1000;
             await verifyIdentity(user.email);
             if (getUser()?.uid !== user.uid) throw new Error('A conta do aplicativo mudou. Conecte novamente.');
-            getState().calendarSyncTest = { ...config(), enabled: true };
-            saveState();
+            storeConfig({ enabled: true });
             lastSyncedFingerprint = '';
             await syncNow({ force: true });
         } catch (e) {
@@ -256,8 +304,7 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
     function pause() {
         clearTimeout(timer);
         token = ''; expiresAt = 0;
-        getState().calendarSyncTest = { ...config(), enabled: false };
-        saveState();
+        storeConfig({ enabled: false });
         status = 'Pausado'; error = ''; emit();
     }
 
