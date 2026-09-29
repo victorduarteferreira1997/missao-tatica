@@ -1,6 +1,7 @@
 // Integração oficial do Missão Tática com o Google Agenda.
 // O token OAuth fica apenas na memória. Nenhuma chave secreta é usada no navegador.
-const SCOPE = 'https://www.googleapis.com/auth/calendar.app.created https://www.googleapis.com/auth/userinfo.email';
+const BASE_SCOPE = 'https://www.googleapis.com/auth/calendar.app.created https://www.googleapis.com/auth/userinfo.email';
+const INBOUND_SCOPE = 'https://www.googleapis.com/auth/calendar.events.readonly';
 const API = 'https://www.googleapis.com/calendar/v3';
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -104,6 +105,9 @@ export function buildWeekEvents(state, ownerUid, timeZone = Intl.DateTimeFormat(
     }
 
     for (const task of state.tasks || []) {
+        // Uma missão convertida da agenda principal já possui um evento no Google.
+        // Não a copie para a agenda secundária do Missão Tática.
+        if (task.googleCalendarSource === 'primary' && task.googleCalendarEventId) continue;
         const category = categories.find(cat => String(cat.id) === String(task.category));
         const style = categoryStyle(category || { id: task.category });
         const subtasks = (task.subtasks || []).map(sub => `${sub.completed ? '✓' : '○'} ${sub.text}`).join(' | ');
@@ -135,7 +139,57 @@ export function buildWeekEvents(state, ownerUid, timeZone = Intl.DateTimeFormat(
     return result;
 }
 
-export function createCalendarSync({ clientId, getState, saveState, getUser, onChange = () => {} }) {
+function zonedParts(value, timeZone) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+    }).formatToParts(new Date(value));
+    return Object.fromEntries(parts.map(part => [part.type, part.value]));
+}
+
+function normalizePrimaryEvent(event, week, timeZone) {
+    if (!event?.id || event.status === 'cancelled') return null;
+    if ((event.attendees || []).some(attendee => attendee.self && attendee.responseStatus === 'declined')) return null;
+    const allDay = Boolean(event.start?.date && !event.start?.dateTime);
+    let eventDate = event.start?.date || '';
+    let startTime = '';
+    let endTime = '';
+    let duration = 30;
+    if (!allDay && event.start?.dateTime) {
+        const start = zonedParts(event.start.dateTime, timeZone);
+        eventDate = `${start.year}-${start.month}-${start.day}`;
+        startTime = `${start.hour}:${start.minute}`;
+        if (event.end?.dateTime) {
+            const end = zonedParts(event.end.dateTime, timeZone);
+            endTime = `${end.hour}:${end.minute}`;
+            duration = Math.max(1, Math.round((new Date(event.end.dateTime) - new Date(event.start.dateTime)) / 60000));
+        }
+    }
+    if (!eventDate) return null;
+    const dayIndex = Math.round((Date.parse(`${eventDate}T12:00:00Z`) - Date.parse(`${week}T12:00:00Z`)) / 86400000);
+    if (dayIndex < 0 || dayIndex > 6) return null;
+    return {
+        id: event.id,
+        status: 'pending',
+        source: 'Google Agenda',
+        sourceCalendar: 'primary',
+        weekStart: week,
+        summary: String(event.summary || 'Compromisso sem título'),
+        eventDate,
+        day: DAYS[dayIndex],
+        startTime,
+        endTime,
+        duration,
+        allDay,
+        originType: event.creator?.self || event.organizer?.self ? 'Criado por você' : 'Convite recebido',
+        organizer: event.organizer?.displayName || event.organizer?.email || '',
+        htmlLink: event.htmlLink || '',
+        googleUpdatedAt: event.updated || '',
+        sourceMissing: false
+    };
+}
+
+export function createCalendarSync({ clientId, getState, saveState, getUser, onChange = () => {}, enableInbound = false }) {
     let token = '';
     let expiresAt = 0;
     let activeUid = '';
@@ -155,7 +209,7 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
     };
     const connected = () => Boolean(token && Date.now() < expiresAt);
     const emit = () => onChange();
-    const view = () => ({ status: config().enabled && !connected() && !running ? 'Reconectar' : status, error, enabled: Boolean(config().enabled), connected: connected(), busy: running, lastSyncedAt, calendarId: config().calendarId || '' });
+    const view = () => ({ status: config().enabled && !connected() && !running ? 'Reconectar' : status, error, enabled: Boolean(config().enabled), connected: connected(), busy: running, lastSyncedAt, calendarId: config().calendarId || '', inboundEnabled: enableInbound, pendingInbox: getInbox().filter(item => item.status === 'pending').length });
 
     async function api(path, options = {}) {
         if (!connected()) throw new Error('Autorização expirada. Clique em Reconectar.');
@@ -225,6 +279,112 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
         return items;
     }
 
+    function getInbox({ includeHandled = false } = {}) {
+        const state = getState();
+        const week = state?.currentPlanningWeekStart;
+        const items = Array.isArray(state?.calendarInboxItems) ? state.calendarInboxItems : [];
+        return items
+            .filter(item => item.weekStart === week && (includeHandled || item.status === 'pending'))
+            .sort((a, b) => `${a.eventDate}|${a.startTime || '99:99'}|${a.summary}`.localeCompare(`${b.eventDate}|${b.startTime || '99:99'}|${b.summary}`));
+    }
+
+    function updateLinkedTask(item) {
+        if (item.status !== 'converted' || !item.linkedTaskId) return;
+        const task = (getState().tasks || []).find(candidate => String(candidate.id) === String(item.linkedTaskId));
+        if (!task) return;
+        task.googleCalendarSource = 'primary';
+        task.googleCalendarEventId = item.id;
+        task.googleCalendarOrigin = item.originType;
+        task.googleCalendarUpdatedAt = item.googleUpdatedAt;
+        task.googleCalendarSourceMissing = Boolean(item.sourceMissing);
+        if (!item.sourceMissing) {
+            task.text = item.summary;
+            task.day = item.day;
+            task.startTime = item.startTime;
+            task.endTime = item.endTime;
+            task.time = `${item.duration || 30} min`;
+        }
+    }
+
+    async function pullPrimaryEvents() {
+        if (!enableInbound) return [];
+        const state = getState();
+        const week = state.currentPlanningWeekStart;
+        if (!week) return [];
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const timeMin = weekDate(week).toISOString();
+        const timeMax = weekDate(week, 7).toISOString();
+        const items = [];
+        let page = '';
+        do {
+            const query = new URLSearchParams({ timeMin, timeMax, singleEvents: 'true', orderBy: 'startTime', showDeleted: 'false', maxResults: '2500' });
+            if (page) query.set('pageToken', page);
+            const result = await api(`/calendars/primary/events?${query}`);
+            items.push(...(result.items || []));
+            page = result.nextPageToken || '';
+        } while (page);
+
+        const normalized = items.map(event => normalizePrimaryEvent(event, week, timeZone)).filter(Boolean);
+        const before = JSON.stringify(state.calendarInboxItems || []);
+        const oldItems = Array.isArray(state.calendarInboxItems) ? state.calendarInboxItems : [];
+        const oldById = new Map(oldItems.map(item => [item.id, item]));
+        const fetchedIds = new Set(normalized.map(item => item.id));
+        const retained = oldItems.filter(item => {
+            if (item.weekStart !== week || fetchedIds.has(item.id)) return true;
+            if (item.status === 'converted') {
+                item.sourceMissing = true;
+                updateLinkedTask(item);
+                return true;
+            }
+            return false;
+        });
+        const retainedById = new Map(retained.map(item => [item.id, item]));
+        for (const incoming of normalized) {
+            const previous = oldById.get(incoming.id);
+            const merged = { ...incoming, status: previous?.status || 'pending', linkedTaskId: previous?.linkedTaskId || null };
+            if (retainedById.has(incoming.id)) retained.splice(retained.indexOf(retainedById.get(incoming.id)), 1, merged);
+            else retained.push(merged);
+            updateLinkedTask(merged);
+        }
+        state.calendarInboxItems = retained;
+        if (JSON.stringify(retained) !== before) saveState();
+        return getInbox();
+    }
+
+    async function refreshInbox() {
+        if (!enableInbound || !config().enabled || !getUser()) return [];
+        if (!connected()) { status = 'Reconectar'; emit(); return []; }
+        if (running) return getInbox();
+        running = true; error = ''; status = 'Lendo agenda principal...'; emit();
+        try {
+            const items = await pullPrimaryEvents();
+            lastSyncedAt = new Date().toISOString();
+            status = 'Sincronizado';
+            return items;
+        } catch (e) {
+            console.error('Falha ao ler a agenda principal', e);
+            error = e.message || 'Não foi possível ler a agenda principal.';
+            status = connected() ? 'Erro de sincronização' : 'Reconectar';
+            return [];
+        } finally { running = false; emit(); }
+    }
+
+    function ignoreInboxEvent(eventId) {
+        const item = (getState().calendarInboxItems || []).find(candidate => candidate.id === eventId);
+        if (!item) return;
+        item.status = 'ignored';
+        saveState(); emit();
+    }
+
+    function markInboxConverted(eventId, taskId) {
+        const item = (getState().calendarInboxItems || []).find(candidate => candidate.id === eventId);
+        if (!item) return;
+        item.status = 'converted';
+        item.linkedTaskId = taskId;
+        updateLinkedTask(item);
+        saveState(); emit();
+    }
+
     async function syncNow({ force = false } = {}) {
         if (!config().enabled || !getUser()) return;
         if (!connected()) { status = 'Reconectar'; emit(); return; }
@@ -234,7 +394,10 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
         const owner = getUser().uid;
         const desired = buildWeekEvents(state, owner);
         const fingerprint = `${week}|${JSON.stringify([...desired.values()])}`;
-        if (!force && fingerprint === lastSyncedFingerprint) return;
+        if (!force && fingerprint === lastSyncedFingerprint) {
+            if (enableInbound) await refreshInbox();
+            return;
+        }
         running = true; error = ''; status = 'Sincronizando...'; emit();
         try {
             const id = await ensureCalendar();
@@ -257,6 +420,7 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
                 if (!desired.has(eventId)) await api(`/calendars/${encodeURIComponent(id)}/events/${encodeURIComponent(eventId)}`, { method: 'DELETE' });
             }
             lastSyncedFingerprint = fingerprint;
+            if (enableInbound) await pullPrimaryEvents();
             lastSyncedAt = new Date().toISOString();
             status = 'Sincronizado';
             if (`${getState().currentPlanningWeekStart}|${JSON.stringify([...buildWeekEvents(getState(), owner).values()])}` !== fingerprint) schedule();
@@ -282,7 +446,7 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
         try {
             const result = await new Promise((resolve, reject) => {
                 const client = window.google.accounts.oauth2.initTokenClient({
-                    client_id: clientId, scope: SCOPE, login_hint: user.email,
+                    client_id: clientId, scope: enableInbound ? `${BASE_SCOPE} ${INBOUND_SCOPE}` : BASE_SCOPE, login_hint: user.email,
                     callback: response => response.error ? reject(new Error(response.error_description || response.error)) : resolve(response),
                     error_callback: response => reject(new Error(response.type === 'popup_closed' ? 'Conexão cancelada.' : 'Não foi possível abrir a autorização do Google.'))
                 });
@@ -318,5 +482,5 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
         error = ''; emit();
     }
 
-    return { view, connect, pause, schedule, syncNow, setOwner };
+    return { view, connect, pause, schedule, syncNow, refreshInbox, getInbox, ignoreInboxEvent, markInboxConverted, setOwner };
 }
