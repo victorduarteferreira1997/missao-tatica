@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Missão Tática · Google Agenda (Teste)</title>
+    <style>
+        body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #020617; color: #cbd5e1; font: 14px system-ui, sans-serif; }
+        main { max-width: 540px; padding: 32px; text-align: center; }
+        h1 { color: #fff; font-size: 20px; }
+        p { line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <main id="loader"><h1>Carregando Missão Tática</h1><p>Preparando a versão de teste da sincronização com o Google Agenda…</p></main>
+    <script>
+        (async () => {
+            try {
+                const response = await fetch('./app.html', { cache: 'no-store' });
+                if (!response.ok) throw new Error(`Não foi possível carregar a v1.9.5 (${response.status}).`);
+                let source = await response.text();
+                const replaceOnce = (needle, replacement, label) => {
+                    if (!source.includes(needle)) throw new Error(`Ponto de integração não encontrado: ${label}.`);
+                    source = source.replace(needle, replacement);
+                };
+
+                replaceOnce(
+                    '<meta name="app-build" content="v1.9.5-inteligencia-planejar-conteudo">',
+                    '<meta name="app-build" content="v1.9.5-calendar-teste">\n    <script src="https://accounts.google.com/gsi/client" async defer><' + '/script>',
+                    'identificação da versão'
+                );
+                replaceOnce(
+                    '    <script type="module">\n        import { initializeApp }',
+                    '    <script type="module">\n        import { createCalendarSync } from \'./calendar_sync.js\';\n        import { initializeApp }',
+                    'módulo principal'
+                );
+                replaceOnce(
+                    '        let uiState = {',
+                    `        const calendarSync = createCalendarSync({
+            clientId: '256467055884-dlrophq01snosvsppm165f6mbqovf2aj.apps.googleusercontent.com',
+            getState: () => state,
+            saveState: () => window.saveState(true, 'calendar-test-settings'),
+            getUser: () => currentUser,
+            onChange: () => {
+                const panel = document.getElementById('calendar-sync-panel');
+                if (panel && typeof window.renderCalendarSyncPanel === 'function') {
+                    panel.outerHTML = window.renderCalendarSyncPanel();
+                    if (window.lucide?.createIcons) window.lucide.createIcons();
+                }
+            }
+        });
+        window.calendarSyncTest = calendarSync;
+
+        let uiState = {`,
+                    'inicialização da agenda'
+                );
+                replaceOnce(
+                    '            window.saveToFirestore();\n            if(!skipRender) render();',
+                    '            window.saveToFirestore();\n            calendarSync.schedule();\n            if(!skipRender) render();',
+                    'salvamento local'
+                );
+                replaceOnce(
+                    '            await writeStateToFirestore(currentUser);\n            if(!skipRender) render();',
+                    '            await writeStateToFirestore(currentUser);\n            calendarSync.schedule();\n            if(!skipRender) render();',
+                    'salvamento imediato'
+                );
+                replaceOnce(
+                    '                await loadFromFirestore(user.uid);\n                startClock();',
+                    '                await loadFromFirestore(user.uid);\n                calendarSync.setOwner(user);\n                startClock();',
+                    'entrada do usuário'
+                );
+                replaceOnce(
+                    "                currentUser = null; window.updateSyncStatus('Desconectado');\n                overlay.style.display",
+                    "                currentUser = null; window.updateSyncStatus('Desconectado');\n                calendarSync.setOwner(null);\n                overlay.style.display",
+                    'saída do usuário'
+                );
+
+                const panelSource = `        window.renderCalendarSyncPanel = function() {
+            const connection = calendarSync.view();
+            const label = connection.busy ? 'Sincronizando...' : connection.status;
+            const statusColor = connection.status === 'Sincronizado' ? 'text-emerald-300' : connection.error ? 'text-rose-300' : 'text-amber-300';
+            const lastSync = connection.lastSyncedAt
+                ? \`Última sincronização: \${new Date(connection.lastSyncedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}.\`
+                : 'Nenhuma sincronização concluída nesta sessão.';
+            return \`<section id="calendar-sync-panel" class="rounded-2xl border border-emerald-900/60 bg-emerald-950/15 p-4 sm:p-5">
+                <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                    <div>
+                        <h3 class="text-sm font-black text-emerald-200 flex items-center gap-2"><i data-lucide="calendar-sync" class="w-4 h-4"></i> Google Agenda · teste</h3>
+                        <p class="text-[11px] text-slate-400 mt-1 leading-relaxed max-w-2xl">Envia missões e estudos da semana para uma agenda separada. Mudanças feitas aqui atualizam os eventos enquanto esta página está aberta e conectada. Alterações feitas no Google Agenda não voltam ao app.</p>
+                        <p class="text-[11px] mt-2 font-bold \${statusColor}">\${window.escapeHtml(label)} <span class="text-slate-500 font-normal">· \${window.escapeHtml(lastSync)}</span></p>
+                        \${connection.error ? \`<p class="text-[11px] text-rose-300 mt-1">\${window.escapeHtml(connection.error)}</p>\` : ''}
+                    </div>
+                    <div class="flex flex-wrap gap-2 shrink-0">
+                        \${!connection.connected
+                            ? \`<button type="button" onclick="window.calendarSyncTest.connect()" class="rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-2 text-[11px] font-black">\${connection.enabled ? 'Reconectar' : 'Conectar Google Agenda'}</button>\`
+                            : \`<button type="button" onclick="window.calendarSyncTest.syncNow({force:true})" \${connection.busy ? 'disabled' : ''} class="rounded-xl bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white px-3 py-2 text-[11px] font-black">Sincronizar agora</button>\`}
+                        \${connection.enabled ? \`<button type="button" onclick="window.calendarSyncTest.pause()" class="rounded-xl border border-slate-700 bg-slate-900 text-slate-300 px-3 py-2 text-[11px] font-black">Pausar</button>\` : ''}
+                    </div>
+                </div>
+                <p class="text-[10px] text-slate-500 mt-3">Pausar mantém os eventos já enviados. Importações .ics anteriores podem aparecer duplicadas; confira antes de remover eventos antigos.</p>
+            </section>\`;
+        };
+
+`;
+                replaceOnce('        function renderWeeklyPlanningOverview() {', panelSource + '        function renderWeeklyPlanningOverview() {', 'painel semanal');
+                replaceOnce(
+                    '            const emptyState = `<div class="space-y-5 font-mono">\n                <section',
+                    '            const emptyState = `<div class="space-y-5 font-mono">\n                ${window.renderCalendarSyncPanel()}\n                <section',
+                    'semana vazia'
+                );
+                replaceOnce(
+                    '            return `<div class="space-y-5 font-mono">\n                <section class="rounded-3xl border border-cyan-900/50',
+                    '            return `<div class="space-y-5 font-mono">\n                ${window.renderCalendarSyncPanel()}\n                <section class="rounded-3xl border border-cyan-900/50',
+                    'semana preenchida'
+                );
+
+                document.open();
+                document.write(source);
+                document.close();
+            } catch (error) {
+                document.getElementById('loader').innerHTML = `<h1>Não foi possível abrir o teste</h1><p>${String(error.message || error)}</p><p>Atualize a página. Se continuar, avise o erro exibido aqui.</p>`;
+            }
+        })();
+    </script>
+</body>
+</html>
