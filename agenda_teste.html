@@ -118,7 +118,7 @@
                 const frame = document.createElement('iframe');
                 frame.title = 'Missão Tática com Google Agenda';
                 frame.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#020617';
-                frame.srcdoc = source;
+                frame.src = URL.createObjectURL(new Blob([source], { type: 'text/html' }));
                 document.getElementById('loader').replaceWith(frame);
             } catch (error) {
                 console.error('Falha ao preparar a versão de teste', error);
