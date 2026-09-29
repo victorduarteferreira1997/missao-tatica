@@ -38,6 +38,13 @@ globalThis.fetch = async (url, options = {}) => {
     if (path.pathname === '/calendar/v3/calendars/calendar-1' && method === 'PATCH') return response({ id: 'calendar-1', ...JSON.parse(options.body) });
     if (path.pathname === '/calendar/v3/calendars/calendar-1') return response(calendarExists ? { id: 'calendar-1', summary: 'Missão Tática (Teste)' } : { error: { message: 'missing' } }, calendarExists ? 200 : 404);
     if (path.pathname === '/calendar/v3/calendars/primary/events' && method === 'GET') return response({ items: primaryEvents });
+    if (path.pathname.startsWith('/calendar/v3/calendars/primary/events/') && method === 'PATCH') {
+        const eventId = decodeURIComponent(path.pathname.split('/').at(-1));
+        const event = primaryEvents.find(item => item.id === eventId);
+        if (!event) return response({ error: { message: 'missing' } }, 404);
+        Object.assign(event, JSON.parse(options.body));
+        return response(event);
+    }
     if (path.pathname.endsWith('/events') && method === 'GET') {
         const week = path.searchParams.get('privateExtendedProperty')?.split('=')[1];
         return response({ items: [...remote.values()].filter(item => item.extendedProperties.private.mtWeek === week) });
@@ -59,6 +66,7 @@ sync.setOwner(owner);
 await sync.connect();
 assert.equal(sync.view().status, 'Sincronizado');
 assert.doesNotMatch(requestedScope, /calendar\.events\.readonly/);
+assert.doesNotMatch(requestedScope, /auth\/calendar\.events(?:\s|$)/);
 assert.equal(remote.size, 2);
 assert.equal(state.calendarSync.calendarId, 'calendar-1');
 assert.equal(state.calendarSyncTest, undefined);
@@ -121,18 +129,24 @@ primaryEvents = [
 const inboundSync = createCalendarSync({ clientId: 'test-id', getState: () => inboundState, saveState: () => {}, getUser: () => owner, enableInbound: true });
 inboundSync.setOwner(owner);
 await inboundSync.connect();
-assert.match(requestedScope, /calendar\.events\.readonly/);
+assert.match(requestedScope, /auth\/calendar\.events(?:\s|$)/);
+assert.doesNotMatch(requestedScope, /calendar\.events\.readonly/);
 assert.equal(inboundSync.getInbox().length, 2);
 assert.equal(inboundSync.getInbox()[0].day, 'wednesday');
 assert.equal(inboundSync.getInbox()[0].originType, 'Criado por você');
 assert.equal(inboundSync.getInbox()[1].originType, 'Convite recebido');
 
 inboundState.tasks.push({ id: 'linked-task', day: 'wednesday', text: 'Rascunho', category: 'health' });
-inboundSync.markInboxConverted('event-created', 'linked-task');
+await inboundSync.markInboxConverted('event-created', 'linked-task');
 assert.equal(inboundSync.getInbox().length, 1);
 assert.equal(inboundState.tasks[0].text, 'Consulta médica');
 assert.equal(inboundState.tasks[0].startTime, '13:00');
+assert.equal(primaryEvents[0].colorId, '11');
 assert.equal(buildWeekEvents(inboundState, owner.uid, 'America/Sao_Paulo').size, 0);
+
+inboundState.tasks[0].category = 'law';
+await inboundSync.syncNow({ force: true });
+assert.equal(primaryEvents[0].colorId, '3');
 
 primaryEvents[0] = { ...primaryEvents[0], summary: 'Consulta remarcada', updated: '2026-09-30T12:00:00Z', start: { dateTime: '2026-09-30T14:00:00-03:00' }, end: { dateTime: '2026-09-30T15:30:00-03:00' } };
 await inboundSync.refreshInbox();
@@ -146,4 +160,4 @@ primaryEvents = [primaryEvents[1]];
 await inboundSync.refreshInbox();
 assert.equal(inboundState.tasks[0].googleCalendarSourceMissing, true);
 
-console.log('Calendar sync: envio, entrada manual, convites, vínculo, atualização e remoção conferidos.');
+console.log('Calendar sync: envio, entrada manual, cores, convites, vínculo, atualização e remoção conferidos.');
