@@ -31,7 +31,7 @@
                 );
                 replaceOnce(
                     '    <script type="module">\n        import { initializeApp }',
-                    '    <script type="module">\n        import { createCalendarSync } from \'./calendar_sync.js\';\n        import { initializeApp }',
+                    '    <script type="application/mt-module">\n        import { createCalendarSync } from \'./calendar_sync.js\';\n        import { initializeApp }',
                     'módulo principal'
                 );
                 replaceOnce(
@@ -117,6 +117,12 @@
                 document.open();
                 document.write(source);
                 document.close();
+                const pendingModule = document.querySelector('script[type="application/mt-module"]');
+                if (!pendingModule) throw new Error('Módulo principal não encontrado após carregar a página.');
+                const executableModule = document.createElement('script');
+                executableModule.type = 'module';
+                executableModule.textContent = pendingModule.textContent;
+                pendingModule.replaceWith(executableModule);
             } catch (error) {
                 document.getElementById('loader').innerHTML = `<h1>Não foi possível abrir o teste</h1><p>${String(error.message || error)}</p><p>Atualize a página. Se continuar, avise o erro exibido aqui.</p>`;
             }
