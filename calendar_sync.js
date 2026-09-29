@@ -1,7 +1,7 @@
 // Integração oficial do Missão Tática com o Google Agenda.
 // O token OAuth fica apenas na memória. Nenhuma chave secreta é usada no navegador.
 const BASE_SCOPE = 'https://www.googleapis.com/auth/calendar.app.created https://www.googleapis.com/auth/userinfo.email';
-const INBOUND_SCOPE = 'https://www.googleapis.com/auth/calendar.events.readonly';
+const EVENTS_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 const API = 'https://www.googleapis.com/calendar/v3';
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -358,8 +358,10 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
         running = true; error = ''; status = 'Lendo agenda principal...'; emit();
         try {
             const items = await pullPrimaryEvents();
+            const failures = await syncLinkedEventColors();
             lastSyncedAt = new Date().toISOString();
-            status = 'Sincronizado';
+            status = failures.length ? 'Sincronizado com aviso' : 'Sincronizado';
+            error = failures.length ? 'Algumas cores não puderam ser atualizadas. Reconecte o Google Agenda e tente novamente.' : '';
             return items;
         } catch (e) {
             console.error('Falha ao ler a agenda principal', e);
@@ -376,13 +378,53 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
         saveState(); emit();
     }
 
-    function markInboxConverted(eventId, taskId) {
+    async function syncLinkedEventColors({ eventId = '' } = {}) {
+        if (!enableInbound || !connected()) return [];
+        const state = getState();
+        const categories = state.taskCategories || [];
+        const tasks = (state.tasks || []).filter(task =>
+            task.googleCalendarSource === 'primary' &&
+            task.googleCalendarEventId &&
+            !task.googleCalendarSourceMissing &&
+            (!eventId || task.googleCalendarEventId === eventId)
+        );
+        const failures = [];
+        let changed = false;
+        for (const task of tasks) {
+            const category = categories.find(cat => String(cat.id) === String(task.category));
+            const colorId = categoryStyle(category || { id: task.category }).colorId;
+            if (task.googleCalendarColorId === colorId && !task.googleCalendarColorSyncError) continue;
+            try {
+                await api(`/calendars/primary/events/${encodeURIComponent(task.googleCalendarEventId)}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ colorId })
+                });
+                task.googleCalendarColorId = colorId;
+                task.googleCalendarColorSyncError = '';
+                changed = true;
+            } catch (e) {
+                task.googleCalendarColorSyncError = e.message || 'Não foi possível atualizar a cor no Google Agenda.';
+                failures.push(task);
+                changed = true;
+            }
+        }
+        if (changed) saveState();
+        return failures;
+    }
+
+    async function markInboxConverted(eventId, taskId) {
         const item = (getState().calendarInboxItems || []).find(candidate => candidate.id === eventId);
         if (!item) return;
         item.status = 'converted';
         item.linkedTaskId = taskId;
         updateLinkedTask(item);
         saveState(); emit();
+        const failures = await syncLinkedEventColors({ eventId });
+        if (failures.length) {
+            error = 'A missão foi salva, mas a cor ainda não foi atualizada no Google. Reconecte e sincronize novamente.';
+            status = 'Cor pendente';
+        }
+        emit();
     }
 
     async function syncNow({ force = false } = {}) {
@@ -420,9 +462,14 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
                 if (!desired.has(eventId)) await api(`/calendars/${encodeURIComponent(id)}/events/${encodeURIComponent(eventId)}`, { method: 'DELETE' });
             }
             lastSyncedFingerprint = fingerprint;
-            if (enableInbound) await pullPrimaryEvents();
+            let colorFailures = [];
+            if (enableInbound) {
+                await pullPrimaryEvents();
+                colorFailures = await syncLinkedEventColors();
+            }
             lastSyncedAt = new Date().toISOString();
-            status = 'Sincronizado';
+            status = colorFailures.length ? 'Sincronizado com aviso' : 'Sincronizado';
+            error = colorFailures.length ? 'Algumas cores não puderam ser atualizadas no Google Agenda.' : '';
             if (`${getState().currentPlanningWeekStart}|${JSON.stringify([...buildWeekEvents(getState(), owner).values()])}` !== fingerprint) schedule();
         } catch (e) {
             console.error('Falha na sincronização com Google Agenda', e);
@@ -446,7 +493,7 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
         try {
             const result = await new Promise((resolve, reject) => {
                 const client = window.google.accounts.oauth2.initTokenClient({
-                    client_id: clientId, scope: enableInbound ? `${BASE_SCOPE} ${INBOUND_SCOPE}` : BASE_SCOPE, login_hint: user.email,
+                    client_id: clientId, scope: enableInbound ? `${BASE_SCOPE} ${EVENTS_SCOPE}` : BASE_SCOPE, login_hint: user.email,
                     callback: response => response.error ? reject(new Error(response.error_description || response.error)) : resolve(response),
                     error_callback: response => reject(new Error(response.type === 'popup_closed' ? 'Conexão cancelada.' : 'Não foi possível abrir a autorização do Google.'))
                 });
