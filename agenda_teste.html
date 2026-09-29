@@ -116,21 +116,26 @@
 
                 replaceOnce('<head>', `<head>\n    <base href="${new URL('./', window.location.href).href}">`, 'endereço-base');
 
+                const moduleBootstrap = `<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const pendingModule = document.querySelector('script[type="module"]');
+            if (!pendingModule) {
+                console.error('Módulo principal não encontrado após preparar o teste.');
+                return;
+            }
+            const executableModule = document.createElement('script');
+            executableModule.type = 'module';
+            executableModule.textContent = pendingModule.textContent;
+            pendingModule.replaceWith(executableModule);
+        }, { once: true });
+    <` + `/script>`;
+                replaceOnce('</body>', moduleBootstrap + '\n</body>', 'inicialização do módulo');
+
                 // Substitui o documento atual mantendo a URL e a origem do GitHub Pages.
                 // O iframe com URL blob: fazia o Firebase enxergar uma origem não autorizada.
                 document.open();
                 document.write(source);
                 document.close();
-
-                // Scripts de módulo gravados por document.write após um fetch assíncrono
-                // não são executados em alguns navegadores. Recriá-lo dispara a execução
-                // mantendo a mesma origem autorizada.
-                const pendingModule = document.querySelector('script[type="module"]');
-                if (!pendingModule) throw new Error('Módulo principal não encontrado após preparar o teste.');
-                const executableModule = document.createElement('script');
-                executableModule.type = 'module';
-                executableModule.textContent = pendingModule.textContent;
-                pendingModule.replaceWith(executableModule);
             } catch (error) {
                 console.error('Falha ao preparar a versão de teste', error);
                 const loader = document.getElementById('loader');
