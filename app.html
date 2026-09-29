@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.5-calendar">
+    <meta name="app-build" content="v1.9.6-calendar-inbox">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -283,12 +283,15 @@
             getState: () => state,
             saveState: () => window.saveState(true, 'calendar-settings'),
             getUser: () => currentUser,
+            enableInbound: true,
             onChange: () => {
                 const panel = document.getElementById('calendar-sync-panel');
                 if (panel && typeof window.renderCalendarSyncPanel === 'function') {
                     panel.outerHTML = window.renderCalendarSyncPanel();
-                    if (window.lucide?.createIcons) window.lucide.createIcons();
                 }
+                const inbox = document.getElementById('calendar-inbox-panel');
+                if (inbox && typeof window.renderCalendarInboxPanel === 'function') inbox.outerHTML = window.renderCalendarInboxPanel();
+                if (window.lucide?.createIcons) window.lucide.createIcons();
             }
         });
         window.calendarSync = calendarSync;
@@ -297,6 +300,7 @@
             showPanic: false, breathingStep: 0, breathingInterval: null,
             showLevelUp: false, showStatsModal: false, statsTab: 'roadmap',
             showCreateTaskModal: false,
+            calendarInboxEventId: null,
             showEditTaskModal: false, editingTaskId: null,
             showProfileModal: false,
             deleteTaskPrompt: { show: false, taskId: null },
@@ -614,6 +618,7 @@
             else state.currentPlanningWeekStart = dateKeyFromDate(current);
             uiState.mainView = 'week';
             render();
+            calendarSync.refreshInbox();
         };
 
 
@@ -2633,7 +2638,32 @@
         };
 
         window.drinkWater = function(event) { state.waterCount++; window.changeEnergy(10); state.xp += 15; window.spawnFloatingText(event, `+10 HP`, 'text-emerald-400'); window.checkGameTriggers(); window.checkLevelUp(); window.saveState(); }
-        window.toggleCreateTaskModal = function() { uiState.showCreateTaskModal = !uiState.showCreateTaskModal; render(); setTimeout(() => { window.updateTaskNatureButtons?.('ct'); window.updatePreviewCalc?.(); }, 50); };
+        window.toggleCreateTaskModal = function() {
+            uiState.showCreateTaskModal = !uiState.showCreateTaskModal;
+            if (!uiState.showCreateTaskModal) uiState.calendarInboxEventId = null;
+            render();
+            setTimeout(() => { window.updateTaskNatureButtons?.('ct'); window.updatePreviewCalc?.(); }, 50);
+        };
+
+        window.openCalendarInboxItem = function(eventId) {
+            const item = calendarSync.getInbox({ includeHandled: true }).find(candidate => candidate.id === eventId);
+            if (!item) { window.showAlertModal('Esse compromisso não está mais na entrada da agenda.'); return; }
+            uiState.calendarInboxEventId = eventId;
+            uiState.showCreateTaskModal = true;
+            render();
+            setTimeout(() => {
+                const values = {
+                    'ct-text': item.summary,
+                    'ct-day': item.day,
+                    'ct-time': item.duration || 30,
+                    'ct-start-time': item.startTime || '',
+                    'ct-end-time': item.endTime || ''
+                };
+                Object.entries(values).forEach(([id, value]) => { const field = document.getElementById(id); if (field) field.value = value; });
+                window.updateTaskNatureButtons?.('ct');
+                window.updatePreviewCalc?.();
+            }, 50);
+        };
 
         window.escapeHtml = function(value) {
             return String(value ?? '').replace(/[&<>'"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[ch]));
@@ -2837,6 +2867,9 @@
 
         window.saveNewTask = function() {
             const text = document.getElementById('ct-text').value.trim(); if (!text) { window.showAlertModal('Título vazio.'); return; }
+            const sourceInboxItem = uiState.calendarInboxEventId
+                ? calendarSync.getInbox({ includeHandled: true }).find(item => item.id === uiState.calendarInboxEventId)
+                : null;
             const missionNature = document.getElementById('ct-nature')?.value || 'normal';
             const cost = window.calculateTaskCost(document.getElementById('ct-priority').value, document.getElementById('ct-complexity').value, document.getElementById('ct-time').value, document.getElementById('ct-impact-type').value, missionNature);
             const rawSubtasks = document.getElementById('ct-subtasks')?.value || '';
@@ -2851,16 +2884,19 @@
             const selectedDay = document.getElementById('ct-day').value;
             const calendarTime = window.readCalendarTimeFields('ct', parseInt(document.getElementById('ct-time')?.value, 10) || 30);
             if (!calendarTime) return;
-            const recurrenceDays = daysOfWeek
+            const recurrenceDays = sourceInboxItem ? [] : daysOfWeek
                 .filter(d => document.getElementById(`ct-repeat-${d.id}`)?.checked)
                 .map(d => d.id);
             const isRecurring = recurrenceDays.length > 0;
             const daysToCreate = isRecurring ? recurrenceDays : [selectedDay];
             const recurrenceGroupId = isRecurring ? `rec-${Date.now()}-${Math.random().toString(16).slice(2)}` : null;
 
+            let firstCreatedTaskId = null;
             daysToCreate.forEach((targetDay, index) => {
+                const taskId = Date.now() + index + Math.random();
+                if (firstCreatedTaskId === null) firstCreatedTaskId = taskId;
                 state.tasks.push({
-                    id: Date.now() + index + Math.random(),
+                    id: taskId,
                     day: targetDay,
                     category: selectedCategory,
                     text: text,
@@ -2878,7 +2914,14 @@
                     subtasks: window.cloneSubtasksForNewTask(baseSubtasks),
                     isRecurring,
                     recurrenceDays: isRecurring ? [...recurrenceDays] : [],
-                    recurrenceGroupId
+                    recurrenceGroupId,
+                    ...(sourceInboxItem ? {
+                        googleCalendarSource: 'primary',
+                        googleCalendarEventId: sourceInboxItem.id,
+                        googleCalendarOrigin: sourceInboxItem.originType,
+                        googleCalendarUpdatedAt: sourceInboxItem.googleUpdatedAt,
+                        googleCalendarSourceMissing: false
+                    } : {})
                 });
             });
 
@@ -2888,7 +2931,9 @@
             }
             [...new Set(daysToCreate)].forEach(dayId => { if (typeof window.reindexTaskOrderForDay === 'function') window.reindexTaskOrderForDay(dayId); });
 
+            if (sourceInboxItem && firstCreatedTaskId !== null) calendarSync.markInboxConverted(sourceInboxItem.id, firstCreatedTaskId);
             uiState.showCreateTaskModal = false;
+            uiState.calendarInboxEventId = null;
             const recurrenceMsg = isRecurring ? ` Missão recorrente: ${window.getRecurringDaysLabel(recurrenceDays)}.` : '';
             window.showToast('Missão Alistada!', `${daysToCreate.length} missão(ões) adicionada(s).${baseSubtasks.length ? ` ${baseSubtasks.length} subtarefa(s).` : ''}${recurrenceMsg}`, 'crosshair', 'text-emerald-400');
             window.saveState();
@@ -4921,6 +4966,7 @@
             let filteredTasks = dailyTasks;
             if (state.currentFilter && state.currentFilter !== 'all') filteredTasks = dailyTasks.filter(t => t.category === state.currentFilter);
             const xpPercent = Math.min(100, (state.xp / window.getXpForCurrentLevel()) * 100);
+            const calendarInboxPending = calendarSync.getInbox().length;
 
             let html = ``;
 
@@ -5149,7 +5195,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.5</span></div>
+                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.6</span></div>
                             <div class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">Quartel operacional</div>
                         </div>
                     </div>
@@ -5217,7 +5263,7 @@
                                 <i data-lucide="moon" class="w-4 h-4"></i>
                             </button>
                             <button onclick="window.setMainView('week')" class="flex items-center gap-2 px-3 py-2 bg-cyan-950/50 text-cyan-300 border border-cyan-900/60 rounded-lg text-sm font-black justify-center hover:bg-cyan-900 hover:text-white transition-colors" title="Abrir Semana Geral: tudo que está planejado na semana">
-                                <i data-lucide="calendar-days" class="w-4 h-4"></i><span class="hidden sm:inline">Semana</span>
+                                <i data-lucide="calendar-days" class="w-4 h-4"></i><span class="hidden sm:inline">Semana</span>${calendarInboxPending ? `<span class="rounded-full bg-sky-500 text-slate-950 min-w-5 h-5 px-1 inline-flex items-center justify-center text-[9px]">${calendarInboxPending}</span>` : ''}
                             </button>
                             <button onclick="window.setMainView('control')" class="flex items-center gap-2 px-3 py-2 bg-sky-950/50 text-sky-300 border border-sky-900/60 rounded-lg text-sm font-black justify-center hover:bg-sky-900 hover:text-white transition-colors" title="Abrir Situação Operacional">
                                 <i data-lucide="radar" class="w-4 h-4"></i><span class="hidden sm:inline">Radar</span>
@@ -5259,7 +5305,7 @@
                 </div>
                 <div class="grid grid-cols-3 gap-1 bg-slate-950 rounded-xl p-1 shrink-0">
                     <button onclick="window.setMainView('day')" class="rounded-lg px-2.5 py-2 text-[10px] font-black ${uiState.mainView === 'day' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-white hover:bg-slate-800'}"><i data-lucide="layout-list" class="w-3.5 h-3.5 inline mr-1"></i>Hoje</button>
-                    <button onclick="window.setMainView('week')" class="rounded-lg px-2.5 py-2 text-[10px] font-black ${uiState.mainView === 'week' ? 'bg-cyan-700 text-white' : 'text-slate-500 hover:text-white hover:bg-slate-800'}"><i data-lucide="calendar-days" class="w-3.5 h-3.5 inline mr-1"></i>Semana</button>
+                    <button onclick="window.setMainView('week')" class="rounded-lg px-2.5 py-2 text-[10px] font-black ${uiState.mainView === 'week' ? 'bg-cyan-700 text-white' : 'text-slate-500 hover:text-white hover:bg-slate-800'}"><i data-lucide="calendar-days" class="w-3.5 h-3.5 inline mr-1"></i>Semana${calendarInboxPending ? ` · ${calendarInboxPending}` : ''}</button>
                     <button onclick="window.setMainView('control')" class="rounded-lg px-2.5 py-2 text-[10px] font-black ${uiState.mainView === 'control' ? 'bg-sky-700 text-white' : 'text-slate-500 hover:text-white hover:bg-slate-800'}"><i data-lucide="radar" class="w-3.5 h-3.5 inline mr-1"></i>Radar</button>
                 </div>
             </div>`;
@@ -5554,17 +5600,21 @@
 
             // MODAL CRIAR TAREFA
             if (uiState.showCreateTaskModal) {
+                const calendarInboxSource = uiState.calendarInboxEventId
+                    ? calendarSync.getInbox({ includeHandled: true }).find(item => item.id === uiState.calendarInboxEventId)
+                    : null;
                 html += `
                 <div class="fixed inset-0 bg-black/80 flex items-center justify-center p-3 sm:p-4 z-50 backdrop-blur-sm font-mono">
                     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full shadow-2xl modal-enter overflow-hidden max-h-[92vh] flex flex-col">
                         <div class="bg-slate-950/70 border-b border-slate-800 p-4 sm:p-5 flex items-start justify-between gap-4">
                             <div>
                                 <h2 class="text-xl font-black text-emerald-400 flex items-center gap-2"><i data-lucide="plus-circle"></i> Criar Missão</h2>
-                                <p class="text-[11px] text-slate-500 mt-1">Dê um nome claro e selecione o tipo de missão.</p>
+                                <p class="text-[11px] text-slate-500 mt-1">${calendarInboxSource ? 'Classifique o compromisso antes de transformá-lo em missão.' : 'Dê um nome claro e selecione o tipo de missão.'}</p>
                             </div>
                             <button onclick="window.toggleCreateTaskModal()" class="text-slate-500 hover:text-white bg-slate-900 border border-slate-800 rounded-full p-1.5"><i data-lucide="x"></i></button>
                         </div>
                         <div class="p-4 sm:p-5 overflow-y-auto space-y-4">
+                            ${calendarInboxSource ? `<div class="rounded-2xl border border-sky-800/60 bg-sky-950/25 p-3 text-[11px] text-sky-100 leading-relaxed"><div class="font-black uppercase tracking-widest text-sky-300 flex items-center gap-2"><i data-lucide="inbox" class="w-4 h-4"></i> Vindo do Google Agenda</div><p class="mt-1 text-slate-400">Título, dia e horário permanecem ligados ao evento original. Categoria, prioridade, tipo, XP e carga ficam sob seu controle no Missão Tática. Esta conversão cria uma única missão, sem recorrência e sem duplicar o evento no Google.</p></div>` : ''}
                             <section class="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 space-y-3">
                                 <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-300"><span class="bg-emerald-950/50 border border-emerald-800/60 rounded-full w-6 h-6 flex items-center justify-center">1</span> Identidade</div>
                                 <div>
@@ -6000,18 +6050,65 @@
                 <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                     <div>
                         <h3 class="text-sm font-black text-emerald-200 flex items-center gap-2"><i data-lucide="calendar-sync" class="w-4 h-4"></i> Google Agenda</h3>
-                        <p class="text-[11px] text-slate-400 mt-1 leading-relaxed max-w-2xl">Envia missões e estudos da semana para uma agenda separada. Mudanças feitas aqui atualizam os eventos enquanto esta página está aberta e conectada. Alterações feitas no Google Agenda não voltam ao app.</p>
+                        <p class="text-[11px] text-slate-400 mt-1 leading-relaxed max-w-2xl">Envia missões e estudos para a agenda separada e lê compromissos da sua agenda principal. Os compromissos entram abaixo como pendências para você classificar antes de virarem missão.</p>
                         <p class="text-[11px] mt-2 font-bold ${statusColor}">${window.escapeHtml(label)} <span class="text-slate-500 font-normal">· ${window.escapeHtml(lastSync)}</span></p>
                         ${connection.error ? `<p class="text-[11px] text-rose-300 mt-1">${window.escapeHtml(connection.error)}</p>` : ''}
                     </div>
                     <div class="flex flex-wrap gap-2 shrink-0">
                         ${!connection.connected
                             ? `<button type="button" onclick="window.calendarSync.connect()" class="rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-2 text-[11px] font-black">${connection.enabled ? 'Reconectar' : 'Conectar Google Agenda'}</button>`
-                            : `<button type="button" onclick="window.calendarSync.syncNow({force:true})" ${connection.busy ? 'disabled' : ''} class="rounded-xl bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white px-3 py-2 text-[11px] font-black">Sincronizar agora</button>`}
+                            : `<button type="button" onclick="window.calendarSync.syncNow({force:true})" ${connection.busy ? 'disabled' : ''} class="rounded-xl bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white px-3 py-2 text-[11px] font-black">Sincronizar tudo</button>`}
                         ${connection.enabled ? `<button type="button" onclick="window.calendarSync.pause()" class="rounded-xl border border-slate-700 bg-slate-900 text-slate-300 px-3 py-2 text-[11px] font-black">Pausar</button>` : ''}
                     </div>
                 </div>
-                <p class="text-[10px] text-slate-500 mt-3">Pausar mantém os eventos já enviados. Importações .ics anteriores podem aparecer duplicadas; confira antes de remover eventos antigos.</p>
+                <p class="text-[10px] text-slate-500 mt-3">Pausar mantém os eventos já enviados. A leitura inclui apenas a agenda principal; agendas compartilhadas e a agenda secundária do Missão Tática não entram na caixa.</p>
+            </section>`;
+        };
+
+        window.renderCalendarInboxPanel = function() {
+            const connection = calendarSync.view();
+            const items = calendarSync.getInbox();
+            const formatDate = value => {
+                const [year, month, day] = String(value || '').split('-');
+                return year && month && day ? `${day}/${month}` : value;
+            };
+            return `<section id="calendar-inbox-panel" class="rounded-2xl border border-sky-900/60 bg-sky-950/15 p-4 sm:p-5">
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="text-sm font-black text-sky-200 flex items-center gap-2"><i data-lucide="inbox" class="w-4 h-4"></i> Entrada da Agenda</h3>
+                            <span class="rounded-full border border-sky-800/60 bg-sky-950/50 px-2 py-0.5 text-[10px] font-black text-sky-200">${items.length} pendente${items.length === 1 ? '' : 's'}</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">Nada vira missão automaticamente. Revise cada compromisso e escolha categoria, prioridade, tipo, XP e carga.</p>
+                    </div>
+                    ${connection.connected ? `<button type="button" onclick="window.calendarSync.refreshInbox()" ${connection.busy ? 'disabled' : ''} class="rounded-xl border border-sky-800/60 bg-sky-950/40 hover:bg-sky-900/50 disabled:opacity-50 text-sky-200 px-3 py-2 text-[10px] font-black uppercase tracking-widest shrink-0"><i data-lucide="refresh-cw" class="inline w-3.5 h-3.5 mr-1"></i> Atualizar</button>` : ''}
+                </div>
+                <div class="mt-4 space-y-2.5">
+                    ${!connection.connected
+                        ? `<div class="rounded-xl border border-dashed border-slate-800 bg-slate-950/45 p-4 text-[11px] text-slate-500">Conecte ou reconecte o Google Agenda acima para carregar os compromissos desta semana.</div>`
+                        : !items.length
+                            ? `<div class="rounded-xl border border-dashed border-slate-800 bg-slate-950/45 p-4 text-[11px] text-slate-500">Nenhum compromisso novo aguardando classificação nesta semana.</div>`
+                            : items.map(item => {
+                                const encodedId = encodeURIComponent(item.id);
+                                const time = item.allDay ? 'Dia inteiro' : (item.startTime ? `${item.startTime}${item.endTime ? `–${item.endTime}` : ''}` : 'Sem horário');
+                                return `<article class="rounded-2xl border border-sky-900/40 bg-slate-950/75 p-3 sm:p-4">
+                                    <div class="flex flex-col lg:flex-row lg:items-center gap-3">
+                                        <div class="min-w-0 flex-1">
+                                            <div class="text-sm font-bold text-white break-words">${window.escapeHtml(item.summary)}</div>
+                                            <div class="flex flex-wrap gap-2 mt-2 text-[10px] font-bold uppercase tracking-wider">
+                                                <span class="text-sky-300 inline-flex items-center gap-1"><i data-lucide="calendar-clock" class="w-3 h-3"></i>${window.escapeHtml(formatDate(item.eventDate))} · ${window.escapeHtml(time)}</span>
+                                                <span class="text-slate-400 inline-flex items-center gap-1"><i data-lucide="${item.originType === 'Convite recebido' ? 'mail-plus' : 'user-round'}" class="w-3 h-3"></i>${window.escapeHtml(item.originType)}</span>
+                                                <span class="text-slate-600">Google Agenda</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex flex-wrap gap-2 shrink-0">
+                                            <button type="button" onclick="window.openCalendarInboxItem(decodeURIComponent('${encodedId}'))" class="rounded-xl bg-sky-700 hover:bg-sky-600 text-white px-3 py-2 text-[10px] font-black uppercase tracking-widest">Classificar</button>
+                                            <button type="button" onclick="window.calendarSync.ignoreInboxEvent(decodeURIComponent('${encodedId}'))" class="rounded-xl border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-400 px-3 py-2 text-[10px] font-black uppercase tracking-widest">Ignorar</button>
+                                        </div>
+                                    </div>
+                                </article>`;
+                            }).join('')}
+                </div>
             </section>`;
         };
 
@@ -6100,6 +6197,8 @@
                                 <span class="inline-flex items-center rounded-full border px-2 py-0.5 ${priorityColor[task.priority] || priorityColor.media}">${priorityLabel[task.priority] || 'Média'}</span>
                                 <span class="inline-flex items-center gap-1 ${task.startTime ? 'text-cyan-300' : 'text-slate-500'}"><i data-lucide="calendar-clock" class="w-3 h-3"></i>${task.startTime ? window.getCalendarTimeLabel(task, extractMinutesFromTask(task)) : 'Sem horário'}</span>
                                 ${subCount ? `<span class="inline-flex items-center text-cyan-300">${doneSubs}/${subCount} subtarefas</span>` : ''}
+                                ${task.googleCalendarSource === 'primary' ? `<span class="inline-flex items-center gap-1 text-sky-300"><i data-lucide="link-2" class="w-3 h-3"></i>Google Agenda</span>` : ''}
+                                ${task.googleCalendarSourceMissing ? `<span class="inline-flex items-center gap-1 text-amber-300"><i data-lucide="triangle-alert" class="w-3 h-3"></i>Evento removido no Google</span>` : ''}
                             </div>
                         </div>
                     </div>
@@ -6192,6 +6291,7 @@
 
             const emptyState = `<div class="space-y-5 font-mono">
                 ${window.renderCalendarSyncPanel()}
+                ${window.renderCalendarInboxPanel()}
                 <section class="rounded-3xl border border-cyan-900/50 bg-slate-900 p-5 sm:p-6">
                     <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
                         <div>
@@ -6212,6 +6312,7 @@
 
             return `<div class="space-y-5 font-mono">
                 ${window.renderCalendarSyncPanel()}
+                ${window.renderCalendarInboxPanel()}
                 <section class="rounded-3xl border border-cyan-900/50 bg-slate-900 p-4 sm:p-5">
                     <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
                         <div class="min-w-0">
