@@ -13,5 +13,23 @@ node_modules/
 .env.*
 !.env.example
 
+# Chaves, certificados e cofres locais
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Credenciais baixadas de provedores e tokens persistidos
+*credentials*.json
+*service-account*.json
+*service_account*.json
+firebase-adminsdk-*.json
+client_secret_*.json
+*access-token*.json
+*refresh-token*.json
+oauth-client*.json
+
 # Backups pessoais exportados pela aplicação
 *backup*.json
