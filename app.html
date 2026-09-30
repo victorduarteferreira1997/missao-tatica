@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.7-calendar-colors">
+    <meta name="app-build" content="v1.9.8-owner-access">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -76,6 +76,7 @@
             <button onclick="window.loginRedirect()" class="w-full mt-3 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold py-2 px-4 rounded-xl text-xs transition-colors">
                 Login alternativo por redirecionamento
             </button>
+            <p id="auth-access-message" class="hidden mt-4 rounded-xl border px-3 py-2 text-xs font-bold leading-relaxed" role="alert"></p>
         </div>
     </div>
 
@@ -109,6 +110,21 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const APP_OWNER_UID = '1LDBfIQ5vQTUtaE5j0k4Sp9w7Rj2';
+        let authAccessDenied = false;
+
+        function isAuthorizedAppOwner(user) {
+            return Boolean(user?.uid && user.uid === APP_OWNER_UID);
+        }
+
+        function setAuthAccessMessage(message = '', denied = false) {
+            const element = document.getElementById('auth-access-message');
+            if (!element) return;
+            element.textContent = message;
+            element.className = message
+                ? `mt-4 rounded-xl border px-3 py-2 text-xs font-bold leading-relaxed ${denied ? 'border-red-800/70 bg-red-950/40 text-red-200' : 'border-slate-700 bg-slate-950/60 text-slate-300'}`
+                : 'hidden mt-4 rounded-xl border px-3 py-2 text-xs font-bold leading-relaxed';
+        }
 
         // ==========================================
         // DADOS E CONSTANTES GERAIS
@@ -1192,6 +1208,8 @@
 
         window.login = async function() {
             try {
+                authAccessDenied = false;
+                setAuthAccessMessage('');
                 const provider = new GoogleAuthProvider();
                 provider.setCustomParameters({ prompt: 'select_account' });
                 await signInWithPopup(auth, provider);
@@ -1210,6 +1228,8 @@
 
         window.loginRedirect = async function() {
             try {
+                authAccessDenied = false;
+                setAuthAccessMessage('');
                 const provider = new GoogleAuthProvider();
                 provider.setCustomParameters({ prompt: 'select_account' });
                 await signInWithRedirect(auth, provider);
@@ -1329,6 +1349,24 @@
             const overlay = document.getElementById('auth-overlay');
             const wrapper = document.getElementById('app-wrapper');
             if (user) {
+                if (!isAuthorizedAppOwner(user)) {
+                    authAccessDenied = true;
+                    currentUser = null;
+                    window.updateSyncStatus('Acesso negado');
+                    calendarSync.setOwner(null);
+                    wrapper.style.display = 'none';
+                    overlay.style.display = 'flex';
+                    overlay.style.opacity = '1';
+                    setAuthAccessMessage('Acesso restrito ao proprietário do Missão Tática. Entre com a conta autorizada.', true);
+                    try {
+                        await signOut(auth);
+                    } catch (error) {
+                        console.error('Falha ao desconectar conta não autorizada', error);
+                    }
+                    return;
+                }
+                authAccessDenied = false;
+                setAuthAccessMessage('');
                 currentUser = user; window.updateSyncStatus('Conectado');
                 overlay.style.opacity = '0'; setTimeout(() => { overlay.style.display = 'none'; }, 300);
                 wrapper.style.display = 'block';
@@ -1339,6 +1377,7 @@
                 currentUser = null; window.updateSyncStatus('Desconectado');
                 calendarSync.setOwner(null);
                 overlay.style.display = 'flex'; overlay.style.opacity = '1'; wrapper.style.display = 'none';
+                if (!authAccessDenied) setAuthAccessMessage('');
             }
         });
 
@@ -5195,7 +5234,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.7</span></div>
+                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.8</span></div>
                             <div class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">Quartel operacional</div>
                         </div>
                     </div>
