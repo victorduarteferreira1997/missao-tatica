@@ -1,0 +1,17 @@
+# Sistema operacional e editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Dependências e saídas locais
+node_modules/
+*.log
+
+# Segredos e configurações locais
+.env
+.env.*
+!.env.example
+
+# Backups pessoais exportados pela aplicação
+*backup*.json
