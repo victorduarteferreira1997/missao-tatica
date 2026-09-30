@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.8-owner-access">
+    <meta name="app-build" content="v1.9.9-safe-content">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -1217,7 +1217,7 @@
                 console.error("Erro no login", error);
                 const code = error?.code || '';
                 if (code === 'auth/unauthorized-domain') {
-                    window.showAlertModal("⚠️ Domínio bloqueado pelo Firebase.<br><br>Confirme no Firebase Console > Authentication > Settings > Authorized domains se o domínio <b>victorduarteferreira1997.github.io</b> está autorizado.");
+                    window.showAlertModal("⚠️ Domínio bloqueado pelo Firebase.\n\nConfirme no Firebase Console > Authentication > Settings > Authorized domains se o domínio victorduarteferreira1997.github.io está autorizado.");
                 } else if (code === 'auth/popup-blocked' || code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
                     window.showAlertModal("O navegador bloqueou ou fechou a janela de login. Libere pop-ups para este site e tente novamente. Se continuar, use uma aba anônima ou limpe o cache do site.");
                 } else {
@@ -1900,7 +1900,13 @@
             const container = document.getElementById('toast-container'); if (!container) return;
             const toast = document.createElement('div');
             toast.className = `bg-slate-900 border border-slate-700 rounded-lg p-3 shadow-2xl flex items-center gap-3 toast-enter max-w-xs pointer-events-auto`;
-            toast.innerHTML = `<div class="bg-slate-950 p-2 rounded-full border border-slate-800 shrink-0"><i data-lucide="${iconName}" class="${colorClass} w-6 h-6"></i></div><div><h4 class="text-sm font-bold text-white">${title}</h4><p class="text-xs text-slate-400 leading-tight">${desc}</p></div>`;
+            toast.innerHTML = '<div class="bg-slate-950 p-2 rounded-full border border-slate-800 shrink-0"><i data-toast-icon class="text-slate-400 w-6 h-6"></i></div><div><h4 data-toast-title class="text-sm font-bold text-white"></h4><p data-toast-desc class="text-xs text-slate-400 leading-tight"></p></div>';
+            const icon = toast.querySelector('[data-toast-icon]');
+            const safeIconName = /^[a-z0-9-]+$/.test(String(iconName || '')) ? String(iconName) : 'info';
+            icon.setAttribute('data-lucide', safeIconName);
+            String(colorClass || '').split(/\s+/).filter(token => /^text-[a-z0-9-]+(?:\/\d+)?$/.test(token)).forEach(token => icon.classList.add(token));
+            toast.querySelector('[data-toast-title]').textContent = String(title ?? '');
+            toast.querySelector('[data-toast-desc]').textContent = String(desc ?? '');
             container.appendChild(toast); lucide.createIcons({root: toast});
             setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 4000);
         };
@@ -4548,7 +4554,7 @@
             const demand = window.getOperationalDemand(demandId);
             if (!demand || demand.workflowStatus === 'closed') return;
             window.showConfirmModal(
-                `Encerrar a demanda "${window.escapeHtml(demand.title)}"? Ela sai da base ativa, mas permanece registrada no histórico operacional.`,
+                `Encerrar a demanda "${demand.title}"? Ela sai da base ativa, mas permanece registrada no histórico operacional.`,
                 () => {
                     const now = new Date().toISOString();
                     demand.workflowStatus = 'closed';
@@ -5015,7 +5021,7 @@
                 <div class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-[999] backdrop-blur-sm font-mono">
                     <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm w-full shadow-2xl modal-enter">
                         <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2"><i data-lucide="help-circle" class="text-indigo-400"></i> Confirmação Tática</h3>
-                        <p class="text-slate-300 text-sm mb-6 leading-relaxed">${uiState.confirm.message}</p>
+                        <p class="text-slate-300 text-sm mb-6 leading-relaxed whitespace-pre-line">${window.escapeHtml(uiState.confirm.message)}</p>
                         <div class="flex gap-3">
                             <button onclick="window.handleConfirmResult(false)" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-lg text-sm font-bold transition-colors">Cancelar</button>
                             <button onclick="window.handleConfirmResult(true)" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">Confirmar</button>
@@ -5029,7 +5035,7 @@
                 <div class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-[999] backdrop-blur-sm font-mono">
                     <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm w-full shadow-2xl modal-enter">
                         <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2"><i data-lucide="alert-circle" class="text-yellow-500"></i> Alerta</h3>
-                        <p class="text-slate-300 text-sm mb-6 leading-relaxed">${uiState.alert.message}</p>
+                        <p class="text-slate-300 text-sm mb-6 leading-relaxed whitespace-pre-line">${window.escapeHtml(uiState.alert.message)}</p>
                         <button onclick="window.closeAlertModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-lg text-sm font-bold transition-colors">OK</button>
                     </div>
                 </div>`;
@@ -5234,7 +5240,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.8</span></div>
+                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.9</span></div>
                             <div class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">Quartel operacional</div>
                         </div>
                     </div>

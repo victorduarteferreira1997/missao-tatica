@@ -27,6 +27,7 @@ Requer Node.js 18 ou mais recente:
 
 ```bash
 node calendar_sync.test.mjs
+node security.test.mjs
 ```
 
 Antes de publicar uma mudança:
