@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.10-app-check-monitoring">
+    <meta name="app-build" content="v1.9.11-layout-simplification-round1">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -5245,7 +5245,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.10</span></div>
+                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.11</span></div>
                             <div class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">Quartel operacional</div>
                         </div>
                     </div>
@@ -5262,86 +5262,69 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-[0.8fr_2.6fr] gap-2 mt-2">
-                    <button onclick="window.toggleCreateTaskModal()" class="group bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white rounded-xl px-3 py-2.5 border border-emerald-400/20 shadow-lg shadow-emerald-950/20 transition-all text-left flex items-center gap-3">
-                        <div class="bg-white/15 rounded-xl p-2"><i data-lucide="plus-circle" class="w-5 h-5"></i></div>
-                        <div><div class="text-sm font-black uppercase tracking-widest">Nova Missão</div><div class="text-[10px] text-emerald-100/80 font-bold uppercase tracking-wider">Criar tarefa</div></div>
+                <div class="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-2 mt-2">
+                    <button onclick="window.toggleCreateTaskModal()" class="group bg-indigo-600/90 hover:bg-indigo-500 text-white rounded-xl px-4 py-3 border border-indigo-400/20 shadow-lg shadow-indigo-950/20 transition-all text-left flex items-center gap-3">
+                        <div class="bg-white/10 rounded-lg p-2"><i data-lucide="plus" class="w-5 h-5"></i></div>
+                        <div class="min-w-0">
+                            <div class="text-sm font-black tracking-wide">Nova missão</div>
+                            <div class="text-[10px] text-indigo-100/70 font-medium mt-0.5">Capture o que precisa ser executado.</div>
+                        </div>
                     </button>
 
-                    <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-2">
-                        <div class="text-[9px] text-slate-600 uppercase tracking-widest font-black mb-1.5 px-1">Módulos táticos</div>
-                        <div class="flex flex-wrap gap-2">
-                            <button onclick="window.toggleStudyModal()" class="flex items-center justify-center gap-1.5 bg-cyan-900/30 hover:bg-cyan-800/60 text-cyan-300 border border-cyan-800/60 px-3 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-colors min-w-[124px] flex-1"><i data-lucide="brain-circuit" class="w-4 h-4 shrink-0"></i><span class="truncate">Inteligência</span></button>
-                            <button onclick="window.toggleHealthModal()" class="flex items-center justify-center gap-1.5 bg-rose-900/30 hover:bg-rose-800/60 text-rose-300 border border-rose-800/60 px-3 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-colors min-w-[96px] flex-1"><i data-lucide="activity" class="w-4 h-4 shrink-0"></i><span class="truncate">Corpo</span></button>
-                            <button onclick="window.toggleFinanceModal()" class="flex items-center justify-center gap-1.5 bg-yellow-900/30 hover:bg-yellow-800/60 text-yellow-300 border border-yellow-800/60 px-3 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-colors min-w-[108px] flex-1"><i data-lucide="wallet" class="w-4 h-4 shrink-0"></i><span class="truncate">Finanças</span></button>
-                            <button onclick="window.toggleRitualModal()" class="flex items-center justify-center gap-1.5 bg-emerald-900/30 hover:bg-emerald-800/60 text-emerald-300 border border-emerald-800/60 px-3 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-colors min-w-[104px] flex-1"><i data-lucide="clipboard-check" class="w-4 h-4 shrink-0"></i><span class="truncate">Rituais</span></button>
-                            <button onclick="window.toggleRechargeModal()" class="flex items-center justify-center gap-1.5 bg-lime-900/30 hover:bg-lime-800/60 text-lime-300 border border-lime-800/60 px-3 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-colors min-w-[104px] flex-1"><i data-lucide="battery-charging" class="w-4 h-4 shrink-0"></i><span class="truncate">Recarga</span></button>
-                            <button onclick="window.toggleStatsModal()" class="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition-colors min-w-[88px] flex-1"><i data-lucide="building-2" class="w-4 h-4 shrink-0"></i><span class="truncate">Q.G.</span></button>
+                    <div class="bg-slate-950/55 border border-slate-800 rounded-xl p-2">
+                        <div class="text-[9px] text-slate-600 uppercase tracking-[0.18em] font-black mb-1.5 px-1">Ferramentas</div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="window.toggleStudyModal()" class="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3 py-2.5 rounded-lg text-[11px] sm:text-xs font-bold transition-colors"><i data-lucide="brain-circuit" class="w-4 h-4 text-cyan-400 shrink-0"></i><span>Inteligência</span></button>
+                            <button onclick="window.toggleFinanceModal()" class="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3 py-2.5 rounded-lg text-[11px] sm:text-xs font-bold transition-colors"><i data-lucide="wallet" class="w-4 h-4 text-amber-400 shrink-0"></i><span>Finanças</span></button>
                         </div>
                     </div>
                 </div>
-            </div>`;
+            </div>
 
-            // ECONOMIA, BATERIA E RELÓGIO (HUD PRINCIPAL)
+            // HUD PRINCIPAL SIMPLIFICADO — tempo, bateria e progresso discreto
             html += `
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 font-mono">
-                <!-- TEMPO OPERACIONAL -->
-                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col justify-center" id="time-operational-widget">
+            <div class="grid grid-cols-1 md:grid-cols-[0.8fr_1.7fr] gap-3 mb-4 font-mono">
+                <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col justify-center min-h-[88px]" id="time-operational-widget">
                     <div class="text-xs text-slate-500 animate-pulse">Iniciando sistemas de tempo...</div>
                 </div>
 
-                <!-- XP / BATERIA / AÇÕES -->
-                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden md:col-span-2">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
-                        <div>
-                            <p class="text-slate-400 font-medium flex items-center gap-2">
-                                <span class="bg-indigo-900 text-indigo-300 text-xs px-2 py-1 rounded uppercase font-bold">Nível ${state.level}</span>
-                                ${window.getRankName()} ${window.escapeHtml(window.getUserDisplayName())}
-                            </p>
-                        </div>
-                        <div class="flex flex-wrap gap-2 w-full sm:w-auto">
-                            <div class="flex items-center gap-2 px-3 py-2 bg-yellow-950/30 text-yellow-500 border border-yellow-900/50 rounded-lg text-sm font-bold justify-center" title="Moedas da Semana + Reserva Tática">
-                                <i data-lucide="coins" class="w-4 h-4"></i><span>${state.coins} MT</span>
+                <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center justify-between gap-3 mb-2">
+                                <span class="${state.energy < 20 ? 'text-red-400' : (state.energy <= 50 ? 'text-amber-300' : 'text-slate-300')} text-[10px] font-black uppercase tracking-[0.18em] flex items-center gap-1.5">
+                                    <i data-lucide="battery" class="w-3.5 h-3.5"></i>Bateria executiva
+                                </span>
+                                <span class="text-sm font-black text-white">${state.energy}%</span>
                             </div>
-                            <button onclick="window.drinkWater(event)" class="flex items-center gap-2 px-3 py-2 bg-blue-950/40 text-blue-400 border border-blue-900/50 rounded-lg text-sm font-bold justify-center hover:bg-blue-900 hover:text-white transition-colors">
-                                <i data-lucide="droplets" class="w-4 h-4"></i>
-                            </button>
-                            <button onclick="window.togglePanicModal(true)" class="flex items-center gap-2 px-3 py-2 bg-red-950/40 text-red-400 border border-red-900/50 rounded-lg text-sm font-bold justify-center hover:bg-red-900 hover:text-white transition-colors">
+                            <div class="w-full bg-slate-800 rounded-full h-2">
+                                <div class="h-2 rounded-full transition-all ${state.energy > 50 ? 'bg-emerald-500' : (state.energy > 20 ? 'bg-amber-500' : 'bg-red-500')}" style="width: ${state.energy}%"></div>
+                            </div>
+                            <div class="mt-2 text-[10px] text-slate-600 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <span>Nível ${state.level}</span>
+                                <span>•</span>
+                                <span>${state.xp} / ${window.getXpForCurrentLevel()} XP</span>
+                                <span>•</span>
+                                <span>${state.coins} MT</span>
+                                ${state.combo > 1 ? `<span>• Combo x${window.getComboMultiplier().toFixed(1)}</span>` : ''}
+                            </div>
+                        </div>
+
+                        <div class="flex gap-1.5 shrink-0">
+                            <button onclick="window.togglePanicModal(true)" class="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-slate-800 bg-slate-950 text-slate-500 hover:text-red-300 hover:border-red-900/60 transition-colors" title="Protocolo de crise">
                                 <i data-lucide="shield-alert" class="w-4 h-4"></i>
                             </button>
-                            <button onclick="window.endDay()" class="flex items-center gap-2 px-3 py-2 bg-indigo-950/40 text-indigo-400 border border-indigo-900/50 rounded-lg text-sm font-bold justify-center hover:bg-indigo-900 hover:text-white transition-colors">
+                            <button onclick="window.endDay()" class="w-9 h-9 inline-flex items-center justify-center rounded-lg border border-slate-800 bg-slate-950 text-slate-500 hover:text-indigo-300 hover:border-indigo-900/60 transition-colors" title="Encerrar dia">
                                 <i data-lucide="moon" class="w-4 h-4"></i>
-                            </button>
-                            <button onclick="window.setMainView('week')" class="flex items-center gap-2 px-3 py-2 bg-cyan-950/50 text-cyan-300 border border-cyan-900/60 rounded-lg text-sm font-black justify-center hover:bg-cyan-900 hover:text-white transition-colors" title="Abrir Semana Geral: tudo que está planejado na semana">
-                                <i data-lucide="calendar-days" class="w-4 h-4"></i><span class="hidden sm:inline">Semana</span>${calendarInboxPending ? `<span class="rounded-full bg-sky-500 text-slate-950 min-w-5 h-5 px-1 inline-flex items-center justify-center text-[9px]">${calendarInboxPending}</span>` : ''}
-                            </button>
-                            <button onclick="window.setMainView('control')" class="flex items-center gap-2 px-3 py-2 bg-sky-950/50 text-sky-300 border border-sky-900/60 rounded-lg text-sm font-black justify-center hover:bg-sky-900 hover:text-white transition-colors" title="Abrir Situação Operacional">
-                                <i data-lucide="radar" class="w-4 h-4"></i><span class="hidden sm:inline">Radar</span>
                             </button>
                         </div>
                     </div>
 
-                    <div class="mt-4 space-y-3">
-                        <div>
-                            <div class="flex justify-between text-xs mb-1 font-bold">
-                                <span class="text-indigo-400 flex items-center gap-1"><i data-lucide="zap" class="w-3 h-3"></i> XP Global ${state.combo > 1 ? `<span class="text-orange-400 ml-1">(Combo x${window.getComboMultiplier().toFixed(1)})</span>` : ''}</span>
-                                <span class="text-slate-400">${state.xp} / ${window.getXpForCurrentLevel()}</span>
-                            </div>
-                            <div class="w-full bg-slate-800 rounded-full h-2"><div class="bg-gradient-to-r from-indigo-600 to-purple-500 h-2 rounded-full transition-all" style="width: ${xpPercent}%"></div></div>
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs mb-1 font-bold">
-                                <span class="${state.energy < 20 ? 'text-red-400 animate-pulse' : 'text-emerald-400'} flex items-center gap-1"><i data-lucide="battery" class="w-3 h-3"></i> Bateria Executiva (HP)</span>
-                                <span class="text-slate-400">${state.energy}%</span>
-                            </div>
-                            <div class="w-full bg-slate-800 rounded-full h-2"><div class="h-2 rounded-full transition-all ${state.energy > 50 ? 'bg-emerald-500' : (state.energy > 20 ? 'bg-yellow-500' : 'bg-red-500')}" style="width: ${state.energy}%"></div></div>
-                            ${state.energy < 35 ? `<button onclick="window.toggleRechargeModal()" class="mt-3 w-full bg-emerald-950/40 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/60 rounded-lg px-3 py-2 text-xs font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-2"><i data-lucide="battery-charging" class="w-4 h-4"></i> Abrir Recarga Executiva</button>` : `<button onclick="window.toggleRechargeModal()" class="mt-3 text-[10px] text-slate-500 hover:text-emerald-400 font-bold uppercase tracking-widest transition-colors flex items-center gap-1"><i data-lucide="battery-charging" class="w-3 h-3"></i> Recargas</button>`}
-                        </div>
-                    </div>
+                    ${state.energy < 35 ? `<button onclick="window.toggleRechargeModal()" class="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-amber-900/50 bg-amber-950/20 px-3 py-2 text-[10px] font-black text-amber-300 hover:bg-amber-900/30 transition-colors"><i data-lucide="battery-charging" class="w-3.5 h-3.5"></i>Bateria baixa · abrir recarga</button>` : ''}
                 </div>
             </div>`;
 
-            // VISÃO PRINCIPAL: DIA, SEMANA OU SITUAÇÃO OPERACIONAL — navegação compacta
+            // VISÃO PRINCIPAL: DIA, SEMANA OU SITUAÇÃO OPERACIONAL — navegação compacta            // VISÃO PRINCIPAL: DIA, SEMANA OU SITUAÇÃO OPERACIONAL — navegação compacta
             const compactViewMeta = uiState.mainView === 'week'
                 ? { icon: 'calendar-days', title: 'Semana Geral', description: 'Visão consolidada do planejamento semanal.', color: 'text-cyan-300' }
                 : uiState.mainView === 'control'
