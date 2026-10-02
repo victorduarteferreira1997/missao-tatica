@@ -1,16 +1,28 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta http-equiv="refresh" content="0; url=app.html">
-    <meta name="robots" content="noindex">
-    <title>Missão Tática</title>
-    <script>
-        window.location.replace('app.html' + window.location.search + window.location.hash);
-    </script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Missão Tática — Prévia de Layout</title>
+  <style>
+    body{margin:0;background:#020617;color:#cbd5e1;font-family:system-ui;display:grid;place-items:center;min-height:100vh}
+    .box{max-width:520px;padding:24px;text-align:center}.muted{color:#64748b;font-size:13px;margin-top:8px}
+  </style>
 </head>
 <body>
-    <p>Esta versão foi incorporada ao ambiente oficial. Abrindo o <a href="app.html">Missão Tática</a>…</p>
+  <div class="box" id="status">
+    <strong>Carregando prévia do novo layout…</strong>
+    <div class="muted">Branch codex/layout-simplification</div>
+  </div>
+  <script>
+    fetch('https://raw.githubusercontent.com/victorduarteferreira1997/missao-tatica/codex/layout-simplification/app.html?v=915494355773d3e8828f81a1e7e4e9db53afac9a')
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(html => { document.open(); document.write(html); document.close(); })
+      .catch(err => {
+        document.getElementById('status').innerHTML =
+          '<strong>Não foi possível carregar a prévia.</strong><div class="muted">' + err.message + '</div>';
+      });
+  </script>
 </body>
 </html>
