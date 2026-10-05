@@ -68,6 +68,115 @@ assert.ok(focusPanel.indexOf('onclick="window.closeTaskFocus()"') >= 0
     'O retorno deve aparecer mesmo quando não houver missões pendentes.');
 
 const boardStart = app.indexOf('window.renderDailyMissionBoard = function(');
+const createModalStart = app.indexOf('window.renderCreateTaskModal = function(');
+const createModalEnd = app.indexOf('window.bindCreateTaskDialog = function(', createModalStart);
+const createDays = [{ id: 'mon', label: 'Segunda' }, { id: 'tue', label: 'Terça' }];
+const createWindow = {
+    getTaskCategories: () => [{ id: 'work', label: 'Trabalho' }],
+    escapeHtml: value => String(value)
+};
+runInNewContext(app.slice(createModalStart, createModalEnd), {
+    window: createWindow, daysOfWeek: createDays, state: { activeTab: 'mon' }
+});
+const createMarkup = createWindow.renderCreateTaskModal();
+const createIds = [...createMarkup.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
+assert.equal(new Set(createIds).size, createIds.length, 'O formulário não pode repetir IDs.');
+const saveNewStart = app.indexOf('window.saveNewTask = function(');
+const saveNewEnd = app.indexOf('window.closeTaskFocus = function(', saveNewStart);
+const saveNewSource = app.slice(saveNewStart, saveNewEnd);
+for (const match of saveNewSource.matchAll(/getElementById\('(ct-[^']+)'\)/g)) {
+    assert.ok(createIds.includes(match[1]), `O formulário precisa preservar o campo ${match[1]} usado no cadastro.`);
+}
+assert.match(createMarkup, /role="dialog" aria-modal="true"/);
+assert.ok(createMarkup.indexOf('<footer') > createMarkup.indexOf('data-create-section="effort"'));
+const inboxMarkup = createWindow.renderCreateTaskModal({ id: 'event-1' });
+assert.match(inboxMarkup, /data-create-section="schedule" open/);
+assert.match(inboxMarkup, /data-create-section="recurrence" class="hidden"/);
+
+const costStart = app.indexOf('window.calculateTaskCost = function(');
+const costEnd = app.indexOf('window.updatePreviewCalc = function(', costStart);
+let titleFocused = false;
+let titleInvalid = false;
+const createFields = {
+    'ct-text': { value: 'Revisar contrato', setAttribute() { titleInvalid = true; }, focus() { titleFocused = true; } },
+    'ct-nature': { value: 'normal' }, 'ct-priority': { value: 'media' },
+    'ct-complexity': { value: '2' }, 'ct-time': { value: '30' },
+    'ct-impact-type': { value: 'drain' }, 'ct-category': { value: 'work' },
+    'ct-day': { value: 'mon' }, 'ct-subtasks': { value: 'Ler\n\nRevisar' },
+    'ct-repeat-mon': { checked: false }, 'ct-repeat-tue': { checked: false },
+    'ct-title-error': { classList: { remove() {} } }
+};
+const creationState = { tasks: [] };
+const creationUi = { showCreateTaskModal: true, calendarInboxEventId: null, createTaskDraft: { fields: [] } };
+let convertedEvent = null;
+let recurrenceCalls = 0;
+Object.assign(createWindow, {
+    readCalendarTimeFields: () => ({ startTime: '10:00', endTime: '10:30' }),
+    getNextTaskOrder: () => 1,
+    cloneSubtasksForNewTask: subtasks => subtasks.map(st => ({ ...st })),
+    upsertRecurringTaskOccurrences() { recurrenceCalls++; },
+    getRecurringDaysLabel: () => 'Segunda, terça', showToast() {}, saveState() {}
+});
+runInNewContext(app.slice(costStart, costEnd) + saveNewSource, {
+    window: createWindow, state: creationState, uiState: creationUi, daysOfWeek: createDays,
+    TASK_NATURES: { normal: {}, neutral: {}, recharge: {} },
+    document: { getElementById: id => createFields[id] },
+    calendarSync: { getInbox: () => [{ id: 'event-1' }], markInboxConverted(id) { convertedEvent = id; } }
+});
+createFields['ct-text'].value = '  ';
+createWindow.saveNewTask();
+assert.equal(creationState.tasks.length, 0);
+assert.equal(titleInvalid && titleFocused, true, 'Título vazio deve ter erro local e foco, sem recriar o formulário.');
+assert.equal(createFields['ct-subtasks'].value, 'Ler\n\nRevisar', 'O erro deve preservar os outros campos.');
+createFields['ct-text'].value = 'Revisar contrato';
+for (const nature of ['normal', 'neutral', 'recharge']) {
+    createFields['ct-nature'].value = nature;
+    createWindow.saveNewTask();
+    const task = creationState.tasks.at(-1);
+    assert.equal(task.missionNature, nature);
+    assert.equal(task.day, 'mon');
+    assert.equal(task.startTime, '10:00');
+    assert.equal(task.subtasks.length, 2);
+    assert.equal(task.complexity, 2);
+    assert.equal(task.time, '30 min');
+    if (nature === 'normal') assert.ok(task.xp > 0 && task.energyCost > 0);
+    if (nature === 'neutral') assert.equal(task.xp + task.energyCost, 0);
+    if (nature === 'recharge') assert.ok(task.xp === 0 && task.energyCost < 0);
+}
+createFields['ct-repeat-mon'].checked = true;
+createFields['ct-repeat-tue'].checked = true;
+createWindow.saveNewTask();
+assert.equal(recurrenceCalls, 1);
+assert.equal(creationState.tasks.at(-1).day, 'tue');
+const countBeforeInbox = creationState.tasks.length;
+creationUi.calendarInboxEventId = 'event-1';
+createWindow.saveNewTask();
+assert.equal(creationState.tasks.length, countBeforeInbox + 1, 'Converter evento deve criar uma única missão.');
+assert.equal(creationState.tasks.at(-1).isRecurring, false);
+assert.equal(convertedEvent, 'event-1');
+assert.equal(creationUi.createTaskDraft, null);
+const captureDraftStart = app.indexOf('const previousCreateDialog =');
+const captureDraftEnd = app.indexOf('// Preservar a expansão', captureDraftStart);
+const restoreDraftStart = app.indexOf('if (uiState.showCreateTaskModal && uiState.createTaskDraft)');
+const restoreDraftEnd = app.indexOf('lucide.createIcons();', restoreDraftStart);
+const draftUi = { showCreateTaskModal: true };
+const draftFields = [{ id: 'ct-text', value: 'Título em edição' }, { id: 'ct-repeat-tue', type: 'checkbox', value: 'on', checked: true }];
+const draftSections = [{ dataset: { createSection: 'recurrence' }, open: true }];
+const draftApp = {
+    querySelector: () => ({ querySelectorAll: selector => selector.startsWith('input') ? draftFields : draftSections }),
+    querySelectorAll: () => draftSections
+};
+runInNewContext(app.slice(captureDraftStart, captureDraftEnd), { appDiv: draftApp, uiState: draftUi });
+draftFields[0].value = '';
+draftFields[1].checked = false;
+draftSections[0].open = false;
+runInNewContext(app.slice(restoreDraftStart, restoreDraftEnd), {
+    appDiv: draftApp, uiState: draftUi,
+    document: { getElementById: id => draftFields.find(field => field.id === id) }
+});
+assert.equal(draftFields[0].value, 'Título em edição');
+assert.equal(draftFields[1].checked, true);
+assert.equal(draftSections[0].open, true, 'Redesenhar deve preservar valores, recorrência e seções abertas.');
 const menuStart = app.indexOf('window.closeMissionMenus = function(');
 const menuEvents = {};
 let menuFocus = null;
