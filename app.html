@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.12-layout-simplification-round1-final">
+    <meta name="app-build" content="v1.9.13-daily-cockpit-round2">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -2998,6 +2998,14 @@
         };
         window.setTab = function(tabId) { state.activeTab = tabId; window.saveState(); };
         window.toggleFocusMode = function() { state.focusMode = !state.focusMode; if (!state.focusMode && pomodoro.isRunning) window.togglePomodoro(); window.saveState(); };
+        window.openTaskFocus = function(taskId, event) {
+            if (event) { event.stopPropagation(); event.preventDefault(); }
+            const task = window.findTaskByExactId(taskId);
+            if (!task || task.completed) return;
+            state.focusedTaskId = String(task.id);
+            state.focusMode = true;
+            window.saveState();
+        };
         window.toggleStatsModal = function() { uiState.showStatsModal = !uiState.showStatsModal; render(); };
         window.setStatsTab = function(tab) { uiState.statsTab = tab; render(); };
         window.healEnergy = function() { state.energy = 100; window.togglePanicModal(false); window.saveState(); };
@@ -4711,7 +4719,7 @@
                     </section>`;
             }
 
-            const compactRows = rows.slice(0, 4).map(row => {
+            const compactRows = rows.slice(0, 2).map(row => {
                 const demand = row.demand;
                 const mainSignal = row.signals[0];
                 const meta = severityMeta[mainSignal.severity] || severityMeta.info;
@@ -4745,7 +4753,7 @@
                         <button onclick="window.setMainView('control')" class="shrink-0 inline-flex items-center gap-1 rounded-lg border border-sky-900/70 bg-sky-950/40 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-sky-300 hover:bg-sky-900/50"><i data-lucide="arrow-up-right" class="w-3 h-3"></i>Radar</button>
                     </div>
                     <div class="space-y-1.5">${compactRows}</div>
-                    ${rows.length > 4 ? `<div class="text-[9px] text-slate-500 mt-2">+ ${rows.length - 4} item(ns) adicional(is) no Radar.</div>` : ''}
+                    ${rows.length > 2 ? `<div class="text-[9px] text-slate-600 mt-2">+ ${rows.length - 2} no Radar.</div>` : ''}
                 </section>`;
         };
 
@@ -4907,11 +4915,11 @@
         window.renderDailyCategoryBar = function() {
             const filterCategories = [{ id: 'all', label: 'Tudo' }, ...window.getTaskCategories().map(c => ({ id: c.id, label: c.label }))];
             return `
-                <div class="mb-3 flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1 font-mono">
-                    <button onclick="window.toggleCategoryModal()" class="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan-300 hover:border-cyan-700"><i data-lucide="tags" class="w-3.5 h-3.5"></i>Categorias</button>
+                <div class="mb-3 flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-1 font-mono">
+                    <button onclick="window.toggleCategoryModal()" class="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950/70 px-2.5 py-1.5 text-[10px] font-bold text-slate-500 hover:text-slate-200 hover:border-slate-700" title="Gerenciar categorias"><i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>Filtros</button>
                     ${filterCategories.map(cat => {
                         const active = state.currentFilter === cat.id;
-                        return `<button onclick="window.setCategoryFilter('${cat.id}')" class="shrink-0 rounded-full px-3 py-1.5 text-[10px] font-black transition-colors ${active ? 'bg-indigo-600 text-white' : 'border border-slate-800 bg-slate-950 text-slate-500 hover:text-slate-200'}">${window.escapeHtml(cat.label)}</button>`;
+                        return `<button onclick="window.setCategoryFilter('${cat.id}')" class="shrink-0 rounded-lg px-2.5 py-1.5 text-[10px] font-bold transition-colors ${active ? 'bg-slate-700 text-white' : 'text-slate-600 hover:text-slate-300 hover:bg-slate-900'}">${window.escapeHtml(cat.label)}</button>`;
                     }).join('')}
                 </div>`;
         };
@@ -4919,11 +4927,16 @@
         window.renderDailyMissionBoard = function(filteredTasks) {
             const tasks = Array.isArray(filteredTasks) ? filteredTasks : [];
             if (!tasks.length) {
-                return `<div class="rounded-2xl border border-dashed border-slate-800 bg-slate-900/50 p-6 text-center font-mono mb-4"><i data-lucide="circle-dashed" class="w-7 h-7 text-slate-600 mx-auto mb-2"></i><div class="text-sm font-black text-slate-300">Nenhuma missão neste filtro</div><div class="text-[10px] text-slate-500 mt-1">Crie uma missão ou troque a categoria.</div></div>`;
+                return `<div class="rounded-xl border border-dashed border-slate-800 bg-slate-950/35 p-7 text-center font-mono mb-4"><i data-lucide="circle-dashed" class="w-6 h-6 text-slate-700 mx-auto mb-2"></i><div class="text-sm font-bold text-slate-300">Nenhuma missão neste filtro</div><div class="text-[10px] text-slate-600 mt-1">Crie uma missão ou escolha outro filtro.</div></div>`;
             }
 
-            const prioColors = { essencial: 'text-purple-300 border-purple-900/60 bg-purple-950/20', alta: 'text-red-300 border-red-900/60 bg-red-950/15', media: 'text-yellow-300 border-yellow-900/60 bg-yellow-950/10', baixa: 'text-slate-400 border-slate-700 bg-slate-950/50' };
-            let out = `<div class="space-y-2 mb-4 font-mono">`;
+            const priorityMeta = {
+                essencial: { dot: 'bg-purple-400', text: 'text-purple-300' },
+                alta: { dot: 'bg-red-400', text: 'text-red-300' },
+                media: { dot: 'bg-amber-400', text: 'text-slate-500' },
+                baixa: { dot: 'bg-slate-600', text: 'text-slate-600' }
+            };
+            let out = `<div class="mb-4 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/35 font-mono divide-y divide-slate-800/80">`;
 
             tasks.forEach(task => {
                 const taskCategory = window.getTaskCategory(task.category);
@@ -4938,51 +4951,71 @@
                 const taskNatureMeta = window.getTaskNatureMeta(taskNature);
                 const daysOptions = daysOfWeek.map(d => `<option value="${d.id}" ${d.id === task.day ? 'disabled' : ''}>${d.label}</option>`).join('') + `<option value="next_week">Próxima Semana</option>`;
                 const completed = !!task.completed;
-                const shell = completed ? 'border-slate-800 bg-slate-950/70 opacity-60' : (taskNature === 'recharge' ? 'border-emerald-900/50 bg-emerald-950/10' : taskNature === 'neutral' ? 'border-slate-700 bg-slate-900' : 'border-slate-800 bg-slate-900 hover:border-indigo-800/70');
+                const priority = priorityMeta[task.priority] || priorityMeta.media;
+                const rowState = completed ? 'opacity-50 bg-slate-950/55' : (taskNature === 'recharge' ? 'bg-emerald-950/5' : 'hover:bg-slate-900/60');
 
                 out += `
-                <div onclick="window.toggleTask(${task.id}, event)" draggable="true" ondragstart="window.handleTaskDragStart(${task.id}, event)" ondragend="window.handleTaskDragEnd(event)" ondragover="window.handleTaskDragOver(${task.id}, event)" ondragleave="window.handleTaskDragLeave(event)" ondrop="window.handleTaskDrop(${task.id}, event)" class="rounded-2xl border ${shell} p-3 sm:p-4 transition-all cursor-pointer group">
+                <div onclick="window.toggleTask(${task.id}, event)" draggable="true" ondragstart="window.handleTaskDragStart(${task.id}, event)" ondragend="window.handleTaskDragEnd(event)" ondragover="window.handleTaskDragOver(${task.id}, event)" ondragleave="window.handleTaskDragLeave(event)" ondrop="window.handleTaskDrop(${task.id}, event)" class="${rowState} px-3 sm:px-4 py-3 transition-colors cursor-pointer group">
                     <div class="flex items-start gap-3">
-                        <div class="drag-handle pt-1 text-slate-700 hover:text-cyan-400 shrink-0" title="Arrastar para reorganizar" onclick="event.stopPropagation()"><i data-lucide="grip-vertical" class="w-4 h-4"></i></div>
-                        <div class="pt-0.5 shrink-0"><i data-lucide="${completed ? 'check-circle-2' : 'circle'}" class="w-5 h-5 ${completed ? 'text-emerald-500' : 'text-slate-500'}"></i></div>
+                        <div class="drag-handle pt-1.5 text-slate-800 group-hover:text-slate-600 shrink-0" title="Arrastar para reorganizar" onclick="event.stopPropagation()"><i data-lucide="grip-vertical" class="w-3.5 h-3.5"></i></div>
+                        <div class="pt-0.5 shrink-0">
+                            <span class="w-5 h-5 rounded-full border ${completed ? 'border-emerald-600 bg-emerald-600/15 text-emerald-400' : 'border-slate-700 text-slate-700 group-hover:border-slate-500'} inline-flex items-center justify-center">
+                                ${completed ? '<i data-lucide="check" class="w-3 h-3"></i>' : ''}
+                            </span>
+                        </div>
+
                         <div class="min-w-0 flex-1">
-                            <div class="flex flex-wrap items-center gap-1.5 mb-1.5">
-                                ${taskScheduleLabel ? `<span class="inline-flex items-center gap-1 rounded-full border border-cyan-900/60 bg-cyan-950/30 px-2 py-0.5 text-[9px] font-black text-cyan-200"><i data-lucide="clock-3" class="w-3 h-3"></i>${taskScheduleLabel}</span>` : ''}
-                                <span class="rounded-full border px-2 py-0.5 text-[9px] font-black uppercase ${prioColors[task.priority] || prioColors.media}">${window.escapeHtml(task.priority || 'media')}</span>
-                                ${taskNature !== 'normal' ? `<span class="rounded-full border px-2 py-0.5 text-[9px] font-black uppercase ${taskNatureMeta.color} ${taskNatureMeta.bg} ${taskNatureMeta.border}"><i data-lucide="${taskNatureMeta.icon}" class="inline w-3 h-3 mr-1"></i>${taskNatureMeta.shortLabel}</span>` : ''}
-                            </div>
-                            <div class="flex items-start justify-between gap-2">
-                                <div class="min-w-0">
-                                    <div class="text-sm sm:text-base font-black leading-snug ${completed ? 'line-through text-slate-600' : 'text-slate-100'}">${window.escapeHtml(task.text)}</div>
-                                    <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] text-slate-500">
-                                        <span class="inline-flex items-center gap-1"><i data-lucide="${taskCategory.icon || ICONS.default}" class="w-3 h-3 ${taskCategory.color || 'text-slate-500'}"></i>${window.escapeHtml(taskCategory.label)}</span>
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
+                                        ${taskScheduleLabel ? `<span class="text-[10px] font-black text-slate-300 tabular-nums">${taskScheduleLabel}</span>` : ''}
+                                        <span class="inline-flex items-center gap-1 text-[9px] font-bold ${priority.text}"><span class="w-1.5 h-1.5 rounded-full ${priority.dot}"></span>${window.escapeHtml(task.priority || 'media')}</span>
+                                        ${taskNature !== 'normal' ? `<span class="text-[9px] font-bold ${taskNatureMeta.color}"><i data-lucide="${taskNatureMeta.icon}" class="inline w-3 h-3 mr-0.5"></i>${taskNatureMeta.shortLabel}</span>` : ''}
+                                    </div>
+
+                                    <div class="text-sm sm:text-[15px] font-bold leading-snug ${completed ? 'line-through text-slate-600' : 'text-slate-100'}">${window.escapeHtml(task.text)}</div>
+
+                                    <div class="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[9px] text-slate-600">
+                                        <span class="inline-flex items-center gap-1"><i data-lucide="${taskCategory.icon || ICONS.default}" class="w-3 h-3 ${taskCategory.color || 'text-slate-600'}"></i>${window.escapeHtml(taskCategory.label)}</span>
                                         ${subtasks.length ? `<span>${doneSubtasks}/${subtasks.length} subtarefas</span>` : ''}
-                                        ${isRecurringTask ? `<span class="text-violet-400">↻ ${window.escapeHtml(recurrenceLabel || 'Recorrente')}</span>` : ''}
+                                        ${isRecurringTask ? `<span>↻ ${window.escapeHtml(recurrenceLabel || 'Recorrente')}</span>` : ''}
                                     </div>
                                 </div>
-                                <details onclick="event.stopPropagation()" class="relative shrink-0">
-                                    <summary class="list-none cursor-pointer rounded-lg border border-slate-800 bg-slate-950 px-2.5 py-1.5 text-slate-500 hover:text-white" title="Mais ações"><i data-lucide="ellipsis" class="w-4 h-4"></i></summary>
-                                    <div class="mt-2 min-w-[220px] rounded-xl border border-slate-700 bg-slate-950 p-2 shadow-xl space-y-1" onclick="event.stopPropagation()">
-                                        <div class="px-2 py-1 text-[9px] text-slate-600 uppercase font-black">${task.xp || 0} XP • ${(task.energyCost || 0) === 0 ? '0 HP' : ((task.energyCost || 0) < 0 ? '+' : '-') + Math.abs(task.energyCost || 0) + ' HP'}</div>
-                                        <button onclick="window.openEditTaskModal(${task.id}, event)" class="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[10px] font-black text-amber-300 hover:bg-slate-900"><i data-lucide="pencil" class="w-3.5 h-3.5"></i>Editar</button>
-                                        <div class="grid grid-cols-2 gap-1"><button onclick="window.moveTaskOrder(${task.id}, -1, event)" class="rounded-lg px-2 py-2 text-[10px] text-slate-400 hover:bg-slate-900">↑ Subir</button><button onclick="window.moveTaskOrder(${task.id}, 1, event)" class="rounded-lg px-2 py-2 text-[10px] text-slate-400 hover:bg-slate-900">↓ Descer</button></div>
-                                        <select onchange="window.moveTaskFromSelect(${task.id}, event, this)" onclick="event.stopPropagation()" class="w-full bg-slate-900 border border-slate-700 text-slate-400 rounded-lg p-2 text-[10px]"><option value="" disabled selected>Mover para…</option>${daysOptions}</select>
-                                        <button onclick="window.deleteMainTask(${task.id}, event)" class="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[10px] font-black text-red-400 hover:bg-red-950/20"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i>Excluir</button>
-                                    </div>
-                                </details>
+
+                                <div class="flex items-center gap-1 shrink-0" onclick="event.stopPropagation()">
+                                    ${!completed ? `<button onclick="window.openTaskFocus(${task.id}, event)" class="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-slate-950/70 px-2 py-1.5 text-[9px] font-bold text-slate-500 hover:text-indigo-300 hover:border-indigo-900/70" title="Abrir esta missão no modo foco"><i data-lucide="timer" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">Foco</span></button>` : ''}
+                                    <details class="relative">
+                                        <summary class="list-none cursor-pointer rounded-lg px-2 py-1.5 text-slate-600 hover:text-white hover:bg-slate-900" title="Mais ações"><i data-lucide="ellipsis" class="w-4 h-4"></i></summary>
+                                        <div class="absolute right-0 z-30 mt-2 min-w-[220px] rounded-xl border border-slate-700 bg-slate-950 p-2 shadow-2xl space-y-1">
+                                            <div class="px-2 py-1 text-[9px] text-slate-600">${task.xp || 0} XP • ${(task.energyCost || 0) === 0 ? '0 HP' : ((task.energyCost || 0) < 0 ? '+' : '-') + Math.abs(task.energyCost || 0) + ' HP'}</div>
+                                            <button onclick="window.openEditTaskModal(${task.id}, event)" class="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[10px] font-bold text-slate-300 hover:bg-slate-900"><i data-lucide="pencil" class="w-3.5 h-3.5"></i>Editar missão</button>
+                                            <div class="grid grid-cols-2 gap-1"><button onclick="window.moveTaskOrder(${task.id}, -1, event)" class="rounded-lg px-2 py-2 text-[10px] text-slate-500 hover:bg-slate-900">↑ Subir</button><button onclick="window.moveTaskOrder(${task.id}, 1, event)" class="rounded-lg px-2 py-2 text-[10px] text-slate-500 hover:bg-slate-900">↓ Descer</button></div>
+                                            <select onchange="window.moveTaskFromSelect(${task.id}, event, this)" onclick="event.stopPropagation()" class="w-full bg-slate-900 border border-slate-800 text-slate-400 rounded-lg p-2 text-[10px]"><option value="" disabled selected>Mover para…</option>${daysOptions}</select>
+                                            <button onclick="window.deleteMainTask(${task.id}, event)" class="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[10px] font-bold text-red-400 hover:bg-red-950/20"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i>Excluir</button>
+                                        </div>
+                                    </details>
+                                </div>
                             </div>
+
                             ${subtasks.length ? `
-                            <details onclick="event.stopPropagation()" class="mt-2 rounded-lg border border-slate-800 bg-slate-950/40 overflow-hidden">
-                                <summary class="cursor-pointer list-none px-2.5 py-2 flex items-center justify-between gap-2 text-[9px] uppercase font-black tracking-wider text-slate-500"><span>Subtarefas</span><span class="text-cyan-400">${doneSubtasks}/${subtasks.length} • ${subtaskPercent}%</span></summary>
-                                <div class="border-t border-slate-800 p-2 space-y-1">
-                                    <div class="w-full bg-slate-800 rounded-full h-1 mb-2"><div class="bg-cyan-500 h-1 rounded-full" style="width:${subtaskPercent}%"></div></div>
-                                    ${subtasks.map(st => `<div class="flex items-center justify-between gap-2 rounded px-1.5 py-1"><button onclick="window.toggleSubtask(${task.id}, ${st.id}, event)" class="flex items-center gap-2 text-left flex-1 text-xs ${st.completed ? 'text-slate-600 line-through' : 'text-slate-300'}"><i data-lucide="${st.completed ? 'check-square' : 'square'}" class="w-3.5 h-3.5"></i>${window.escapeHtml(st.text)}</button><button onclick="window.deleteSubtask(${task.id}, ${st.id}, event)" class="text-slate-700 hover:text-red-400"><i data-lucide="x" class="w-3.5 h-3.5"></i></button></div>`).join('')}
+                            <details onclick="event.stopPropagation()" class="mt-2">
+                                <summary class="cursor-pointer list-none flex items-center gap-2 text-[9px] font-bold text-slate-600 hover:text-slate-400">
+                                    <i data-lucide="list-checks" class="w-3 h-3"></i>
+                                    <span>Subtarefas</span>
+                                    <span class="text-slate-500">${doneSubtasks}/${subtasks.length} · ${subtaskPercent}%</span>
+                                </summary>
+                                <div class="mt-2 border-l border-slate-800 pl-3 space-y-1.5">
+                                    ${subtasks.map(st => `<div class="flex items-center justify-between gap-2"><button onclick="window.toggleSubtask(${task.id}, ${st.id}, event)" class="flex items-center gap-2 text-left flex-1 text-xs ${st.completed ? 'text-slate-600 line-through' : 'text-slate-300'}"><i data-lucide="${st.completed ? 'check-square' : 'square'}" class="w-3.5 h-3.5"></i>${window.escapeHtml(st.text)}</button><button onclick="window.deleteSubtask(${task.id}, ${st.id}, event)" class="text-slate-800 hover:text-red-400"><i data-lucide="x" class="w-3.5 h-3.5"></i></button></div>`).join('')}
+                                    <div class="flex gap-2 pt-1">
+                                        <input id="subtask-input-${task.id}" type="text" placeholder="Adicionar subtarefa…" class="min-w-0 flex-1 bg-transparent border-b border-slate-800 px-1 py-1.5 text-[10px] text-slate-400 outline-none focus:border-slate-600" onkeypress="if(event.key === 'Enter') { event.stopPropagation(); window.addSubtask(${task.id}); }">
+                                        <button onclick="window.addSubtask(${task.id})" class="text-slate-600 hover:text-slate-300 px-1"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
+                                    </div>
                                 </div>
-                            </details>` : ''}
-                            <div class="mt-2 flex gap-2" onclick="event.stopPropagation()">
-                                <input id="subtask-input-${task.id}" type="text" placeholder="+ Subtarefa" class="min-w-0 flex-1 bg-transparent border-b border-slate-800 px-1 py-1.5 text-[10px] text-slate-400 outline-none focus:border-cyan-600" onkeypress="if(event.key === 'Enter') { event.stopPropagation(); window.addSubtask(${task.id}); }">
-                                <button onclick="window.addSubtask(${task.id})" class="text-slate-600 hover:text-cyan-400 px-1"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
-                            </div>
+                            </details>` : `
+                            <button onclick="event.stopPropagation(); const el=document.getElementById('subtask-input-${task.id}'); if(el){el.classList.toggle('hidden'); if(!el.classList.contains('hidden')) el.focus();}" class="mt-2 text-[9px] text-slate-700 hover:text-slate-400">+ subtarefa</button>
+                            <div class="mt-1 flex gap-2" onclick="event.stopPropagation()">
+                                <input id="subtask-input-${task.id}" type="text" placeholder="Adicionar subtarefa…" class="hidden min-w-0 flex-1 bg-transparent border-b border-slate-800 px-1 py-1.5 text-[10px] text-slate-400 outline-none focus:border-slate-600" onkeypress="if(event.key === 'Enter') { event.stopPropagation(); window.addSubtask(${task.id}); }">
+                            </div>`}
                         </div>
                     </div>
                 </div>`;
@@ -4993,15 +5026,22 @@
 
         window.renderQuickCapturePanel = function() {
             const quickTasks = Array.isArray(state.quickTasks) ? state.quickTasks : [];
+            const pending = quickTasks.filter(q => !q.done).length;
             return `
-                <section class="mb-5 rounded-2xl border border-slate-800 bg-slate-900/60 p-3 font-mono">
-                    <div class="flex items-center justify-between gap-2 mb-2"><div class="flex items-center gap-2"><i data-lucide="inbox" class="w-4 h-4 text-cyan-400"></i><span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Descarga Cognitiva</span></div>${quickTasks.length ? `<span class="text-[9px] text-slate-600">${quickTasks.filter(q => !q.done).length} pend.</span>` : ''}</div>
-                    <div class="flex gap-2"><input type="text" id="quick-task-input" placeholder="Capture algo em segundos…" class="min-w-0 flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-600" onkeypress="if(event.key === 'Enter') window.addQuickTask()"><button onclick="window.addQuickTask()" class="bg-cyan-800 hover:bg-cyan-700 text-white px-3 py-2 rounded-lg"><i data-lucide="plus" class="w-4 h-4"></i></button></div>
-                    ${quickTasks.length ? `<div class="mt-2 space-y-1">${quickTasks.map(qt => `<div class="flex items-center justify-between gap-2 rounded-lg bg-slate-950/70 px-2 py-1.5"><button onclick="window.toggleQuickTask(${qt.id})" class="flex items-center gap-2 min-w-0 flex-1 text-left text-xs ${qt.done ? 'line-through text-slate-600' : 'text-slate-300'}"><i data-lucide="${qt.done ? 'check-circle' : 'circle'}" class="w-3.5 h-3.5 shrink-0"></i><span class="truncate">${window.escapeHtml(qt.text)}</span></button><button onclick="window.deleteQuickTask(${qt.id})" class="text-slate-700 hover:text-red-400"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></div>`).join('')}</div>` : `<div class="mt-2 text-[10px] text-slate-600 italic">Mente limpa.</div>`}
-                </section>`;
+                <details class="mb-5 rounded-xl border border-slate-800/80 bg-slate-950/30 font-mono overflow-hidden">
+                    <summary class="cursor-pointer list-none px-3 py-2.5 flex items-center justify-between gap-3 hover:bg-slate-900/40">
+                        <div class="flex items-center gap-2 min-w-0"><i data-lucide="inbox" class="w-3.5 h-3.5 text-slate-500"></i><span class="text-[10px] font-bold text-slate-500">Captura rápida</span>${pending ? `<span class="text-[9px] text-slate-700">${pending} pend.</span>` : ''}</div>
+                        <span class="text-[9px] text-slate-700">Abrir</span>
+                    </summary>
+                    <div class="border-t border-slate-800/80 p-3">
+                        <div class="flex gap-2"><input type="text" id="quick-task-input" placeholder="Anotar algo sem organizar agora…" class="min-w-0 flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-slate-600" onkeypress="if(event.key === 'Enter') window.addQuickTask()"><button onclick="window.addQuickTask()" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-lg"><i data-lucide="plus" class="w-4 h-4"></i></button></div>
+                        ${quickTasks.length ? `<div class="mt-2 space-y-1">${quickTasks.map(qt => `<div class="flex items-center justify-between gap-2 rounded-lg bg-slate-950/60 px-2 py-1.5"><button onclick="window.toggleQuickTask(${qt.id})" class="flex items-center gap-2 min-w-0 flex-1 text-left text-xs ${qt.done ? 'line-through text-slate-700' : 'text-slate-400'}"><i data-lucide="${qt.done ? 'check-circle' : 'circle'}" class="w-3.5 h-3.5 shrink-0"></i><span class="truncate">${window.escapeHtml(qt.text)}</span></button><button onclick="window.deleteQuickTask(${qt.id})" class="text-slate-800 hover:text-red-400"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></div>`).join('')}</div>` : `<div class="mt-2 text-[10px] text-slate-700 italic">Nenhuma captura pendente.</div>`}
+                    </div>
+                </details>`;
         };
 
         // ==========================================
+        // RENDERIZAÇÃO PRINCIPAL DO DOM        // ==========================================
         // RENDERIZAÇÃO PRINCIPAL DO DOM
         // ==========================================
         function render() {
@@ -5239,7 +5279,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.12</span></div>
+                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.13</span></div>
                             <div class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">Quartel operacional</div>
                         </div>
                     </div>
@@ -5354,18 +5394,12 @@
             const selectedDayLabel = daysOfWeek.find(d => d.id === state.activeTab)?.label || 'Hoje';
             const pendingDailyCount = filteredTasks.filter(t => !t.completed).length;
             const completedDailyCount = filteredTasks.filter(t => t.completed).length;
-            const focusClass = state.focusMode ? 'bg-yellow-500/15 text-yellow-300 border-yellow-700/60' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-yellow-300 hover:border-yellow-800';
-
-            html += `<section class="mb-3 rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-3 sm:p-4 font-mono">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            html += `<section class="mb-3 px-1 py-1 font-mono">
+                <div class="flex items-end justify-between gap-3">
                     <div class="min-w-0">
-                        <div class="text-[9px] font-black uppercase tracking-[0.22em] text-indigo-400">Execução do dia</div>
-                        <div class="flex flex-wrap items-baseline gap-2 mt-0.5"><h2 class="text-lg font-black text-white">Missões de ${selectedDayLabel}</h2><span class="text-[10px] text-slate-500">${pendingDailyCount} pend. • ${completedDailyCount} concluída(s)</span></div>
+                        <div class="flex flex-wrap items-baseline gap-2"><h2 class="text-lg font-black text-white">Missões de ${selectedDayLabel}</h2><span class="text-[10px] text-slate-600">${pendingDailyCount} pend. • ${completedDailyCount} concluída(s)</span></div>
                     </div>
-                    <div class="flex gap-2 shrink-0">
-                        <button onclick="window.toggleFocusMode()" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-black uppercase tracking-wider ${focusClass}"><i data-lucide="crosshair" class="w-3.5 h-3.5"></i>${state.focusMode ? 'Sair do foco' : 'Foco'}</button>
-                        <button onclick="window.toggleCreateTaskModal()" class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-2 text-[10px] font-black uppercase tracking-wider"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Nova missão</button>
-                    </div>
+                    <button onclick="window.toggleCreateTaskModal()" class="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-[10px] font-bold"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Nova missão</button>
                 </div>
             </section>`;
 
@@ -6053,17 +6087,19 @@
             }
 
             return `
-            <div class="bg-slate-900 border border-cyan-900/40 rounded-2xl p-3 sm:p-4 mb-4 font-mono shadow-lg shadow-cyan-950/10">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                    <div>
-                        <h3 class="text-xs font-black text-cyan-300 uppercase tracking-widest flex items-center gap-2"><i data-lucide="calendar-check" class="w-4 h-4"></i> Estudos de ${dayLabel}</h3>
-                        <p class="text-[10px] text-slate-500 mt-1">${completed}/${activeBlocks.length} blocos • ${doneMinutes}/${totalMinutes} min.</p>
+            <details class="mb-4 rounded-xl border border-slate-800 bg-slate-950/35 font-mono overflow-hidden">
+                <summary class="cursor-pointer list-none px-3 py-3 flex items-center justify-between gap-3 hover:bg-slate-900/50">
+                    <div class="min-w-0 flex items-center gap-2">
+                        <i data-lucide="book-open" class="w-4 h-4 text-cyan-500"></i>
+                        <div class="min-w-0"><div class="text-xs font-bold text-slate-300">Estudos de ${dayLabel}</div><div class="text-[10px] text-slate-600 mt-0.5">${completed}/${activeBlocks.length} blocos • ${doneMinutes}/${totalMinutes} min</div></div>
                     </div>
-                    <button onclick="window.toggleStudyModal(); window.setStudyTab('planning')" class="bg-cyan-800 hover:bg-cyan-700 text-white px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1"><i data-lucide="plus" class="w-3 h-3"></i> Planejar</button>
+                    <div class="flex items-center gap-2 shrink-0"><span class="text-[10px] font-bold ${pct === 100 ? 'text-emerald-400' : 'text-slate-500'}">${pct}%</span><i data-lucide="chevron-down" class="w-4 h-4 text-slate-600"></i></div>
+                </summary>
+                <div class="border-t border-slate-800 p-3">
+                    <div class="flex justify-end mb-3"><button onclick="window.toggleStudyModal(); window.setStudyTab('planning')" class="text-[10px] font-bold text-slate-500 hover:text-cyan-300">Abrir planejamento →</button></div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">${activeBlocks.map(b => renderStudyPlanBlockCard(b, true)).join('')}</div>
                 </div>
-                <div class="w-full bg-slate-800 rounded-full h-1.5 mb-3"><div class="bg-cyan-500 h-1.5 rounded-full transition-all" style="width:${pct}%"></div></div>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">${activeBlocks.map(b => renderStudyPlanBlockCard(b, true)).join('')}</div>
-            </div>`;
+            </details>`;
         }
 
         window.renderCalendarSyncPanel = function() {
