@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.11-layout-simplification-round1">
+    <meta name="app-build" content="v1.9.12-layout-simplification-round1-final">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -162,7 +162,6 @@
 
         const BADGES_DB = [
             { id: 'primeiro_sangue', icon: 'swords', color: 'text-red-400', title: 'Primeiro Sangue', desc: 'Completou a sua primeira missão.' },
-            { id: 'oasis', icon: 'droplets', color: 'text-blue-400', title: 'Oásis Tático', desc: 'Bebeu água 5 vezes. Hidratação blindada.' },
             { id: 'estrategista', icon: 'git-merge', color: 'text-purple-400', title: 'Mente Flexível', desc: 'Moveu uma missão de dia. Agência total.' },
             { id: 'frenesi', icon: 'zap', color: 'text-yellow-400', title: 'Frenesi Implacável', desc: 'Atingiu um Combo x3 de execução contínua.' },
             { id: 'pomo_master', icon: 'clock', color: 'text-emerald-400', title: 'Senhor do Tempo', desc: 'Finalizou o primeiro ciclo completo do Pomodoro.' },
@@ -170,7 +169,6 @@
             { id: 'work_demon', icon: 'briefcase', color: 'text-blue-500', title: 'Demônio do Roadmap', desc: 'Concluiu 5 tarefas de Trabalho com maestria.' },
             { id: 'legal_eagle', icon: 'scale', color: 'text-indigo-500', title: 'Águia da Lei', desc: 'Concluiu 3 tarefas importantes de Advocacia.' },
             { id: 'home_architect', icon: 'home', color: 'text-emerald-500', title: 'Arquiteto do Lar', desc: 'Concluiu 3 tarefas de Casa/Limpeza.' },
-            { id: 'hydro_god', icon: 'glass-water', color: 'text-sky-400', title: 'Divindade Líquida', desc: 'Bebeu água 10 vezes. HP sob controle absoluto.' },
             { id: 'deep_focus', icon: 'brain', color: 'text-violet-400', title: 'Foco Absoluto', desc: 'Completou 4 ciclos Pomodoro de trabalho.' },
             { id: 'perfect_day', icon: 'check-check', color: 'text-teal-400', title: 'Dia Impecável', desc: 'Concluiu 100% de todas as tarefas de um único dia.' },
             { id: 'estudante_tatico', icon: 'graduation-cap', color: 'text-cyan-400', title: 'Estudante Tático', desc: 'Registrou a primeira sessão de estudo.' },
@@ -909,7 +907,6 @@
                 state.tasks = recurringTasks;
                 state.quickTasks = [];
                 state.combo = 0;
-                state.waterCount = 0;
                 window.rollOverEconomyWeekIfNeeded();
                 state.energy = 100;
                 state.activeTab = 'monday';
@@ -925,7 +922,7 @@
             if (!state) {
                 state = {
                     activeTab: 'monday', focusMode: false, focusedTaskId: null,
-                    xp: 0, level: 1, energy: 100, waterCount: 0, coins: 0, combo: 0,
+                    xp: 0, level: 1, energy: 100, coins: 0, combo: 0,
                     unlockedBadges: [], tasks: [], quickTasks: [], currentFilter: 'all', taskCategories: DEFAULT_TASK_CATEGORIES.map(c => ({...c})),
                     pomodoroSettings: { focus: 25, shortBreak: 5, longBreak: 15, cycles: 4 },
                     focusData: { cycles: [] },
@@ -1721,7 +1718,6 @@
         window.getCurrentlyQualifiedBadgeIds = function() {
             const activeBadges = [];
             if (state.tasks.length > 0 && state.tasks.some(t => t.completed)) activeBadges.push('primeiro_sangue');
-            if (state.waterCount >= 5) activeBadges.push('oasis');
             if (state.stats.tasksMoved >= 1) activeBadges.push('estrategista');
             if (state.combo >= 3 || state.stats.maxComboReached >= 3) activeBadges.push('frenesi');
             if (state.stats.pomodorosCompleted >= 1) activeBadges.push('pomo_master');
@@ -1729,7 +1725,6 @@
             if (state.tasks.filter(t => t.completed && t.category === 'work').length >= 5) activeBadges.push('work_demon');
             if (state.tasks.filter(t => t.completed && t.category === 'law').length >= 3) activeBadges.push('legal_eagle');
             if (state.tasks.filter(t => t.completed && t.category === 'home').length >= 3) activeBadges.push('home_architect');
-            if (state.waterCount >= 10) activeBadges.push('hydro_god');
             if (state.stats.pomodorosCompleted >= 4) activeBadges.push('deep_focus');
 
             let perfectDayCompleted = false;
@@ -2687,7 +2682,6 @@
             return html;
         };
 
-        window.drinkWater = function(event) { state.waterCount++; window.changeEnergy(10); state.xp += 15; window.spawnFloatingText(event, `+10 HP`, 'text-emerald-400'); window.checkGameTriggers(); window.checkLevelUp(); window.saveState(); }
         window.toggleCreateTaskModal = function() {
             uiState.showCreateTaskModal = !uiState.showCreateTaskModal;
             if (!uiState.showCreateTaskModal) uiState.calendarInboxEventId = null;
@@ -5245,7 +5239,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.11</span></div>
+                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.12</span></div>
                             <div class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">Quartel operacional</div>
                         </div>
                     </div>
