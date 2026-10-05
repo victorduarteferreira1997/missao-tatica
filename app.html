@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.36-radar-polish">
+    <meta name="app-build" content="v1.9.37-demand-dialog">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -338,6 +338,7 @@
             showRechargeModal: false,
             showCategoryModal: false,
             showOperationalDemandModal: false,
+            operationalDemandDraft: null,
             editingOperationalDemandId: null,
             financeGuardianData: null,
             confirm: { show: false, message: '', onConfirm: null },
@@ -4539,8 +4540,69 @@
             return window.getOperationalControl().demands.find(d => String(d.id) === String(demandId)) || null;
         };
 
+        window.renderOperationalDemandModal = function() {
+            const demand = uiState.editingOperationalDemandId !== null ? window.getOperationalDemand(uiState.editingOperationalDemandId) : null;
+            const status = demand?.workflowStatus || 'active';
+            const attention = demand?.attentionLevel || 'controlled';
+            const source = demand?.source || 'manual';
+            const fieldClass = 'w-full mt-1.5 min-h-11 min-w-0 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400';
+            const input = (id, label, value = '', type = 'text', placeholder = '') => `<div class="min-w-0"><label for="${id}" class="block text-sm font-medium text-slate-300">${label}</label><input id="${id}" type="${type}" value="${window.escapeHtml(value)}" placeholder="${placeholder}" class="${fieldClass}"></div>`;
+            const options = (values, selected) => values.map(([value, label]) => `<option value="${value}" ${value === selected ? 'selected' : ''}>${label}</option>`).join('');
+            return `<div class="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm font-sans">
+                <div id="operational-demand-dialog" role="dialog" aria-modal="true" aria-labelledby="op-demand-dialog-title" class="modal-enter flex max-h-[92dvh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl">
+                    <header class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-800 px-5 py-4">
+                        <div><h2 id="op-demand-dialog-title" class="text-lg font-semibold text-slate-100">${demand ? 'Editar demanda' : 'Nova demanda'}</h2><p class="mt-1 text-sm text-slate-400">Registre o assunto e o próximo passo para avançar.</p></div>
+                        <button type="button" onclick="window.closeOperationalDemandModal()" aria-label="Fechar demanda" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white"><i data-lucide="x" class="h-5 w-5"></i></button>
+                    </header>
+                    <form novalidate onsubmit="event.preventDefault(); window.saveOperationalDemand()" class="flex min-h-0 flex-1 flex-col">
+                        <div class="min-h-0 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
+                            <div><label for="op-demand-title" class="block text-sm font-medium text-slate-300">Qual assunto precisa de acompanhamento? <span class="ml-2 text-xs font-normal text-slate-400">Obrigatório</span></label><input id="op-demand-title" type="text" value="${window.escapeHtml(demand?.title || '')}" placeholder="Ex.: Avaliação de segurança do cliente" aria-describedby="op-demand-title-error" oninput="this.removeAttribute('aria-invalid'); document.getElementById('op-demand-title-error').classList.add('hidden')" class="${fieldClass}"><p id="op-demand-title-error" role="alert" class="hidden mt-1.5 text-xs text-red-300">Dê um nome à demanda para continuar.</p></div>
+                            <div><label for="op-demand-next-action" class="block text-sm font-medium text-slate-300">Próxima ação</label><textarea id="op-demand-next-action" rows="2" placeholder="Ex.: Revisar a documentação recebida" class="${fieldClass} resize-y">${window.escapeHtml(demand?.nextAction || '')}</textarea></div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div><label for="op-demand-status" class="block text-sm font-medium text-slate-300">Status</label><select id="op-demand-status" onchange="window.syncOperationalWaitingFields()" class="${fieldClass}">${options([['active', 'Ativa'], ['waiting', 'Aguardando retorno'], ['backlog', 'Para depois'], ...(status === 'closed' ? [['closed', 'Encerrada']] : [])], status)}</select></div>
+                                <div><label for="op-demand-attention" class="block text-sm font-medium text-slate-300">Atenção</label><select id="op-demand-attention" class="${fieldClass}">${options([['controlled', 'Sob controle'], ['attention', 'Atenção'], ['immediate', 'Ação imediata']], attention)}</select></div>
+                            </div>
+                            <div id="op-waiting-fields" class="${status === 'waiting' ? '' : 'hidden'} rounded-lg border border-amber-900/50 bg-amber-950/20 p-3 space-y-3">
+                                ${input('op-demand-waiting-for', 'De quem você aguarda retorno?', demand?.waitingFor || '', 'text', 'Pessoa, área ou fornecedor')}
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${input('op-demand-waiting-since', 'Aguardando desde', demand?.waitingSince || '', 'date')}${input('op-demand-followup', 'Quando cobrar retorno?', demand?.followUpAt || '', 'date')}</div>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${input('op-demand-due-date', 'Prazo final', demand?.dueDate || '', 'date')}${input('op-demand-review-date', 'Próxima revisão', demand?.nextReviewAt || '', 'date')}</div>
+                            <details data-demand-section="context" class="border-t border-slate-800">
+                                <summary class="list-none flex min-h-11 cursor-pointer items-center justify-between gap-3 py-2 text-sm text-slate-300 hover:text-white"><span>Pessoas e contexto</span><i data-lucide="chevron-down" class="h-4 w-4"></i></summary>
+                                <div class="pt-2 pb-2 space-y-4">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${input('op-demand-area', 'Área', demand?.area || '', 'text', 'Ex.: Segurança da Informação')}${input('op-demand-project', 'Projeto ou cliente', demand?.project || '', 'text', 'Ex.: Cliente X')}</div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${input('op-demand-owner', 'Responsável', demand?.owner || window.getUserDisplayName?.() || '')}${input('op-demand-requester', 'Solicitante', demand?.requester || '')}</div>
+                                    <div><label for="op-demand-source" class="block text-sm font-medium text-slate-300">Origem</label><select id="op-demand-source" class="${fieldClass}">${options([['manual', 'Registro manual'], ['slack', 'Slack'], ['email', 'E-mail'], ['calendar', 'Calendário'], ['meeting', 'Reunião ou anotação'], ['verbal', 'Compromisso verbal'], ['other', 'Outra']], source)}</select></div>
+                                </div>
+                            </details>
+                        </div>
+                        <footer class="flex shrink-0 justify-end gap-2 border-t border-slate-800 px-5 py-3">
+                            <button type="button" onclick="window.closeOperationalDemandModal()" class="min-h-10 rounded-lg px-4 text-sm font-medium text-slate-300 hover:bg-slate-800">Cancelar</button>
+                            <button type="submit" class="min-h-10 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-300">${demand ? 'Salvar alterações' : 'Criar demanda'}</button>
+                        </footer>
+                    </form>
+                </div>
+            </div>`;
+        };
+
+        window.bindOperationalDemandDialog = function(root) {
+            const dialog = root.querySelector('#operational-demand-dialog');
+            if (!dialog || uiState.alert.show || uiState.confirm.show) return;
+            window.syncOperationalWaitingFields();
+            if (!dialog.contains(document.activeElement)) dialog.querySelector('#op-demand-title')?.focus({ preventScroll: true });
+            dialog.addEventListener('keydown', event => {
+                if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); window.closeOperationalDemandModal(); return; }
+                if (event.key !== 'Tab') return;
+                const controls = [...dialog.querySelectorAll('button, input, select, textarea, summary, [tabindex="0"]')].filter(el => !el.disabled && el.getClientRects().length);
+                const first = controls[0], last = controls[controls.length - 1];
+                if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+                else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+            });
+        };
+
         window.openOperationalDemandModal = function(demandId = null) {
             uiState.editingOperationalDemandId = demandId === null ? null : String(demandId);
+            uiState.operationalDemandDraft = null;
             uiState.showOperationalDemandModal = true;
             render();
             setTimeout(() => {
@@ -4551,6 +4613,7 @@
         };
 
         window.closeOperationalDemandModal = function() {
+            uiState.operationalDemandDraft = null;
             uiState.showOperationalDemandModal = false;
             uiState.editingOperationalDemandId = null;
             render();
@@ -4572,7 +4635,10 @@
         window.saveOperationalDemand = function() {
             const title = (document.getElementById('op-demand-title')?.value || '').trim();
             if (!title) {
-                window.showAlertModal('Dê um título curto para a demanda.');
+                const titleInput = document.getElementById('op-demand-title');
+                titleInput?.setAttribute('aria-invalid', 'true');
+                document.getElementById('op-demand-title-error')?.classList.remove('hidden');
+                titleInput?.focus();
                 return;
             }
 
@@ -4612,6 +4678,7 @@
                 operationalControl.demands.unshift(nextDemand);
             }
 
+            uiState.operationalDemandDraft = null;
             uiState.showOperationalDemandModal = false;
             uiState.editingOperationalDemandId = null;
             window.showToast(existing ? 'Demanda atualizada' : 'Demanda capturada', 'Base operacional atualizada sem XP, moedas ou combo.', 'radar', 'text-sky-300');
@@ -5187,6 +5254,13 @@
         // ==========================================
         function render() {
             const appDiv = document.getElementById('app');
+            const previousDemandDialog = appDiv.querySelector('#operational-demand-dialog');
+            if (uiState.showOperationalDemandModal && previousDemandDialog) {
+                uiState.operationalDemandDraft = {
+                    fields: [...previousDemandDialog.querySelectorAll('input[id], select[id], textarea[id]')].map(el => ({ id: el.id, value: el.value })),
+                    sections: [...previousDemandDialog.querySelectorAll('details[data-demand-section]')].map(el => ({ key: el.dataset.demandSection, open: el.open }))
+                };
+            }
             const previousCreateDialog = appDiv.querySelector('#create-task-dialog');
             if (uiState.showCreateTaskModal && previousCreateDialog) {
                 uiState.createTaskDraft = {
@@ -5437,7 +5511,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.36</span></div>
+                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.37</span></div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-2">
@@ -5687,116 +5761,7 @@
             }
 
             // MODAL DEMANDA OPERACIONAL
-            if (uiState.showOperationalDemandModal) {
-                const editingDemand = uiState.editingOperationalDemandId !== null ? window.getOperationalDemand(uiState.editingOperationalDemandId) : null;
-                const opOwner = editingDemand?.owner || window.getUserDisplayName?.() || '';
-                const opStatus = editingDemand?.workflowStatus || 'active';
-                const opAttention = editingDemand?.attentionLevel || 'controlled';
-                const opSource = editingDemand?.source || 'manual';
-                html += `
-                <div class="fixed inset-0 bg-slate-950/95 flex flex-col items-center justify-start p-2 sm:p-6 z-[80] backdrop-blur-lg overflow-y-auto pt-6 font-mono">
-                    <div class="bg-slate-900 border border-sky-900/60 rounded-2xl w-full max-w-3xl shadow-[0_0_50px_rgba(14,165,233,0.12)] modal-enter relative mb-10">
-                        <button onclick="window.closeOperationalDemandModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full p-2 hover:bg-red-500/20 hover:text-red-400 transition-colors z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
-                        <div class="p-5 sm:p-7">
-                            <div class="flex items-center gap-3 mb-6 border-b border-slate-800 pb-4 pr-10">
-                                <div class="bg-sky-950 p-3 rounded-xl border border-sky-800/50"><i data-lucide="radar" class="text-sky-400 w-7 h-7"></i></div>
-                                <div>
-                                    <h2 class="text-xl font-black text-white tracking-wide">${editingDemand ? 'Editar demanda operacional' : 'Capturar demanda operacional'}</h2>
-                                    <p class="text-xs text-slate-500 mt-1">Registre o fio de trabalho. A missão concreta continua sendo criada no board normal.</p>
-                                </div>
-                            </div>
-
-                            <div class="space-y-5">
-                                <div>
-                                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Demanda *</label>
-                                    <input id="op-demand-title" type="text" value="${window.escapeHtml(editingDemand?.title || '')}" placeholder="Ex.: Assessment de segurança do cliente" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:border-sky-500">
-                                </div>
-
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Área</label>
-                                        <input id="op-demand-area" type="text" value="${window.escapeHtml(editingDemand?.area || '')}" placeholder="Ex.: Segurança da Informação" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:border-sky-500">
-                                    </div>
-                                    <div>
-                                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Projeto / contexto</label>
-                                        <input id="op-demand-project" type="text" value="${window.escapeHtml(editingDemand?.project || '')}" placeholder="Ex.: Cliente X" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:border-sky-500">
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Próxima ação concreta</label>
-                                    <textarea id="op-demand-next-action" rows="2" placeholder="Ex.: Abrir a documentação recebida e revisar os controles críticos" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:border-sky-500 resize-y">${window.escapeHtml(editingDemand?.nextAction || '')}</textarea>
-                                </div>
-
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Status do fluxo</label>
-                                        <select id="op-demand-status" onchange="window.syncOperationalWaitingFields()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:border-sky-500">
-                                            <option value="active" ${opStatus === 'active' ? 'selected' : ''}>Ativa</option>
-                                            <option value="waiting" ${opStatus === 'waiting' ? 'selected' : ''}>Aguardando terceiro</option>
-                                            <option value="backlog" ${opStatus === 'backlog' ? 'selected' : ''}>Backlog</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nível de atenção</label>
-                                        <select id="op-demand-attention" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:border-sky-500">
-                                            <option value="controlled" ${opAttention === 'controlled' ? 'selected' : ''}>Sob controle</option>
-                                            <option value="attention" ${opAttention === 'attention' ? 'selected' : ''}>Atenção</option>
-                                            <option value="immediate" ${opAttention === 'immediate' ? 'selected' : ''}>Ação imediata</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <details class="rounded-xl border border-slate-800 bg-slate-950/50 overflow-hidden">
-                                    <summary class="cursor-pointer list-none p-3 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
-                                        Datas, pessoas e origem
-                                        <i data-lucide="chevron-down" class="w-4 h-4"></i>
-                                    </summary>
-                                    <div class="border-t border-slate-800 p-4 space-y-4">
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            <div><label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Prazo real</label><input id="op-demand-due-date" type="date" value="${window.escapeHtml(editingDemand?.dueDate || '')}" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:border-sky-500"></div>
-                                            <div><label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Revisar novamente em</label><input id="op-demand-review-date" type="date" value="${window.escapeHtml(editingDemand?.nextReviewAt || '')}" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:border-sky-500"></div>
-                                        </div>
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            <div><label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Responsável</label><input id="op-demand-owner" type="text" value="${window.escapeHtml(opOwner)}" placeholder="Quem precisa mover esta demanda?" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:border-sky-500"></div>
-                                            <div><label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Solicitante</label><input id="op-demand-requester" type="text" value="${window.escapeHtml(editingDemand?.requester || '')}" placeholder="Quem pediu / originou?" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:border-sky-500"></div>
-                                        </div>
-                                        <div>
-                                            <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Fonte</label>
-                                            <select id="op-demand-source" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:border-sky-500">
-                                                <option value="manual" ${opSource === 'manual' ? 'selected' : ''}>Captura manual</option>
-                                                <option value="slack" ${opSource === 'slack' ? 'selected' : ''}>Slack</option>
-                                                <option value="email" ${opSource === 'email' ? 'selected' : ''}>E-mail</option>
-                                                <option value="calendar" ${opSource === 'calendar' ? 'selected' : ''}>Calendário</option>
-                                                <option value="meeting" ${opSource === 'meeting' ? 'selected' : ''}>Reunião / anotação</option>
-                                                <option value="verbal" ${opSource === 'verbal' ? 'selected' : ''}>Compromisso verbal</option>
-                                                <option value="other" ${opSource === 'other' ? 'selected' : ''}>Outra</option>
-                                            </select>
-                                        </div>
-
-                                        <div id="op-waiting-fields" class="${opStatus === 'waiting' ? '' : 'hidden'} rounded-xl border border-amber-900/40 bg-amber-950/10 p-3 space-y-3">
-                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                <div><label class="text-[10px] font-black text-amber-500/80 uppercase tracking-widest">Aguardando quem?</label><input id="op-demand-waiting-for" type="text" value="${window.escapeHtml(editingDemand?.waitingFor || '')}" placeholder="Pessoa / área / fornecedor" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:border-amber-500"></div>
-                                                <div><label class="text-[10px] font-black text-amber-500/80 uppercase tracking-widest">Desde</label><input id="op-demand-waiting-since" type="date" value="${window.escapeHtml(editingDemand?.waitingSince || '')}" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:border-amber-500"></div>
-                                            </div>
-                                            <div><label class="text-[10px] font-black text-amber-500/80 uppercase tracking-widest">Data de follow-up</label><input id="op-demand-followup" type="date" value="${window.escapeHtml(editingDemand?.followUpAt || '')}" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:border-amber-500"></div>
-                                        </div>
-                                    </div>
-                                </details>
-
-                                <div class="rounded-xl border border-slate-800 bg-slate-950/50 p-3 text-[10px] text-slate-500 leading-relaxed">
-                                    Esta captura não gera XP, moedas, Frenesi ou recompensa. O objetivo é controle confiável, não incentivar checagem.
-                                </div>
-
-                                <div class="flex flex-col-reverse sm:flex-row gap-3 pt-1">
-                                    <button onclick="window.closeOperationalDemandModal()" class="sm:w-1/3 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 text-xs font-black uppercase tracking-widest">Cancelar</button>
-                                    <button onclick="window.saveOperationalDemand()" class="sm:flex-1 rounded-xl bg-sky-600 hover:bg-sky-500 text-white py-3 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2"><i data-lucide="save" class="w-4 h-4"></i>${editingDemand ? 'Salvar alterações' : 'Salvar demanda'}</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-            }
+            if (uiState.showOperationalDemandModal) html += window.renderOperationalDemandModal();
 
             // MODAL CATEGORIAS DE TAREFAS
             if (uiState.showCategoryModal) {
@@ -6070,6 +6035,18 @@
             lucide.createIcons();
             if (typeof window.bindTaskNatureControls === 'function') window.bindTaskNatureControls(appDiv);
             window.bindCreateTaskDialog(appDiv);
+            if (uiState.showOperationalDemandModal && uiState.operationalDemandDraft) {
+                uiState.operationalDemandDraft.fields.forEach(field => {
+                    const el = document.getElementById(field.id);
+                    if (el) el.value = field.value;
+                });
+                appDiv.querySelectorAll('#operational-demand-dialog details[data-demand-section]').forEach(el => {
+                    const saved = uiState.operationalDemandDraft.sections.find(section => section.key === el.dataset.demandSection);
+                    if (saved) el.open = saved.open;
+                });
+            }
+            window.bindOperationalDemandDialog(appDiv);
+
             
             // Render specific components that require external DOM access safely
             if(!clockInterval && currentUser) startClock();
