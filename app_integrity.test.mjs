@@ -90,13 +90,23 @@ const addSubtaskStart = app.indexOf('window.addSubtask = function(');
 const addSubtaskEnd = app.indexOf('window.toggleSubtask = function(', addSubtaskStart);
 const entryTask = { id: 123.45, text: 'Missão de teste', priority: 'media', subtasks: [] };
 let entryFocused = false;
-let entryInput = { value: 'Primeira etapa' };
+let entryDetails = null;
+let entryInput = { value: 'Primeira etapa', closest: () => entryDetails };
 let entryBoard = '';
+const captureStart = app.indexOf("appDiv.querySelectorAll('details[data-subtasks-task-id]')");
+const captureEnd = app.indexOf('const dailyTasks =', captureStart);
+assert.ok(captureStart > 0 && captureEnd > captureStart);
 const entryWindow = {
     showAlertModal(message) { throw new Error(message); },
     saveState() {
+        // Executar a captura real de render(), antes de gerar o novo HTML.
+        runInNewContext(app.slice(captureStart, captureEnd), {
+            uiState: boardUi,
+            appDiv: { querySelectorAll: () => entryDetails ? [entryDetails] : [] }
+        });
         entryBoard = boardWindow.renderDailyMissionBoard([entryTask]);
-        entryInput = { value: '', focus() { entryFocused = true; } };
+        entryDetails = { dataset: { subtasksTaskId: '123.45' }, open: /<details data-subtasks-task-id="123\.45" open /.test(entryBoard) };
+        entryInput = { value: '', closest: () => entryDetails, focus() { entryFocused = true; } };
     }
 };
 runInNewContext(app.slice(addSubtaskStart, addSubtaskEnd), {
@@ -114,5 +124,11 @@ assert.equal(entryTask.subtasks.length, 2);
 assert.match(entryBoard, /<details data-subtasks-task-id="123\.45" open /,
     'Cadastros consecutivos devem manter a lista aberta.');
 assert.equal(entryFocused, true);
+// Mesmo um estado antigo fechado não pode sobrescrever a abertura solicitada pelo cadastro.
+entryDetails.open = false;
+entryInput.value = 'Terceira etapa';
+entryWindow.addSubtask(123.45);
+assert.equal(entryTask.subtasks.length, 3);
+assert.equal(entryDetails.open, true, 'A captura do DOM antigo não deve fechar a lista ao adicionar.');
 
 console.log(`Integridade da interface: módulo, ${uniqueHandlers.length} handlers, saída do Pomodoro e conclusão explícita conferidos.`);
