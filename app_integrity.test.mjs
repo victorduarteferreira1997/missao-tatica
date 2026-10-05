@@ -68,6 +68,36 @@ assert.ok(focusPanel.indexOf('onclick="window.closeTaskFocus()"') >= 0
     'O retorno deve aparecer mesmo quando não houver missões pendentes.');
 
 const boardStart = app.indexOf('window.renderDailyMissionBoard = function(');
+const menuStart = app.indexOf('window.closeMissionMenus = function(');
+const menuEvents = {};
+let menuFocus = null;
+const menus = [0, 1].map(id => ({
+    open: false,
+    querySelector: () => ({ focus() { menuFocus = id; } })
+}));
+const menuWindow = {};
+runInNewContext(app.slice(menuStart, boardStart), {
+    window: menuWindow,
+    document: {
+        querySelectorAll: () => menus.filter(menu => menu.open),
+        querySelector: () => menus.find(menu => menu.open),
+        addEventListener(name, handler) { menuEvents[name] = handler; }
+    }
+});
+const menuClick = menu => ({ preventDefault() {}, stopPropagation() {}, currentTarget: { closest: () => menu } });
+menuWindow.toggleMissionMenu(menuClick(menus[0]));
+assert.equal(menus[0].open, true);
+menuWindow.toggleMissionMenu(menuClick(menus[1]));
+assert.equal(menus[0].open, false, 'Abrir outro menu deve fechar o anterior.');
+assert.equal(menus[1].open, true);
+menuEvents.click({ target: { closest: () => menus[1] } });
+assert.equal(menus[1].open, true, 'Interagir dentro do painel não deve fechá-lo antes da ação.');
+menuEvents.click({ target: { closest: () => null } });
+assert.equal(menus[1].open, false, 'Clicar fora deve fechar o painel.');
+menuWindow.toggleMissionMenu(menuClick(menus[0]));
+menuEvents.keydown({ key: 'Escape', preventDefault() {} });
+assert.equal(menus[0].open, false);
+assert.equal(menuFocus, 0, 'Esc deve devolver o foco ao botão que abriu o painel.');
 const boardEnd = app.indexOf('window.renderQuickCapturePanel = function(', boardStart);
 const boardWindow = {
     getTaskCategory: () => ({ label: 'Trabalho', icon: 'briefcase' }),
