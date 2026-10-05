@@ -435,4 +435,72 @@ radarWindow.getOperationalSignalsForDate = () => [];
 assert.match(radarWindow.renderOperationalControl(), /Nenhuma demanda em acompanhamento/);
 assert.match(radarWindow.renderOperationalControl(), /window.openOperationalDemandModal\(\)/);
 
+// Nova demanda: campos existentes, edição de encerradas e validação local.
+const demandDialogStart = app.indexOf('        window.renderOperationalDemandModal = function(');
+const demandDialogEnd = app.indexOf('        window.closeOperationalDemand = function(', demandDialogStart);
+const demandUi = { editingOperationalDemandId: null, alert: { show: false }, confirm: { show: false } };
+const demandRecords = { demands: [{ id: 'done', title: '<Assunto encerrado>', workflowStatus: 'closed', owner: 'Victor', customField: 'preservar' }] };
+const demandElements = {};
+const demandFieldIds = ['title', 'area', 'project', 'next-action', 'due-date', 'review-date', 'owner', 'requester', 'source', 'status', 'attention', 'waiting-for', 'waiting-since', 'followup'].map(id => 'op-demand-' + id);
+for (const id of demandFieldIds) demandElements[id] = { value: '', setAttribute(name, value) { this[name] = value; }, focus() { this.focused = true; } };
+const localError = { classList: { remove(value) { this.removed = value; } } };
+let persists = 0;
+const demandWindow = {
+    escapeHtml: radarWindow.escapeHtml, getUserDisplayName: () => 'Victor',
+    getOperationalDemand: id => demandRecords.demands.find(d => d.id === id),
+    getOperationalControl: () => demandRecords,
+    saveState: () => { persists++; }, showToast() {}
+};
+runInNewContext(app.slice(demandDialogStart, demandDialogEnd), {
+    window: demandWindow, uiState: demandUi,
+    document: { getElementById: id => id === 'op-demand-title-error' ? localError : demandElements[id] },
+    render() {}, setTimeout() {}
+});
+const newDemandMarkup = demandWindow.renderOperationalDemandModal();
+for (const id of demandFieldIds) assert.ok(newDemandMarkup.includes(`id="${id}"`), `Campo ${id} precisa continuar disponível.`);
+assert.match(newDemandMarkup, /role="dialog" aria-modal="true"/);
+assert.match(newDemandMarkup, /type="submit"/);
+assert.match(newDemandMarkup, /id="op-waiting-fields" class="hidden/);
+demandUi.editingOperationalDemandId = 'done';
+const closedDemandMarkup = demandWindow.renderOperationalDemandModal();
+assert.match(closedDemandMarkup, /&lt;Assunto encerrado&gt;/);
+assert.match(closedDemandMarkup, /value="closed" selected/);
+demandElements['op-demand-title'].value = 'Título revisado';
+demandElements['op-demand-status'].value = 'closed';
+demandWindow.saveOperationalDemand();
+assert.equal(demandRecords.demands[0].workflowStatus, 'closed', 'Editar uma encerrada não deve reabri-la.');
+assert.equal(demandRecords.demands[0].customField, 'preservar');
+assert.equal(persists, 1);
+demandElements['op-demand-title'].value = '   ';
+demandWindow.saveOperationalDemand();
+assert.equal(persists, 1, 'Título vazio não deve salvar.');
+assert.equal(demandElements['op-demand-title']['aria-invalid'], 'true');
+assert.equal(demandElements['op-demand-title'].focused, true);
+assert.equal(localError.classList.removed, 'hidden');
+demandElements['op-demand-title'].value = 'Aguardar fornecedor';
+demandElements['op-demand-status'].value = 'waiting';
+demandElements['op-demand-waiting-for'].value = 'Fornecedor';
+demandElements['op-demand-followup'].value = '2026-10-10';
+demandWindow.saveOperationalDemand();
+assert.equal(demandRecords.demands[0].waitingFor, 'Fornecedor');
+assert.equal(demandRecords.demands[0].followUpAt, '2026-10-10');
+
+const opCaptureStart = app.indexOf('const previousDemandDialog =');
+const opCaptureEnd = app.indexOf('const previousCreateDialog =', opCaptureStart);
+const opRestoreStart = app.indexOf('if (uiState.showOperationalDemandModal && uiState.operationalDemandDraft)');
+const opRestoreEnd = app.indexOf('window.bindOperationalDemandDialog(appDiv);', opRestoreStart);
+const opDraftUi = { showOperationalDemandModal: true };
+const opDraftFields = [{ id: 'op-demand-title', value: 'Rascunho em andamento' }, { id: 'op-demand-status', value: 'waiting' }];
+const opDraftSections = [{ dataset: { demandSection: 'context' }, open: true }];
+const opDraftApp = {
+    querySelector: () => ({ querySelectorAll: selector => selector.startsWith('input') ? opDraftFields : opDraftSections }),
+    querySelectorAll: () => opDraftSections
+};
+runInNewContext(app.slice(opCaptureStart, opCaptureEnd), { appDiv: opDraftApp, uiState: opDraftUi });
+opDraftFields.forEach(field => { field.value = ''; }); opDraftSections[0].open = false;
+runInNewContext(app.slice(opRestoreStart, opRestoreEnd), { appDiv: opDraftApp, uiState: opDraftUi, document: { getElementById: id => opDraftFields.find(field => field.id === id) } });
+assert.equal(opDraftFields[0].value, 'Rascunho em andamento');
+assert.equal(opDraftFields[1].value, 'waiting');
+assert.equal(opDraftSections[0].open, true);
+
 console.log(`Integridade da interface: módulo, ${uniqueHandlers.length} handlers, Pomodoro, missões, semana e Radar conferidos.`);
