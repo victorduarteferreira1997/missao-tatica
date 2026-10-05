@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.24-readable-mission-status">
+    <meta name="app-build" content="v1.9.25-mission-reading-actions">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -4954,14 +4954,40 @@
         window.renderDailyCategoryBar = function() {
             const filterCategories = [{ id: 'all', label: 'Tudo' }, ...window.getTaskCategories().map(c => ({ id: c.id, label: c.label }))];
             return `
-                <div class="mb-3 flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-1 font-mono">
+                <div class="mb-3 flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-1 font-sans">
                     <button onclick="window.toggleCategoryModal()" class="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950/70 px-2.5 py-1.5 text-[10px] font-bold text-slate-500 hover:text-slate-200 hover:border-slate-700" title="Gerenciar categorias"><i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>Filtros</button>
                     ${filterCategories.map(cat => {
                         const active = state.currentFilter === cat.id;
-                        return `<button onclick="window.setCategoryFilter('${cat.id}')" class="shrink-0 rounded-lg px-2.5 py-1.5 text-[10px] font-bold transition-colors ${active ? 'bg-slate-700 text-white' : 'text-slate-600 hover:text-slate-300 hover:bg-slate-900'}">${window.escapeHtml(cat.label)}</button>`;
+                        return `<button onclick="window.setCategoryFilter('${cat.id}')" class="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${active ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'}">${window.escapeHtml(cat.label)}</button>`;
                     }).join('')}
                 </div>`;
         };
+
+        window.closeMissionMenus = function(except = null, restoreFocus = false) {
+            document.querySelectorAll('details[data-mission-menu][open]').forEach(menu => {
+                if (menu === except) return;
+                menu.open = false;
+                if (restoreFocus) menu.querySelector('summary')?.focus({ preventScroll: true });
+            });
+        };
+        window.toggleMissionMenu = function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const menu = event.currentTarget.closest('details[data-mission-menu]');
+            if (!menu) return;
+            const shouldOpen = !menu.open;
+            window.closeMissionMenus(menu);
+            menu.open = shouldOpen;
+        };
+        document.addEventListener('click', event => {
+            window.closeMissionMenus(event.target.closest?.('details[data-mission-menu]') || null);
+        }, true);
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && document.querySelector('details[data-mission-menu][open]')) {
+                window.closeMissionMenus(null, true);
+                event.preventDefault();
+            }
+        });
 
         window.renderDailyMissionBoard = function(filteredTasks) {
             const tasks = Array.isArray(filteredTasks) ? filteredTasks : [];
@@ -4970,10 +4996,10 @@
             }
 
             const priorityMeta = {
-                essencial: { dot: 'bg-purple-400', text: 'text-purple-300' },
-                alta: { dot: 'bg-red-400', text: 'text-red-300' },
-                media: { dot: 'bg-amber-400', text: 'text-slate-500' },
-                baixa: { dot: 'bg-slate-600', text: 'text-slate-600' }
+                essencial: { label: 'Essencial', dot: 'bg-purple-400', text: 'text-purple-300' },
+                alta: { label: 'Alta', dot: 'bg-red-400', text: 'text-red-300' },
+                media: { label: 'Média', dot: 'bg-amber-400', text: 'text-slate-400' },
+                baixa: { label: 'Baixa', dot: 'bg-slate-500', text: 'text-slate-400' }
             };
             const statusMeta = {
                 planned: { label: 'Planejada', color: 'text-slate-300', dot: 'bg-slate-500' },
@@ -4981,7 +5007,7 @@
                 paused: { label: 'Pausada', color: 'text-amber-300', dot: 'bg-amber-400' },
                 completed: { label: 'Concluída', color: 'text-emerald-400', dot: 'bg-emerald-400' }
             };
-            let out = `<div class="mb-4 rounded-xl border border-slate-800 bg-slate-950/35 font-mono divide-y divide-slate-800/80">`;
+            let out = `<div class="mb-4 rounded-xl border border-slate-800 bg-slate-950/35 font-sans divide-y divide-slate-800/80">`;
 
             tasks.forEach(task => {
                 const taskCategory = window.getTaskCategory(task.category);
@@ -5015,12 +5041,12 @@
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0 flex-1">
                                     <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
-                                        ${taskScheduleLabel ? `<span class="text-[10px] font-black text-slate-300 tabular-nums">${taskScheduleLabel}</span>` : ''}
-                                        <span class="inline-flex items-center gap-1 text-[9px] font-bold ${priority.text}"><span class="w-1.5 h-1.5 rounded-full ${priority.dot}"></span>${window.escapeHtml(task.priority || 'media')}</span>
+                                        ${taskScheduleLabel ? `<span class="text-xs font-medium text-slate-300 tabular-nums">${taskScheduleLabel}</span>` : ''}
+                                        <span class="inline-flex items-center gap-1 text-[11px] font-medium ${priority.text}"><span class="w-1.5 h-1.5 rounded-full ${priority.dot}"></span>${priority.label}</span>
                                         ${taskNature !== 'normal' ? `<span class="text-[9px] font-bold ${taskNatureMeta.color}"><i data-lucide="${taskNatureMeta.icon}" class="inline w-3 h-3 mr-0.5"></i>${taskNatureMeta.shortLabel}</span>` : ''}
                                     </div>
 
-                                    <div class="text-sm sm:text-[15px] font-bold leading-snug ${completed ? 'line-through text-slate-600' : 'text-slate-100'}">${window.escapeHtml(task.text)}</div>
+                                    <div class="text-base font-semibold leading-snug ${completed ? 'line-through text-slate-500' : 'text-slate-100'}">${window.escapeHtml(task.text)}</div>
 
                                     <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] text-slate-400">
                                         <label class="relative inline-flex items-center font-sans">
@@ -5035,15 +5061,18 @@
                                 </div>
 
                                 <div class="flex items-center gap-1 shrink-0" onclick="event.stopPropagation()">
-                                    ${!completed ? `<button onclick="window.openTaskFocus(${task.id}, event)" class="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-slate-950/70 px-2 py-1.5 text-[9px] font-bold text-slate-500 hover:text-indigo-300 hover:border-indigo-900/70" title="Abrir esta missão no modo foco"><i data-lucide="timer" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">Foco</span></button>` : ''}
-                                    <details class="relative">
-                                        <summary class="list-none cursor-pointer rounded-lg px-2 py-1.5 text-slate-600 hover:text-white hover:bg-slate-900" title="Mais ações"><i data-lucide="ellipsis" class="w-4 h-4"></i></summary>
-                                        <div class="absolute right-0 z-30 mt-2 min-w-[220px] rounded-xl border border-slate-700 bg-slate-950 p-2 shadow-2xl space-y-1">
-                                            <div class="px-2 py-1 text-[9px] text-slate-600">${task.xp || 0} XP • ${(task.energyCost || 0) === 0 ? '0 HP' : ((task.energyCost || 0) < 0 ? '+' : '-') + Math.abs(task.energyCost || 0) + ' HP'}</div>
-                                            <button onclick="window.openEditTaskModal(${task.id}, event)" class="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[10px] font-bold text-slate-300 hover:bg-slate-900"><i data-lucide="pencil" class="w-3.5 h-3.5"></i>Editar missão</button>
-                                            <div class="grid grid-cols-2 gap-1"><button onclick="window.moveTaskOrder(${task.id}, -1, event)" class="rounded-lg px-2 py-2 text-[10px] text-slate-500 hover:bg-slate-900">↑ Subir</button><button onclick="window.moveTaskOrder(${task.id}, 1, event)" class="rounded-lg px-2 py-2 text-[10px] text-slate-500 hover:bg-slate-900">↓ Descer</button></div>
-                                            <select onchange="window.moveTaskFromSelect(${task.id}, event, this)" onclick="event.stopPropagation()" class="w-full bg-slate-900 border border-slate-800 text-slate-400 rounded-lg p-2 text-[10px]"><option value="" disabled selected>Mover para…</option>${daysOptions}</select>
-                                            <button onclick="window.deleteMainTask(${task.id}, event)" class="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[10px] font-bold text-red-400 hover:bg-red-950/20"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i>Excluir</button>
+                                    ${!completed ? `<button onclick="window.openTaskFocus(${task.id}, event)" class="inline-flex min-h-[44px] sm:min-h-8 items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950/70 px-2.5 text-xs font-medium text-slate-300 hover:text-indigo-300 hover:border-indigo-900/70" title="Abrir esta missão no modo foco"><i data-lucide="timer" class="w-4 h-4"></i><span class="hidden sm:inline">Foco</span></button>` : ''}
+                                    <details data-mission-menu class="relative">
+                                        <summary onclick="window.toggleMissionMenu(event)" aria-label="Mais ações: ${window.escapeHtml(task.text)}" class="list-none inline-flex min-h-[44px] min-w-[44px] sm:min-h-8 sm:min-w-8 items-center justify-center cursor-pointer rounded-lg text-slate-400 hover:text-white hover:bg-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400" title="Mais ações"><i data-lucide="ellipsis" class="w-4 h-4"></i></summary>
+                                        <div class="absolute right-0 z-30 mt-2 w-56 rounded-xl border border-slate-700 bg-slate-950 p-1.5 shadow-2xl">
+                                            <button onclick="window.closeMissionMenus(); window.openEditTaskModal(${task.id}, event)" class="w-full flex min-h-[44px] sm:min-h-9 items-center gap-2 rounded-lg px-3 text-left text-sm text-slate-200 hover:bg-slate-800"><i data-lucide="pencil" class="w-4 h-4"></i>Editar missão</button>
+                                            <select aria-label="Mover missão para outro dia" onchange="window.moveTaskFromSelect(${task.id}, event, this)" onclick="event.stopPropagation()" class="mt-1 w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg p-2 text-xs"><option value="" disabled selected>Mover para outro dia…</option>${daysOptions}</select>
+                                            <div class="px-3 pt-3 pb-1 text-[11px] text-slate-400">Ordem na lista</div>
+                                            <div class="grid grid-cols-2 gap-1"><button onclick="window.moveTaskOrder(${task.id}, -1, event)" class="min-h-[44px] sm:min-h-9 rounded-lg text-xs text-slate-300 hover:bg-slate-800">↑ Subir</button><button onclick="window.moveTaskOrder(${task.id}, 1, event)" class="min-h-[44px] sm:min-h-9 rounded-lg text-xs text-slate-300 hover:bg-slate-800">↓ Descer</button></div>
+                                            <div class="mt-1 border-t border-slate-800 pt-1">
+                                                <button onclick="window.closeMissionMenus(); window.deleteMainTask(${task.id}, event)" class="w-full flex min-h-[44px] sm:min-h-9 items-center gap-2 rounded-lg px-3 text-left text-sm text-red-400 hover:bg-red-950/30"><i data-lucide="trash-2" class="w-4 h-4"></i>Excluir missão</button>
+                                            </div>
+                                            <div class="px-3 py-2 text-[11px] text-slate-400">${task.xp || 0} XP · ${(task.energyCost || 0) === 0 ? '0 HP' : ((task.energyCost || 0) < 0 ? '+' : '−') + Math.abs(task.energyCost || 0) + ' HP'}</div>
                                         </div>
                                     </details>
                                 </div>
@@ -5341,7 +5370,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.24</span></div>
+                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.25</span></div>
                             <div class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">Quartel operacional</div>
                         </div>
                     </div>
