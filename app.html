@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.28-create-mission-form">
+    <meta name="app-build" content="v1.9.29-create-mission-spacing">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -4986,7 +4986,7 @@
 
         window.renderCreateTaskModal = function(calendarInboxSource = null) {
             const fieldClass = 'w-full mt-1.5 min-h-11 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400';
-            const labelClass = 'text-sm font-medium text-slate-300';
+            const labelClass = 'block text-sm font-medium text-slate-300';
             const summaryClass = 'list-none flex min-h-11 cursor-pointer items-center justify-between gap-3 py-2 text-sm text-slate-300 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400';
             return `
             <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm font-sans">
@@ -4999,7 +4999,7 @@
                         <div class="min-h-0 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
                             ${calendarInboxSource ? '<p class="rounded-lg border border-sky-800/60 bg-sky-950/30 p-3 text-xs leading-relaxed text-sky-200">Vinculada ao evento original. A conversão cria uma única missão e não duplica o compromisso no Google Agenda.</p>' : ''}
                             <div>
-                                <label for="ct-text" class="${labelClass}">O que você vai fazer? <span class="text-xs font-normal text-slate-400">Obrigatório</span></label>
+                                <label for="ct-text" class="${labelClass}">O que você vai fazer? <span class="ml-2 text-xs font-normal text-slate-400">Obrigatório</span></label>
                                 <input id="ct-text" type="text" autocomplete="off" aria-describedby="ct-title-error" placeholder="Ex.: Revisar o contrato do cliente" class="${fieldClass}" oninput="this.removeAttribute('aria-invalid'); document.getElementById('ct-title-error').classList.add('hidden')">
                                 <p id="ct-title-error" class="hidden mt-1.5 text-xs text-red-300" role="alert">Dê um nome à missão para continuar.</p>
                             </div>
@@ -5017,19 +5017,19 @@
                             <div class="divide-y divide-slate-800 border-t border-slate-800">
                                 <details data-create-section="subtasks">
                                     <summary class="${summaryClass}"><span>Adicionar subtarefas</span><i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i></summary>
-                                    <div class="pb-3"><label for="ct-subtasks" class="text-xs text-slate-400">Uma subtarefa por linha</label><textarea id="ct-subtasks" rows="3" placeholder="Separar documentos&#10;Revisar o texto&#10;Enviar para aprovação" class="${fieldClass} resize-y"></textarea></div>
+                                    <div class="pt-2 pb-4"><label for="ct-subtasks" class="block text-xs text-slate-400">Uma subtarefa por linha</label><textarea id="ct-subtasks" rows="3" placeholder="Separar documentos&#10;Revisar o texto&#10;Enviar para aprovação" class="${fieldClass} resize-y"></textarea></div>
                                 </details>
                                 <details data-create-section="schedule" ${calendarInboxSource ? 'open' : ''}>
                                     <summary class="${summaryClass}"><span>Definir horário</span><i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i></summary>
-                                    <div class="grid grid-cols-2 gap-3 pb-3"><div><label for="ct-start-time" class="${labelClass}">Início</label><input id="ct-start-time" type="time" class="${fieldClass}"></div><div><label for="ct-end-time" class="${labelClass}">Fim</label><input id="ct-end-time" type="time" class="${fieldClass}"></div><p class="col-span-2 text-xs leading-relaxed text-slate-400">Use quando a missão tiver horário marcado.</p></div>
+                                    <div class="grid grid-cols-2 gap-x-3 gap-y-2 pt-2 pb-4"><div><label for="ct-start-time" class="${labelClass}">Início</label><input id="ct-start-time" type="time" class="${fieldClass}"></div><div><label for="ct-end-time" class="${labelClass}">Fim</label><input id="ct-end-time" type="time" class="${fieldClass}"></div><p class="col-span-2 text-xs leading-relaxed text-slate-400">Use quando a missão tiver horário marcado.</p></div>
                                 </details>
                                 <details data-create-section="recurrence" ${calendarInboxSource ? 'class="hidden"' : ''}>
                                     <summary class="${summaryClass}"><span>Repetir durante a semana</span><i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i></summary>
-                                    <div class="pb-3 space-y-3"><div class="grid grid-cols-2 sm:grid-cols-4 gap-2">${daysOfWeek.map(d => `<label for="ct-repeat-${d.id}" class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 px-2 text-xs text-slate-300 hover:border-indigo-400"><input id="ct-repeat-${d.id}" type="checkbox" class="accent-indigo-500">${d.label}</label>`).join('')}</div><div class="flex gap-3"><button type="button" onclick="window.setCreateTaskRecurrence('all')" class="text-xs text-indigo-300 hover:text-indigo-200">Todos os dias</button><button type="button" onclick="window.setCreateTaskRecurrence('clear')" class="text-xs text-slate-400 hover:text-slate-200">Limpar seleção</button></div></div>
+                                    <div class="pt-2 pb-4 space-y-3"><div class="grid grid-cols-2 sm:grid-cols-4 gap-2">${daysOfWeek.map(d => `<label for="ct-repeat-${d.id}" class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 px-2 text-xs text-slate-300 hover:border-indigo-400"><input id="ct-repeat-${d.id}" type="checkbox" class="accent-indigo-500">${d.label}</label>`).join('')}</div><div class="flex gap-4"><button type="button" onclick="window.setCreateTaskRecurrence('all')" class="text-xs text-indigo-300 hover:text-indigo-200">Todos os dias</button><button type="button" onclick="window.setCreateTaskRecurrence('clear')" class="text-xs text-slate-400 hover:text-slate-200">Limpar seleção</button></div></div>
                                 </details>
                                 <details data-create-section="effort" id="ct-effort-panel">
                                     <summary class="${summaryClass}"><span>Ajustar dificuldade</span><i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i></summary>
-                                    <div class="pb-3"><label for="ct-complexity" class="${labelClass}">Dificuldade de 1 a 5</label><input id="ct-complexity" type="number" min="1" max="5" value="2" oninput="window.updatePreviewCalc()" class="${fieldClass} max-w-24"><p class="mt-1.5 text-xs leading-relaxed text-slate-400">1 é simples; 5 exige muito esforço. O padrão é 2.</p></div>
+                                    <div class="pt-2 pb-4"><label for="ct-complexity" class="${labelClass}">Dificuldade de 1 a 5</label><input id="ct-complexity" type="number" min="1" max="5" value="2" oninput="window.updatePreviewCalc()" class="${fieldClass} max-w-24"><p class="mt-2 text-xs leading-relaxed text-slate-400">1 é simples; 5 exige muito esforço. O padrão é 2.</p></div>
                                 </details>
                             </div>
                         </div>
@@ -5470,7 +5470,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.28</span></div>
+                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.29</span></div>
                             <div class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">Quartel operacional</div>
                         </div>
                     </div>
