@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.35-radar-expansion">
+    <meta name="app-build" content="v1.9.36-radar-polish">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -4880,9 +4880,9 @@
                 const demandArg = window.escapeHtml(JSON.stringify(String(demand.id)));
                 const sectionKey = `demand:${demand.id}`;
                 const dateLabel = value => window.escapeHtml(window.formatOperationalDate(value));
-                return `<article class="rounded-xl border ${mainSignal?.severity === 'critical' ? 'border-red-900/60' : 'border-slate-800'} bg-slate-900/70 p-4">
+                return `<article class="rounded-xl border ${mainSignal?.severity === 'critical' ? 'border-red-900/60' : 'border-slate-800'} bg-slate-900/70 p-3 sm:p-4">
                     <div class="flex flex-wrap items-start justify-between gap-2">
-                        <div class="min-w-0 flex-1"><h3 class="break-words text-base font-semibold text-slate-100">${window.escapeHtml(demand.title)}</h3>${areaProject ? `<p class="mt-1 text-xs text-slate-400">${window.escapeHtml(areaProject)}</p>` : ''}</div>
+                        <div class="min-w-0 flex-1"><h3 class="break-words text-base font-semibold leading-snug text-slate-100">${window.escapeHtml(demand.title)}</h3>${areaProject ? `<p class="mt-1 text-xs text-slate-400">${window.escapeHtml(areaProject)}</p>` : ''}</div>
                         <span class="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs ${status.cls}"><i data-lucide="${status.icon}" class="h-3.5 w-3.5"></i>${status.label}</span>
                     </div>
                     ${mainSignal ? `<p class="mt-2 flex items-start gap-1.5 text-xs ${severityMeta[mainSignal.severity] || severityMeta.info}"><i data-lucide="${mainSignal.severity === 'critical' ? 'triangle-alert' : 'calendar-clock'}" class="mt-0.5 h-3.5 w-3.5 shrink-0"></i>${window.escapeHtml(mainSignal.label)}${sortedSignals.length > 1 ? `<span class="text-slate-400">· +${sortedSignals.length - 1} avisos</span>` : ''}</p>` : (!isClosed && demand.attentionLevel !== 'controlled' ? `<p class="mt-2 text-xs ${att.cls}">${att.label}</p>` : '')}
@@ -4902,20 +4902,20 @@
                         </div>
                     </div>
                     <div id="radar-details-${encodeURIComponent(String(demand.id))}" role="region" aria-label="Detalhes de ${window.escapeHtml(demand.title)}" ${uiState.radarExpandedSections[sectionKey] ? '' : 'hidden'} class="mt-3 border-t border-slate-800 pt-3">
-                        <div class="flex flex-col sm:flex-row gap-4 sm:gap-6">
-                            <dl class="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                        <div class="flex flex-col items-start sm:flex-row gap-4 sm:gap-6">
+                            <dl class="w-full min-w-0 flex-1 grid content-start grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                                 <div><dt class="text-xs text-slate-400">Próxima revisão</dt><dd class="mt-1 text-sm text-slate-200">${dateLabel(demand.nextReviewAt)}</dd></div>
                                 <div><dt class="text-xs text-slate-400">Responsável</dt><dd class="mt-1 break-words text-sm text-slate-200">${window.escapeHtml(demand.owner || 'Não informado')}</dd></div>
                                 <div class="sm:col-span-2"><dt class="text-xs text-slate-400">Solicitante</dt><dd class="mt-1 break-words text-sm text-slate-200">${window.escapeHtml(demand.requester || 'Não informado')}</dd></div>
                                 ${isWaiting ? `<div><dt class="text-xs text-slate-400">Aguardando desde</dt><dd class="mt-1 text-sm text-slate-200">${dateLabel(demand.waitingSince)}</dd></div>` : ''}
                             </dl>
-                            ${sortedSignals.length > 1 ? `<div class="min-w-0 flex-1 border-t sm:border-t-0 sm:border-l border-slate-800 pt-3 sm:pt-0 sm:pl-6"><h4 class="text-xs font-medium text-slate-300">Outros pontos de atenção</h4><ul class="mt-2 space-y-2 text-sm">${sortedSignals.slice(1).map(item => `<li class="flex items-start gap-2 ${severityMeta[item.severity] || severityMeta.info}"><i data-lucide="circle-dot" class="mt-0.5 h-3.5 w-3.5 shrink-0"></i><span>${window.escapeHtml(item.label)}</span></li>`).join('')}</ul></div>` : ''}
+                            ${sortedSignals.length > 1 ? `<div class="w-full min-w-0 flex-1 border-t sm:border-t-0 sm:border-l border-slate-800 pt-3 sm:pt-0 sm:pl-6"><h4 class="text-xs font-medium text-slate-300">Outros pontos de atenção</h4><ul class="mt-2 space-y-2 text-sm leading-relaxed">${sortedSignals.slice(1).map(item => `<li class="flex items-start gap-2 ${item.severity === 'critical' ? 'text-red-300' : 'text-slate-300'}"><i data-lucide="circle-dot" class="mt-1 h-3.5 w-3.5 shrink-0 ${severityMeta[item.severity] || severityMeta.info}"></i><span class="min-w-0 flex-1 break-words">${window.escapeHtml(item.label)}</span></li>`).join('')}</ul></div>` : ''}
                         </div>
                     </div>
                 </article>`;
             };
             return `<section class="space-y-3 font-sans">
-                <header class="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                <header class="rounded-xl border border-slate-800 bg-slate-900/70 p-3 sm:p-4">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <div><h2 class="text-lg font-semibold text-white">Radar de demandas</h2><p class="mt-1 text-sm text-slate-400">Acompanhe próximas ações, prazos e retornos.</p></div>
                         <button type="button" onclick="window.openOperationalDemandModal()" class="inline-flex min-h-10 items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"><i data-lucide="plus" class="h-4 w-4"></i>Nova demanda</button>
@@ -5437,7 +5437,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.35</span></div>
+                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.36</span></div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-2">
