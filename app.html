@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.32-radar-layout">
+    <meta name="app-build" content="v1.9.33-radar-spacing">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -4877,8 +4877,9 @@
                         ${isWaiting ? `<span>Aguardando: <span class="text-amber-200">${window.escapeHtml(demand.waitingFor || 'Responsável não informado')}</span></span>` : ''}
                         ${isWaiting && demand.followUpAt ? `<span>Retorno: <span class="text-amber-200">${dateLabel(demand.followUpAt)}</span></span>` : ''}
                     </div>
-                    <details data-radar-section="${window.escapeHtml(sectionKey)}" ${uiState.radarExpandedSections[sectionKey] ? 'open' : ''} class="mt-3 border-t border-slate-800 pt-2">
-                        <summary class="inline-flex min-h-9 cursor-pointer list-none items-center gap-2 text-xs text-slate-400 hover:text-white">Mais detalhes<i data-lucide="chevron-down" class="h-3.5 w-3.5"></i></summary>
+                    <div class="mt-3 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 border-t border-slate-800 pt-2">
+                    <details data-radar-section="${window.escapeHtml(sectionKey)}" ${uiState.radarExpandedSections[sectionKey] ? 'open' : ''} class="min-w-0 sm:col-span-2 row-start-1">
+                        <summary class="inline-flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg text-xs text-slate-400 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400">Mais detalhes<i data-lucide="chevron-down" class="h-3.5 w-3.5"></i></summary>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 pt-2 text-xs text-slate-400">
                             <p>Próxima revisão: <span class="text-slate-200">${dateLabel(demand.nextReviewAt)}</span></p>
                             <p>Responsável: <span class="break-words text-slate-200">${window.escapeHtml(demand.owner || 'Não informado')}</span></p>
@@ -4887,9 +4888,10 @@
                         </div>
                         ${sortedSignals.length ? `<ul class="mt-3 space-y-1 text-xs">${sortedSignals.map(item => `<li class="${severityMeta[item.severity] || severityMeta.info}">${window.escapeHtml(item.label)}</li>`).join('')}</ul>` : ''}
                     </details>
-                    <div class="mt-2 flex justify-end gap-2">
+                    <div class="row-start-2 sm:row-start-1 sm:col-start-2 self-start flex justify-end gap-2">
                         <button type="button" onclick="window.openOperationalDemandModal(${demandArg})" class="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800"><i data-lucide="pencil" class="h-3.5 w-3.5"></i>Editar</button>
                         ${isClosed ? `<button type="button" onclick="window.reopenOperationalDemand(${demandArg})" class="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-sky-900/60 px-3 py-2 text-xs font-medium text-sky-200 hover:bg-sky-950/50"><i data-lucide="rotate-ccw" class="h-3.5 w-3.5"></i>Reabrir</button>` : `<button type="button" onclick="window.closeOperationalDemand(${demandArg})" class="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-emerald-200"><i data-lucide="check" class="h-3.5 w-3.5"></i>Encerrar</button>`}
+                    </div>
                     </div>
                 </article>`;
             };
@@ -5416,7 +5418,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.32</span></div>
+                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.33</span></div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-2">
