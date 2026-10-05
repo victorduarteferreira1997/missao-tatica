@@ -370,4 +370,42 @@ assert.match(weeklyContext.renderWeek(), /Nenhum item planejado nesta semana/);
 assert.match(weeklyContext.renderWeek(), /window.setPlanningCalendarWeek\('prev'\)/,
     'Sem itens, a navegação ainda deve permitir voltar às outras semanas.');
 
-console.log(`Integridade da interface: módulo, ${uniqueHandlers.length} handlers, Pomodoro, missões e agenda semanal conferidos.`);
+const radarStart = app.indexOf('        window.renderOperationalControl = function()');
+const radarEnd = app.indexOf('        // ==========================================\n        // COCKPIT DIÁRIO', radarStart);
+const radarDemands = [
+    { id: 'safe', title: 'Rotina controlada', workflowStatus: 'active', attentionLevel: 'controlled', nextAction: 'Planejar' },
+    { id: 'urgent', title: '<Prazo urgente>', workflowStatus: 'waiting', attentionLevel: 'controlled', nextAction: 'Cobrar retorno', waitingFor: 'Cliente', dueDate: '2026-10-05', followUpAt: '2026-10-06', owner: 'Victor' },
+    { id: 'later', title: 'Assunto futuro', workflowStatus: 'backlog', attentionLevel: 'controlled' },
+    { id: 'closed', title: 'Demanda encerrada', workflowStatus: 'closed', attentionLevel: 'controlled', nextAction: 'Finalizado' }
+];
+const radarOriginal = JSON.stringify(radarDemands);
+const radarWindow = {
+    getOperationalControl: () => ({ demands: radarDemands, config: { dueSoonDays: 2 } }),
+    getOperationalSignalsForDate: () => [{ demand: radarDemands[1], severityRank: 0, signals: [
+        { severity: 'attention', label: 'Revisão hoje' },
+        { severity: 'critical', label: 'Prazo final hoje' }
+    ] }],
+    escapeHtml: value => String(value).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'),
+    formatOperationalDate: value => value || '—'
+};
+const radarUi = { radarExpandedSections: { 'demand:urgent': true, history: true } };
+runInNewContext(app.slice(radarStart, radarEnd), { window: radarWindow, uiState: radarUi, dateKeyFromDate: () => '2026-10-05' });
+const radarMarkup = radarWindow.renderOperationalControl();
+assert.ok(radarMarkup.indexOf('&lt;Prazo urgente&gt;') < radarMarkup.indexOf('Rotina controlada'),
+    'Prazos críticos devem aparecer antes dos assuntos sem alertas.');
+assert.ok(radarMarkup.indexOf('Prazo final hoje') < radarMarkup.indexOf('Revisão hoje'),
+    'O sinal mais urgente deve ocupar o destaque do cartão.');
+assert.match(radarMarkup, /data-radar-section="demand:urgent" open /);
+assert.match(radarMarkup, /data-radar-section="history" open /);
+assert.match(radarMarkup, /Cobrar retorno/);
+assert.match(radarMarkup, /Cliente/);
+assert.match(radarMarkup, /Para depois/);
+assert.match(radarMarkup, /window.closeOperationalDemand\(&quot;urgent&quot;\)/);
+assert.match(radarMarkup, /window.reopenOperationalDemand\(&quot;closed&quot;\)/);
+assert.equal(JSON.stringify(radarDemands), radarOriginal, 'A nova apresentação não altera demandas ou status.');
+radarDemands.length = 0;
+radarWindow.getOperationalSignalsForDate = () => [];
+assert.match(radarWindow.renderOperationalControl(), /Nenhuma demanda em acompanhamento/);
+assert.match(radarWindow.renderOperationalControl(), /window.openOperationalDemandModal\(\)/);
+
+console.log(`Integridade da interface: módulo, ${uniqueHandlers.length} handlers, Pomodoro, missões, semana e Radar conferidos.`);
