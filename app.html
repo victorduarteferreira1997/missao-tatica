@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.27-mission-status-colors">
+    <meta name="app-build" content="v1.9.28-create-mission-form">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -319,6 +319,7 @@
             showPanic: false, breathingStep: 0, breathingInterval: null,
             showLevelUp: false, showStatsModal: false, statsTab: 'roadmap',
             showCreateTaskModal: false,
+            createTaskDraft: null,
             expandedSubtasks: {},
             calendarInboxEventId: null,
             showEditTaskModal: false, editingTaskId: null,
@@ -783,9 +784,19 @@
             const summary = document.getElementById(`${prefix}-nature-summary`);
             if (summary) {
                 const data = summaries[selected] || summaries.normal;
+                if (prefix === 'ct') {
+                    const descriptions = {
+                        normal: 'Trabalho, estudo ou treino: rende XP e moedas e consome energia.',
+                        neutral: 'Compromisso ou deslocamento: entra na agenda sem alterar XP ou energia.',
+                        recharge: 'Pausa ou descanso: recupera energia, sem gerar XP ou moedas.'
+                    };
+                    summary.className = 'text-xs leading-relaxed text-slate-400';
+                    summary.textContent = descriptions[selected] || descriptions.normal;
+                } else {
                 summary.className = `rounded-xl border p-3 text-[11px] leading-relaxed ${data.box}`;
                 summary.innerHTML = `<div class="flex items-start gap-3"><i data-lucide="${data.icon}" class="w-4 h-4 mt-0.5 shrink-0"></i><div class="min-w-0"><div class="flex flex-wrap items-center gap-2 mb-1"><strong class="text-xs uppercase tracking-widest">${data.title}</strong><span class="rounded-full bg-black/25 border border-white/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest">${data.result}</span></div><span class="text-slate-400">${data.desc}</span></div></div>`;
                 if (window.lucide?.createIcons) window.lucide.createIcons({ root: summary });
+                }
             }
             const effortNote = document.getElementById(`${prefix}-effort-note`);
             if (effortNote) {
@@ -2714,6 +2725,7 @@
 
         window.toggleCreateTaskModal = function() {
             uiState.showCreateTaskModal = !uiState.showCreateTaskModal;
+            uiState.createTaskDraft = null;
             if (!uiState.showCreateTaskModal) uiState.calendarInboxEventId = null;
             render();
             setTimeout(() => { window.updateTaskNatureButtons?.('ct'); window.updatePreviewCalc?.(); }, 50);
@@ -2724,6 +2736,7 @@
             if (!item) { window.showAlertModal('Esse compromisso não está mais na entrada da agenda.'); return; }
             uiState.calendarInboxEventId = eventId;
             uiState.showCreateTaskModal = true;
+            uiState.createTaskDraft = null;
             render();
             setTimeout(() => {
                 const values = {
@@ -2940,7 +2953,14 @@
         };
 
         window.saveNewTask = function() {
-            const text = document.getElementById('ct-text').value.trim(); if (!text) { window.showAlertModal('Título vazio.'); return; }
+            const titleInput = document.getElementById('ct-text');
+            const text = titleInput.value.trim();
+            if (!text) {
+                titleInput.setAttribute('aria-invalid', 'true');
+                document.getElementById('ct-title-error')?.classList.remove('hidden');
+                titleInput.focus({ preventScroll: false });
+                return;
+            }
             const sourceInboxItem = uiState.calendarInboxEventId
                 ? calendarSync.getInbox({ includeHandled: true }).find(item => item.id === uiState.calendarInboxEventId)
                 : null;
@@ -3007,6 +3027,7 @@
 
             if (sourceInboxItem && firstCreatedTaskId !== null) calendarSync.markInboxConverted(sourceInboxItem.id, firstCreatedTaskId);
             uiState.showCreateTaskModal = false;
+            uiState.createTaskDraft = null;
             uiState.calendarInboxEventId = null;
             const recurrenceMsg = isRecurring ? ` Missão recorrente: ${window.getRecurringDaysLabel(recurrenceDays)}.` : '';
             window.showToast('Missão Alistada!', `${daysToCreate.length} missão(ões) adicionada(s).${baseSubtasks.length ? ` ${baseSubtasks.length} subtarefa(s).` : ''}${recurrenceMsg}`, 'crosshair', 'text-emerald-400');
@@ -4963,6 +4984,80 @@
                 </div>`;
         };
 
+        window.renderCreateTaskModal = function(calendarInboxSource = null) {
+            const fieldClass = 'w-full mt-1.5 min-h-11 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400';
+            const labelClass = 'text-sm font-medium text-slate-300';
+            const summaryClass = 'list-none flex min-h-11 cursor-pointer items-center justify-between gap-3 py-2 text-sm text-slate-300 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400';
+            return `
+            <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm font-sans">
+                <div id="create-task-dialog" role="dialog" aria-modal="true" aria-labelledby="create-task-title" class="modal-enter flex max-h-[92dvh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl">
+                    <header class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-800 px-5 py-4">
+                        <div><h2 id="create-task-title" class="text-lg font-semibold text-slate-100">Nova missão</h2><p class="mt-1 text-sm text-slate-400">${calendarInboxSource ? 'Organize este compromisso do Google Agenda.' : 'Defina a próxima ação. Os detalhes podem ficar para depois.'}</p></div>
+                        <button type="button" onclick="window.toggleCreateTaskModal()" aria-label="Fechar criação de missão" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+                    </header>
+                    <form novalidate onsubmit="event.preventDefault(); window.saveNewTask()" class="flex min-h-0 flex-1 flex-col">
+                        <div class="min-h-0 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
+                            ${calendarInboxSource ? '<p class="rounded-lg border border-sky-800/60 bg-sky-950/30 p-3 text-xs leading-relaxed text-sky-200">Vinculada ao evento original. A conversão cria uma única missão e não duplica o compromisso no Google Agenda.</p>' : ''}
+                            <div>
+                                <label for="ct-text" class="${labelClass}">O que você vai fazer? <span class="text-xs font-normal text-slate-400">Obrigatório</span></label>
+                                <input id="ct-text" type="text" autocomplete="off" aria-describedby="ct-title-error" placeholder="Ex.: Revisar o contrato do cliente" class="${fieldClass}" oninput="this.removeAttribute('aria-invalid'); document.getElementById('ct-title-error').classList.add('hidden')">
+                                <p id="ct-title-error" class="hidden mt-1.5 text-xs text-red-300" role="alert">Dê um nome à missão para continuar.</p>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div><label for="ct-day" class="${labelClass}">Dia</label><select id="ct-day" class="${fieldClass}">${daysOfWeek.map(d => `<option value="${d.id}" ${d.id === state.activeTab ? 'selected' : ''}>${d.label}</option>`).join('')}<option value="next_week">Próxima semana</option></select></div>
+                                <div><label for="ct-category" class="${labelClass}">Categoria</label><select id="ct-category" class="${fieldClass}">${window.getTaskCategories().map(cat => `<option value="${window.escapeHtml(cat.id)}">${window.escapeHtml(cat.label)}</option>`).join('')}</select><button type="button" onclick="window.toggleCategoryModal()" class="mt-1.5 text-xs text-slate-400 underline decoration-slate-600 underline-offset-2 hover:text-slate-200">Gerenciar categorias</button></div>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                <div class="col-span-2 sm:col-span-1"><label for="ct-nature" class="${labelClass}">Tipo</label><select id="ct-nature" onchange="window.handleTaskNatureChange('ct')" class="${fieldClass}"><option value="normal" selected>Normal</option><option value="neutral">Logística</option><option value="recharge">Recarga</option></select></div>
+                                <div><label for="ct-priority" class="${labelClass}">Prioridade</label><select id="ct-priority" onchange="window.updatePreviewCalc()" class="${fieldClass}"><option value="essencial">Essencial</option><option value="alta">Alta</option><option value="media" selected>Média</option><option value="baixa">Baixa</option></select></div>
+                                <div><label for="ct-time" class="${labelClass}">Duração <span class="text-xs font-normal text-slate-400">(min)</span></label><input id="ct-time" type="number" value="30" min="5" max="240" step="5" oninput="window.updatePreviewCalc()" class="${fieldClass}"></div>
+                            </div>
+                            <input type="hidden" id="ct-impact-type" value="drain">
+                            <p id="ct-nature-summary" class="text-xs leading-relaxed text-slate-400">Trabalho, estudo ou treino: rende XP e moedas e consome energia.</p>
+                            <div class="divide-y divide-slate-800 border-t border-slate-800">
+                                <details data-create-section="subtasks">
+                                    <summary class="${summaryClass}"><span>Adicionar subtarefas</span><i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i></summary>
+                                    <div class="pb-3"><label for="ct-subtasks" class="text-xs text-slate-400">Uma subtarefa por linha</label><textarea id="ct-subtasks" rows="3" placeholder="Separar documentos&#10;Revisar o texto&#10;Enviar para aprovação" class="${fieldClass} resize-y"></textarea></div>
+                                </details>
+                                <details data-create-section="schedule" ${calendarInboxSource ? 'open' : ''}>
+                                    <summary class="${summaryClass}"><span>Definir horário</span><i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i></summary>
+                                    <div class="grid grid-cols-2 gap-3 pb-3"><div><label for="ct-start-time" class="${labelClass}">Início</label><input id="ct-start-time" type="time" class="${fieldClass}"></div><div><label for="ct-end-time" class="${labelClass}">Fim</label><input id="ct-end-time" type="time" class="${fieldClass}"></div><p class="col-span-2 text-xs leading-relaxed text-slate-400">Use quando a missão tiver horário marcado.</p></div>
+                                </details>
+                                <details data-create-section="recurrence" ${calendarInboxSource ? 'class="hidden"' : ''}>
+                                    <summary class="${summaryClass}"><span>Repetir durante a semana</span><i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i></summary>
+                                    <div class="pb-3 space-y-3"><div class="grid grid-cols-2 sm:grid-cols-4 gap-2">${daysOfWeek.map(d => `<label for="ct-repeat-${d.id}" class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 px-2 text-xs text-slate-300 hover:border-indigo-400"><input id="ct-repeat-${d.id}" type="checkbox" class="accent-indigo-500">${d.label}</label>`).join('')}</div><div class="flex gap-3"><button type="button" onclick="window.setCreateTaskRecurrence('all')" class="text-xs text-indigo-300 hover:text-indigo-200">Todos os dias</button><button type="button" onclick="window.setCreateTaskRecurrence('clear')" class="text-xs text-slate-400 hover:text-slate-200">Limpar seleção</button></div></div>
+                                </details>
+                                <details data-create-section="effort" id="ct-effort-panel">
+                                    <summary class="${summaryClass}"><span>Ajustar dificuldade</span><i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i></summary>
+                                    <div class="pb-3"><label for="ct-complexity" class="${labelClass}">Dificuldade de 1 a 5</label><input id="ct-complexity" type="number" min="1" max="5" value="2" oninput="window.updatePreviewCalc()" class="${fieldClass} max-w-24"><p class="mt-1.5 text-xs leading-relaxed text-slate-400">1 é simples; 5 exige muito esforço. O padrão é 2.</p></div>
+                                </details>
+                            </div>
+                        </div>
+                        <footer class="shrink-0 border-t border-slate-700 bg-slate-900 px-5 py-3">
+                            <div class="mb-3 flex flex-wrap items-center gap-2 text-xs"><span class="mr-auto text-slate-400">Impacto estimado</span><span id="ct-xp-preview" class="rounded bg-indigo-950 px-2 py-1 text-indigo-200">+0 XP</span><span id="ct-hp-preview" class="rounded bg-red-950 px-2 py-1 text-red-200">−0 HP</span></div>
+                            <div class="flex justify-end gap-2"><button type="button" onclick="window.toggleCreateTaskModal()" class="min-h-10 rounded-lg px-4 text-sm font-medium text-slate-300 hover:bg-slate-800">Cancelar</button><button type="submit" class="min-h-10 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-300">Criar missão</button></div>
+                        </footer>
+                    </form>
+                </div>
+            </div>`;
+        };
+
+        window.bindCreateTaskDialog = function(root) {
+            const dialog = root.querySelector('#create-task-dialog');
+            if (!dialog || uiState.showCategoryModal || uiState.alert.show || uiState.confirm.show) return;
+            if (!dialog.contains(document.activeElement)) dialog.querySelector('#ct-text')?.focus({ preventScroll: true });
+            dialog.addEventListener('keydown', event => {
+                if (event.key === 'Escape') {
+                    event.preventDefault(); event.stopPropagation(); window.toggleCreateTaskModal(); return;
+                }
+                if (event.key !== 'Tab') return;
+                const controls = [...dialog.querySelectorAll('button, input, select, textarea, summary, [tabindex="0"]')].filter(el => !el.disabled && el.getClientRects().length);
+                const first = controls[0], last = controls[controls.length - 1];
+                if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+                else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+            });
+        };
+
         window.closeMissionMenus = function(except = null, restoreFocus = false) {
             document.querySelectorAll('details[data-mission-menu][open]').forEach(menu => {
                 if (menu === except) return;
@@ -5131,6 +5226,13 @@
         // ==========================================
         function render() {
             const appDiv = document.getElementById('app');
+            const previousCreateDialog = appDiv.querySelector('#create-task-dialog');
+            if (uiState.showCreateTaskModal && previousCreateDialog) {
+                uiState.createTaskDraft = {
+                    fields: [...previousCreateDialog.querySelectorAll('input[id], select[id], textarea[id]')].map(el => ({ id: el.id, value: el.value, checked: el.checked })),
+                    sections: [...previousCreateDialog.querySelectorAll('details[data-create-section]')].map(el => ({ key: el.dataset.createSection, open: el.open }))
+                };
+            }
             // Preservar a expansão escolhida pelo usuário antes de reconstruir a lista.
             appDiv.querySelectorAll('details[data-subtasks-task-id]').forEach(details => {
                 uiState.expandedSubtasks[details.dataset.subtasksTaskId] = details.open;
@@ -5368,7 +5470,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.27</span></div>
+                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.28</span></div>
                             <div class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">Quartel operacional</div>
                         </div>
                     </div>
@@ -5768,112 +5870,7 @@
                 const calendarInboxSource = uiState.calendarInboxEventId
                     ? calendarSync.getInbox({ includeHandled: true }).find(item => item.id === uiState.calendarInboxEventId)
                     : null;
-                html += `
-                <div class="fixed inset-0 bg-black/80 flex items-center justify-center p-3 sm:p-4 z-50 backdrop-blur-sm font-mono">
-                    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full shadow-2xl modal-enter overflow-hidden max-h-[92vh] flex flex-col">
-                        <div class="bg-slate-950/70 border-b border-slate-800 p-4 sm:p-5 flex items-start justify-between gap-4">
-                            <div>
-                                <h2 class="text-xl font-black text-emerald-400 flex items-center gap-2"><i data-lucide="plus-circle"></i> Criar Missão</h2>
-                                <p class="text-[11px] text-slate-500 mt-1">${calendarInboxSource ? 'Classifique o compromisso antes de transformá-lo em missão.' : 'Dê um nome claro e selecione o tipo de missão.'}</p>
-                            </div>
-                            <button onclick="window.toggleCreateTaskModal()" class="text-slate-500 hover:text-white bg-slate-900 border border-slate-800 rounded-full p-1.5"><i data-lucide="x"></i></button>
-                        </div>
-                        <div class="p-4 sm:p-5 overflow-y-auto space-y-4">
-                            ${calendarInboxSource ? `<div class="rounded-2xl border border-sky-800/60 bg-sky-950/25 p-3 text-[11px] text-sky-100 leading-relaxed"><div class="font-black uppercase tracking-widest text-sky-300 flex items-center gap-2"><i data-lucide="inbox" class="w-4 h-4"></i> Vindo do Google Agenda</div><p class="mt-1 text-slate-400">Título, dia e horário permanecem ligados ao evento original. Categoria, prioridade, tipo, XP e carga ficam sob seu controle no Missão Tática. Esta conversão cria uma única missão, sem recorrência e sem duplicar o evento no Google.</p></div>` : ''}
-                            <section class="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 space-y-3">
-                                <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-300"><span class="bg-emerald-950/50 border border-emerald-800/60 rounded-full w-6 h-6 flex items-center justify-center">1</span> Identidade</div>
-                                <div>
-                                    <label class="text-xs font-bold text-slate-400 uppercase">Título</label>
-                                    <input type="text" id="ct-text" placeholder="Ex.: Reunião com cliente" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white focus:border-emerald-500 outline-none">
-                                    <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px] leading-relaxed">
-                                        <div class="bg-indigo-950/20 border border-indigo-900/40 rounded-lg p-2 text-slate-400"><strong class="text-indigo-300 uppercase tracking-widest block mb-0.5">Normal</strong> estudar, trabalhar, treinar, organizar</div>
-                                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-400"><strong class="text-slate-300 uppercase tracking-widest block mb-0.5">Logística</strong> deslocamento, consulta, compromisso</div>
-                                        <div class="bg-emerald-950/20 border border-emerald-900/40 rounded-lg p-2 text-slate-400"><strong class="text-emerald-300 uppercase tracking-widest block mb-0.5">Recarga</strong> pausa, descanso, oração, caminhada leve</div>
-                                    </div>
-                                </div>
-                                <details class="group bg-slate-900/50 border border-slate-800 rounded-xl">
-                                    <summary class="cursor-pointer select-none px-3 py-2.5 text-xs font-bold text-slate-300 flex items-center justify-between">Subtarefas iniciais <span class="text-[10px] text-slate-600 font-black uppercase tracking-widest">opcional</span></summary>
-                                    <div class="px-3 pb-3">
-                                        <textarea id="ct-subtasks" rows="3" placeholder="Uma por linha:&#10;Separar documentos&#10;Enviar mensagem&#10;Revisar antes de finalizar" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-cyan-500 outline-none resize-y"></textarea>
-                                    </div>
-                                </details>
-                            </section>
-
-                            <section class="bg-cyan-950/10 border border-cyan-900/40 rounded-2xl p-4 space-y-3">
-                                <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-cyan-300"><span class="bg-cyan-950/50 border border-cyan-800/60 rounded-full w-6 h-6 flex items-center justify-center">2</span> Tipo de missão</div>
-                                <input type="hidden" id="ct-impact-type" value="drain">
-                                <div>
-                                    <label class="text-xs font-bold text-slate-400 uppercase">Selecione o tipo</label>
-                                    <select id="ct-nature" onchange="window.handleTaskNatureChange('ct')" class="w-full mt-1 bg-slate-950 border border-cyan-800/60 rounded-xl p-3 text-sm text-white outline-none focus:border-cyan-400">
-                                        <option value="normal" selected>Normal — XP, moedas, combo e HP</option>
-                                        <option value="neutral">Logística — agenda sem XP, moedas, combo ou HP</option>
-                                        <option value="recharge">Recarga — recupera HP sem XP, moedas ou combo</option>
-                                    </select>
-                                </div>
-                                <div id="ct-nature-summary" class="rounded-xl border border-indigo-900/50 bg-indigo-950/20 p-3 text-[11px] leading-relaxed text-indigo-100">
-                                    <div class="flex items-start gap-3"><i data-lucide="swords" class="w-4 h-4 mt-0.5 shrink-0"></i><div class="min-w-0"><div class="flex flex-wrap items-center gap-2 mb-1"><strong class="text-xs uppercase tracking-widest">Missão normal</strong><span class="rounded-full bg-black/25 border border-white/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest">+XP · +MT · combo · drena HP</span></div><span class="text-slate-400">Trabalho, estudo ativo, treino, organização doméstica ou tarefa que exige esforço real. Modelo HP v1.7.9: prioridade maior drena mais HP.</span></div></div>
-                                </div>
-                            </section>
-
-                            <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <div class="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 space-y-3">
-                                    <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-300"><span class="bg-slate-900 border border-slate-700 rounded-full w-6 h-6 flex items-center justify-center">3</span> Dia e categoria</div>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        <div><label class="text-xs font-bold text-slate-400 uppercase">Dia</label><select id="ct-day" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none">${daysOfWeek.map(d => `<option value="${d.id}" ${d.id === state.activeTab ? 'selected' : ''}>${d.label}</option>`).join('')}<option value="next_week">Próxima Semana</option></select></div>
-                                        <div><label class="text-xs font-bold text-slate-400 uppercase">Categoria</label><select id="ct-category" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none">${window.getTaskCategories().map(cat => `<option value="${cat.id}">${cat.label}</option>`).join('')}</select></div>
-                                    </div>
-                                    <button type="button" onclick="window.toggleCategoryModal()" class="text-[10px] text-cyan-400 hover:text-cyan-300 font-bold uppercase tracking-widest flex items-center gap-1"><i data-lucide="tags" class="w-3 h-3"></i> Gerenciar categorias</button>
-                                </div>
-
-                                <div class="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 space-y-3" id="ct-effort-panel">
-                                    <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-300"><span class="bg-slate-900 border border-slate-700 rounded-full w-6 h-6 flex items-center justify-center">4</span> Esforço e duração</div>
-                                    <div class="grid grid-cols-3 gap-2">
-                                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Prioridade</label><select id="ct-priority" onchange="window.updatePreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-sm text-white outline-none"><option value="essencial">Essencial</option><option value="alta">Alta</option><option value="media" selected>Média</option><option value="baixa">Baixa</option></select></div>
-                                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Dif.</label><input type="number" id="ct-complexity" min="1" max="5" value="2" oninput="window.updatePreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-sm text-white outline-none"></div>
-                                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Min.</label><input type="number" id="ct-time" value="30" step="15" oninput="window.updatePreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-sm text-white outline-none"></div>
-                                    </div>
-                                    <p id="ct-effort-note" class="text-[10px] text-slate-500 leading-relaxed">Na missão normal, prioridade, dificuldade e tempo calculam XP, moedas e custo de HP.</p>
-                                </div>
-                            </section>
-
-                            <details class="group bg-slate-950/50 border border-violet-900/40 rounded-2xl p-4">
-                                <summary class="cursor-pointer select-none flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-widest text-violet-300">
-                                    <span class="flex items-center gap-2"><i data-lucide="repeat" class="w-4 h-4"></i> Recorrência semanal</span>
-                                    <span class="text-slate-600">opcional</span>
-                                </summary>
-                                <div class="mt-3 space-y-3">
-                                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                        ${daysOfWeek.map(d => `<label class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg px-2 py-2 text-xs text-slate-300 hover:border-violet-700 cursor-pointer"><input id="ct-repeat-${d.id}" type="checkbox" class="accent-violet-500"> ${d.label}</label>`).join('')}
-                                    </div>
-                                    <div class="flex flex-wrap gap-2">
-                                        <button type="button" onclick="window.setCreateTaskRecurrence('all')" class="text-[10px] bg-violet-900/40 hover:bg-violet-800 text-violet-200 border border-violet-700/50 px-2 py-1 rounded font-bold uppercase">Todos os dias</button>
-                                        <button type="button" onclick="window.setCreateTaskRecurrence('clear')" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 px-2 py-1 rounded font-bold uppercase">Limpar recorrência</button>
-                                    </div>
-                                </div>
-                            </details>
-
-                            <section class="bg-slate-950/50 border border-cyan-900/40 rounded-2xl p-4 space-y-3">
-                                <div class="flex items-center justify-between gap-3">
-                                    <label class="text-[10px] font-black text-cyan-300 uppercase tracking-widest flex items-center gap-2"><i data-lucide="calendar-clock" class="w-4 h-4"></i> Horário / Google Calendar</label>
-                                    <span class="text-[10px] text-slate-600 font-black uppercase tracking-widest">opcional</span>
-                                </div>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Início</label><input type="time" id="ct-start-time" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-white outline-none"></div>
-                                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Fim</label><input type="time" id="ct-end-time" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-white outline-none"></div>
-                                </div>
-                            </section>
-
-                            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div>
-                                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Impacto projetado</span>
-                                    <p class="text-[11px] text-slate-600 mt-1">O preview muda conforme o tipo de missão.</p>
-                                </div>
-                                <div class="flex gap-2"><span id="ct-xp-preview" class="bg-indigo-900/50 text-indigo-400 px-3 py-1 rounded-md text-xs font-bold">+0 XP</span><span id="ct-hp-preview" class="bg-red-900/50 text-red-400 px-3 py-1 rounded-md text-xs font-bold">-0 HP</span></div>
-                            </div>
-                            <button onclick="window.saveNewTask()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-widest py-3 rounded-xl transition-colors flex items-center justify-center gap-2"><i data-lucide="plus-circle" class="w-4 h-4"></i> Alistar Missão</button>
-                        </div>
-                    </div>
-                </div>`;
+                html += window.renderCreateTaskModal(calendarInboxSource);
                 setTimeout(() => { window.updateTaskNatureButtons('ct'); window.updatePreviewCalc(); }, 0);
             }
 
@@ -6095,8 +6092,19 @@
             </div>`;
 
             appDiv.innerHTML = html;
+            if (uiState.showCreateTaskModal && uiState.createTaskDraft) {
+                uiState.createTaskDraft.fields.forEach(field => {
+                    const el = document.getElementById(field.id);
+                    if (el) { el.value = field.value; if (el.type === 'checkbox') el.checked = field.checked; }
+                });
+                appDiv.querySelectorAll('#create-task-dialog details[data-create-section]').forEach(el => {
+                    const saved = uiState.createTaskDraft.sections.find(section => section.key === el.dataset.createSection);
+                    if (saved) el.open = saved.open;
+                });
+            }
             lucide.createIcons();
             if (typeof window.bindTaskNatureControls === 'function') window.bindTaskNatureControls(appDiv);
+            window.bindCreateTaskDialog(appDiv);
             
             // Render specific components that require external DOM access safely
             if(!clockInterval && currentUser) startClock();
