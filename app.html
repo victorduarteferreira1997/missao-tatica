@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.20-subtle-subtask-controls">
+    <meta name="app-build" content="v1.9.21-continuous-subtask-entry">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -319,6 +319,7 @@
             showPanic: false, breathingStep: 0, breathingInterval: null,
             showLevelUp: false, showStatsModal: false, statsTab: 'roadmap',
             showCreateTaskModal: false,
+            expandedSubtasks: {},
             calendarInboxEventId: null,
             showEditTaskModal: false, editingTaskId: null,
             showProfileModal: false,
@@ -2259,7 +2260,9 @@
             if (!Array.isArray(task.subtasks)) task.subtasks = [];
             task.subtasks.push({ id: Date.now() + Math.random(), text, completed: false, createdAt: new Date().toISOString() });
             if (input) input.value = '';
+            uiState.expandedSubtasks[String(taskId)] = true;
             window.saveState();
+            document.getElementById(`subtask-input-${taskId}`)?.focus({ preventScroll: true });
         };
 
         window.toggleSubtask = function(taskId, subtaskId, event) {
@@ -5006,7 +5009,7 @@
                             </div>
 
                             ${subtasks.length ? `
-                            <details onclick="event.stopPropagation()" class="mt-1 group/subtasks">
+                            <details data-subtasks-task-id="${task.id}" ${uiState.expandedSubtasks[String(task.id)] ? 'open' : ''} onclick="event.stopPropagation()" class="mt-1 group/subtasks">
                                 <summary class="cursor-pointer list-none inline-flex min-h-[44px] sm:min-h-8 items-center gap-1.5 rounded px-1 text-[11px] font-medium text-slate-400 hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400">
                                     <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform group-open/subtasks:rotate-180"></i>
                                     <span>Subtarefas</span>
@@ -5054,6 +5057,10 @@
         // ==========================================
         function render() {
             const appDiv = document.getElementById('app');
+            // Preservar a expansão escolhida pelo usuário antes de reconstruir a lista.
+            appDiv.querySelectorAll('details[data-subtasks-task-id]').forEach(details => {
+                uiState.expandedSubtasks[details.dataset.subtasksTaskId] = details.open;
+            });
             const dailyTasks = window.sortTasksForDay(state.activeTab);
             let filteredTasks = dailyTasks;
             if (state.currentFilter && state.currentFilter !== 'all') filteredTasks = dailyTasks.filter(t => t.category === state.currentFilter);
@@ -5287,7 +5294,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.20</span></div>
+                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.21</span></div>
                             <div class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">Quartel operacional</div>
                         </div>
                     </div>
