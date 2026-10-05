@@ -3,14 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Prévia — Layout Simplification</title>
+  <title>Prévia — Missão Tática</title>
 </head>
 <body style="margin:0;background:#020617;color:#cbd5e1;font-family:system-ui;padding:24px">
-  <div id="status">Carregando prévia da branch de layout...</div>
+  <div id="status" role="status">Carregando prévia v1.9.34...</div>
   <script>
-    fetch('https://raw.githubusercontent.com/victorduarteferreira1997/missao-tatica/codex/layout-simplification/app.html?ts=' + Date.now())
+    const params = new URLSearchParams(location.search);
+    const requestedCommit = params.get('build');
+    const commit = requestedCommit && /^[a-f0-9]{40}$/.test(requestedCommit)
+      ? requestedCommit
+      : 'f0f1db53b6fa5cd6939c35afa22a5ecb09483cdf';
+    const requestedVersion = params.get('v');
+    const version = requestedVersion && /^v\d+\.\d+\.\d+$/.test(requestedVersion)
+      ? requestedVersion
+      : 'v1.9.34';
+    document.getElementById('status').textContent = 'Carregando prévia ' + version + '...';
+    fetch('https://raw.githubusercontent.com/victorduarteferreira1997/missao-tatica/' + commit + '/app.html', { cache: 'no-store' })
       .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
-      .then(html => { document.open(); document.write(html); document.close(); })
+      .then(html => {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const actualBuild = doc.querySelector('meta[name="app-build"]')?.content || '';
+        if (!actualBuild.startsWith(version + '-')) throw new Error('Versão recebida: ' + actualBuild + '. Esperada: ' + version);
+        document.open(); document.write(html); document.close();
+      })
       .catch(err => { document.getElementById('status').textContent = 'Não foi possível carregar a prévia: ' + err.message; });
   </script>
 </body>
