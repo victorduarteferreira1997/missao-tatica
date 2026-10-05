@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.15-compact-create-button">
+    <meta name="app-build" content="v1.9.16-unified-toolbar">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -5279,7 +5279,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.15</span></div>
+                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.16</span></div>
                             <div class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">Quartel operacional</div>
                         </div>
                     </div>
@@ -5296,27 +5296,22 @@
                     </div>
                 </div>
 
-                <div class="flex flex-col sm:flex-row items-start gap-2 mt-2">
-                    <button onclick="window.toggleCreateTaskModal()" class="shrink-0 inline-flex items-center gap-2 bg-indigo-600/90 hover:bg-indigo-500 text-white rounded-lg px-3 py-2.5 border border-indigo-400/20 transition-colors text-xs font-bold">
+                <div class="flex flex-wrap items-center gap-2 mt-3">
+                    <button onclick="window.toggleCreateTaskModal()" class="sm:mr-auto shrink-0 inline-flex h-10 items-center gap-2 bg-indigo-600/90 hover:bg-indigo-500 text-white rounded-lg px-3 border border-indigo-400/20 transition-colors text-xs font-bold">
                         <i data-lucide="plus" class="w-4 h-4"></i><span>Nova missão</span>
                     </button>
 
-                    <div class="w-full min-w-0 sm:flex-1 bg-slate-950/55 border border-slate-800 rounded-xl p-2">
-                        <div class="text-[9px] text-slate-600 uppercase tracking-[0.18em] font-black mb-1.5 px-1">Ferramentas</div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <button onclick="window.toggleStudyModal()" class="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3 py-2.5 rounded-lg text-[11px] sm:text-xs font-bold transition-colors"><i data-lucide="brain-circuit" class="w-4 h-4 text-cyan-400 shrink-0"></i><span>Inteligência</span></button>
-                            <button onclick="window.toggleFinanceModal()" class="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3 py-2.5 rounded-lg text-[11px] sm:text-xs font-bold transition-colors"><i data-lucide="wallet" class="w-4 h-4 text-amber-400 shrink-0"></i><span>Finanças</span></button>
-                            <details class="col-span-2 rounded-lg border border-slate-800 bg-slate-950/60 overflow-hidden">
-                                <summary class="cursor-pointer list-none flex items-center justify-between gap-2 px-3 py-2 text-[10px] font-bold text-slate-500 hover:text-slate-200 hover:bg-slate-900/70"><span class="inline-flex items-center gap-2"><i data-lucide="layers-3" class="w-3.5 h-3.5"></i>Mais recursos</span><i data-lucide="chevron-down" class="w-3.5 h-3.5"></i></summary>
-                                <div class="grid grid-cols-2 gap-1 border-t border-slate-800 p-1.5">
+                            <button onclick="window.toggleStudyModal()" class="inline-flex h-10 items-center justify-center gap-2 bg-slate-950/40 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3 rounded-lg text-[11px] sm:text-xs font-bold transition-colors"><i data-lucide="brain-circuit" class="w-4 h-4 text-cyan-400 shrink-0"></i><span>Inteligência</span></button>
+                            <button onclick="window.toggleFinanceModal()" class="inline-flex h-10 items-center justify-center gap-2 bg-slate-950/40 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3 rounded-lg text-[11px] sm:text-xs font-bold transition-colors"><i data-lucide="wallet" class="w-4 h-4 text-amber-400 shrink-0"></i><span>Finanças</span></button>
+                            <details class="group">
+                                <summary class="cursor-pointer list-none flex h-10 items-center justify-between gap-2 px-3 rounded-lg border border-slate-800 bg-slate-950/40 text-[11px] sm:text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800"><span class="inline-flex items-center gap-2"><i data-lucide="layers-3" class="w-4 h-4 text-slate-400"></i>Mais recursos</span><i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform group-open:rotate-180"></i></summary>
+                                <div class="absolute top-full left-3 right-3 sm:left-auto sm:right-4 mt-2 z-50 sm:w-64 grid grid-cols-2 gap-1 rounded-xl border border-slate-700 bg-slate-900 p-2 shadow-xl shadow-black/40">
                                     <button onclick="window.toggleRitualModal()" class="rounded-md px-2 py-2 text-left text-[10px] font-bold text-emerald-300 hover:bg-emerald-950/30"><i data-lucide="clipboard-check" class="inline w-3.5 h-3.5 mr-1.5"></i>Rituais</button>
                                     <button onclick="window.toggleRechargeModal()" class="rounded-md px-2 py-2 text-left text-[10px] font-bold text-emerald-300 hover:bg-emerald-950/30"><i data-lucide="battery-charging" class="inline w-3.5 h-3.5 mr-1.5"></i>Recarga</button>
                                     <button onclick="window.toggleHealthModal()" class="rounded-md px-2 py-2 text-left text-[10px] font-bold text-rose-300 hover:bg-rose-950/30"><i data-lucide="activity" class="inline w-3.5 h-3.5 mr-1.5"></i>Corpo</button>
                                     <button onclick="window.toggleStatsModal()" class="rounded-md px-2 py-2 text-left text-[10px] font-bold text-yellow-300 hover:bg-yellow-950/30"><i data-lucide="building-2" class="inline w-3.5 h-3.5 mr-1.5"></i>Q.G.</button>
                                 </div>
                             </details>
-                        </div>
-                    </div>
                 </div>
             </div>`;
 
