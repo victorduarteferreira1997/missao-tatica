@@ -67,4 +67,22 @@ assert.ok(focusPanel.indexOf('onclick="window.closeTaskFocus()"') >= 0
     && focusPanel.indexOf('onclick="window.closeTaskFocus()"') < focusPanel.indexOf('if (allPending.length > 0)'),
     'O retorno deve aparecer mesmo quando não houver missões pendentes.');
 
-console.log(`Integridade da interface: módulo, ${uniqueHandlers.length} handlers e saída do Pomodoro conferidos.`);
+const boardStart = app.indexOf('window.renderDailyMissionBoard = function(');
+const boardEnd = app.indexOf('window.renderQuickCapturePanel = function(', boardStart);
+const boardWindow = {
+    getTaskCategory: () => ({ label: 'Trabalho', icon: 'briefcase' }),
+    getRecurringDaysLabel: () => '',
+    hasCalendarTime: () => false,
+    getTaskNature: () => 'normal',
+    getTaskNatureMeta: () => ({}),
+    escapeHtml: value => String(value)
+};
+runInNewContext(app.slice(boardStart, boardEnd), { window: boardWindow, daysOfWeek: [] });
+const board = boardWindow.renderDailyMissionBoard([
+    { id: 123.45, text: 'Missão de teste', priority: 'media', subtasks: [{ id: 1, text: 'Etapa' }] }
+]);
+const completionControls = [...board.matchAll(/<([a-z]+)\b[^>]*onclick="window\.toggleTask\(/g)];
+assert.equal(completionControls.length, 1, 'Cada missão deve ter um único controle explícito para concluir.');
+assert.equal(completionControls[0][1], 'button', 'A linha e o texto da missão não devem concluir por clique.');
+
+console.log(`Integridade da interface: módulo, ${uniqueHandlers.length} handlers, saída do Pomodoro e conclusão explícita conferidos.`);
