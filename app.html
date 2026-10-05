@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.29-create-mission-spacing">
+    <meta name="app-build" content="v1.9.30-compact-top">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -3520,21 +3520,20 @@
                     const time = now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
                     const date = now.toLocaleDateString('pt-BR', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'});
                     const hour = now.getHours();
-                    let greeting = "Boa noite", contextMsg = "Feche ciclos e reduza carga.";
-                    if(hour >= 0 && hour < 5) { greeting = "Boa madrugada"; contextMsg = "Modo vigília. Priorize descanso se possível."; }
-                    else if(hour >= 5 && hour < 12) { greeting = "Bom dia"; contextMsg = "Inicie com uma missão essencial."; }
-                    else if(hour >= 12 && hour < 18) { greeting = "Boa tarde"; contextMsg = "Mantenha cadência."; }
+                    let greeting = "Boa noite";
+                    if(hour >= 0 && hour < 5) greeting = "Boa madrugada";
+                    else if(hour >= 5 && hour < 12) greeting = "Bom dia";
+                    else if(hour >= 12 && hour < 18) greeting = "Boa tarde";
                     
                     el.innerHTML = `
                         <div class="flex items-center gap-3">
-                            <i data-lucide="clock" class="w-8 h-8 text-indigo-500 opacity-80"></i>
                             <div>
-                                <div class="text-2xl font-black text-white leading-none tabular-nums tracking-wider">${time}</div>
-                                <div class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mt-1">${date}</div>
+                                <div class="text-xl font-semibold text-white leading-none tabular-nums">${time}</div>
+                                <div class="text-xs text-slate-400 mt-1">${date}</div>
                             </div>
                         </div>
-                        <div class="text-xs text-indigo-300 mt-3 border-t border-slate-800 pt-2 font-medium">
-                            <strong class="text-white">${greeting}, ${window.escapeHtml(window.getUserDisplayName())}.</strong> <span class="text-slate-500">${contextMsg}</span>
+                        <div class="text-xs text-slate-300 mt-2">
+                            ${greeting}, ${window.escapeHtml(window.getUserDisplayName())}.
                         </div>
                     `;
                     // Refresh icon only if needed, but since it's static we can skip re-creating lucide inside setInterval usually.
@@ -5462,16 +5461,15 @@
 
             // TOP BAR & HUD
             html += `
-            <div class="bg-slate-900 border border-slate-800 p-3 sm:p-4 rounded-2xl mb-4 sticky top-2 z-40 shadow-lg font-mono">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+            <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl mb-3 sticky top-2 z-40 shadow-lg font-sans">
+                <div class="flex flex-wrap items-center justify-between gap-2">
                     <div class="flex items-center gap-3">
                         <div class="bg-indigo-600 p-2 rounded-lg relative shrink-0 shadow-lg shadow-indigo-950/30">
                             <i data-lucide="shield" class="w-5 h-5 text-white"></i>
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.29</span></div>
-                            <div class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">Quartel operacional</div>
+                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.30</span></div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-2">
@@ -5487,7 +5485,7 @@
                     </div>
                 </div>
 
-                <div class="flex flex-wrap items-center gap-2 mt-3">
+                <div class="flex flex-wrap items-center gap-2 mt-2">
                     <button onclick="window.toggleCreateTaskModal()" class="sm:mr-auto shrink-0 inline-flex h-10 items-center gap-2 bg-indigo-600/90 hover:bg-indigo-500 text-white rounded-lg px-3 border border-indigo-400/20 transition-colors text-xs font-bold">
                         <i data-lucide="plus" class="w-4 h-4"></i><span>Nova missão</span>
                     </button>
@@ -5508,16 +5506,16 @@
 
             // HUD PRINCIPAL SIMPLIFICADO — tempo, bateria e progresso discreto
             html += `
-            <div class="grid grid-cols-1 md:grid-cols-[0.8fr_1.7fr] gap-3 mb-4 font-mono">
-                <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col justify-center min-h-[88px]" id="time-operational-widget">
+            <div class="grid grid-cols-1 md:grid-cols-[0.9fr_1.4fr] gap-3 mb-3 font-sans">
+                <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col justify-center" id="time-operational-widget">
                     <div class="text-xs text-slate-500 animate-pulse">Iniciando sistemas de tempo...</div>
                 </div>
 
-                <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
+                <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center justify-between gap-3 mb-2">
-                                <span class="${state.energy < 20 ? 'text-red-400' : (state.energy <= 50 ? 'text-amber-300' : 'text-slate-300')} text-[10px] font-black uppercase tracking-[0.18em] flex items-center gap-1.5">
+                                <span class="${state.energy < 20 ? 'text-red-400' : (state.energy <= 50 ? 'text-amber-300' : 'text-slate-300')} text-xs font-medium flex items-center gap-1.5">
                                     <i data-lucide="battery" class="w-3.5 h-3.5"></i>Bateria executiva
                                 </span>
                                 <span class="text-sm font-black text-white">${state.energy}%</span>
@@ -5525,7 +5523,7 @@
                             <div class="w-full bg-slate-800 rounded-full h-2">
                                 <div class="h-2 rounded-full transition-all ${state.energy > 50 ? 'bg-emerald-500' : (state.energy > 20 ? 'bg-amber-500' : 'bg-red-500')}" style="width: ${state.energy}%"></div>
                             </div>
-                            <div class="mt-2 text-[10px] text-slate-600 flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <div class="mt-2 text-xs text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1">
                                 <span>Nível ${state.level}</span>
                                 <span>•</span>
                                 <span>${state.xp} / ${window.getXpForCurrentLevel()} XP</span>
@@ -5556,10 +5554,10 @@
                     ? { icon: 'radar', title: 'Situação Operacional', description: 'Demandas persistentes, follow-ups e prazos.', color: 'text-sky-300' }
                     : { icon: 'layout-list', title: 'Rotina do Dia', description: 'Seu cockpit de execução: missões primeiro, apoios depois.', color: 'text-indigo-300' };
 
-            html += `<div class="mb-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-2.5 sm:p-3 font-mono flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            html += `<div class="mb-3 rounded-xl border border-slate-800 bg-slate-900/70 p-2 font-sans flex flex-wrap items-center justify-between gap-2">
                 <div class="flex items-center gap-2 min-w-0 px-1">
                     <i data-lucide="${compactViewMeta.icon}" class="w-4 h-4 ${compactViewMeta.color} shrink-0"></i>
-                    <div class="min-w-0"><div class="text-xs font-black text-white uppercase tracking-widest">${compactViewMeta.title}</div><div class="text-[10px] text-slate-500 truncate">${compactViewMeta.description}</div></div>
+                    <div class="text-sm font-semibold text-slate-200">${compactViewMeta.title}</div>
                 </div>
                 <div class="grid grid-cols-3 gap-1 bg-slate-950 rounded-xl p-1 shrink-0">
                     <button onclick="window.setMainView('day')" class="rounded-lg px-2.5 py-2 text-[10px] font-black ${uiState.mainView === 'day' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-white hover:bg-slate-800'}"><i data-lucide="layout-list" class="w-3.5 h-3.5 inline mr-1"></i>Hoje</button>
@@ -5590,7 +5588,6 @@
                     <div class="min-w-0">
                         <div class="flex flex-wrap items-baseline gap-2"><h2 class="text-lg font-black text-white">Missões de ${selectedDayLabel}</h2><span class="text-[10px] text-slate-600">${pendingDailyCount} pend. • ${completedDailyCount} concluída(s)</span></div>
                     </div>
-                    <button onclick="window.toggleCreateTaskModal()" class="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-[10px] font-bold"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Nova missão</button>
                 </div>
             </section>`;
 
