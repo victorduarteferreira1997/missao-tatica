@@ -77,12 +77,42 @@ const boardWindow = {
     getTaskNatureMeta: () => ({}),
     escapeHtml: value => String(value)
 };
-runInNewContext(app.slice(boardStart, boardEnd), { window: boardWindow, daysOfWeek: [] });
+const boardUi = { expandedSubtasks: {} };
+runInNewContext(app.slice(boardStart, boardEnd), { window: boardWindow, daysOfWeek: [], uiState: boardUi });
 const board = boardWindow.renderDailyMissionBoard([
     { id: 123.45, text: 'Missão de teste', priority: 'media', subtasks: [{ id: 1, text: 'Etapa' }] }
 ]);
 const completionControls = [...board.matchAll(/<([a-z]+)\b[^>]*onclick="window\.toggleTask\(/g)];
 assert.equal(completionControls.length, 1, 'Cada missão deve ter um único controle explícito para concluir.');
 assert.equal(completionControls[0][1], 'button', 'A linha e o texto da missão não devem concluir por clique.');
+
+const addSubtaskStart = app.indexOf('window.addSubtask = function(');
+const addSubtaskEnd = app.indexOf('window.toggleSubtask = function(', addSubtaskStart);
+const entryTask = { id: 123.45, text: 'Missão de teste', priority: 'media', subtasks: [] };
+let entryFocused = false;
+let entryInput = { value: 'Primeira etapa' };
+let entryBoard = '';
+const entryWindow = {
+    showAlertModal(message) { throw new Error(message); },
+    saveState() {
+        entryBoard = boardWindow.renderDailyMissionBoard([entryTask]);
+        entryInput = { value: '', focus() { entryFocused = true; } };
+    }
+};
+runInNewContext(app.slice(addSubtaskStart, addSubtaskEnd), {
+    window: entryWindow, state: { tasks: [entryTask] }, uiState: boardUi,
+    document: { getElementById: () => entryInput }
+});
+entryWindow.addSubtask(123.45);
+assert.match(entryBoard, /<details data-subtasks-task-id="123\.45" open /,
+    'A primeira subtarefa deve abrir a lista após salvar.');
+assert.equal(entryFocused, true, 'O cursor deve voltar ao campo recém-renderizado.');
+entryInput.value = 'Segunda etapa';
+entryFocused = false;
+entryWindow.addSubtask(123.45);
+assert.equal(entryTask.subtasks.length, 2);
+assert.match(entryBoard, /<details data-subtasks-task-id="123\.45" open /,
+    'Cadastros consecutivos devem manter a lista aberta.');
+assert.equal(entryFocused, true);
 
 console.log(`Integridade da interface: módulo, ${uniqueHandlers.length} handlers, saída do Pomodoro e conclusão explícita conferidos.`);
