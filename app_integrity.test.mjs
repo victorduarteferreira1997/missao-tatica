@@ -77,6 +77,37 @@ const boardWindow = {
     getTaskNatureMeta: () => ({}),
     escapeHtml: value => String(value)
 };
+const statusStart = app.indexOf('window.getMissionStatus = function(');
+const statusEnd = app.indexOf('window.showToast = function(', statusStart);
+const statusTask = { id: 123.45, completed: false, xp: 10, energyCost: 0 };
+const statusState = { tasks: [statusTask], xp: 0, combo: 0, unlockedBadges: [] };
+let statusSaves = 0;
+let rewards = 0;
+const statusWindow = {
+    getTaskNature: () => 'normal', getComboMultiplier: () => 1,
+    getTaskCoinReward: () => 2,
+    awardTacticalCoins() { rewards++; return 2; },
+    revokeTacticalCoins() {}, changeEnergy() {}, checkGameTriggers() {},
+    rollbackTaskBadges() {}, spawnFloatingText() {}, checkLevelUp() {},
+    saveState() { statusSaves++; }
+};
+runInNewContext(app.slice(statusStart, statusEnd), { window: statusWindow, state: statusState });
+boardWindow.getMissionStatus = statusWindow.getMissionStatus;
+assert.equal(statusWindow.getMissionStatus(statusTask), 'planned', 'Missões antigas continuam compatíveis.');
+statusWindow.setMissionStatus(123.45, 'in_progress');
+statusWindow.setMissionStatus(123.45, 'paused');
+assert.equal(statusWindow.getMissionStatus(statusTask), 'paused');
+assert.equal(statusState.xp, 0, 'Iniciar e pausar não devem conceder XP.');
+statusWindow.setMissionStatus(123.45, 'invalid');
+assert.equal(statusWindow.getMissionStatus(statusTask), 'paused');
+statusWindow.setMissionStatus(123.45, 'completed');
+statusWindow.setMissionStatus(123.45, 'completed');
+assert.equal(rewards, 1, 'Concluir pelo status deve premiar uma única vez.');
+assert.equal(statusState.xp, 10);
+statusWindow.setMissionStatus(123.45, 'planned');
+assert.equal(statusState.xp, 0, 'Reabrir pelo status deve reverter o XP existente.');
+assert.equal(statusTask.completed, false);
+assert.equal(statusWindow.getMissionStatus(statusTask), 'planned');
 const boardUi = { expandedSubtasks: {} };
 runInNewContext(app.slice(boardStart, boardEnd), { window: boardWindow, daysOfWeek: [], uiState: boardUi });
 const board = boardWindow.renderDailyMissionBoard([
@@ -85,6 +116,25 @@ const board = boardWindow.renderDailyMissionBoard([
 const completionControls = [...board.matchAll(/<([a-z]+)\b[^>]*onclick="window\.toggleTask\(/g)];
 assert.equal(completionControls.length, 1, 'Cada missão deve ter um único controle explícito para concluir.');
 assert.equal(completionControls[0][1], 'button', 'A linha e o texto da missão não devem concluir por clique.');
+assert.match(board, /role="progressbar"[^>]*aria-valuemax="1" aria-valuenow="0"/);
+const partialBoard = boardWindow.renderDailyMissionBoard([
+    { id: 2, text: 'Etapas', subtasks: [{ completed: true }, { completed: false }] }
+]);
+assert.match(partialBoard, /style="width:50%"/);
+const simpleBoard = boardWindow.renderDailyMissionBoard([{ id: 3, text: 'Sem etapas' }]);
+assert.equal(simpleBoard.includes('role="progressbar"'), false);
+
+const toggleSubtaskStart = app.indexOf('window.toggleSubtask = function(');
+const toggleSubtaskEnd = app.indexOf('window.deleteSubtask = function(', toggleSubtaskStart);
+statusTask.subtasks = [{ id: 1, completed: false }];
+runInNewContext(app.slice(toggleSubtaskStart, toggleSubtaskEnd), { window: statusWindow, state: statusState });
+statusWindow.toggleSubtask(123.45, 1);
+assert.equal(statusTask.workflowStatus, 'in_progress');
+assert.equal(statusTask.completed, false, 'Completar as etapas não conclui a missão automaticamente.');
+statusWindow.setMissionStatus(123.45, 'paused');
+statusWindow.toggleSubtask(123.45, 1);
+statusWindow.toggleSubtask(123.45, 1);
+assert.equal(statusWindow.getMissionStatus(statusTask), 'paused', 'Alterar etapas preserva a pausa escolhida.');
 
 const addSubtaskStart = app.indexOf('window.addSubtask = function(');
 const addSubtaskEnd = app.indexOf('window.toggleSubtask = function(', addSubtaskStart);
