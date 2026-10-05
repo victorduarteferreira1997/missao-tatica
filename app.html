@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.23-mission-progress-status">
+    <meta name="app-build" content="v1.9.24-readable-mission-status">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -4976,7 +4976,7 @@
                 baixa: { dot: 'bg-slate-600', text: 'text-slate-600' }
             };
             const statusMeta = {
-                planned: { label: 'Planejada', color: 'text-slate-500', dot: 'bg-slate-500' },
+                planned: { label: 'Planejada', color: 'text-slate-300', dot: 'bg-slate-500' },
                 in_progress: { label: 'Em andamento', color: 'text-indigo-300', dot: 'bg-indigo-400' },
                 paused: { label: 'Pausada', color: 'text-amber-300', dot: 'bg-amber-400' },
                 completed: { label: 'Concluída', color: 'text-emerald-400', dot: 'bg-emerald-400' }
@@ -4999,7 +4999,7 @@
                 const missionStatus = window.getMissionStatus(task);
                 const status = statusMeta[missionStatus];
                 const priority = priorityMeta[task.priority] || priorityMeta.media;
-                const rowState = completed ? 'opacity-50 bg-slate-950/55' : (taskNature === 'recharge' ? 'bg-emerald-950/5' : 'hover:bg-slate-900/60');
+                const rowState = completed ? 'bg-slate-950/55' : (taskNature === 'recharge' ? 'bg-emerald-950/5' : 'hover:bg-slate-900/60');
 
                 out += `
                 <div draggable="true" ondragstart="window.handleTaskDragStart(${task.id}, event)" ondragend="window.handleTaskDragEnd(event)" ondragover="window.handleTaskDragOver(${task.id}, event)" ondragleave="window.handleTaskDragLeave(event)" ondrop="window.handleTaskDrop(${task.id}, event)" class="${rowState} first:rounded-t-xl last:rounded-b-xl px-3 sm:px-4 py-3 transition-colors group">
@@ -5022,8 +5022,13 @@
 
                                     <div class="text-sm sm:text-[15px] font-bold leading-snug ${completed ? 'line-through text-slate-600' : 'text-slate-100'}">${window.escapeHtml(task.text)}</div>
 
-                                    <div class="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[9px] text-slate-600">
-                                        <span class="inline-flex items-center gap-1 ${status.color}"><span class="w-1 h-1 rounded-full ${status.dot}"></span>${status.label}</span>
+                                    <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] text-slate-400">
+                                        <label class="relative inline-flex items-center font-sans">
+                                            <select aria-label="Status da missão: ${window.escapeHtml(task.text)}" title="Alterar status da missão" onchange="window.setMissionStatus(${task.id}, this.value, event)" onclick="event.stopPropagation()" class="appearance-none min-h-[44px] sm:min-h-8 rounded-lg border border-slate-700 bg-slate-900 pl-2.5 pr-7 text-xs font-medium ${status.color} cursor-pointer hover:border-slate-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400">
+                                                ${Object.entries(statusMeta).map(([value, meta]) => `<option value="${value}" ${missionStatus === value ? 'selected' : ''}>${meta.label}</option>`).join('')}
+                                            </select>
+                                            <i data-lucide="chevron-down" class="pointer-events-none absolute right-2 w-3.5 h-3.5 text-slate-400"></i>
+                                        </label>
                                         <span class="inline-flex items-center gap-1"><i data-lucide="${taskCategory.icon || ICONS.default}" class="w-3 h-3 ${taskCategory.color || 'text-slate-600'}"></i>${window.escapeHtml(taskCategory.label)}</span>
                                         ${isRecurringTask ? `<span>↻ ${window.escapeHtml(recurrenceLabel || 'Recorrente')}</span>` : ''}
                                     </div>
@@ -5035,11 +5040,6 @@
                                         <summary class="list-none cursor-pointer rounded-lg px-2 py-1.5 text-slate-600 hover:text-white hover:bg-slate-900" title="Mais ações"><i data-lucide="ellipsis" class="w-4 h-4"></i></summary>
                                         <div class="absolute right-0 z-30 mt-2 min-w-[220px] rounded-xl border border-slate-700 bg-slate-950 p-2 shadow-2xl space-y-1">
                                             <div class="px-2 py-1 text-[9px] text-slate-600">${task.xp || 0} XP • ${(task.energyCost || 0) === 0 ? '0 HP' : ((task.energyCost || 0) < 0 ? '+' : '-') + Math.abs(task.energyCost || 0) + ' HP'}</div>
-                                            <label class="block px-2 py-1 text-[10px] text-slate-400">Status da missão
-                                                <select aria-label="Status da missão: ${window.escapeHtml(task.text)}" onchange="window.setMissionStatus(${task.id}, this.value, event)" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs text-slate-200 focus:border-indigo-400 outline-none">
-                                                    ${Object.entries(statusMeta).map(([value, meta]) => `<option value="${value}" ${missionStatus === value ? 'selected' : ''}>${meta.label}</option>`).join('')}
-                                                </select>
-                                            </label>
                                             <button onclick="window.openEditTaskModal(${task.id}, event)" class="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[10px] font-bold text-slate-300 hover:bg-slate-900"><i data-lucide="pencil" class="w-3.5 h-3.5"></i>Editar missão</button>
                                             <div class="grid grid-cols-2 gap-1"><button onclick="window.moveTaskOrder(${task.id}, -1, event)" class="rounded-lg px-2 py-2 text-[10px] text-slate-500 hover:bg-slate-900">↑ Subir</button><button onclick="window.moveTaskOrder(${task.id}, 1, event)" class="rounded-lg px-2 py-2 text-[10px] text-slate-500 hover:bg-slate-900">↓ Descer</button></div>
                                             <select onchange="window.moveTaskFromSelect(${task.id}, event, this)" onclick="event.stopPropagation()" class="w-full bg-slate-900 border border-slate-800 text-slate-400 rounded-lg p-2 text-[10px]"><option value="" disabled selected>Mover para…</option>${daysOptions}</select>
@@ -5050,15 +5050,17 @@
                             </div>
 
                             ${subtasks.length ? `
-                            <div class="mt-3 h-1 overflow-hidden rounded-full bg-slate-800" role="progressbar" aria-label="Subtarefas concluídas: ${window.escapeHtml(task.text)}" aria-valuemin="0" aria-valuemax="${subtasks.length}" aria-valuenow="${doneSubtasks}" aria-valuetext="${doneSubtasks} de ${subtasks.length} subtarefas concluídas">
-                                <div class="h-full rounded-full ${doneSubtasks === subtasks.length ? 'bg-emerald-500' : missionStatus === 'paused' ? 'bg-amber-400' : 'bg-indigo-400'} transition-[width] duration-300" style="width:${subtaskPercent}%"></div>
+                            <div class="mt-3 flex w-full max-w-sm items-center gap-3 font-sans">
+                                <span class="shrink-0 text-xs text-slate-300 tabular-nums">${doneSubtasks} de ${subtasks.length} subtarefas</span>
+                                <div class="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-800" role="progressbar" aria-label="Subtarefas concluídas: ${window.escapeHtml(task.text)}" aria-valuemin="0" aria-valuemax="${subtasks.length}" aria-valuenow="${doneSubtasks}" aria-valuetext="${doneSubtasks} de ${subtasks.length} subtarefas concluídas">
+                                    <div class="h-full rounded-full ${doneSubtasks === subtasks.length ? 'bg-emerald-500' : missionStatus === 'paused' ? 'bg-amber-400' : 'bg-indigo-400'} transition-[width] duration-300" style="width:${subtaskPercent}%"></div>
+                                </div>
                             </div>
                             ${doneSubtasks === subtasks.length && !completed ? '<p class="mt-1.5 text-[10px] text-emerald-400/80">Etapas prontas · conclua a missão quando terminar.</p>' : ''}
                             <details data-subtasks-task-id="${task.id}" ${uiState.expandedSubtasks[String(task.id)] ? 'open' : ''} onclick="event.stopPropagation()" class="mt-1 group/subtasks">
-                                <summary class="cursor-pointer list-none inline-flex min-h-[44px] sm:min-h-8 items-center gap-1.5 rounded px-1 text-[11px] font-medium text-slate-400 hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400">
+                                <summary class="cursor-pointer list-none inline-flex min-h-[44px] sm:min-h-8 items-center gap-1.5 rounded px-1 text-xs font-medium text-slate-300 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400">
                                     <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform group-open/subtasks:rotate-180"></i>
                                     <span>Subtarefas</span>
-                                    <span class="text-slate-500">${doneSubtasks}/${subtasks.length}</span>
                                 </summary>
                                 <div class="mt-2 border-l border-slate-800 pl-3 space-y-1.5">
                                     ${subtasks.map(st => `<div class="flex items-center justify-between gap-2"><button onclick="window.toggleSubtask(${task.id}, ${st.id}, event)" class="flex items-center gap-2 text-left flex-1 text-xs ${st.completed ? 'text-slate-600 line-through' : 'text-slate-300'}"><i data-lucide="${st.completed ? 'check-square' : 'square'}" class="w-3.5 h-3.5"></i>${window.escapeHtml(st.text)}</button><button onclick="window.deleteSubtask(${task.id}, ${st.id}, event)" class="text-slate-800 hover:text-red-400"><i data-lucide="x" class="w-3.5 h-3.5"></i></button></div>`).join('')}
@@ -5339,7 +5341,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.23</span></div>
+                            <div class="font-black tracking-widest text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold uppercase tracking-widest">v1.9.24</span></div>
                             <div class="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">Quartel operacional</div>
                         </div>
                     </div>
