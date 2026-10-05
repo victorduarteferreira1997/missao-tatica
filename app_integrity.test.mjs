@@ -291,7 +291,7 @@ const entryWindow = {
         // Executar a captura real de render(), antes de gerar o novo HTML.
         runInNewContext(app.slice(captureStart, captureEnd), {
             uiState: boardUi,
-            appDiv: { querySelectorAll: () => entryDetails ? [entryDetails] : [] }
+            appDiv: { querySelectorAll: selector => selector === 'details[data-subtasks-task-id]' && entryDetails ? [entryDetails] : [] }
         });
         entryBoard = boardWindow.renderDailyMissionBoard([entryTask]);
         entryDetails = { dataset: { subtasksTaskId: '123.45' }, open: /<details data-subtasks-task-id="123\.45" open /.test(entryBoard) };
@@ -320,4 +320,54 @@ entryWindow.addSubtask(123.45);
 assert.equal(entryTask.subtasks.length, 3);
 assert.equal(entryDetails.open, true, 'A captura do DOM antigo não deve fechar a lista ao adicionar.');
 
-console.log(`Integridade da interface: módulo, ${uniqueHandlers.length} handlers, saída do Pomodoro e conclusão explícita conferidos.`);
+// A agenda deve manter os itens, a ordem por horário e as ações existentes após a limpeza visual.
+const weeklyStart = app.indexOf('        function renderWeeklyPlanningOverview()');
+const weeklyEnd = app.indexOf('        function renderStudyPlanningContent()', weeklyStart);
+const weeklyTasks = [
+    { id: 'late', day: 'mon', text: 'Missão tarde', startTime: '15:00', category: 'work', priority: 'media', subtasks: [] },
+    { id: 'free', day: 'mon', text: '<Missão livre>', category: 'work', priority: 'alta', completed: true, subtasks: [] }
+];
+const weeklyState = { tasks: weeklyTasks, studyData: { subjects: [], studyPlan: { weeklyBlocks: [
+    { day: 'mon', title: 'Estudo cedo', startTime: '09:00', plannedMinutes: 60, status: 'planned' },
+    { day: 'mon', title: 'Cancelado', status: 'cancelled' }
+] } } };
+const weeklyUi = { weeklyExpandedSections: { '2026-10-05:mon': false, '2026-10-05:tue': true } };
+const weeklyWindow = {
+    getActivePlanningWeekStartDate: () => new Date('2026-10-05T12:00:00'),
+    getCurrentCalendarWeekStartKey: () => '2026-10-05',
+    getNextCalendarWeekStartKey: () => '2026-10-12',
+    sortTasksForDay: day => weeklyState.tasks.filter(task => task.day === day),
+    sortStudyBlocksBySchedule: blocks => blocks,
+    getTaskCategory: () => ({ label: 'Trabalho', icon: 'briefcase' }),
+    getStudyTrack: () => ({ name: 'BACEN', icon: 'book' }),
+    getCalendarTimeLabel: item => item.startTime,
+    escapeHtml: value => String(value).replaceAll('<', '&lt;').replaceAll('>', '&gt;'),
+    renderCalendarSyncPanel: () => '<section id="sync-stub"></section>',
+    renderCalendarInboxPanel: () => '<section id="inbox-stub"></section>'
+};
+const weeklyContext = {
+    window: weeklyWindow, state: weeklyState, uiState: weeklyUi, daysOfWeek: createDays,
+    calendarSync: { view: () => ({ status: 'Sincronizado', connected: true }), getInbox: () => [{ id: 'pending' }] },
+    addDaysToDate: (date, days) => new Date(date.getTime() + days * 86400000),
+    dateKeyFromDate: date => date.toISOString().slice(0, 10),
+    formatPtShortDate: date => date.toISOString().slice(5, 10),
+    extractMinutesFromTask: () => 30
+};
+runInNewContext(app.slice(weeklyStart, weeklyEnd) + '\nthis.renderWeek = renderWeeklyPlanningOverview;', weeklyContext);
+const weeklyMarkup = weeklyContext.renderWeek();
+assert.ok(weeklyMarkup.indexOf('Estudo cedo') < weeklyMarkup.indexOf('Missão tarde'));
+assert.ok(weeklyMarkup.indexOf('Missão tarde') < weeklyMarkup.indexOf('&lt;Missão livre&gt;'));
+assert.doesNotMatch(weeklyMarkup, /Cancelado/);
+assert.match(weeklyMarkup, /1 compromisso para revisar/);
+assert.match(weeklyMarkup, /data-week-day="mon" data-week-section="2026-10-05:mon"  class=/);
+assert.match(weeklyMarkup, /data-week-day="tue" data-week-section="2026-10-05:tue" open /);
+for (const action of ['setPlanningCalendarWeek', 'exportVisibleWeekToIcs', 'prepareNextWeekPlanning', 'setMainView']) {
+    assert.ok(weeklyMarkup.includes(`window.${action}(`), `A agenda deve preservar ${action}.`);
+}
+weeklyState.tasks = [];
+weeklyState.studyData.studyPlan.weeklyBlocks = [];
+assert.match(weeklyContext.renderWeek(), /Nenhum item planejado nesta semana/);
+assert.match(weeklyContext.renderWeek(), /window.setPlanningCalendarWeek\('prev'\)/,
+    'Sem itens, a navegação ainda deve permitir voltar às outras semanas.');
+
+console.log(`Integridade da interface: módulo, ${uniqueHandlers.length} handlers, Pomodoro, missões e agenda semanal conferidos.`);
