@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.50-campaign-themes">
+    <meta name="app-build" content="v1.9.51-campaign-lifecycle">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -209,6 +209,43 @@
             'Seu legado reúne muitos passos e muitas formas de avançar.'
         ];
 
+        const CAMPAIGN_RECORD_PATHS = [
+            { path: 'tasks', label: 'missões' }, { path: 'quickTasks', label: 'tarefas rápidas' },
+            { path: 'studyData.sessions', label: 'sessões de estudo' }, { path: 'studyData.reviews', label: 'revisões' },
+            { path: 'studyData.errorLog', label: 'registros de questões' }, { path: 'studyData.studyPlan.weeklyBlocks', label: 'blocos de estudo' },
+            { path: 'focusData.cycles', label: 'avaliações de foco' }, { path: 'routineData.logs', label: 'registros de rituais' },
+            { path: 'rechargeData.logs', label: 'registros de recarga' }, { path: 'healthData.workouts', label: 'treinos' },
+            { path: 'healthData.bodyMetrics', label: 'medidas corporais' }, { path: 'healthData.habits', label: 'registros de hábitos' },
+            { path: 'financeData.incomes', label: 'receitas' }, { path: 'financeData.fixedExpenses', label: 'despesas fixas' },
+            { path: 'financeData.variableExpenses', label: 'despesas variáveis' }, { path: 'financeData.moneyJournal', label: 'registros do diário financeiro' },
+            { path: 'rewardPurchases', label: 'resgates de recompensas' }, { path: 'economy.history', label: 'movimentações de moedas' },
+            { path: 'taskDeletionLog', label: 'registros de exclusão de missões' }
+        ];
+        const THEME_BADGE_NAMES = {
+            original: ['Primeiro Sangue', 'Foco de Campanha', 'Campanha em Ação'],
+            army: ['Batismo de Campo', 'Disciplina de Ferro', 'Operação Cumprida'],
+            navy: ['Primeira Travessia', 'Rumo Mantido', 'Jornada em Alto-Mar'],
+            airforce: ['Primeiro Voo', 'Precisão de Voo', 'Esquadrão em Ação'],
+            special: ['Primeira Incursão', 'Foco de Elite', 'Operação Especial'],
+            espionage: ['Primeiro Contato', 'Atenção de Analista', 'Dossiê Concluído'],
+            greek: ['Primeiro Trabalho', 'Estratégia de Atena', 'Jornada do Herói'],
+            roman: ['Primeiro Estandarte', 'Sabedoria de Minerva', 'Caminho do Triunfo'],
+            norse: ['Primeira Saga', 'Atenção de Heimdall', 'Saga do Explorador'],
+            egyptian: ['Primeira Travessia do Nilo', 'Sabedoria de Thoth', 'Jornada da Barca Solar'],
+            fleet: ['Primeiro Lançamento', 'Precisão Orbital', 'Missão da Frota'],
+            cosmic: ['Primeira Descoberta', 'Observação Estelar', 'Expedição Concluída'],
+            avengers: ['Iniciativa Ativada', 'Precisão do Gavião', 'Vingadores, Avante'],
+            knights: ['Primeiro Juramento', 'Disciplina do Cavaleiro', 'Serviço à Ordem'],
+            mages: ['Primeiro Encanto', 'Concentração Arcana', 'Grimório de Conquistas'],
+            forest: ['Primeira Trilha', 'Atenção do Guardião', 'Jornada do Bosque']
+        };
+        const CATEGORY_BADGE_NAMES = {
+            military: { estrategista: 'Manobra Estratégica', frenesi: 'Ritmo Operacional', pomo_master: 'Primeiro Foco', shopaholic: 'Suprimentos Garantidos', work_demon: 'Operação Profissional', legal_eagle: 'Defesa Jurídica', home_architect: 'Base Organizada', deep_focus: 'Concentração Tática', perfect_day: 'Missão do Dia', estudante_tatico: 'Treinamento Iniciado', operador_1_7_30: 'Plano de Revisões', memoria_em_dia: 'Conhecimento Consolidado', arquivo_organizado: 'Arquivo de Inteligência', corpo_em_movimento: 'Preparo Físico', tesoureiro_tatico: 'Recursos sob Controle', blindagem_financeira: 'Defesa dos Recursos', comandante_integrado: 'Operação Integrada' },
+            mythology: { estrategista: 'Mudança de Destino', frenesi: 'Ritmo do Herói', pomo_master: 'Primeira Contemplação', shopaholic: 'Tesouro Resgatado', work_demon: 'Obras do Herói', legal_eagle: 'Guardião da Justiça', home_architect: 'Santuário Organizado', deep_focus: 'Sabedoria Interior', perfect_day: 'Jornada do Dia', estudante_tatico: 'Busca do Conhecimento', operador_1_7_30: 'Conhecimento em Espiral', memoria_em_dia: 'Memória dos Antigos', arquivo_organizado: 'Crônicas Organizadas', corpo_em_movimento: 'Força em Movimento', tesoureiro_tatico: 'Tesouro sob Controle', blindagem_financeira: 'Escolha Sábia', comandante_integrado: 'Equilíbrio do Herói' },
+            scifi: { estrategista: 'Nova Rota', frenesi: 'Propulsão Contínua', pomo_master: 'Primeiro Contato com o Foco', shopaholic: 'Recursos Resgatados', work_demon: 'Projeto em Órbita', legal_eagle: 'Defensor da Justiça', home_architect: 'Base em Ordem', deep_focus: 'Sinal sem Ruído', perfect_day: 'Rota do Dia', estudante_tatico: 'Pesquisa Iniciada', operador_1_7_30: 'Órbita de Revisões', memoria_em_dia: 'Dados Consolidados', arquivo_organizado: 'Arquivo Estelar', corpo_em_movimento: 'Energia em Movimento', tesoureiro_tatico: 'Recursos da Missão', blindagem_financeira: 'Escudo Financeiro', comandante_integrado: 'Sistemas Integrados' },
+            fantasy: { estrategista: 'Novo Caminho', frenesi: 'Ritmo da Jornada', pomo_master: 'Primeiro Momento de Foco', shopaholic: 'Tesouro da Jornada', work_demon: 'Obras da Guilda', legal_eagle: 'Defensor da Justiça', home_architect: 'Refúgio Organizado', deep_focus: 'Mente Serena', perfect_day: 'Jornada do Dia', estudante_tatico: 'Conhecimento Despertado', operador_1_7_30: 'Círculo de Revisões', memoria_em_dia: 'Sabedoria Consolidada', arquivo_organizado: 'Crônicas Preservadas', corpo_em_movimento: 'Vigor em Movimento', tesoureiro_tatico: 'Tesouro Administrado', blindagem_financeira: 'Proteção do Tesouro', comandante_integrado: 'Equilíbrio da Jornada' }
+        };
+
         const BADGES_DB = [
             { id: 'primeiro_sangue', icon: 'swords', color: 'text-red-400', title: 'Primeiro Sangue', desc: 'Completou a sua primeira missão.' },
             { id: 'estrategista', icon: 'git-merge', color: 'text-purple-400', title: 'Mente Flexível', desc: 'Moveu uma missão de dia. Agência total.' },
@@ -230,7 +267,9 @@
             { id: 'comandante_integrado', icon: 'medal', color: 'text-indigo-400', title: 'Comandante Integrado', desc: 'Usou estudos, físico e finanças no mesmo sistema.' },
             { id: 'campanha_completa', icon: 'flag', color: 'text-amber-300', title: 'Campanha Completa', desc: 'Alcançou o nível máximo em uma campanha.', xpReward: 0 },
             { id: 'veterano', icon: 'shield-check', color: 'text-indigo-300', title: 'Veterano', desc: 'Iniciou uma nova campanha pelo Prestígio.', xpReward: 0 },
-            { id: 'legado', icon: 'crown', color: 'text-yellow-300', title: 'Legado', desc: 'Alcançou o nível máximo em 3 campanhas diferentes.', xpReward: 0 }
+            { id: 'legado', icon: 'crown', color: 'text-yellow-300', title: 'Legado', desc: 'Alcançou o nível máximo em 3 campanhas diferentes.', xpReward: 0 },
+            { id: 'campaign_focus10', icon: 'focus', color: 'text-cyan-300', title: 'Foco de Campanha', desc: 'Concluiu 10 ciclos de foco nesta campanha.', xpReward: 0 },
+            { id: 'campaign_missions20', icon: 'flag', color: 'text-amber-300', title: 'Campanha em Ação', desc: 'Concluiu 20 missões nesta campanha.', xpReward: 0 }
         ];
 
         const REWARDS_SHOP = [
@@ -416,19 +455,45 @@
             return Math.min(correctLevel, RANKS.length);
         }
 
-        // O XP atual pertence à campanha; campanhas encerradas guardam seu resultado.
+        // Campanhas usam identificadores monotônicos; excluir histórico não reutiliza IDs.
         window.normalizePrestige = function() {
             if (!state.prestige || typeof state.prestige !== 'object') state.prestige = {};
             const p = state.prestige;
-            p.version = 2;
+            p.version = 3;
             if (!Array.isArray(p.campaigns)) p.campaigns = [];
-            p.campaign = p.campaigns.length + 1;
+            const positiveId = value => Number.isSafeInteger(Number(value)) && Number(value) > 0 && Number(value) < 1000000000 ? Number(value) : 0;
+            const used = new Set();
+            p.campaigns = p.campaigns.filter(c => c && typeof c === 'object');
+            let nextId = Math.max(0, ...p.campaigns.map(c => positiveId(c.number))) + 1;
+            p.campaigns.forEach(c => {
+                const id = positiveId(c.number);
+                c.number = id && !used.has(id) ? id : nextId++;
+                used.add(c.number);
+                c.xp = Number.isFinite(Number(c.xp)) ? Math.max(0, Number(c.xp)) : 0;
+                c.rankLevel = Math.max(1, Math.min(15, parseInt(c.rankLevel, 10) || 15));
+            });
+            const last = Math.max(0, ...p.campaigns.map(c => Number(c.number) || 0));
+            if (!(positiveId(p.campaign) > last)) p.campaign = last + 1;
+            p.campaign = Number(p.campaign);
+            p.nextCampaignNumber = Math.max(positiveId(p.nextCampaignNumber) || 1, p.campaign + 1, last + 1);
             if (!Array.isArray(p.protectedBadgeIds)) p.protectedBadgeIds = [];
             if (!Array.isArray(p.maxCampaigns)) p.maxCampaigns = [];
             if (typeof p.startedAt === 'undefined') p.startedAt = null;
             if (!CAMPAIGN_THEMES.some(t => t.id === p.themeId)) p.themeId = 'original';
             if (!Array.isArray(p.emblems)) p.emblems = [];
-            p.campaigns.forEach(c => { if (!CAMPAIGN_THEMES.some(t => t.id === c.themeId)) c.themeId = 'original'; });
+            p.campaigns.forEach(c => {
+                if (!CAMPAIGN_THEMES.some(t => t.id === c.themeId)) c.themeId = 'original';
+                if (!c.status) c.status = 'completed'; // As versões antigas arquivavam apenas campanhas completas.
+                if (!Array.isArray(c.levelEvents)) c.levelEvents = Array.from({ length: Math.min(15, Number(c.rankLevel) || 15) }, (_, i) => ({ level: i + 1, date: null }));
+                c.levelEvents = c.levelEvents.filter(e => e && Number.isInteger(Number(e.level)) && e.level >= 1 && e.level <= 15).map(e => ({ level: Number(e.level), date: e.date || null }));
+                if (!Array.isArray(c.badgeEvents)) c.badgeEvents = (c.badgeIds || []).map(id => ({ id, date: null, imported: true }));
+            });
+            if (!Array.isArray(p.bonusClaimedBadgeIds)) p.bonusClaimedBadgeIds = [...new Set([...(state.unlockedBadges || []), ...p.campaigns.flatMap(c => c.badgeIds || [])])];
+            if (!Array.isArray(p.badgeEvents)) p.badgeEvents = (state.unlockedBadges || []).filter(id => p.campaign === 1 || !p.protectedBadgeIds.includes(id)).map(id => ({ id, date: null, imported: true }));
+            if (!Array.isArray(p.levelEvents)) p.levelEvents = Array.from({ length: Math.max(1, Math.min(15, Number(state.level) || 1)) }, (_, i) => ({ level: i + 1, date: i === 0 ? p.startedAt : null }));
+            if (!Array.isArray(p.missionEvents)) p.missionEvents = (state.tasks || []).filter(t => t.completed && Number(t.rewardedCampaign || 1) === p.campaign).map(t => ({ taskId: String(t.id), category: t.category, date: t.completedAt || null }));
+            if (!p.currentStats) p.currentStats = p.campaign === 1 ? { ...(state.stats || {}) } : {};
+            if (!Array.isArray(p.deletedCampaignIds)) p.deletedCampaignIds = [];
             return p;
         };
 
@@ -436,91 +501,234 @@
             return CAMPAIGN_THEMES.find(t => t.id === id) || CAMPAIGN_THEMES[0];
         };
         window.getCampaignRanks = function() { return window.getCampaignDefinition().ranks; };
+        window.getPrestigeCount = function() { return window.normalizePrestige().campaigns.filter(c => c.status === 'completed').length; };
+        window.getCareerXp = function() {
+            return window.normalizePrestige().campaigns.reduce((sum, c) => sum + Math.max(0, Number(c.xp) || 0), 0) + Math.max(0, Number(state.xp) || 0);
+        };
+        window.canStartPrestige = function() { return state.level === 15 && state.xp >= 90000; };
+        window.getCampaignRecordCollections = function() {
+            return CAMPAIGN_RECORD_PATHS.map(def => {
+                let parent = state;
+                const keys = def.path.split('.');
+                for (const key of keys.slice(0, -1)) parent = parent?.[key];
+                const key = keys[keys.length - 1];
+                return { ...def, parent, key, records: Array.isArray(parent?.[key]) ? parent[key] : [] };
+            });
+        };
+        window.initializeCampaignRecordOrigins = function() {
+            const p = window.normalizePrestige();
+            if (p.recordOriginsInitialized) return;
+            window.getCampaignRecordCollections().forEach(c => c.records.forEach(r => { if (typeof r.campaignId === 'undefined') r.campaignId = null; }));
+            p.recordOriginsInitialized = true;
+        };
+        window.stampCampaignRecords = function() {
+            window.initializeCampaignRecordOrigins();
+            const id = window.normalizePrestige().campaign;
+            window.getCampaignRecordCollections().forEach(c => c.records.forEach(r => { if (typeof r.campaignId === 'undefined') r.campaignId = id; }));
+        };
+        window.recordCampaignMission = function(task, completed) {
+            const p = window.normalizePrestige();
+            if (Number(task.rewardedCampaign || 1) !== p.campaign) return;
+            if (!completed) {
+                p.missionEvents = p.missionEvents.filter(e => task.rewardedMissionEventId ? e.eventId !== task.rewardedMissionEventId : e.taskId !== String(task.id));
+                delete task.rewardedMissionEventId;
+            } else if (typeof window.isNormalMission !== 'function' || window.isNormalMission(task)) {
+                if (task.rewardedMissionEventId && p.missionEvents.some(e => e.eventId === task.rewardedMissionEventId)) return;
+                p.missionEventSequence = (Number(p.missionEventSequence) || 0) + 1;
+                task.rewardedMissionEventId = `${p.campaign}:${p.missionEventSequence}`;
+                p.missionEvents.push({ eventId: task.rewardedMissionEventId, taskId: String(task.id), category: task.category, date: new Date().toISOString() });
+            }
+        };
+        window.recordCampaignBadge = function(id, date = new Date().toISOString()) {
+            const p = window.normalizePrestige();
+            if (!p.badgeEvents.some(e => e.id === id)) p.badgeEvents.push({ id, date });
+        };
+        window.trackCampaignLevels = function(beforeLevel) {
+            const p = window.normalizePrestige();
+            for (let level = 1; level <= state.level; level++) {
+                if (!p.levelEvents.some(e => e.level === level)) p.levelEvents.push({ level, date: level > beforeLevel ? new Date().toISOString() : null });
+            }
+        };
+        window.syncPrestigeMilestones = function(observed = false) {
+            const p = window.normalizePrestige();
+            const reached = p.campaigns.filter(c => c.status === 'completed').map(c => c.number);
+            if (window.canStartPrestige() || p.maxCampaigns.includes(p.campaign)) reached.push(p.campaign);
+            p.maxCampaigns = [...new Set(reached)];
+            const milestones = [];
+            if (p.maxCampaigns.length) milestones.push('campanha_completa');
+            if (window.getPrestigeCount()) milestones.push('veterano');
+            if (p.maxCampaigns.length >= 3) milestones.push('legado');
+            p.badgeEvents = p.badgeEvents.filter(e => !['campanha_completa', 'veterano', 'legado'].includes(e.id) || (e.id === 'campanha_completa' && p.maxCampaigns.includes(p.campaign)));
+            state.unlockedBadges = state.unlockedBadges.filter(id => !['campanha_completa', 'veterano', 'legado'].includes(id) || milestones.includes(id));
+            milestones.forEach(id => {
+                if (!(state.unlockedBadges || []).includes(id)) state.unlockedBadges.push(id);
+                if (id === 'campanha_completa' && p.maxCampaigns.includes(p.campaign)) window.recordCampaignBadge(id, observed ? new Date().toISOString() : null);
+            });
+            const completed = p.campaigns.filter(c => c.status === 'completed').map(c => ({ themeId: c.themeId, campaign: c.number, earnedAt: c.levelEvents.find(e => e.level === 15)?.date || null }));
+            if (p.maxCampaigns.includes(p.campaign)) completed.push({ themeId: p.themeId, campaign: p.campaign, earnedAt: p.levelEvents.find(e => e.level === 15)?.date || null });
+            p.emblems = completed.filter((c, i) => completed.findIndex(e => e.themeId === c.themeId) === i);
+        };
+        window.revertCampaignXp = function(amount, campaign = 1) {
+            if (Number(campaign) !== window.normalizePrestige().campaign) return 0;
+            const deducted = Math.min(Math.max(0, Number(state.xp) || 0), Math.max(0, Number(amount) || 0));
+            state.xp = Math.max(0, state.xp - deducted);
+            state.level = getCorrectLevel(state.xp);
+            return deducted;
+        };
+        window.getCampaignDeletionSummary = function(number, includeUnknown = false) {
+            window.initializeCampaignRecordOrigins();
+            return window.getCampaignRecordCollections().map(c => ({ label: c.label, count: c.records.filter(r => Number(r.campaignId) === Number(number) || (includeUnknown && r.campaignId === null)).length })).filter(c => c.count);
+        };
+        window.removeCampaignRecords = function(number, includeUnknown = false) {
+            const removedTaskGroups = new Set();
+            const removedSessionIds = new Set();
+            const removedTasks = [];
+            window.getCampaignRecordCollections().forEach(c => {
+                const removed = c.records.filter(r => Number(r.campaignId) === Number(number) || (includeUnknown && r.campaignId === null));
+                removed.forEach(r => {
+                    const amount = c.path === 'tasks' ? (r.completed ? r.rewardedXp || 0 : 0) : c.path === 'quickTasks' ? (r.done ? 10 : 0) : r.xpAwarded || 0;
+                    if (Array.isArray(r.xpAwards)) r.xpAwards.forEach(a => window.revertCampaignXp(a.amount, a.campaign));
+                    else window.revertCampaignXp(amount, r.rewardedCampaign || r.xpCampaign || r.campaignId || 1);
+                    if (c.path === 'tasks' && r.recurrenceGroupId) removedTaskGroups.add(r.recurrenceGroupId);
+                    if (c.path === 'tasks') { removedTasks.push(r); window.recordCampaignMission(r, false); }
+                    if (c.path === 'studyData.sessions') removedSessionIds.add(r.id);
+                });
+                if (c.parent) c.parent[c.key] = c.records.filter(r => !removed.includes(r));
+            });
+            // Revisões de outras campanhas continuam válidas mesmo se a sessão de origem for apagada.
+            (state.studyData?.reviews || []).forEach(r => { if (removedSessionIds.has(r.sourceSessionId)) { r.sourceSessionId = null; r.sourceSessionRemoved = true; } });
+            removedTaskGroups.forEach(group => {
+                const remaining = (state.tasks || []).filter(t => t.recurrenceGroupId === group);
+                const days = [...new Set(remaining.map(t => t.day))];
+                remaining.forEach(t => { t.recurrenceDays = [...days]; });
+            });
+            removedTasks.forEach(task => { if (typeof window.rollbackTaskBadges === 'function') window.rollbackTaskBadges(task); });
+            if (removedTasks.some(t => String(t.id) === String(state.focusedTaskId))) { state.focusedTaskId = null; state.focusMode = false; }
+            state.level = getCorrectLevel(state.xp);
+        };
         window.openCampaignPicker = function() {
             const theme = window.getCampaignDefinition();
-            uiState.campaignPicker = { category: theme.category, themeId: theme.id };
+            uiState.campaignHistoryId = null;
+            uiState.campaignPicker = { category: theme.category, themeId: theme.id, mode: 'archive', keepHistory: true, deleteRecords: false, includeUnknown: false };
             render();
         };
-        window.closeCampaignPicker = function() { uiState.campaignPicker = null; render(); };
-        window.selectCurrentCampaignTheme = function() { window.openCampaignPicker(); };
+        window.closeCampaignPicker = function() { uiState.campaignPicker = null; uiState.campaignHistoryId = null; render(); };
+        window.selectCurrentCampaignTheme = function() {
+            const current = window.getCampaignDefinition();
+            if (!uiState.campaignPicker) return;
+            Object.assign(uiState.campaignPicker, { category: current.category, themeId: current.id }); render();
+        };
         window.selectCampaignCategory = function(category) {
-            if (!uiState.campaignPicker || !CAMPAIGN_CATEGORIES.some(c => c.id === category)) return;
-            if (uiState.campaignPicker.category === category) return;
+            if (!uiState.campaignPicker || !CAMPAIGN_CATEGORIES.some(c => c.id === category) || uiState.campaignPicker.category === category) return;
             uiState.campaignPicker.category = category;
             uiState.campaignPicker.themeId = CAMPAIGN_THEMES.find(t => t.category === category && t.id !== 'original').id;
             render();
         };
         window.selectCampaignTheme = function(id) {
             if (!uiState.campaignPicker || !CAMPAIGN_THEMES.some(t => t.id === id && t.category === uiState.campaignPicker.category)) return;
-            uiState.campaignPicker.themeId = id;
+            uiState.campaignPicker.themeId = id; render();
+        };
+        window.setCampaignRestartOption = function(key, value) {
+            const picker = uiState.campaignPicker;
+            if (!picker) return;
+            if (key === 'mode' && ['archive', 'reset'].includes(value)) {
+                picker.mode = value;
+                if (value === 'archive') Object.assign(picker, { keepHistory: true, deleteRecords: false, includeUnknown: false });
+            } else if (['keepHistory', 'deleteRecords', 'includeUnknown'].includes(key) && picker.mode === 'reset') picker[key] = Boolean(value);
+            if (!picker.deleteRecords) picker.includeUnknown = false;
             render();
         };
-
-        window.getCareerXp = function() {
-            const p = window.normalizePrestige();
-            return p.campaigns.reduce((sum, c) => sum + Math.max(0, Number(c.xp) || 0), 0) + Math.max(0, Number(state.xp) || 0);
+        window.campaignTransitionBlocked = function() {
+            return (typeof pomodoro !== 'undefined' && pomodoro.isRunning) || uiState.pomodoroEvaluationData || uiState.financeGuardianData;
         };
-
-        window.canStartPrestige = function() {
-            return state.level === RANKS.length && state.xp >= RANKS[RANKS.length - 2].max;
-        };
-
-        window.syncPrestigeMilestones = function() {
-            const p = window.normalizePrestige();
-            const reached = p.campaigns.map((c, index) => c.number || index + 1);
-            if (window.canStartPrestige()) reached.push(p.campaign);
-            p.maxCampaigns = [...new Set([...p.maxCampaigns, ...reached])];
-            const milestones = [];
-            if (p.maxCampaigns.length) milestones.push('campanha_completa');
-            if (p.campaigns.length) milestones.push('veterano');
-            if (p.maxCampaigns.length >= 3) milestones.push('legado');
-            milestones.forEach(id => { if (!state.unlockedBadges.includes(id)) state.unlockedBadges.push(id); });
-            // Emblemas são permanentes e simbólicos: não dão XP nem moedas.
-            const completed = p.campaigns.map(c => ({ themeId: c.themeId, campaign: c.number, earnedAt: c.endedAt }));
-            if (p.maxCampaigns.includes(p.campaign)) completed.push({ themeId: p.themeId, campaign: p.campaign, earnedAt: new Date().toISOString() });
-            completed.forEach(c => {
-                if (!p.emblems.some(e => e.themeId === c.themeId)) p.emblems.push(c);
-            });
-        };
-
-        window.revertCampaignXp = function(amount, campaign = 1) {
-            const p = window.normalizePrestige();
-            // Desfazer um registro histórico não retira XP da campanha atual.
-            if (Number(campaign) !== p.campaign) return 0;
-            const deducted = Math.min(Math.max(0, Number(state.xp) || 0), Math.max(0, Number(amount) || 0));
-            state.xp = Math.max(0, state.xp - deducted);
-            return deducted;
-        };
-
-        window.startPrestige = function(themeId = state.prestige?.themeId || 'original') {
+        window.startCampaign = function(themeId, options = {}) {
             const p = window.normalizePrestige();
             const selected = CAMPAIGN_THEMES.find(t => t.id === themeId);
-            if (!selected) { window.showAlertModal('Escolha um subtema válido para a próxima campanha.'); return; }
-            if (!window.canStartPrestige()) {
-                window.showAlertModal('O Prestígio fica disponível ao alcançar o nível máximo: 90000 XP nesta campanha.');
-                return;
-            }
+            if (!selected || !['archive', 'reset'].includes(options.mode || 'archive')) { window.showAlertModal('Escolha um subtema e uma forma de recomeçar válidos.'); return; }
+            if (window.campaignTransitionBlocked()) { window.showAlertModal('Pause o Pomodoro e conclua ou feche a avaliação de foco e a compra em análise antes de trocar de campanha.'); return; }
+            window.initializeCampaignRecordOrigins();
+            const mode = options.mode || 'archive';
+            const keepHistory = mode === 'archive' || options.keepHistory !== false;
+            const deleteRecords = mode === 'reset' && Boolean(options.deleteRecords);
+            const includeUnknown = deleteRecords && Boolean(options.includeUnknown);
             const expectedCampaign = p.campaign;
-            window.showConfirmModal(`Iniciar a campanha ${expectedCampaign + 1} — ${selected.name}? Seu título inicial será ${selected.ranks[0].name}, com 0 XP nesta campanha. O XP da carreira, emblemas, medalhas, moedas, reserva e todos os registros serão preservados. Você também pode cancelar e continuar no nível máximo.`, () => {
+            const counts = deleteRecords ? window.getCampaignDeletionSummary(expectedCampaign, includeUnknown) : [];
+            const impact = counts.map(c => `${c.count} ${c.label}`).join(', ') || 'nenhum registro';
+            const message = `Iniciar a campanha ${p.nextCampaignNumber} — ${selected.name}? Título inicial: ${window.formatCampaignTitle(selected.ranks[0].name, 1, selected.id)}, com 0 XP nesta campanha. ${keepHistory ? 'A campanha anterior ficará no histórico.' : 'O histórico, XP de carreira e conquistas exclusivos da campanha anterior serão excluídos.'} ${mode === 'reset' ? 'Moedas, reserva, alvo, combo e estatísticas do jogo serão zerados. As medalhas da nova campanha começam vazias.' : 'Moedas, reserva, medalhas da carreira e registros pessoais serão preservados.'} ${deleteRecords ? `Apagar também: ${impact}. Esta exclusão é permanente.` : 'Os registros pessoais não serão apagados.'}`;
+            window.showConfirmModal(message, () => {
                 const current = window.normalizePrestige();
-                if (current.campaign !== expectedCampaign || !window.canStartPrestige()) return;
-                window.syncPrestigeMilestones();
+                if (current.campaign !== expectedCampaign || window.campaignTransitionBlocked() || (options.requirePrestige && !window.canStartPrestige())) return;
+                window.syncPrestigeMilestones(true);
                 const endedAt = new Date().toISOString();
-                current.campaigns.push({ number: current.campaign, xp: state.xp, rankLevel: state.level,
-                    themeId: current.themeId, themeName: window.getCampaignDefinition().name,
-                    rankName: window.getCampaignRanks()[RANKS.length - 1].name, startedAt: current.startedAt, endedAt,
-                    badgeIds: [...state.unlockedBadges] });
-                current.protectedBadgeIds = [...new Set([...current.protectedBadgeIds, ...state.unlockedBadges])];
-                current.campaign = current.campaigns.length + 1;
-                current.startedAt = endedAt;
-                current.themeId = selected.id;
-                state.xp = 0;
-                state.level = 1;
-                uiState.showLevelUp = false;
-                uiState.campaignPicker = null;
+                const snapshot = { number: current.campaign, themeId: current.themeId, themeName: window.getCampaignDefinition().name,
+                    xp: state.xp, rankLevel: state.level, rankName: window.getCampaignRanks()[state.level - 1].name,
+                    status: current.maxCampaigns.includes(current.campaign) ? 'completed' : 'ended-early',
+                    startedAt: current.startedAt, endedAt, levelEvents: JSON.parse(JSON.stringify(current.levelEvents)),
+                    badgeEvents: JSON.parse(JSON.stringify(current.badgeEvents)), badgeIds: current.badgeEvents.map(e => e.id),
+                    stats: { ...current.currentStats }, missionEvents: JSON.parse(JSON.stringify(current.missionEvents)) };
+                if (deleteRecords) window.removeCampaignRecords(expectedCampaign, includeUnknown);
+                if (keepHistory) current.campaigns.push(snapshot);
+                else current.deletedCampaignIds.push(expectedCampaign);
+                current.protectedBadgeIds = [...new Set(current.campaigns.flatMap(c => c.badgeIds || []))];
+                current.campaign = current.nextCampaignNumber++;
+                current.startedAt = endedAt; current.themeId = selected.id;
+                current.levelEvents = [{ level: 1, date: endedAt }]; current.badgeEvents = []; current.currentStats = {}; current.missionEvents = [];
+                state.xp = 0; state.level = 1;
+                if (mode === 'reset') {
+                    state.coins = 0; state.combo = 0; state.energy = 100;
+                    state.stats = { pomodorosCompleted: 0, tasksMoved: 0, maxComboReached: 0, rewardsBought: 0 };
+                    const economy = window.normalizeEconomy();
+                    economy.tacticalReserve = 0; economy.weeklyCoinsEarned = 0; economy.targetReward = null; economy.history = [];
+                    state.unlockedBadges = [];
+                } else if (!keepHistory) state.unlockedBadges = current.protectedBadgeIds.slice();
+                if (!keepHistory) state.unlockedBadges = state.unlockedBadges.filter(id => current.protectedBadgeIds.includes(id));
+                uiState.showLevelUp = false; uiState.campaignPicker = null; uiState.campaignHistoryId = null;
+                window.syncPrestigeMilestones(true);
+                window.saveState(false, 'campaign-start');
+                window.showToast('Nova campanha iniciada', `${selected.name} · ${window.formatCampaignTitle(selected.ranks[0].name, 1, selected.id)}.`, selected.icon, 'text-indigo-300');
+            });
+        };
+        // Mantém compatibilidade com a ação antiga; o gerenciador permite recomeçar antes do máximo.
+        window.startPrestige = function(themeId = state.prestige?.themeId || 'original') {
+            window.normalizePrestige();
+            if (!CAMPAIGN_THEMES.some(t => t.id === themeId)) { window.showAlertModal('Escolha um subtema válido para a próxima campanha.'); return; }
+            if (!window.canStartPrestige()) { window.showAlertModal('O Prestígio fica disponível ao alcançar o nível máximo: 90000 XP nesta campanha. Use Gerenciar campanha para recomeçar antes.'); return; }
+            window.startCampaign(themeId, { mode: 'archive', requirePrestige: true });
+        };
+        window.confirmCampaignPicker = function() {
+            const picker = uiState.campaignPicker;
+            if (picker) window.startCampaign(picker.themeId, { ...picker });
+        };
+        window.openCampaignHistory = function(number) {
+            if (!window.normalizePrestige().campaigns.some(c => c.number === Number(number))) return;
+            uiState.campaignHistoryId = Number(number); uiState.campaignPicker = null;
+            uiState.campaignDeleteRecords = false; uiState.campaignDeleteUnknown = false; render();
+        };
+        window.closeCampaignHistory = function() { uiState.campaignHistoryId = null; render(); };
+        window.setCampaignDeleteOption = function(key, value) {
+            if (key === 'records') uiState.campaignDeleteRecords = Boolean(value);
+            if (key === 'unknown') uiState.campaignDeleteUnknown = Boolean(value);
+            if (!uiState.campaignDeleteRecords) uiState.campaignDeleteUnknown = false;
+            render();
+        };
+        window.deleteCampaign = function(number, deleteRecords = false, includeUnknown = false) {
+            const p = window.normalizePrestige();
+            const campaign = p.campaigns.find(c => c.number === Number(number));
+            if (!campaign) return;
+            if (window.campaignTransitionBlocked()) { window.showAlertModal('Conclua as ações em andamento antes de excluir dados de uma campanha.'); return; }
+            const counts = deleteRecords ? window.getCampaignDeletionSummary(number, includeUnknown) : [];
+            window.showConfirmModal(`Excluir a campanha ${campaign.number} — ${campaign.themeName || window.getCampaignDefinition(campaign.themeId).name}? ${campaign.xp} XP sairão do total da carreira. Medalhas e emblemas exclusivos desta campanha sairão da coleção; conquistas presentes em outras campanhas permanecem. ${deleteRecords ? `Também serão apagados: ${counts.map(c => `${c.count} ${c.label}`).join(', ') || 'nenhum registro'}. Ganhos de XP de registros apagados na campanha atual também serão descontados.` : 'Registros pessoais e progresso da campanha atual permanecem.'} Esta exclusão é permanente.`, () => {
+                if (window.normalizePrestige() !== p || !p.campaigns.includes(campaign) || window.campaignTransitionBlocked()) return;
+                if (deleteRecords) window.removeCampaignRecords(campaign.number, includeUnknown);
+                p.campaigns = p.campaigns.filter(c => c !== campaign);
+                p.deletedCampaignIds = [...new Set([...p.deletedCampaignIds, campaign.number])];
+                p.protectedBadgeIds = [...new Set(p.campaigns.flatMap(c => c.badgeIds || []))];
+                const retained = new Set([...p.protectedBadgeIds, ...p.badgeEvents.map(e => e.id)]);
+                state.unlockedBadges = state.unlockedBadges.filter(id => retained.has(id));
                 window.syncPrestigeMilestones();
-                window.saveState(false, 'prestige-start');
-                window.showToast('Nova campanha iniciada', `Prestígio ${current.campaigns.length} · ${selected.ranks[0].name}. Seu legado foi preservado.`, selected.icon, 'text-indigo-300');
+                uiState.campaignHistoryId = null;
+                window.saveState(false, 'campaign-delete');
+                window.showToast('Campanha excluída', 'Histórico e coleção atualizados.', 'trash-2', 'text-slate-300');
             });
         };
 
@@ -680,6 +888,9 @@
             delete task.rewardedEnergyCost;
             delete task.rewardedBadgeIds;
             delete task.rewardedCampaign;
+            delete task.rewardedBadgeBonusIds;
+            delete task.rewardedMissionEventId;
+            delete task.campaignId;
             return task;
         };
 
@@ -1122,7 +1333,7 @@
             if (!state.quickTasks) state.quickTasks = [];
             if (!state.userProfile) state.userProfile = { displayName: '', gender: '', configured: false };
             state.userProfile.displayName = String(state.userProfile.displayName || '').trim();
-            if (!['masculino', 'feminino'].includes(state.userProfile.gender)) state.userProfile.gender = '';
+            if (!['masculino', 'feminino', 'neutro'].includes(state.userProfile.gender)) state.userProfile.gender = '';
             state.userProfile.configured = Boolean(state.userProfile.displayName && state.userProfile.gender);
             if (!Array.isArray(state.taskDeletionLog)) state.taskDeletionLog = [];
             if (!state.unlockedBadges) state.unlockedBadges = [];
@@ -1362,6 +1573,7 @@
             if (!state.focusData) state.focusData = {};
             if (!Array.isArray(state.focusData.cycles)) state.focusData.cycles = [];
 
+            window.initializeCampaignRecordOrigins();
             if(!pomodoro.isRunning) pomodoro.timeLeft = state.pomodoroSettings.focus * 60;
         };
 
@@ -1509,6 +1721,8 @@
         };
 
         window.saveState = function(skipRender = false, reason = '') {
+            window.stampCampaignRecords();
+            if (typeof window.checkLevelUp === 'function') window.checkLevelUp();
             window.touchState(reason);
             localStorage.setItem('planeamento_semanal_v11', JSON.stringify(state));
             window.saveToFirestore();
@@ -1517,6 +1731,8 @@
         };
 
         window.saveStateNow = async function(skipRender = false, reason = '') {
+            window.stampCampaignRecords();
+            if (typeof window.checkLevelUp === 'function') window.checkLevelUp();
             window.touchState(reason);
             localStorage.setItem('planeamento_semanal_v11', JSON.stringify(state));
             clearTimeout(saveTimeout);
@@ -1894,66 +2110,83 @@
             } else { clearInterval(uiState.breathingInterval); }
             render();
         };
-        window.unlockBadge = function(badgeId) {
-            if (!state.unlockedBadges.includes(badgeId)) {
-                state.unlockedBadges.push(badgeId); const b = BADGES_DB.find(x => x.id === badgeId);
-                if (b) { window.showToast(`Conquista Desbloqueada!`, b.title, b.icon, b.color); state.xp += b.xpReward ?? 100; }
-            }
+        window.getCampaignBadgeDefinition = function(id, themeId = state.prestige?.themeId) {
+            const original = BADGES_DB.find(b => b.id === id);
+            if (!original) return { id, title: id, desc: '', icon: 'award', color: 'text-slate-300', xpReward: 0 };
+            const theme = window.getCampaignDefinition(themeId);
+            const positions = { primeiro_sangue: 0, campaign_focus10: 1, campaign_missions20: 2 };
+            const themed = positions[id] !== undefined ? THEME_BADGE_NAMES[theme.id][positions[id]] : theme.id !== 'original' ? CATEGORY_BADGE_NAMES[theme.category]?.[id] : null;
+            return { ...original, title: themed || original.title, icon: positions[id] !== undefined ? theme.icon : original.icon };
         };
-
+        window.getCampaignBadgeEvents = function() { return window.normalizePrestige().badgeEvents; };
+        window.unlockBadge = function(badgeId) {
+            const p = window.normalizePrestige();
+            if (p.badgeEvents.some(e => e.id === badgeId)) return;
+            const badge = window.getCampaignBadgeDefinition(badgeId);
+            window.recordCampaignBadge(badgeId);
+            if (!state.unlockedBadges.includes(badgeId)) state.unlockedBadges.push(badgeId);
+            const bonus = p.bonusClaimedBadgeIds.includes(badgeId) ? 0 : (badge.xpReward ?? 100);
+            if (!p.bonusClaimedBadgeIds.includes(badgeId)) p.bonusClaimedBadgeIds.push(badgeId);
+            state.xp += bonus;
+            window.showToast('Conquista desbloqueada!', badge.title, badge.icon, badge.color);
+        };
+        window.recordCampaignStat = function(key, amount = 1) {
+            const stats = window.normalizePrestige().currentStats;
+            stats[key] = Math.max(0, (Number(stats[key]) || 0) + amount);
+        };
         window.getCurrentlyQualifiedBadgeIds = function() {
+            window.stampCampaignRecords();
+            const p = window.normalizePrestige();
+            const belongs = r => Number(r.campaignId) === p.campaign || (p.campaign === 1 && r.campaignId === null);
+            const tasks = state.tasks.filter(t => belongs(t) || (t.completed && Number(t.rewardedCampaign || 1) === p.campaign));
+            const completed = tasks.filter(t => t.completed && Number(t.rewardedCampaign || 1) === p.campaign);
+            const stats = p.currentStats;
+            const sessions = (state.studyData?.sessions || []).filter(s => Number(s.xpCampaign || s.campaignId || 1) === p.campaign);
+            const reviews = (state.studyData?.reviews || []).filter(r => belongs(r) || Number(r.xpCampaign) === p.campaign);
+            const workouts = (state.healthData?.workouts || []).filter(belongs);
+            const finances = ['incomes', 'fixedExpenses', 'variableExpenses', 'moneyJournal'].flatMap(key => (state.financeData?.[key] || []).filter(belongs));
             const activeBadges = [];
-            if (state.tasks.length > 0 && state.tasks.some(t => t.completed)) activeBadges.push('primeiro_sangue');
-            if (state.stats.tasksMoved >= 1) activeBadges.push('estrategista');
-            if (state.combo >= 3 || state.stats.maxComboReached >= 3) activeBadges.push('frenesi');
-            if (state.stats.pomodorosCompleted >= 1) activeBadges.push('pomo_master');
-            if (state.stats.rewardsBought >= 1) activeBadges.push('shopaholic');
-            if (state.tasks.filter(t => t.completed && t.category === 'work').length >= 5) activeBadges.push('work_demon');
-            if (state.tasks.filter(t => t.completed && t.category === 'law').length >= 3) activeBadges.push('legal_eagle');
-            if (state.tasks.filter(t => t.completed && t.category === 'home').length >= 3) activeBadges.push('home_architect');
-            if (state.stats.pomodorosCompleted >= 4) activeBadges.push('deep_focus');
-
-            let perfectDayCompleted = false;
-            daysOfWeek.forEach(day => { const dayTasks = state.tasks.filter(t => t.day === day.id); if (dayTasks.length > 0 && dayTasks.every(t => t.completed)) perfectDayCompleted = true; });
-            if (perfectDayCompleted) activeBadges.push('perfect_day');
-
-            if (state.studyData?.sessions?.length >= 1) activeBadges.push('estudante_tatico');
-            if (state.studyData?.reviews?.length >= 3) activeBadges.push('operador_1_7_30');
-            if (state.studyData?.reviews?.filter(r => r.status === 'completed' || r.status === 'archived').length >= 3) activeBadges.push('memoria_em_dia');
-            if (state.studyData?.reviews?.filter(r => r.status === 'archived').length >= 1) activeBadges.push('arquivo_organizado');
-            if (state.healthData?.workouts?.length >= 1) activeBadges.push('corpo_em_movimento');
-            
-            const hasFinanceData = (state.financeData?.incomes?.length > 0 || state.financeData?.fixedExpenses?.length > 0 || state.financeData?.variableExpenses?.length > 0 || state.financeData?.moneyJournal?.length > 0);
-            if (hasFinanceData) activeBadges.push('tesoureiro_tatico');
-            if (state.financeData?.moneyJournal?.some(m => m.action && (m.action.includes('Adiou') || m.action.includes('Cancelou')))) activeBadges.push('blindagem_financeira');
-            if ((state.studyData?.sessions?.length >= 1) && (state.healthData?.workouts?.length >= 1) && hasFinanceData) activeBadges.push('comandante_integrado');
-
-            ['campanha_completa', 'veterano', 'legado'].forEach(id => { if (state.unlockedBadges.includes(id)) activeBadges.push(id); });
+            if (completed.length) activeBadges.push('primeiro_sangue');
+            if (stats.tasksMoved >= 1) activeBadges.push('estrategista');
+            if (state.combo >= 3 || stats.maxComboReached >= 3) activeBadges.push('frenesi');
+            if (stats.pomodorosCompleted >= 1) activeBadges.push('pomo_master');
+            if ((state.rewardPurchases || []).some(belongs) || stats.rewardsBought >= 1) activeBadges.push('shopaholic');
+            if (completed.filter(t => t.category === 'work').length >= 5) activeBadges.push('work_demon');
+            if (completed.filter(t => t.category === 'law').length >= 3) activeBadges.push('legal_eagle');
+            if (completed.filter(t => t.category === 'home').length >= 3) activeBadges.push('home_architect');
+            if (stats.pomodorosCompleted >= 4) activeBadges.push('deep_focus');
+            if (daysOfWeek.some(day => { const dayTasks = tasks.filter(t => t.day === day.id); return dayTasks.length && dayTasks.every(t => completed.includes(t)); })) activeBadges.push('perfect_day');
+            if (sessions.length) activeBadges.push('estudante_tatico');
+            if (reviews.length >= 3) activeBadges.push('operador_1_7_30');
+            if (reviews.filter(r => ['completed', 'archived'].includes(r.status)).length >= 3) activeBadges.push('memoria_em_dia');
+            if (reviews.some(r => r.status === 'archived')) activeBadges.push('arquivo_organizado');
+            if (workouts.length) activeBadges.push('corpo_em_movimento');
+            if (finances.length) activeBadges.push('tesoureiro_tatico');
+            if ((state.financeData?.moneyJournal || []).filter(belongs).some(m => m.action && (m.action.includes('Adiou') || m.action.includes('Cancelou')))) activeBadges.push('blindagem_financeira');
+            if (sessions.length && workouts.length && finances.length) activeBadges.push('comandante_integrado');
+            if (stats.pomodorosCompleted >= 10) activeBadges.push('campaign_focus10');
+            if (p.missionEvents.length >= 20) activeBadges.push('campaign_missions20');
+            ['campanha_completa', 'veterano', 'legado'].forEach(id => { if (p.badgeEvents.some(e => e.id === id)) activeBadges.push(id); });
             return activeBadges;
         };
-
         window.rollbackTaskBadges = function(task) {
             const badgeIds = Array.isArray(task?.rewardedBadgeIds) ? task.rewardedBadgeIds : [];
-            if (badgeIds.length === 0) return;
-
+            if (!badgeIds.length || Number(task.rewardedCampaign || 1) !== window.normalizePrestige().campaign) return;
+            const p = window.normalizePrestige();
             const stillQualified = window.getCurrentlyQualifiedBadgeIds();
-            const protectedIds = window.normalizePrestige().protectedBadgeIds;
-            const badgesToRemove = badgeIds.filter(badgeId => !stillQualified.includes(badgeId) && !protectedIds.includes(badgeId));
-            if (badgesToRemove.length > 0) {
-                state.unlockedBadges = state.unlockedBadges.filter(badgeId => !badgesToRemove.includes(badgeId));
-                const bonusXp = badgesToRemove.reduce((sum, id) => sum + (BADGES_DB.find(b => b.id === id)?.xpReward ?? 100), 0);
-                window.revertCampaignXp(bonusXp, task.rewardedCampaign || 1);
-                if (typeof getCorrectLevel === 'function') state.level = getCorrectLevel(state.xp);
-                const names = badgesToRemove.map(id => BADGES_DB.find(b => b.id === id)?.title || id).join(', ');
-                window.showToast('Conquista revertida', `${names}. A medalha saiu porque a missão foi desmarcada.`, 'rotate-ccw', 'text-orange-400');
-            }
-            task.rewardedBadgeIds = [];
+            const removed = badgeIds.filter(id => !stillQualified.includes(id));
+            p.badgeEvents = p.badgeEvents.filter(e => !removed.includes(e.id));
+            state.unlockedBadges = state.unlockedBadges.filter(id => !removed.includes(id) || p.protectedBadgeIds.includes(id));
+            const bonusIds = task.rewardedBadgeBonusIds || badgeIds.filter(id => !p.protectedBadgeIds.includes(id));
+            const bonus = removed.filter(id => bonusIds.includes(id)).reduce((sum, id) => sum + (BADGES_DB.find(b => b.id === id)?.xpReward ?? 100), 0);
+            window.revertCampaignXp(bonus, task.rewardedCampaign || 1);
+            state.level = getCorrectLevel(state.xp);
+            task.rewardedBadgeIds = []; task.rewardedBadgeBonusIds = [];
         };
-
         window.checkGameTriggers = function() {
-            const activeBadges = window.getCurrentlyQualifiedBadgeIds();
-            const toUnlock = activeBadges.filter(b => !state.unlockedBadges.includes(b));
-            toUnlock.forEach(badgeId => window.unlockBadge(badgeId));
+            const p = window.normalizePrestige();
+            window.getCurrentlyQualifiedBadgeIds().filter(id => !p.badgeEvents.some(e => e.id === id)).forEach(id => window.unlockBadge(id));
+            p.currentStats.maxComboReached = Math.max(Number(p.currentStats.maxComboReached) || 0, state.combo || 0);
             if (state.combo > (state.stats.maxComboReached || 0)) state.stats.maxComboReached = state.combo;
         };
 
@@ -1971,27 +2204,27 @@
                 percent: nextXp === null ? 100 : Math.min(100, Math.max(0, Math.round((currentXp - entryXp) * 100 / (nextXp - entryXp))))
             };
         };
+        window.formatCampaignTitle = function(title, level = state.level, themeId = state.prestige?.themeId, gender = state.userProfile?.gender) {
+            if (gender === 'neutro') return `Nível ${level} · ${window.getCampaignDefinition(themeId).name}`;
+            if (gender !== 'feminino') return title;
+            const words = { Soldado: 'Soldada', Sargento: 'Sargenta', Capitão: 'Capitã', Coronel: 'Coronela', General: 'Generala',
+                Supremo: 'Suprema', Mestre: 'Mestra', Executivo: 'Executiva', Deus: 'Deusa', Marinheiro: 'Marinheira',
+                Segundo: 'Segunda', Primeiro: 'Primeira', Comodoro: 'Comodora', Brigadeiro: 'Brigadeira',
+                Operador: 'Operadora', Batedor: 'Batedora', Infiltrador: 'Infiltradora', Estrategista: 'Estrategista',
+                Candidato: 'Candidata', Observador: 'Observadora', Coordenador: 'Coordenadora', Diretor: 'Diretora',
+                Discípulo: 'Discípula', Guardião: 'Guardiã', Companheiro: 'Companheira', Desbravador: 'Desbravadora',
+                Campeão: 'Campeã', Herói: 'Heroína', Protetor: 'Protetora', Portador: 'Portadora', Triunfador: 'Triunfadora',
+                Explorador: 'Exploradora', Aliado: 'Aliada', Técnico: 'Técnica', Investigador: 'Investigadora', Pioneiro: 'Pioneira',
+                Inventor: 'Inventora', Defensor: 'Defensora', Cavaleiro: 'Cavaleira', Escudeiro: 'Escudeira', Grão: 'Grã', Piloto: 'Pilota', Paladino: 'Paladina', Eterno: 'Eterna',
+                Aprendiz: 'Aprendiz', Arcano: 'Arcana', Iniciado: 'Iniciada', Conjurador: 'Conjuradora', Noviço: 'Noviça',
+                Adepto: 'Adepta', Tecelão: 'Tecelã', Mago: 'Maga', Arcanista: 'Arcanista', Arquimago: 'Arquimaga',
+                Cuidador: 'Cuidadora', Druida: 'Druida', Ancião: 'Anciã' };
+            return String(title).replace(/[\p{L}]+/gu, word => words[word] || word);
+        };
         window.getRankName = function(lvl = state.level) {
             const ranks = window.getCampaignRanks();
-            const rank = (ranks.find(r => r.level === lvl) || ranks[ranks.length - 1]).name;
-            const gender = state?.userProfile?.gender || 'masculino';
-            const feminineMap = {
-                'Soldado': 'Soldada',
-                'Cabo': 'Cabo',
-                'Sargento': 'Sargenta',
-                'Tenente': 'Tenente',
-                'Capitão': 'Capitã',
-                'Major': 'Major',
-                'Coronel': 'Coronela',
-                'General': 'Generala',
-                'Comandante Supremo': 'Comandante Suprema',
-                'Estrategista Mestre': 'Estrategista Mestra',
-                'Lenda Tática': 'Lenda Tática',
-                'Mito da Produtividade': 'Mito da Produtividade',
-                'Titã Executivo': 'Titã Executiva',
-                'Deus do Foco': 'Deusa do Foco'
-            };
-            return gender === 'feminino' ? (feminineMap[rank] || rank) : rank;
+            const rank = ranks.find(r => r.level === lvl) || ranks[ranks.length - 1];
+            return window.formatCampaignTitle(rank.name, rank.level);
         };
 
         window.getUserDisplayName = function() {
@@ -2002,27 +2235,45 @@
             return state?.userProfile?.gender === 'feminino' ? 'Comandante' : 'Comandante';
         };
 
+        window.renderProfileModal = function(needsSetup = !state.userProfile?.configured) {
+            const name = window.escapeHtml(state.userProfile?.displayName || '');
+            const gender = state.userProfile?.gender || '';
+            const theme = window.getCampaignDefinition();
+            return `<div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[1000] backdrop-blur-md font-sans"><section role="dialog" aria-modal="true" aria-labelledby="profile-heading" class="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-lg w-full shadow-xl modal-enter"><div class="flex justify-between gap-4"><div><h3 id="profile-heading" class="text-xl font-black text-white">Seu perfil</h3><p class="text-sm text-slate-400 mt-2">Escolha como seu nome e seus títulos aparecem.</p></div>${needsSetup ? '' : '<button type="button" aria-label="Fechar perfil" onclick="window.closeProfileModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>'}</div><div class="space-y-5 mt-6"><div><label for="profile-display-name" class="text-sm font-semibold text-slate-300">Como você quer ser chamado?</label><input id="profile-display-name" type="text" maxlength="60" autocomplete="nickname" oninput="window.updateProfilePreview()" value="${name}" placeholder="Seu nome ou apelido" class="w-full mt-2 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none focus:border-indigo-400"></div><fieldset><legend class="text-sm font-semibold text-slate-300">Linguagem dos títulos</legend><p class="text-xs text-slate-400 mt-1">É uma preferência de apresentação. Não altera XP nem conquistas. Sem gênero exibe nível e tema no lugar do título pessoal.</p><div class="grid grid-cols-3 gap-2 mt-3">${[['feminino', 'Feminina'], ['masculino', 'Masculina'], ['neutro', 'Sem gênero']].map(([value, label]) => `<label class="flex items-center gap-2 bg-slate-950 border border-slate-700 rounded-lg p-3 cursor-pointer text-sm text-slate-200"><input type="radio" name="profile-gender" value="${value}" onchange="window.updateProfilePreview()" class="accent-indigo-500" ${gender === value ? 'checked' : ''}>${label}</label>`).join('')}</div></fieldset><div class="rounded-xl border border-slate-700 bg-slate-800/40 p-4"><p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Prévia do perfil</p><p id="profile-preview-name" class="text-lg font-bold text-white mt-3">${name || 'Seu nome'}</p><p id="profile-preview-title" class="text-sm mt-1" style="color:${theme.color}">${window.escapeHtml(window.getRankName())}</p><p class="text-xs text-slate-400 mt-2">${theme.name} · Campanha ${window.normalizePrestige().campaign}</p></div><div class="flex justify-end gap-3">${needsSetup ? '' : '<button type="button" onclick="window.closeProfileModal()" class="text-sm font-semibold text-slate-300 border border-slate-700 px-4 py-2.5 rounded-lg">Cancelar</button>'}<button type="button" onclick="window.saveUserProfile()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-4 py-2.5 rounded-lg">Salvar perfil</button></div></div></section></div>`;
+        };
         window.openProfileModal = function() { uiState.showProfileModal = true; render(); };
         window.closeProfileModal = function() {
             if (!state?.userProfile?.configured) return;
             uiState.showProfileModal = false;
             render();
         };
+        window.updateProfilePreview = function() {
+            const gender = document.querySelector('input[name="profile-gender"]:checked')?.value || state.userProfile?.gender || 'neutro';
+            const name = (document.getElementById('profile-display-name')?.value || '').trim().slice(0, 60);
+            const title = document.getElementById('profile-preview-title');
+            const nameElement = document.getElementById('profile-preview-name');
+            const rank = window.getCampaignRanks()[Math.max(0, Math.min(14, state.level - 1))];
+            if (title) title.textContent = window.formatCampaignTitle(rank.name, rank.level, state.prestige?.themeId, gender);
+            if (nameElement) nameElement.textContent = name || 'Seu nome';
+        };
         window.saveUserProfile = function() {
-            const name = document.getElementById('profile-display-name')?.value.trim();
+            const name = (document.getElementById('profile-display-name')?.value || '').trim().slice(0, 60);
             const gender = document.querySelector('input[name="profile-gender"]:checked')?.value || '';
             if (!name) { window.showAlertModal('Digite como você gostaria de ser chamado(a).'); return; }
-            if (!['masculino', 'feminino'].includes(gender)) { window.showAlertModal('Selecione feminino ou masculino para ajustar linguagem e patentes.'); return; }
-            state.userProfile = { displayName: name, gender, configured: true, updatedAt: new Date().toISOString() };
+            if (!['masculino', 'feminino', 'neutro'].includes(gender)) { window.showAlertModal('Escolha a linguagem dos seus títulos.'); return; }
+            state.userProfile = { ...state.userProfile, displayName: name, gender, configured: true, updatedAt: new Date().toISOString() };
             uiState.showProfileModal = false;
             window.saveState();
-            window.showToast('Perfil atualizado', `Bem-vindo(a), ${name}.`, 'user-check', 'text-emerald-400');
+            window.showToast('Perfil atualizado', `${name}, suas preferências foram salvas.`, 'user-check', 'text-emerald-400');
         };
 
         window.checkLevelUp = function() {
+            window.normalizePrestige();
+            const beforeLevel = state.level;
             let nextMax = window.getXpForCurrentLevel(); let levelChanged = false;
             while (state.xp >= nextMax && state.level < RANKS.length) { state.level += 1; nextMax = window.getXpForCurrentLevel(); levelChanged = true; }
-            window.syncPrestigeMilestones();
+            window.trackCampaignLevels(beforeLevel);
+            window.syncPrestigeMilestones(true);
             if (levelChanged) { state.energy = Math.min(100, state.energy + 50); uiState.showLevelUp = true; setTimeout(() => { uiState.showLevelUp = false; render(); }, 4000); }
         };
 
@@ -2062,7 +2313,8 @@
                 const affectedCombo = typeof task.rewardedAffectsCombo === 'boolean' ? task.rewardedAffectsCombo : (deductedXp > 0 || deductedCoins > 0);
 
                 const xpReverted = deductedXp > 0 ? window.revertCampaignXp(deductedXp, task.rewardedCampaign || 1) : 0;
-                if (deductedCoins > 0) window.revokeTacticalCoins(deductedCoins, 'missao-desmarcada');
+                if (deductedCoins > 0 && Number(task.rewardedCampaign || 1) === window.normalizePrestige().campaign) window.revokeTacticalCoins(deductedCoins, 'missao-desmarcada');
+                window.recordCampaignMission(task, false);
                 if (energyToRestore) window.changeEnergy(energyToRestore);
                 if (affectedCombo) state.combo = Math.max(0, state.combo - 1);
                 if (affectedCombo) window.rollbackTaskBadges(task);
@@ -2081,6 +2333,7 @@
                 task.completed = true;
                 task.rewardedNature = nature;
                 task.rewardedCampaign = window.normalizePrestige().campaign;
+                window.recordCampaignMission(task, true);
 
                 if (nature === 'neutral') {
                     task.rewardedXp = 0;
@@ -2097,7 +2350,8 @@
                     if (rechargeAmount > 0) window.changeEnergy(rechargeAmount);
                     window.spawnFloatingText(event, rechargeAmount ? `+${rechargeAmount} HP` : 'Recarga concluída', 'text-emerald-400');
                 } else {
-                    const badgesBefore = [...state.unlockedBadges];
+                    const badgesBefore = window.getCampaignBadgeEvents().map(e => e.id);
+                    const bonusBefore = [...window.normalizePrestige().bonusClaimedBadgeIds];
                     const multiplier = window.getComboMultiplier();
                     const finalXp = Math.round(task.xp * multiplier);
                     const baseCoins = window.getTaskCoinReward(task);
@@ -2110,7 +2364,8 @@
                     window.changeEnergy(-task.energyCost);
                     state.combo += 1;
                     window.checkGameTriggers();
-                    task.rewardedBadgeIds = state.unlockedBadges.filter(badgeId => !badgesBefore.includes(badgeId));
+                    task.rewardedBadgeIds = window.getCampaignBadgeEvents().map(e => e.id).filter(id => !badgesBefore.includes(id));
+                    task.rewardedBadgeBonusIds = window.normalizePrestige().bonusClaimedBadgeIds.filter(id => !bonusBefore.includes(id));
                     window.spawnFloatingText(event, `+${finalXp} XP${earnedCoins ? ` / +${earnedCoins} MT` : ''}`, 'text-indigo-400');
                     if (typeof window.playMissionCompleteSound === 'function') window.playMissionCompleteSound();
                 }
@@ -2144,7 +2399,7 @@
         window.buyReward = function(rewardId) {
             const r = REWARDS_SHOP.find(x => x.id === rewardId);
             if (window.spendTacticalCoins(r.cost, 'recompensa-oficial')) {
-                window.changeEnergy(20); state.stats.rewardsBought = (state.stats.rewardsBought || 0) + 1;
+                window.changeEnergy(20); window.recordCampaignStat('rewardsBought'); state.stats.rewardsBought = (state.stats.rewardsBought || 0) + 1;
                 
                 state.rewardPurchases.push({
                     id: Date.now(), rewardId: r.id, title: r.title, cost: r.cost, type: "default", date: new Date().toISOString()
@@ -2187,7 +2442,7 @@
             
             if (window.spendTacticalCoins(reward.cost, 'recompensa-personalizada')) {
                 window.changeEnergy(20);
-                state.stats.rewardsBought = (state.stats.rewardsBought || 0) + 1;
+                window.recordCampaignStat('rewardsBought'); state.stats.rewardsBought = (state.stats.rewardsBought || 0) + 1;
                 
                 state.rewardPurchases.push({
                     id: Date.now(), rewardId: reward.id, title: reward.title, cost: reward.cost, type: "custom", date: new Date().toISOString()
@@ -2213,7 +2468,7 @@
             if (event) { if (typeof event.stopPropagation === 'function') event.stopPropagation(); if (typeof event.preventDefault === 'function') event.preventDefault(); }
             const targetDay = selectEl.value; if (!targetDay) return;
             const task = state.tasks.find(t => t.id == taskId);
-            if (task) { task.day = targetDay; task.order = window.getNextTaskOrder(targetDay); window.changeEnergy(10); state.stats.tasksMoved = (state.stats.tasksMoved || 0) + 1; window.unlockBadge('estrategista'); window.spawnFloatingText(event, `+10 HP`, 'text-emerald-400'); window.breakCombo(); window.saveState(); }
+            if (task) { task.day = targetDay; task.order = window.getNextTaskOrder(targetDay); window.changeEnergy(10); window.recordCampaignStat('tasksMoved'); state.stats.tasksMoved = (state.stats.tasksMoved || 0) + 1; window.unlockBadge('estrategista'); window.spawnFloatingText(event, `+10 HP`, 'text-emerald-400'); window.breakCombo(); window.saveState(); }
             selectEl.value = "";
         };
 
@@ -2621,6 +2876,7 @@
                 const earnedXP = 30 * window.getComboMultiplier(); 
                 const earnedCoins = window.awardTacticalCoins(state.economy?.rules?.pomodoroCoins ?? ECONOMY_DEFAULTS.pomodoroCoins, 'pomodoro', { showCapToast: false });
                 state.xp += Math.round(earnedXP); 
+                window.recordCampaignStat('pomodorosCompleted');
                 state.stats.pomodorosCompleted = (state.stats.pomodorosCompleted || 0) + 1; 
                 window.changeEnergy(-5); 
                 pomodoro.currentFocusStartedAt = null;
@@ -2638,7 +2894,7 @@
                     taskId: finalTaskId,
                     taskText: finalTaskText,
                     focusMinutes,
-                    cycleNumber: pomodoro.cycle
+                    cycleNumber: pomodoro.cycle, campaignId: window.normalizePrestige().campaign, xpCampaign: window.normalizePrestige().campaign, xpAwarded: Math.round(earnedXP)
                 };
                 uiState.customPrompt = { show: true, type: 'pomodoroEvaluation', reviewId: null };
 
@@ -3275,8 +3531,8 @@
             state.focusMode = true;
             window.saveState();
         };
-        window.toggleStatsModal = function() { uiState.showStatsModal = !uiState.showStatsModal; uiState.campaignPicker = null; render(); };
-        window.setStatsTab = function(tab) { uiState.statsTab = tab; uiState.campaignPicker = null; render(); };
+        window.toggleStatsModal = function() { uiState.showStatsModal = !uiState.showStatsModal; uiState.campaignPicker = null; uiState.campaignHistoryId = null; render(); };
+        window.setStatsTab = function(tab) { uiState.statsTab = tab; uiState.campaignPicker = null; uiState.campaignHistoryId = null; render(); };
         window.healEnergy = function() { state.energy = 100; window.togglePanicModal(false); window.saveState(); };
         
         window.clearAllMissions = function() {
@@ -3356,7 +3612,7 @@
                 duration,
                 energyGainPlanned: energyGain,
                 energyGainApplied: Math.max(0, afterEnergy - beforeEnergy),
-                xpAwarded: xpGain,
+                xpAwarded: xpGain, xpCampaign: window.normalizePrestige().campaign,
                 beforeEnergy,
                 afterEnergy,
                 date: new Date().toISOString()
@@ -3561,7 +3817,7 @@
                 ritualId,
                 date: new Date().toISOString(),
                 completedAt: new Date().toISOString(),
-                xpAwarded,
+                xpAwarded, xpCampaign: window.normalizePrestige().campaign,
                 energyDeltaApplied
             });
 
@@ -4164,13 +4420,19 @@
             
             if(!subjectId || !topic) { window.showAlertModal('Disciplina e Tópico são obrigatórios.'); return; }
             state.studyData.errorLog.push({ id: Date.now(), date: new Date().toISOString(), subjectId, topic, questionSource: source, errorReason: reason, notes, status: 'open' });
+            state.studyData.errorLog[state.studyData.errorLog.length - 1].xpAwarded = 10;
+            state.studyData.errorLog[state.studyData.errorLog.length - 1].xpCampaign = window.normalizePrestige().campaign;
+            state.studyData.errorLog[state.studyData.errorLog.length - 1].xpAwards = [{ amount: 10, campaign: window.normalizePrestige().campaign }];
             state.xp += 10; window.checkLevelUp(); window.showToast('Erro Registrado', '+10 XP. Dados diagnósticos coletados.', 'microscope', 'text-fuchsia-400');
             window.saveState();
         };
 
         window.resolveError = function(id) {
             const err = state.studyData.errorLog.find(e => e.id === id);
-            if(err && err.status === 'open') { err.status = 'resolved'; state.xp += 30; window.checkLevelUp(); window.showToast('Vulnerabilidade Fechada', '+30 XP pela correção efetiva.', 'shield-check', 'text-emerald-500'); window.saveState(); }
+            if(err && err.status === 'open') { err.status = 'resolved';
+                if (!Array.isArray(err.xpAwards)) err.xpAwards = err.xpAwarded ? [{ amount: err.xpAwarded, campaign: err.xpCampaign || err.campaignId || 1 }] : [];
+                err.xpAwards.push({ amount: 30, campaign: window.normalizePrestige().campaign });
+                state.xp += 30; window.checkLevelUp(); window.showToast('Vulnerabilidade Fechada', '+30 XP pela correção efetiva.', 'shield-check', 'text-emerald-500'); window.saveState(); }
         };
         window.deleteError = function(id) { state.studyData.errorLog = state.studyData.errorLog.filter(e => e.id !== id); window.saveState(); };
 
@@ -4501,7 +4763,7 @@
             const nextStatus = removingPartial ? 'planned' : status;
 
             if (wasCompleted && nextStatus !== 'completed') {
-                window.revokeTacticalCoins(block.rewardedCoins || 0, 'estudo-desmarcado');
+                if (Number(block.rewardedCampaign || 1) === window.normalizePrestige().campaign) window.revokeTacticalCoins(block.rewardedCoins || 0, 'estudo-desmarcado');
                 delete block.rewardedCoins;
             }
 
@@ -4511,6 +4773,7 @@
             if (nextStatus === 'completed') {
                 if (!wasCompleted) {
                     const studyCoins = window.getStudyBlockCoinReward(block);
+                    block.rewardedCampaign = window.normalizePrestige().campaign;
                     block.rewardedCoins = window.awardTacticalCoins(studyCoins, 'estudo-planejado-concluido', { blockId: block.id, title: block.title, priority: block.priority, showCapToast: false });
                 }
                 block.completedAt = now;
@@ -4624,7 +4887,7 @@
             const typeData = WORKOUT_TYPES[type];
             const finalHpCost = Math.round(intData.hp * typeData.hpMod);
             
-            state.healthData.workouts.push({ id: Date.now(), date: new Date().toISOString(), type, duration, intensity, notes });
+            state.healthData.workouts.push({ id: Date.now(), date: new Date().toISOString(), type, duration, intensity, notes, xpAwarded: intData.xp, xpCampaign: window.normalizePrestige().campaign });
             state.xp += intData.xp; window.changeEnergy(-finalHpCost); window.checkLevelUp();
             window.showToast('Treino Validado', `+${intData.xp} XP consolidados.`, 'dumbbell', 'text-rose-400');
             if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
@@ -4645,7 +4908,7 @@
             const water = parseFloat(document.getElementById('habit-water').value);
             const mood = document.getElementById('habit-mood').value;
             const fatigue = document.getElementById('habit-fatigue').value;
-            state.healthData.habits.push({ id: Date.now(), date: new Date().toISOString(), sleep, water, mood, fatigue });
+            state.healthData.habits.push({ id: Date.now(), date: new Date().toISOString(), sleep, water, mood, fatigue, xpAwarded: 20, xpCampaign: window.normalizePrestige().campaign });
             state.xp += 20; window.checkLevelUp(); if (typeof window.checkGameTriggers === "function") window.checkGameTriggers(); window.showToast('Rotina Salva', '+20 XP', 'heart', 'text-emerald-400'); window.saveState();
         };
 
@@ -5255,37 +5518,7 @@
 
             const profileNeedsSetup = !state?.userProfile?.configured;
             if (profileNeedsSetup || uiState.showProfileModal) {
-                const profileName = window.escapeHtml(state?.userProfile?.displayName || '');
-                const gender = state?.userProfile?.gender || '';
-                html += `
-                <div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[1000] backdrop-blur-md font-mono">
-                    <div class="bg-slate-900 border border-indigo-800/60 rounded-2xl p-6 max-w-md w-full shadow-[0_0_50px_rgba(79,70,229,0.18)] modal-enter">
-                        <div class="flex items-start justify-between gap-4 mb-5">
-                            <div>
-                                <h3 class="text-xl font-black text-white flex items-center gap-2"><i data-lucide="user-round-cog" class="text-indigo-400"></i> Identificação do Operador</h3>
-                                <p class="text-slate-400 text-xs mt-1 leading-relaxed">Personalize nome, linguagem e patentes. Dá para editar depois pelo botão de perfil no topo.</p>
-                            </div>
-                            ${profileNeedsSetup ? '' : '<button onclick="window.closeProfileModal()" class="text-slate-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>'}
-                        </div>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="text-xs font-bold text-slate-400 uppercase">Como você quer ser chamado(a)?</label>
-                                <input id="profile-display-name" type="text" value="${profileName}" placeholder="Ex.: Victor, Ana, Dr. Victor..." class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:border-indigo-500">
-                            </div>
-                            <div>
-                                <label class="text-xs font-bold text-slate-400 uppercase">Linguagem das patentes</label>
-                                <div class="grid grid-cols-2 gap-3 mt-2">
-                                    <label class="bg-slate-950 border ${gender === 'feminino' ? 'border-pink-500 text-pink-200' : 'border-slate-800 text-slate-300'} rounded-xl p-3 cursor-pointer hover:border-pink-500/70 transition-colors flex items-center gap-2"><input type="radio" name="profile-gender" value="feminino" class="accent-pink-500" ${gender === 'feminino' ? 'checked' : ''}> Feminino</label>
-                                    <label class="bg-slate-950 border ${gender === 'masculino' ? 'border-blue-500 text-blue-200' : 'border-slate-800 text-slate-300'} rounded-xl p-3 cursor-pointer hover:border-blue-500/70 transition-colors flex items-center gap-2"><input type="radio" name="profile-gender" value="masculino" class="accent-blue-500" ${gender === 'masculino' ? 'checked' : ''}> Masculino</label>
-                                </div>
-                            </div>
-                            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3 text-[11px] text-slate-400 leading-relaxed">
-                                Exemplo: <strong class="text-white">${gender === 'feminino' ? 'Capitã / Comandante Suprema / Deusa do Foco' : 'Capitão / Comandante Supremo / Deus do Foco'}</strong>.
-                            </div>
-                            <button onclick="window.saveUserProfile()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-3 rounded-xl transition-colors flex items-center justify-center gap-2"><i data-lucide="save" class="w-4 h-4"></i> Salvar perfil</button>
-                        </div>
-                    </div>
-                </div>`;
+                html += window.renderProfileModal(profileNeedsSetup);
             }
 
             if (uiState.deleteTaskPrompt?.show) {
@@ -5451,7 +5684,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.50</span></div>
+                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.51</span></div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-2">
@@ -5507,7 +5740,7 @@
                             </div>
                             <div class="mt-2 text-xs text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1">
                                 <span>Nível ${state.level}</span>
-                                ${state.prestige?.campaigns?.length ? `<span>· Prestígio ${state.prestige.campaigns.length}</span>` : ''}
+                                ${window.getPrestigeCount() ? `<span>· Prestígio ${window.getPrestigeCount()}</span>` : ''}
                                 <span>•</span>
                                 <span>${window.getRankProgress().nextXp === null ? `${state.xp} XP acumulados · nível máximo` : `${state.xp} / ${window.getRankProgress().nextXp} XP`}</span>
                                 <span>•</span>
@@ -5761,7 +5994,7 @@
                             <h2 id="qg-title" class="text-2xl font-black text-white flex items-center gap-3 mb-6 pr-8"><i data-lucide="building-2" class="text-yellow-500 w-8 h-8"></i> Quartel General</h2>
                             
                             <div class="flex flex-wrap gap-2 mb-6 bg-slate-950 p-1 rounded-lg">
-                                ${['roadmap:Progressão', 'badges:Medalhas', 'performance:Desempenho', 'shop:Mercado Negro'].map(tab => {
+                                ${['roadmap:Progressão', 'badges:Coleção', 'performance:Desempenho', 'shop:Mercado Negro'].map(tab => {
                                     const [id, label] = tab.split(':');
                                     return `<button onclick="window.setStatsTab('${id}')" class="flex-1 min-w-[100px] py-2 text-xs sm:text-sm font-bold rounded-md transition-colors ${uiState.statsTab === id ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'}">${label}</button>`;
                                 }).join('')}
@@ -6226,12 +6459,71 @@
         }
 
         // --- Q.G. ---
+        window.formatCampaignDate = function(value) {
+            if (!value || Number.isNaN(new Date(value).getTime())) return 'Data não registrada';
+            return new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+        };
+        window.renderNextCampaignBadge = function() {
+            const p = window.normalizePrestige();
+            const candidates = [
+                { id: 'primeiro_sangue', count: p.missionEvents.length, target: 1 },
+                { id: 'pomo_master', count: Number(p.currentStats.pomodorosCompleted) || 0, target: 1 },
+                { id: 'campaign_focus10', count: Number(p.currentStats.pomodorosCompleted) || 0, target: 10 },
+                { id: 'campaign_missions20', count: p.missionEvents.length, target: 20 }
+            ].filter(c => !p.badgeEvents.some(e => e.id === c.id)).sort((a,b) => Math.min(1,b.count/b.target) - Math.min(1,a.count/a.target));
+            if (!candidates.length) return '';
+            const next = candidates[0];
+            const badge = window.getCampaignBadgeDefinition(next.id);
+            return `<section class="rounded-xl border border-slate-800 p-4"><div class="flex justify-between gap-3"><div><p class="text-xs text-slate-400">Próxima conquista</p><p class="text-sm font-bold text-slate-200 mt-1">${window.escapeHtml(badge.title)}</p><p class="text-xs text-slate-400 mt-2">${badge.desc}</p></div><span class="text-sm font-bold text-indigo-300 whitespace-nowrap">${Math.min(next.count,next.target)} / ${next.target}</span></div></section>`;
+        };
+        window.setCampaignCollectionScope = function(scope) {
+            if (!['current', 'career'].includes(scope)) return;
+            uiState.campaignCollectionScope = scope; render();
+        };
         window.renderCampaignEmblems = function() {
             const emblems = window.normalizePrestige().emblems;
-            return `<section class="rounded-xl border border-slate-800 p-4"><h3 class="text-sm font-bold text-white">Emblemas de campanha <span class="text-slate-400 ml-1">${emblems.length}</span></h3><p class="text-xs text-slate-400 mt-2">Cada subtema concluído rende um emblema permanente ao alcançar o nível 15. Repetir o tema mantém o emblema e acrescenta uma campanha ao histórico.</p>${emblems.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">${emblems.map(e => {
+            return `<details class="rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer text-sm font-bold text-white">Emblemas de campanha · ${emblems.length}</summary><p class="text-xs text-slate-400 mt-3">Um emblema por subtema concluído. Repetir a trajetória acrescenta uma campanha ao histórico.</p>${emblems.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">${emblems.map(e => {
                 const t = window.getCampaignDefinition(e.themeId);
-                return `<div class="flex items-center gap-3 rounded-lg bg-slate-800/50 p-3"><i data-lucide="${t.icon}" style="color:${t.color}" class="w-6 h-6 shrink-0"></i><div><p class="text-sm font-bold text-white">${window.escapeHtml(t.ranks[14].name)}</p><p class="text-xs text-slate-400 mt-1">${window.escapeHtml(t.name)} · Campanha ${Number(e.campaign) || 1}</p></div></div>`;
-            }).join('')}</div>` : '<p class="text-xs text-slate-500 mt-3">Seu primeiro emblema espera no fim desta campanha.</p>'}</section>`;
+                return `<div class="flex items-center gap-3 rounded-lg bg-slate-800/50 p-3"><i data-lucide="${t.icon}" style="color:${t.color}" class="w-6 h-6 shrink-0"></i><div><p class="text-sm font-bold text-white">${window.escapeHtml(window.formatCampaignTitle(t.ranks[14].name, 15, t.id))}</p><p class="text-xs text-slate-400 mt-1">${t.name} · Campanha ${Number(e.campaign) || 1}</p></div></div>`;
+            }).join('')}</div>` : '<p class="text-xs text-slate-500 mt-3">Seu primeiro emblema espera no fim de uma campanha.</p>'}</details>`;
+        };
+        window.renderCampaignBadgeCard = function(badge, event = null, showDate = false, themeId = state.prestige?.themeId) {
+            const theme = window.getCampaignDefinition(themeId);
+            return `<div class="flex items-start gap-3 p-4 rounded-xl border ${event ? 'bg-slate-800/60 border-emerald-900/60' : 'bg-slate-950/40 border-slate-800'}"><div class="w-10 h-10 rounded-full flex items-center justify-center bg-slate-950 shrink-0"><i data-lucide="${badge.icon}" style="color:${event ? theme.color : '#64748b'}" class="w-5 h-5"></i></div><div><h4 class="font-bold text-white text-sm">${window.escapeHtml(badge.title)}</h4><p class="text-xs text-slate-400 mt-1 leading-relaxed">${window.escapeHtml(badge.desc)}</p><span class="inline-block mt-2 text-[10px] uppercase font-bold ${event ? 'text-emerald-300' : 'text-slate-500'}">${event ? 'Conquistada' : 'A conquistar'}</span>${showDate && event ? `<p class="text-xs text-slate-500 mt-1">${window.formatCampaignDate(event.date)}</p>` : ''}</div></div>`;
+        };
+        window.renderCampaignCollection = function() {
+            const p = window.normalizePrestige();
+            const career = uiState.campaignCollectionScope === 'career';
+            const base = BADGES_DB.filter(b => !['veterano', 'legado'].includes(b.id));
+            const events = p.badgeEvents;
+            const earned = base.filter(b => events.some(e => e.id === b.id));
+            const locked = base.filter(b => !events.some(e => e.id === b.id));
+            const head = `<div class="flex flex-wrap gap-2"><button type="button" aria-pressed="${!career}" onclick="window.setCampaignCollectionScope('current')" class="px-4 py-2 rounded-lg text-sm font-bold ${career ? 'text-slate-400 border border-slate-700' : 'bg-indigo-600 text-white'}">Campanha atual</button><button type="button" aria-pressed="${career}" onclick="window.setCampaignCollectionScope('career')" class="px-4 py-2 rounded-lg text-sm font-bold ${career ? 'bg-indigo-600 text-white' : 'text-slate-400 border border-slate-700'}">Coleção da carreira</button></div>`;
+            if (career) {
+                const groups = [...p.campaigns, { number: p.campaign, themeId: p.themeId, badgeEvents: p.badgeEvents, active: true }];
+                return `<div class="space-y-5">${head}<p class="text-sm text-slate-400">Suas conquistas ficam organizadas por campanha e tema.</p>${window.renderCampaignEmblems()}${groups.map(c => `<details class="rounded-xl border border-slate-700 p-4"><summary class="cursor-pointer text-sm font-bold text-slate-200">Campanha ${c.number} · ${window.getCampaignDefinition(c.themeId).name} · ${c.badgeEvents.length} medalhas${c.active ? ' · atual' : ''}</summary><div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">${c.badgeEvents.map(e => window.renderCampaignBadgeCard(window.getCampaignBadgeDefinition(e.id, c.themeId), e, true, c.themeId)).join('') || '<p class="text-sm text-slate-400">Esta campanha ainda não tem medalhas.</p>'}</div></details>`).join('')}<details class="rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer text-sm text-slate-300">Marcos da carreira</summary><div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">${BADGES_DB.filter(b => ['veterano', 'legado'].includes(b.id)).map(b => window.renderCampaignBadgeCard(b, state.unlockedBadges.includes(b.id) ? { id: b.id } : null)).join('')}</div></details></div>`;
+            }
+            return `<div class="space-y-5">${head}<section class="rounded-xl border border-slate-700 bg-slate-800/30 p-5"><p class="text-xs font-bold text-slate-400 uppercase tracking-widest">${window.getCampaignDefinition().name} · Campanha ${p.campaign}</p><h3 class="text-xl font-black text-white mt-2">${earned.length} de ${base.length} medalhas conquistadas</h3><p class="text-sm text-slate-400 mt-2">Cada medalha reconhece uma ação nesta campanha. Os bônus de XP de cada critério são concedidos uma única vez na carreira.</p></section><section><h3 class="text-sm font-bold text-emerald-300 mb-3">Conquistadas</h3>${earned.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${earned.map(b => window.renderCampaignBadgeCard(window.getCampaignBadgeDefinition(b.id), events.find(e => e.id === b.id), true)).join('')}</div>` : '<p class="text-sm text-slate-400">Suas primeiras conquistas aparecerão aqui.</p>'}</section>${locked.length ? `<section><h3 class="text-sm font-bold text-slate-300 mb-3">Próximos desafios</h3><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${locked.map(b => window.renderCampaignBadgeCard(window.getCampaignBadgeDefinition(b.id))).join('')}</div></section>` : '<p class="text-sm text-amber-300">Coleção completa. Todas as medalhas desta campanha foram conquistadas.</p>'}</div>`;
+        };
+        window.renderCampaignHistoryList = function() {
+            const p = window.normalizePrestige();
+            return `<details class="rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer text-sm font-semibold text-slate-300">Histórico de campanhas · ${p.campaigns.length}</summary><div class="space-y-2 mt-3">${p.campaigns.slice().reverse().map(c => `<button type="button" onclick="window.openCampaignHistory(${c.number})" class="w-full rounded-lg border border-slate-700 p-4 text-left hover:bg-slate-800/50"><span class="block text-sm font-bold text-white">Campanha ${c.number} · ${window.escapeHtml(c.themeName || window.getCampaignDefinition(c.themeId).name)}</span><span class="block text-xs mt-2 ${c.status === 'completed' ? 'text-emerald-300' : 'text-slate-400'}">${c.status === 'completed' ? 'Concluída' : 'Encerrada antecipadamente'} · Nível ${c.rankLevel} · ${c.xp} XP</span><span class="block text-xs text-slate-400 mt-2">${window.formatCampaignDate(c.startedAt)} → ${window.formatCampaignDate(c.endedAt)}</span><span class="block text-xs text-indigo-300 mt-2">Ver jornada →</span></button>`).join('') || '<p class="text-sm text-slate-400">Quando você recomeçar, poderá guardar a jornada anterior aqui.</p>'}</div></details>`;
+        };
+        window.renderCampaignHistoryDetail = function() {
+            const c = window.normalizePrestige().campaigns.find(c => c.number === uiState.campaignHistoryId);
+            if (!c) return '<p class="text-sm text-slate-400">Campanha não encontrada.</p>';
+            const theme = window.getCampaignDefinition(c.themeId);
+            const counts = window.getCampaignDeletionSummary(c.number, Boolean(uiState.campaignDeleteUnknown));
+            const unknown = window.getCampaignRecordCollections().reduce((n, list) => n + list.records.filter(r => r.campaignId === null).length, 0);
+            return `<div class="space-y-5"><div class="flex justify-between gap-4"><div><p class="text-xs text-slate-400">Histórico · Campanha ${c.number}</p><h3 class="text-xl font-black text-white mt-1">${window.escapeHtml(c.themeName || theme.name)}</h3></div><button type="button" onclick="window.closeCampaignHistory()" class="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300">Voltar</button></div><section class="rounded-xl border border-slate-700 p-5"><p class="text-sm font-bold ${c.status === 'completed' ? 'text-emerald-300' : 'text-slate-300'}">${c.status === 'completed' ? 'Campanha concluída' : 'Encerrada antecipadamente'}</p><p class="text-lg font-bold text-white mt-2">${window.escapeHtml(window.formatCampaignTitle(c.rankName || theme.ranks[Math.max(0, Math.min(14, c.rankLevel - 1))].name, c.rankLevel, c.themeId))}</p><p class="text-sm text-slate-400 mt-2">${c.xp} XP · ${c.badgeEvents.length} medalhas registradas</p><p class="text-xs text-slate-400 mt-3">Início: ${window.formatCampaignDate(c.startedAt)}<br>Encerramento: ${window.formatCampaignDate(c.endedAt)}</p></section><section><h4 class="text-sm font-bold text-slate-200 mb-3">Títulos conquistados</h4><div class="rounded-xl border border-slate-800 px-4">${c.levelEvents.slice().sort((a,b) => a.level - b.level).map(e => `<div class="flex justify-between items-start gap-4 py-3 border-b border-slate-800 last:border-0"><div><p class="text-xs text-slate-500">Nível ${e.level}</p><p class="text-sm text-slate-200 mt-1">${window.escapeHtml(window.formatCampaignTitle(theme.ranks[e.level - 1]?.name || 'Título', e.level, c.themeId))}</p></div><span class="text-xs text-slate-400 whitespace-nowrap">${window.formatCampaignDate(e.date)}</span></div>`).join('')}</div></section><details class="rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer text-sm font-bold text-slate-200">Medalhas conquistadas · ${c.badgeEvents.length}</summary><div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">${c.badgeEvents.map(e => window.renderCampaignBadgeCard(window.getCampaignBadgeDefinition(e.id, c.themeId), e, true, c.themeId)).join('') || '<p class="text-sm text-slate-400">Nenhuma medalha registrada.</p>'}</div></details><p class="text-xs text-slate-500">Datas antigas que não foram registradas não são estimadas. O resultado desta campanha fica preservado ao desfazer ações antigas.</p><details class="rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer text-sm text-slate-400">Gerenciar dados desta campanha</summary><div class="space-y-4 mt-4"><p class="text-sm text-slate-400">Excluir o histórico retira ${c.xp} XP da carreira e as conquistas exclusivas desta campanha. A campanha atual continua.</p><label class="flex items-start gap-2 text-sm text-slate-300"><input type="checkbox" onchange="window.setCampaignDeleteOption('records', this.checked)" ${uiState.campaignDeleteRecords ? 'checked' : ''} class="mt-1 accent-indigo-500">Excluir também registros pessoais vinculados à campanha</label>${uiState.campaignDeleteRecords ? `<div class="rounded-lg bg-slate-950 p-3 text-xs text-slate-400">${counts.map(row => `${row.count} ${row.label}`).join(' · ') || 'Nenhum registro vinculado encontrado.'}<p class="mt-2">Ganhos de XP de registros removidos na campanha atual também serão descontados. Revisões de outras campanhas são preservadas.</p></div>${unknown ? `<label class="flex items-start gap-2 text-xs text-slate-400"><input type="checkbox" onchange="window.setCampaignDeleteOption('unknown', this.checked)" ${uiState.campaignDeleteUnknown ? 'checked' : ''} class="mt-1 accent-red-500">Incluir ${unknown} registros antigos sem campanha identificada. Eles podem pertencer a outras jornadas.</label>` : ''}` : ''}<div class="flex flex-wrap gap-3"><button type="button" onclick="window.exportData()" class="text-sm text-slate-300 border border-slate-700 px-3 py-2 rounded-lg">Exportar backup</button><button type="button" onclick="window.deleteCampaign(${c.number}, Boolean(uiState.campaignDeleteRecords), Boolean(uiState.campaignDeleteUnknown))" class="text-sm text-red-300 border border-red-900/60 px-3 py-2 rounded-lg">Excluir campanha…</button></div></div></details></div>`;
+        };
+        window.renderCampaignRestartOptions = function() {
+            const picker = uiState.campaignPicker;
+            const reset = picker.mode === 'reset';
+            const number = window.normalizePrestige().campaign;
+            const unknown = window.getCampaignRecordCollections().reduce((n, list) => n + list.records.filter(r => r.campaignId === null).length, 0);
+            const counts = window.getCampaignDeletionSummary(number, picker.includeUnknown);
+            return `<section class="rounded-xl border border-slate-700 p-5"><h4 class="text-xs font-bold uppercase tracking-widest text-slate-400">4. Como você quer recomeçar?</h4><div class="space-y-3 mt-4"><label class="flex items-start gap-3 rounded-lg border border-slate-700 p-3 cursor-pointer"><input type="radio" name="campaign-restart-mode" onchange="window.setCampaignRestartOption('mode', 'archive')" ${reset ? '' : 'checked'} class="mt-1 accent-indigo-500"><span><span class="text-sm font-bold text-white">Arquivar e recomeçar</span><span class="block text-xs text-slate-400 mt-1">Recomendado. Guarda a jornada, preserva moedas e registros e inicia com 0 XP.</span></span></label><label class="flex items-start gap-3 rounded-lg border border-slate-700 p-3 cursor-pointer"><input type="radio" name="campaign-restart-mode" onchange="window.setCampaignRestartOption('mode', 'reset')" ${reset ? 'checked' : ''} class="mt-1 accent-indigo-500"><span><span class="text-sm font-bold text-white">Recomeçar com progresso zerado</span><span class="block text-xs text-slate-400 mt-1">Zera moedas, reserva, alvo, combo e estatísticas. Bateria volta a 100%.</span></span></label></div>${reset ? `<div class="space-y-3 mt-4 border-t border-slate-800 pt-4"><label class="flex items-start gap-2 text-sm text-slate-300"><input type="checkbox" onchange="window.setCampaignRestartOption('keepHistory', !this.checked)" ${picker.keepHistory ? '' : 'checked'} class="mt-1 accent-indigo-500">Apagar também o histórico e as conquistas da campanha anterior</label><p class="text-xs text-slate-500">Sem essa escolha, a jornada anterior continua no histórico e na coleção da carreira.</p><details class="rounded-lg border border-slate-800 p-3"><summary class="cursor-pointer text-xs text-slate-400">Opções de exclusão de registros pessoais</summary><div class="space-y-3 mt-3"><label class="flex items-start gap-2 text-xs text-slate-300"><input type="checkbox" onchange="window.setCampaignRestartOption('deleteRecords', this.checked)" ${picker.deleteRecords ? 'checked' : ''} class="mt-1 accent-red-500">Apagar registros vinculados à campanha atual</label>${picker.deleteRecords ? `<p class="text-xs text-slate-400">${counts.map(row => `${row.count} ${row.label}`).join(' · ') || 'Nenhum registro vinculado encontrado.'}</p>${unknown ? `<label class="flex items-start gap-2 text-xs text-slate-400"><input type="checkbox" onchange="window.setCampaignRestartOption('includeUnknown', this.checked)" ${picker.includeUnknown ? 'checked' : ''} class="mt-1 accent-red-500">Incluir ${unknown} registros antigos sem campanha identificada, de todos os módulos listados.</label>` : ''}` : '<p class="text-xs text-slate-500">Estudos, treinos, finanças, rituais e missões ficam preservados.</p>'}</div></details></div>` : ''}<p class="text-xs text-slate-400 mt-4">Recomeçar antes do nível máximo encerra a campanha antecipadamente e não aumenta o Prestígio.</p><button type="button" onclick="window.confirmCampaignPicker()" class="mt-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-4 py-2.5 rounded-lg">Revisar e iniciar campanha</button></section>`;
         };
 
         window.renderCampaignPicker = function() {
@@ -6240,21 +6532,22 @@
             const current = window.getCampaignDefinition();
             const category = CAMPAIGN_CATEGORIES.find(c => c.id === picker.category);
             const available = CAMPAIGN_THEMES.filter(t => t.category === category.id && t.id !== 'original');
-            const ready = window.canStartPrestige();
-            const previewRow = rank => `<div class="flex items-start justify-between gap-3 py-2.5 border-b border-slate-800 last:border-0"><div><p class="text-sm text-slate-200"><span class="text-slate-500 mr-2">${rank.level}.</span>${window.escapeHtml(rank.name)}</p>${rank.reference ? `<p class="text-xs text-slate-400 mt-1 ml-6">Referência: ${window.escapeHtml(rank.reference)}</p>` : ''}</div><span class="text-xs text-slate-400 whitespace-nowrap">${window.getRankProgress(rank.level).entryXp} XP</span></div>`;
+            const previewRow = rank => `<div class="flex items-start justify-between gap-3 py-2.5 border-b border-slate-800 last:border-0"><div><p class="text-sm text-slate-200"><span class="text-slate-500 mr-2">${rank.level}.</span>${window.escapeHtml(window.formatCampaignTitle(rank.name, rank.level, selected.id))}</p>${rank.reference ? `<p class="text-xs text-slate-400 mt-1 ml-6">Referência: ${window.escapeHtml(rank.reference)}</p>` : ''}</div><span class="text-xs text-slate-400 whitespace-nowrap">${window.getRankProgress(rank.level).entryXp} XP</span></div>`;
             return `<div class="space-y-5">
                 <div class="flex justify-between items-start gap-4"><div><h3 class="text-xl font-black text-white">Escolha sua próxima jornada</h3><p class="text-sm text-slate-400 mt-2">4 temas · 15 subtemas · os mesmos 15 níveis e requisitos de XP.</p></div><button type="button" onclick="window.closeCampaignPicker()" class="shrink-0 text-sm text-slate-300 hover:text-white rounded-lg border border-slate-700 px-3 py-2">Voltar</button></div>
                 <button type="button" onclick="window.selectCurrentCampaignTheme()" class="w-full text-left rounded-xl border border-slate-700 bg-slate-800/50 p-4 hover:border-indigo-400"><span class="text-sm font-bold text-white">Continuar com o tema atual</span><span class="block text-xs text-slate-400 mt-1">${current.name} · repetir a trajetória em uma nova campanha</span></button>
                 <section><h4 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">1. Tema da campanha</h4><div class="grid grid-cols-2 sm:grid-cols-4 gap-2">${CAMPAIGN_CATEGORIES.map(c => `<button type="button" aria-pressed="${c.id === category.id}" onclick="window.selectCampaignCategory('${c.id}')" class="rounded-xl p-3 text-sm font-bold flex items-center justify-center gap-2 ${c.id === category.id ? 'bg-indigo-600 text-white border border-indigo-400' : 'bg-slate-950 border border-slate-700 text-slate-300 hover:border-indigo-400'}"><i data-lucide="${c.icon}" class="w-4 h-4 shrink-0"></i>${c.name}</button>`).join('')}</div></section>
                 <section><h4 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">2. Subtema · ${category.name}</h4><div class="grid grid-cols-1 sm:grid-cols-2 gap-2">${available.map(t => `<button type="button" aria-pressed="${t.id === selected.id}" onclick="window.selectCampaignTheme('${t.id}')" style="${t.id === selected.id ? `border-color:${t.color};background:${t.color}12` : ''}" class="text-left rounded-xl border border-slate-700 p-4 hover:bg-slate-800/60 flex items-center gap-3"><i data-lucide="${t.icon}" style="color:${t.color}" class="w-5 h-5 shrink-0"></i><span class="text-sm font-bold text-white">${t.name}</span>${t.id === selected.id ? '<i data-lucide="check" class="w-4 h-4 text-emerald-300 ml-auto"></i>' : ''}</button>`).join('')}</div></section>
-                <section style="border-color:${selected.color};background:linear-gradient(135deg,${selected.color}12,#020617)" class="rounded-xl border p-5"><p class="text-xs font-bold uppercase tracking-widest" style="color:${selected.color}">3. Prévia · ${selected.name}</p><div class="mt-3">${[0, 4, 9, 14].map(i => previewRow(selected.ranks[i])).join('')}</div><details class="mt-4"><summary class="cursor-pointer text-sm text-slate-300">Ver os 15 níveis</summary><div class="mt-2">${selected.ranks.map(previewRow).join('')}</div></details><p class="text-xs text-slate-400 mt-4">Emblema de conclusão: <span class="text-slate-200 font-bold">${selected.ranks[14].name}</span>.</p>${selected.id === 'avengers' ? '<p class="text-xs text-slate-400 mt-2">Personagens são referências de cada etapa; a ordem não representa uma escala de poder.</p>' : '<p class="text-xs text-slate-400 mt-2">Uma trajetória temática criada para esta campanha.</p>'}</section>
-                <div class="rounded-xl border border-slate-700 p-4"><p class="text-sm text-slate-300">${ready ? `A próxima campanha começa como <strong class="text-white">${selected.ranks[0].name}</strong>, com 0 XP. Você poderá revisar e cancelar na confirmação.` : 'Você pode explorar agora. Para iniciar outra campanha, alcance o nível 15 com 90000 XP na campanha atual.'}</p><p class="text-xs text-slate-400 mt-2">XP da carreira, emblemas, medalhas, moedas e todos os registros ficam preservados.</p><button type="button" onclick="window.startPrestige('${selected.id}')" ${ready ? '' : 'disabled'} class="mt-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-4 py-2.5 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed">${ready ? 'Iniciar campanha com este subtema' : 'Disponível ao concluir a campanha atual'}</button></div>
+                <section style="border-color:${selected.color};background:linear-gradient(135deg,${selected.color}12,#020617)" class="rounded-xl border p-5"><p class="text-xs font-bold uppercase tracking-widest" style="color:${selected.color}">3. Prévia · ${selected.name}</p><div class="mt-3">${[0, 4, 9, 14].map(i => previewRow(selected.ranks[i])).join('')}</div><details class="mt-4"><summary class="cursor-pointer text-sm text-slate-300">Ver os 15 níveis</summary><div class="mt-2">${selected.ranks.map(previewRow).join('')}</div></details><p class="text-xs text-slate-400 mt-4">Emblema de conclusão: <span class="text-slate-200 font-bold">${window.escapeHtml(window.formatCampaignTitle(selected.ranks[14].name, 15, selected.id))}</span>.</p>${selected.id === 'avengers' ? '<p class="text-xs text-slate-400 mt-2">Personagens são referências de cada etapa; a ordem não representa uma escala de poder.</p>' : '<p class="text-xs text-slate-400 mt-2">Uma trajetória temática criada para esta campanha.</p>'}</section>
+                <details class="rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer text-sm text-slate-300">Medalhas deste subtema</summary><div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">${['primeiro_sangue', 'campaign_focus10', 'campaign_missions20'].map(id => window.renderCampaignBadgeCard(window.getCampaignBadgeDefinition(id, selected.id), null, false, selected.id)).join('')}</div></details>
+                ${window.renderCampaignRestartOptions()}
             </div>`;
         };
 
         function renderQGContent() {
             if (uiState.statsTab === 'roadmap') {
                 if (uiState.campaignPicker) return window.renderCampaignPicker();
+                if (uiState.campaignHistoryId) return window.renderCampaignHistoryDetail();
                 const theme = window.getCampaignDefinition();
                 const ranks = theme.ranks;
                 const military = theme.category === 'military';
@@ -6264,52 +6557,36 @@
                 const past = ranks.slice(0, rankIndex);
                 const future = ranks.slice(rankIndex + 2);
                 const progress = window.getRankProgress(current.level);
-                const earnedCount = BADGES_DB.filter(b => state.unlockedBadges.includes(b.id)).length;
+                const earnedCount = window.getCampaignBadgeEvents().filter(e => !['veterano', 'legado'].includes(e.id)).length;
                 const economy = window.normalizeEconomy();
                 const target = economy.targetReward;
                 const balance = window.getTotalTacticalCoins();
                 const prestige = window.normalizePrestige();
-                const rankRow = (rank, achieved) => `<div class="flex items-center justify-between gap-3 py-3 border-b border-slate-800 last:border-0"><div class="flex items-center gap-3"><i data-lucide="${achieved ? 'check' : 'lock'}" class="w-4 h-4 ${achieved ? 'text-emerald-400' : 'text-slate-500'} shrink-0"></i><span class="text-sm font-semibold text-slate-200">${window.escapeHtml(rank.name)}</span><span class="text-xs text-slate-400">Nível ${rank.level}</span></div><span class="text-xs text-slate-400 whitespace-nowrap">${rank.level === 1 ? `${military ? 'Patente' : 'Título'} inicial · 0 XP` : `Disponível a partir de ${window.getRankProgress(rank.level).entryXp} XP`}</span></div>`;
+                const rankRow = (rank, achieved) => `<div class="flex items-center justify-between gap-3 py-3 border-b border-slate-800 last:border-0"><div class="flex items-center gap-3"><i data-lucide="${achieved ? 'check' : 'lock'}" class="w-4 h-4 ${achieved ? 'text-emerald-400' : 'text-slate-500'} shrink-0"></i><span class="text-sm font-semibold text-slate-200">${window.escapeHtml(window.formatCampaignTitle(rank.name, rank.level, theme.id))}</span><span class="text-xs text-slate-400">Nível ${rank.level}</span></div><span class="text-xs text-slate-400 whitespace-nowrap">${rank.level === 1 ? `${military ? 'Patente' : 'Título'} inicial · 0 XP` : `Disponível a partir de ${window.getRankProgress(rank.level).entryXp} XP`}</span></div>`;
                 return `<div class="space-y-5">
                     <section style="border-color:${theme.color};background:linear-gradient(135deg,${theme.color}18,#020617)" class="rounded-2xl border border-indigo-500/60 bg-gradient-to-br from-indigo-950/80 to-slate-950 p-5 sm:p-6">
-                        <div class="flex items-start gap-4"><div class="bg-indigo-500/15 border border-indigo-500/40 rounded-2xl p-3"><i data-lucide="${theme.icon}" style="color:${theme.color}" class="w-7 h-7"></i></div><div class="flex-1"><p class="text-xs font-bold uppercase tracking-widest text-indigo-300">${military ? 'Sua patente' : 'Seu título'} · Nível ${current.level}</p><h3 class="text-2xl font-black text-white mt-1">${window.escapeHtml(current.name)}</h3><p class="text-sm text-slate-300 mt-1">${state.xp} XP nesta campanha</p>${current.reference ? `<p class="text-xs mt-2" style="color:${theme.color}">Referência: ${window.escapeHtml(current.reference)}</p><p class="text-xs text-slate-400 mt-1">${AVENGERS_MESSAGES[rankIndex]}</p>` : ''}</div></div>
+                        <div class="flex items-start gap-4"><div class="bg-indigo-500/15 border border-indigo-500/40 rounded-2xl p-3"><i data-lucide="${theme.icon}" style="color:${theme.color}" class="w-7 h-7"></i></div><div class="flex-1"><p class="text-xs font-bold uppercase tracking-widest text-indigo-300">${military ? 'Sua patente' : 'Seu título'} · Nível ${current.level}</p><h3 class="text-2xl font-black text-white mt-1">${window.escapeHtml(window.getRankName(current.level))}</h3><p class="text-sm text-slate-300 mt-1">${state.xp} XP nesta campanha</p>${current.reference ? `<p class="text-xs mt-2" style="color:${theme.color}">Referência: ${window.escapeHtml(current.reference)}</p><p class="text-xs text-slate-400 mt-1">${AVENGERS_MESSAGES[rankIndex]}</p>` : ''}</div></div>
                         <p class="text-xs text-slate-400 mt-4">${progress.entryXp === 0 ? `${military ? 'Patente' : 'Título'} inicial · 0 XP` : `Disponível a partir de ${progress.entryXp} XP`}</p>
-                        ${next ? `<div class="mt-4"><div class="flex justify-between gap-3 text-sm mb-2"><span class="font-semibold text-indigo-200">Rumo a ${window.escapeHtml(next.name)}</span><span class="font-bold text-white">${progress.percent}%</span></div><div role="progressbar" aria-label="Progresso até o próximo nível" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress.percent}" class="h-2.5 bg-slate-800 rounded-full overflow-hidden"><div class="h-full rounded-full" style="background:${theme.color};width:${progress.percent}%"></div></div><p class="text-sm text-indigo-200 mt-3">Próxima promoção: ${progress.nextXp} XP · faltam ${progress.remainingXp} XP</p></div>` : `<p class="text-sm text-indigo-200 mt-4">${military ? 'Patente máxima conquistada' : 'Título máximo conquistado'} · seu XP continua acumulando.</p>`}
+                        ${next ? `<div class="mt-4"><div class="flex justify-between gap-3 text-sm mb-2"><span class="font-semibold text-indigo-200">Rumo a ${window.escapeHtml(window.getRankName(next.level))}</span><span class="font-bold text-white">${progress.percent}%</span></div><div role="progressbar" aria-label="Progresso até o próximo nível" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress.percent}" class="h-2.5 bg-slate-800 rounded-full overflow-hidden"><div class="h-full rounded-full" style="background:${theme.color};width:${progress.percent}%"></div></div><p class="text-sm text-indigo-200 mt-3">Próxima promoção: ${progress.nextXp} XP · faltam ${progress.remainingXp} XP</p></div>` : `<p class="text-sm text-indigo-200 mt-4">${military ? 'Patente máxima conquistada' : 'Título máximo conquistado'} · seu XP continua acumulando.</p>`}
                     </section>
                     <section class="rounded-xl border border-slate-700 bg-slate-800/40 p-5">
-                        <div class="flex flex-wrap justify-between gap-3"><h3 class="text-sm font-bold text-white">Campanha ${prestige.campaign}</h3><span class="text-xs font-bold text-indigo-300">Prestígio ${prestige.campaigns.length}</span></div>
+                        <div class="flex flex-wrap justify-between gap-3"><h3 class="text-sm font-bold text-white">Campanha ${prestige.campaign}</h3><span class="text-xs font-bold text-indigo-300">Prestígio ${window.getPrestigeCount()}</span></div>
                         <p class="text-xs text-slate-400 mt-2">${CAMPAIGN_CATEGORIES.find(c => c.id === theme.category).name} · ${theme.name}</p><p class="text-sm text-slate-300 mt-2"><span class="font-bold text-white">${window.getCareerXp()} XP</span> na carreira</p>
-                        <p class="text-sm text-slate-400 mt-3">${window.canStartPrestige() ? 'Você chegou ao nível máximo. Pode continuar acumulando XP ou escolher a próxima campanha.' : 'Uma nova campanha fica disponível ao alcançar 90000 XP. Explore os temas enquanto avança.'}</p>
-                        <button type="button" onclick="window.openCampaignPicker()" class="mt-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-4 py-2.5 rounded-lg">${window.canStartPrestige() ? 'Escolher próxima campanha' : 'Explorar temas de campanha'}</button>
-                        <p class="text-xs text-slate-400 mt-2">Você escolhe quando recomeçar. Emblemas, moedas, medalhas e registros ficam preservados.</p>
-                        ${prestige.campaigns.length ? `<details class="group mt-4 border-t border-slate-700 pt-3"><summary class="cursor-pointer text-sm text-slate-400 hover:text-white">Histórico de campanhas</summary><div class="mt-3 space-y-2">${prestige.campaigns.slice().reverse().map(c => `<div class="flex flex-wrap justify-between gap-2 text-xs text-slate-300 border-b border-slate-700 pb-2"><span>Campanha ${Number(c.number) || 1} · ${window.escapeHtml(c.themeName || window.getCampaignDefinition(c.themeId).name)} · ${window.escapeHtml(c.rankName || 'Nível máximo')}</span><span>${Math.max(0, Number(c.xp) || 0)} XP · ${window.escapeHtml(new Date(c.endedAt).toLocaleDateString('pt-BR'))}</span></div>`).join('')}</div><p class="text-xs text-slate-400 mt-3">Campanhas encerradas guardam seu resultado. Desfazer registros antigos não altera o XP da campanha atual.</p></details>` : ''}
+                        <p class="text-xs text-slate-400 mt-3">${window.canStartPrestige() ? 'Nível máximo alcançado. Você pode iniciar outra campanha e receber Prestígio.' : 'Sua jornada está em andamento. Você pode recomeçar quando quiser em Gerenciar campanha.'}</p>
                     </section>
-                    ${window.renderCampaignEmblems()}
+                    ${window.renderNextCampaignBadge()}
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <button onclick="window.setStatsTab('badges')" class="text-left rounded-xl border border-slate-700 bg-slate-800/50 p-4 hover:border-indigo-400 transition-colors"><div class="flex items-center justify-between gap-3"><span class="text-sm font-bold text-white">${earnedCount} de ${BADGES_DB.length} medalhas</span><i data-lucide="award" class="w-5 h-5 text-amber-300"></i></div><p class="text-xs text-slate-400 mt-2">Ver conquistas e próximos desafios →</p></button>
+                        <button onclick="window.setStatsTab('badges')" class="text-left rounded-xl border border-slate-700 bg-slate-800/50 p-4 hover:border-indigo-400 transition-colors"><div class="flex items-center justify-between gap-3"><span class="text-sm font-bold text-white">${earnedCount} de ${BADGES_DB.length - 2} medalhas nesta campanha</span><i data-lucide="award" class="w-5 h-5 text-amber-300"></i></div><p class="text-xs text-slate-400 mt-2">Abrir coleção →</p></button>
                         <button onclick="window.setStatsTab('shop')" class="text-left rounded-xl border border-slate-700 bg-slate-800/50 p-4 hover:border-yellow-400 transition-colors"><div class="flex items-center justify-between gap-3"><span class="text-sm font-bold text-yellow-300">${balance} MT disponíveis</span><i data-lucide="target" class="w-5 h-5 text-yellow-300"></i></div><p class="text-xs text-slate-300 mt-2">${target ? `Alvo: ${window.escapeHtml(target.title)} · ${balance >= target.cost ? 'disponível para resgate' : `faltam ${Math.max(0, target.cost - balance)} MT`}` : 'Escolha sua recompensa-alvo →'}</p></button>
                     </div>
                     ${next ? `<section class="rounded-xl border border-slate-700 p-4"><p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">${military ? 'Próxima patente' : 'Próximo título'}</p>${rankRow(next, false)}</section>` : ''}
                     ${past.length ? `<details class="group rounded-xl border border-slate-800 bg-slate-950/40"><summary class="cursor-pointer list-none flex items-center justify-between gap-3 p-4 text-sm font-semibold text-slate-300 hover:text-white"><span>${military ? 'Patentes conquistadas' : 'Títulos conquistados'} <span class="text-emerald-400 ml-2">${past.length}</span></span><i data-lucide="chevron-down" class="w-4 h-4 group-open:rotate-180 transition-transform"></i></summary><div class="px-4 pb-2 border-t border-slate-800">${past.map(rank => rankRow(rank, true)).join('')}</div></details>` : ''}
                     ${future.length ? `<details class="group rounded-xl border border-slate-800 bg-slate-950/40"><summary class="cursor-pointer list-none flex items-center justify-between gap-3 p-4 text-sm font-semibold text-slate-300 hover:text-white"><span>${military ? 'Patentes futuras' : 'Títulos futuros'} <span class="text-slate-400 ml-2">${future.length}</span></span><i data-lucide="chevron-down" class="w-4 h-4 group-open:rotate-180 transition-transform"></i></summary><div class="px-4 pb-2 border-t border-slate-800">${future.map(rank => rankRow(rank, false)).join('')}</div></details>` : ''}
+                    ${window.renderCampaignHistoryList()}
+                    <details class="rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer text-sm text-slate-400">Gerenciar campanha</summary><p class="text-sm text-slate-400 mt-3">Escolha outra jornada a qualquer momento. Você revisa o que será preservado ou apagado antes de confirmar.</p><div class="flex flex-wrap gap-3 mt-4"><button type="button" onclick="window.openCampaignPicker()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-4 py-2.5 rounded-lg">Começar nova campanha</button><button type="button" onclick="window.exportData()" class="text-sm text-slate-300 border border-slate-700 px-4 py-2.5 rounded-lg">Exportar backup</button></div></details>
                 </div>`;
             } else if (uiState.statsTab === 'badges') {
-                const earned = BADGES_DB.filter(b => state.unlockedBadges.includes(b.id));
-                const locked = BADGES_DB.filter(b => !state.unlockedBadges.includes(b.id));
-                const badgeCard = badge => {
-                    const unlocked = state.unlockedBadges.includes(badge.id);
-                    const bgClass = unlocked ? 'bg-slate-800/70 border-emerald-900/60' : 'bg-slate-950/50 border-slate-800';
-                    return `
-                    <div class="flex items-start gap-4 p-4 rounded-xl border ${bgClass} transition-all">
-                        <div class="w-12 h-12 rounded-full flex items-center justify-center bg-slate-950 border border-slate-700 shrink-0"><i data-lucide="${badge.icon}" class="w-6 h-6 ${unlocked ? badge.color : 'text-slate-600'}"></i></div>
-                        <div>
-                            <h4 class="font-bold text-white text-sm">${badge.title}</h4>
-                            <p class="text-xs text-slate-400 mt-1 leading-tight">${badge.desc}</p>
-                            ${unlocked ? `<span class="inline-block mt-2 text-[10px] uppercase font-bold text-emerald-300 bg-emerald-950 px-2 py-0.5 rounded">Conquistada</span>` : `<span class="inline-block mt-2 text-[10px] uppercase font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded">A conquistar</span>`}
-                        </div>
-                    </div>`;
-                };
-                return `<div class="space-y-6"><section class="rounded-xl border border-amber-900/50 bg-amber-950/15 p-5"><p class="text-xs text-amber-300 uppercase tracking-widest font-bold">Sua coleção</p><h3 class="text-xl text-white font-black mt-1">${earned.length} de ${BADGES_DB.length} medalhas conquistadas</h3><p class="text-sm text-slate-400 mt-2">Cada medalha reconhece uma ação concreta. Consulte o critério para escolher seu próximo desafio.</p></section><section><h3 class="text-sm font-bold text-emerald-300 mb-3">Conquistadas</h3>${earned.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${earned.map(badgeCard).join('')}</div>` : `<p class="text-sm text-slate-400 border border-dashed border-slate-700 rounded-xl p-4">Suas primeiras conquistas aparecerão aqui.</p>`}</section>${locked.length ? `<section><h3 class="text-sm font-bold text-slate-300 mb-3">Próximos desafios</h3><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${locked.map(badgeCard).join('')}</div></section>` : `<p class="text-sm text-amber-300">Coleção completa. Todas as medalhas atuais foram conquistadas.</p>`}</div>`;
+                return window.renderCampaignCollection();
             } else if (uiState.statsTab === 'performance') {
                 return window.renderQGPerformanceDashboard ? window.renderQGPerformanceDashboard() : '<div class="text-slate-500 text-sm">Painel de desempenho indisponível.</div>';
             } else if (uiState.statsTab === 'shop') {

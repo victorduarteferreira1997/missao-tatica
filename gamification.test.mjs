@@ -35,11 +35,12 @@ function engine(overrides = {}) {
         sourceBetween('window.getTaskCoinReward =', 'window.setRewardTarget ='),
         sourceBetween('window.getComboMultiplier =', 'window.getUserDisplayName ='),
         sourceBetween('window.escapeHtml =', '// Ponte temporária'),
-        sourceBetween('window.unlockBadge =', 'window.getComboMultiplier ='),
-        sourceBetween('window.checkLevelUp =', 'window.showToast ='),
+        sourceBetween('window.getCampaignBadgeDefinition =', 'window.getComboMultiplier ='),
+        sourceBetween('window.renderProfileModal =', 'window.checkLevelUp = function()'),
+        sourceBetween('window.checkLevelUp = function()', 'window.showToast ='),
         sourceBetween('window.toggleQuickTask =', 'window.deleteQuickTask ='),
         sourceBetween('window.recalculateLevelFromXp =', 'window.archiveReview ='),
-        sourceBetween('window.renderCampaignEmblems =', '// --- ESTUDOS ---'),
+        sourceBetween('window.formatCampaignDate =', '// --- ESTUDOS ---'),
         'window.renderQGForTest = renderQGContent;',
         'window.rewardsForTest = REWARDS_SHOP;',
         'window.badgesForTest = BADGES_DB;',
@@ -163,13 +164,13 @@ test('medalhas separa conquistas de desafios sem esconder critérios', () => {
     const html = ctx.window.renderQGForTest();
     assert.match(html, /1 de \d+ medalhas conquistadas/);
     assert.ok(html.indexOf('Foco Absoluto') < html.indexOf('Próximos desafios'));
-    for (const badge of ctx.window.badgesForTest) {
+    for (const badge of ctx.window.badgesForTest.filter(b => !['veterano', 'legado'].includes(b.id))) {
         assert.equal(html.split(`<h4 class="font-bold text-white text-sm">${badge.title}</h4>`).length - 1, 1);
         assert.ok(html.includes(badge.desc));
     }
-    ctx.state.unlockedBadges = ctx.window.badgesForTest.map(b => b.id);
+    ctx.state.prestige.badgeEvents = ctx.window.badgesForTest.map(b => ({ id: b.id, date: null }));
     assert.match(ctx.window.renderQGForTest(), /Coleção completa/);
-    ctx.state.unlockedBadges = [];
+    ctx.state.prestige.badgeEvents = [];
     assert.match(ctx.window.renderQGForTest(), /Suas primeiras conquistas/);
 });
 
@@ -241,7 +242,7 @@ test('Prestígio exige 90000 XP e confirmação; cancelar mantém a campanha', (
         assert.equal(ctx.state.prestige.campaigns.length, 0);
     }
     const ctx = engine({ xp: 90000, level: 15 });
-    ctx.window.normalizePrestige();
+    ctx.window.normalizePrestige(); ctx.window.initializeCampaignRecordOrigins();
     const before = JSON.stringify(ctx.state);
     ctx.window.startPrestige();
     assert.match(ctx.window.confirmMessageForTest, /0 XP nesta campanha/);
@@ -263,6 +264,7 @@ test('iniciar Prestígio arquiva a campanha e preserva moedas, medalhas e todos 
     });
     const preservedKeys = ['energy', 'combo', 'coins', 'economy', 'tasks', 'quickTasks', 'studyData',
         'financeData', 'healthData', 'routineData', 'rechargeData', 'focusData', 'rewardPurchases', 'customRewards', 'stats'];
+    ctx.window.initializeCampaignRecordOrigins();
     const before = JSON.stringify(preservedKeys.map(key => ctx.state[key]));
     ctx.window.startPrestige();
     const confirm = ctx.window.confirmForTest;
@@ -383,9 +385,9 @@ test('catálogo contém 4 categorias e 15 subtemas com os mesmos 15 limites de X
     assert.equal(avengers.ranks[13].reference, 'Doutor Estranho');
 });
 
-test('explorar qualquer tema só altera a seleção temporária; início continua bloqueado', () => {
+test('explorar qualquer tema só altera a seleção temporária; início requer revisão e confirmação', () => {
     const ctx = engine({ xp: 32287, level: 10, coins: 3, economy: { tacticalReserve: 231 } });
-    ctx.window.normalizePrestige();
+    ctx.window.normalizePrestige(); ctx.window.initializeCampaignRecordOrigins();
     const before = JSON.stringify(ctx.state);
     ctx.window.openCampaignPicker();
     assert.match(ctx.window.renderQGForTest(), /Escolha sua próxima jornada/);
@@ -397,7 +399,8 @@ test('explorar qualquer tema só altera a seleção temporária; início continu
         assert.match(html, /Ver os 15 níveis/);
         assert.ok(html.includes(theme.ranks[0].name));
         assert.ok(html.includes(theme.ranks[14].name));
-        assert.ok(html.includes(`window.startPrestige('${theme.id}')" disabled`));
+        assert.ok(html.includes('window.confirmCampaignPicker()'));
+        assert.ok(html.includes('Arquivar e recomeçar'));
         assert.ok(!html.includes('href='));
         assert.equal(JSON.stringify(ctx.state), before);
     }
@@ -416,7 +419,7 @@ test('explorar qualquer tema só altera a seleção temporária; início continu
 test('cada subtema inicia somente após confirmar e exibe títulos e promoção corretos', () => {
     for (const theme of engine().window.themesForTest.filter(t => t.id !== 'original')) {
         const ctx = engine({ xp: 90000, level: 15, coins: 234, tasks: [{ id: 1 }] });
-        ctx.window.normalizePrestige();
+        ctx.window.normalizePrestige(); ctx.window.initializeCampaignRecordOrigins();
         const before = JSON.stringify(ctx.state);
         ctx.window.startPrestige(theme.id);
         assert.equal(JSON.stringify(ctx.state), before, 'Cancelar não muda o tema ou XP');
@@ -479,9 +482,10 @@ test('emblemas são permanentes e únicos por subtema; histórico guarda a traje
     reloaded.window.normalizePrestige(); reloaded.window.syncPrestigeMilestones();
     assert.equal(reloaded.state.prestige.themeId, 'espionage');
     assert.equal(reloaded.state.prestige.emblems.length, 4);
-    const html = reloaded.window.renderQGForTest();
-    assert.match(html, /Espionagem · Lenda da Espionagem/);
-    assert.match(html, /Marvel — Vingadores · Lenda dos Vingadores/);
+    reloaded.window.openCampaignHistory(2);
+    assert.match(reloaded.window.renderQGForTest(), /Lenda da Espionagem/);
+    reloaded.window.openCampaignHistory(3);
+    assert.match(reloaded.window.renderQGForTest(), /Lenda dos Vingadores/);
 });
 
 test('campanhas v1.9.49 migram para original e recuperam emblema sem alterar XP ou história', () => {
@@ -511,4 +515,330 @@ test('seleção inválida é rejeitada e confirmação antiga não inicia uma se
     assert.equal(ctx.state.prestige.themeId, 'norse');
     assert.equal(ctx.state.prestige.campaigns.length, 1);
     assert.equal(ctx.window.savesForTest, 1);
+});
+
+test('recomeço antecipado arquiva sem conceder Prestígio e registra a nova campanha desde o nível 1', () => {
+    const ctx = engine({ xp: 32287, level: 10, coins: 3, economy: { tacticalReserve: 231 } });
+    ctx.window.initializeCampaignRecordOrigins();
+    const before = JSON.stringify(ctx.state);
+    ctx.window.startCampaign('norse');
+    assert.equal(JSON.stringify(ctx.state), before);
+    assert.match(ctx.window.confirmMessageForTest, /Aprendiz do Norte/);
+    ctx.window.confirmForTest();
+    assert.equal(ctx.state.prestige.campaigns[0].status, 'ended-early');
+    assert.equal(ctx.state.prestige.campaigns[0].xp, 32287);
+    assert.equal(ctx.window.getPrestigeCount(), 0);
+    assert.equal(ctx.state.prestige.emblems.length, 0);
+    assert.equal(ctx.state.xp, 0);
+    assert.equal(ctx.state.level, 1);
+    assert.equal(ctx.state.coins, 3);
+    assert.equal(ctx.state.economy.tacticalReserve, 231);
+    assert.equal(ctx.window.getCareerXp(), 32287);
+    assert.match(ctx.state.prestige.levelEvents[0].date, /^\d{4}-/);
+    assert.equal(ctx.state.prestige.campaigns[0].levelEvents.length, 10);
+    assert.ok(ctx.state.prestige.campaigns[0].levelEvents.every(e => e.date === null));
+});
+
+test('progresso zerado preserva registros e histórico quando nenhuma exclusão é escolhida', () => {
+    const ctx = engine({ xp: 32287, level: 10, coins: 234, combo: 3, energy: 25,
+        stats: { pomodorosCompleted: 20, tasksMoved: 5, rewardsBought: 3 },
+        economy: { tacticalReserve: 231, weeklyCoinsEarned: 200, targetReward: { id: 'r7', cost: 1200 } },
+        tasks: [{ id: 1, completed: true, rewardedXp: 50 }],
+        studyData: { sessions: [{ id: 1, xpAwarded: 100 }], reviews: [{ id: 2, status: 'completed' }] },
+        financeData: { incomes: [{ id: 3, amount: 14000 }] }, healthData: { workouts: [{ id: 4 }] }
+    });
+    ctx.window.initializeCampaignRecordOrigins();
+    const records = JSON.stringify([ctx.state.tasks, ctx.state.studyData, ctx.state.financeData, ctx.state.healthData]);
+    ctx.window.startCampaign('avengers', { mode: 'reset' }); ctx.window.confirmForTest();
+    assert.equal(ctx.state.coins, 0); assert.equal(ctx.state.economy.tacticalReserve, 0);
+    assert.equal(ctx.state.economy.targetReward, null); assert.equal(ctx.state.economy.weeklyCoinsEarned, 0);
+    assert.equal(ctx.state.combo, 0); assert.equal(ctx.state.energy, 100);
+    assert.equal(ctx.state.stats.pomodorosCompleted, 0);
+    assert.equal(ctx.state.prestige.badgeEvents.length, 0);
+    assert.equal(ctx.state.prestige.campaigns.length, 1);
+    assert.equal(JSON.stringify([ctx.state.tasks, ctx.state.studyData, ctx.state.financeData, ctx.state.healthData]), records);
+    assert.equal(ctx.window.getCurrentlyQualifiedBadgeIds().length, 0, 'Registros antigos não concedem conquistas na campanha nova');
+    ctx.uiState.statsTab = 'badges';
+    assert.match(ctx.window.renderQGForTest(), /0 de 21 medalhas conquistadas/);
+    ctx.window.setCampaignCollectionScope('career');
+    assert.match(ctx.window.renderQGForTest(), /Foco Absoluto/);
+});
+
+test('reset completo exige escolhas explícitas e não apaga perfil nem configurações', () => {
+    const ctx = engine({ xp: 5000, level: 5, coins: 50,
+        userProfile: { displayName: 'Ana', gender: 'feminino', configured: true },
+        tasks: [{ id: 1, completed: true }], quickTasks: [{ id: 2, done: true }],
+        studyData: { subjects: [{ id: 's', name: 'Direito' }], sessions: [{ id: 3 }], reviews: [{ id: 4 }], studyPlan: { weeklyBlocks: [{ id: 5 }] } },
+        financeData: { incomes: [{ id: 6, amount: 14000 }], categoryBudgets: [{ category: 'casa', limit: 100 }] },
+        healthData: { workouts: [{ id: 7 }] }, routineData: { rituals: [{ id: 'r' }], logs: [{ id: 8 }] }
+    });
+    ctx.window.initializeCampaignRecordOrigins();
+    ctx.window.startCampaign('espionage', { mode: 'reset', keepHistory: false, deleteRecords: true, includeUnknown: true });
+    assert.equal(ctx.state.tasks.length, 1, 'Nada é removido antes da confirmação');
+    assert.match(ctx.window.confirmMessageForTest, /Esta exclusão é permanente/);
+    assert.match(ctx.window.confirmMessageForTest, /1 receitas/);
+    ctx.window.confirmForTest();
+    assert.equal(ctx.state.tasks.length, 0); assert.equal(ctx.state.quickTasks.length, 0);
+    assert.equal(ctx.state.studyData.sessions.length, 0); assert.equal(ctx.state.studyData.reviews.length, 0);
+    assert.equal(ctx.state.financeData.incomes.length, 0); assert.equal(ctx.state.healthData.workouts.length, 0);
+    assert.equal(ctx.state.routineData.logs.length, 0);
+    assert.equal(ctx.state.studyData.subjects[0].name, 'Direito');
+    assert.equal(ctx.state.financeData.categoryBudgets[0].limit, 100);
+    assert.equal(ctx.state.routineData.rituals[0].id, 'r');
+    assert.equal(ctx.state.userProfile.gender, 'feminino');
+    assert.equal(ctx.state.prestige.campaigns.length, 0);
+    assert.equal(ctx.window.getCareerXp(), 0);
+    assert.equal(ctx.state.prestige.campaign, 2);
+    assert.ok(ctx.state.prestige.deletedCampaignIds.includes(1));
+});
+
+test('excluir só o histórico preserva a campanha atual e IDs não são reutilizados', () => {
+    const ctx = engine({ xp: 32287, level: 10, tasks: [{ id: 1 }] });
+    ctx.window.startCampaign('avengers'); ctx.window.confirmForTest();
+    ctx.state.xp = 123; ctx.state.coins = 456;
+    const records = JSON.stringify(ctx.state.tasks);
+    ctx.window.deleteCampaign(1);
+    assert.equal(ctx.state.prestige.campaigns.length, 1);
+    ctx.window.confirmForTest();
+    assert.equal(ctx.state.prestige.campaigns.length, 0);
+    assert.equal(ctx.state.prestige.campaign, 2);
+    assert.equal(ctx.state.xp, 123); assert.equal(ctx.state.coins, 456);
+    assert.equal(ctx.window.getCareerXp(), 123);
+    assert.equal(JSON.stringify(ctx.state.tasks), records);
+    ctx.window.startCampaign('greek'); ctx.window.confirmForTest();
+    assert.equal(ctx.state.prestige.campaign, 3);
+    assert.equal(ctx.state.prestige.campaigns[0].number, 2);
+    const reload = engine(JSON.parse(JSON.stringify(ctx.state)));
+    reload.window.normalizePrestige();
+    assert.equal(reload.state.prestige.campaign, 3);
+});
+
+test('exclusão seletiva respeita origem e mantém revisões de outras campanhas', () => {
+    const ctx = engine({ xp: 10000, level: 7,
+        tasks: [{ id: 1, campaignId: 1 }, { id: 2, campaignId: null }],
+        studyData: { sessions: [{ id: 10, campaignId: 1 }], reviews: [{ id: 11, campaignId: 1 }, { id: 12, campaignId: 2, sourceSessionId: 10, xpCampaign: 2, xpAwarded: 30, status: 'completed' }] },
+        financeData: { incomes: [{ id: 3, amount: 100, campaignId: 1 }, { id: 4, amount: 200, campaignId: null }] }
+    });
+    ctx.window.startCampaign('egyptian'); ctx.window.confirmForTest(); ctx.state.xp = 100;
+    ctx.window.deleteCampaign(1, true); ctx.window.confirmForTest();
+    assert.equal(ctx.state.tasks.length, 1); assert.equal(ctx.state.tasks[0].id, 2);
+    assert.equal(ctx.state.financeData.incomes.length, 1); assert.equal(ctx.state.financeData.incomes[0].id, 4);
+    assert.equal(ctx.state.studyData.sessions.length, 0);
+    assert.equal(ctx.state.studyData.reviews.length, 1);
+    assert.equal(ctx.state.studyData.reviews[0].sourceSessionId, null);
+    assert.equal(ctx.state.xp, 100, 'Revisão de outra campanha permanece e não perde XP');
+});
+
+test('excluir registro antigo que ganhou XP novamente desconta apenas os ganhos atuais correspondentes', () => {
+    const ctx = engine({ xp: 5000, level: 5, tasks: [{ id: 1, campaignId: 1, completed: false, xp: 100, energyCost: 0, day: 'monday', category: 'life' }] });
+    ctx.window.startCampaign('norse'); ctx.window.confirmForTest();
+    ctx.window.toggleTask(1);
+    assert.equal(ctx.state.xp, 300);
+    ctx.state.xp += 50;
+    ctx.window.deleteCampaign(1, true); ctx.window.confirmForTest();
+    assert.equal(ctx.state.tasks.length, 0);
+    assert.equal(ctx.state.xp, 50, 'Missão e seus bônus atuais são removidos; os demais ganhos ficam');
+    assert.equal(ctx.state.prestige.missionEvents.length, 0);
+});
+
+test('excluir uma campanha atualiza emblemas e conserva conquistas obtidas em outras', () => {
+    const ctx = engine({ xp: 90000, level: 15 });
+    ctx.window.startPrestige('norse'); ctx.window.confirmForTest();
+    ctx.state.xp = 90000; ctx.window.checkLevelUp();
+    ctx.window.startPrestige('norse'); ctx.window.confirmForTest();
+    ctx.state.xp = 90000; ctx.window.checkLevelUp();
+    ctx.window.startPrestige('avengers'); ctx.window.confirmForTest();
+    assert.equal(ctx.state.prestige.emblems.filter(e => e.themeId === 'norse').length, 1);
+    ctx.window.deleteCampaign(2); ctx.window.confirmForTest();
+    assert.equal(ctx.state.prestige.emblems.filter(e => e.themeId === 'norse').length, 1);
+    assert.equal(ctx.state.prestige.emblems.find(e => e.themeId === 'norse').campaign, 3);
+    ctx.window.deleteCampaign(3); ctx.window.confirmForTest();
+    assert.equal(ctx.state.prestige.emblems.filter(e => e.themeId === 'norse').length, 0);
+    assert.equal(ctx.window.getPrestigeCount(), 1);
+    assert.ok(!ctx.state.unlockedBadges.includes('legado'));
+    assert.equal(ctx.state.prestige.campaign, 4);
+});
+
+test('títulos e medalhas registram datas novas sem inventar datas antigas', () => {
+    const ctx = engine({ xp: 32287, level: 10 });
+    ctx.window.normalizePrestige();
+    assert.ok(ctx.state.prestige.levelEvents.every(e => e.date === null));
+    ctx.state.xp = 33000; ctx.window.checkLevelUp();
+    assert.match(ctx.state.prestige.levelEvents.find(e => e.level === 11).date, /^\d{4}-/);
+    ctx.window.unlockBadge('pomo_master');
+    assert.match(ctx.state.prestige.badgeEvents.find(e => e.id === 'pomo_master').date, /^\d{4}-/);
+    assert.equal(ctx.state.prestige.badgeEvents.find(e => e.id === 'deep_focus').date, null);
+    ctx.window.startCampaign('navy'); ctx.window.confirmForTest();
+    ctx.window.openCampaignHistory(1);
+    const html = ctx.window.renderQGForTest();
+    assert.match(html, /Data não registrada/);
+    assert.match(html, /Títulos conquistados/);
+    assert.match(html, /Medalhas conquistadas/);
+    assert.match(html, /Gerenciar dados desta campanha/);
+    assert.ok(!html.includes('Invalid Date'));
+});
+
+test('reinício e exclusão não permitem repetir bônus de uma medalha', () => {
+    const ctx = engine({ xp: 0, level: 1, unlockedBadges: [] });
+    ctx.window.initializeCampaignRecordOrigins();
+    ctx.window.unlockBadge('pomo_master'); assert.equal(ctx.state.xp, 100);
+    ctx.window.startCampaign('army', { mode: 'reset', keepHistory: false }); ctx.window.confirmForTest();
+    assert.equal(ctx.state.xp, 0);
+    ctx.window.unlockBadge('pomo_master'); assert.equal(ctx.state.xp, 0);
+    assert.equal(ctx.state.prestige.badgeEvents[0].id, 'pomo_master');
+    ctx.window.startCampaign('mages'); ctx.window.confirmForTest();
+    ctx.window.deleteCampaign(2); ctx.window.confirmForTest();
+    ctx.window.unlockBadge('pomo_master'); assert.equal(ctx.state.xp, 0);
+});
+
+test('contagem de missões atravessa semanas e medalhas mudam com o subtema', () => {
+    const ctx = engine({ xp: 0, level: 1, unlockedBadges: [], prestige: { campaign: 2, themeId: 'avengers', recordOriginsInitialized: true } });
+    for (let i = 1; i <= 20; i++) {
+        ctx.state.tasks = [{ id: i, day: 'monday', category: 'life', completed: false, xp: 0, energyCost: 0 }];
+        ctx.window.toggleTask(i);
+    }
+    assert.equal(ctx.state.prestige.missionEvents.length, 20);
+    assert.ok(ctx.state.prestige.badgeEvents.some(e => e.id === 'campaign_missions20'));
+    assert.equal(ctx.window.getCampaignBadgeDefinition('primeiro_sangue').title, 'Iniciativa Ativada');
+    assert.equal(ctx.window.getCampaignBadgeDefinition('campaign_missions20').title, 'Vingadores, Avante');
+    ctx.state.tasks = [];
+    assert.ok(ctx.window.getCurrentlyQualifiedBadgeIds().includes('campaign_missions20'));
+    ctx.window.recordCampaignStat('pomodorosCompleted', 10); ctx.window.checkGameTriggers();
+    assert.equal(ctx.window.getCampaignBadgeDefinition('campaign_focus10').title, 'Precisão do Gavião');
+    assert.ok(ctx.state.prestige.badgeEvents.some(e => e.id === 'campaign_focus10'));
+});
+
+test('gerenciamento fica fechado na tela inicial e reinício é acessível antes do máximo', () => {
+    const ctx = engine({ xp: 32287, level: 10 });
+    const html = ctx.window.renderQGForTest();
+    assert.match(html, /Gerenciar campanha/);
+    assert.match(html, /Começar nova campanha/);
+    assert.match(html, /Próxima conquista/);
+    assert.ok(!/<details[^>]*\bopen\b/.test(html));
+    assert.ok(!html.includes('Excluir campanha…'));
+    ctx.window.openCampaignPicker();
+    assert.match(ctx.window.renderQGForTest(), /Revisar e iniciar campanha/);
+    ctx.window.setCampaignRestartOption('mode', 'reset');
+    assert.match(ctx.window.renderQGForTest(), /Apagar também o histórico/);
+    ctx.window.setCampaignRestartOption('deleteRecords', true);
+    ctx.window.setCampaignRestartOption('includeUnknown', true);
+    ctx.window.setCampaignRestartOption('mode', 'archive');
+    assert.equal(ctx.uiState.campaignPicker.deleteRecords, false);
+    assert.equal(ctx.uiState.campaignPicker.keepHistory, true);
+});
+
+test('ações em andamento e confirmações repetidas não atravessam campanhas', () => {
+    const ctx = engine();
+    ctx.uiState.pomodoroEvaluationData = { id: 1 };
+    ctx.window.startCampaign('norse');
+    assert.equal(ctx.window.confirmForTest, undefined);
+    assert.match(ctx.window.alertForTest, /Pause o Pomodoro/);
+    ctx.uiState.pomodoroEvaluationData = null;
+    ctx.window.startCampaign('norse'); const confirm = ctx.window.confirmForTest;
+    confirm(); confirm();
+    assert.equal(ctx.state.prestige.campaigns.length, 1);
+    assert.equal(ctx.window.savesForTest, 1);
+});
+
+test('feminino funciona na campanha atual, catálogo, emblemas, histórico e perfil', () => {
+    const ctx = engine({ xp: 32287, level: 10, userProfile: { displayName: 'Ana', gender: 'feminino', configured: true } });
+    assert.equal(ctx.window.getRankName(), 'Comandante Suprema');
+    let html = ctx.window.renderQGForTest();
+    assert.match(html, /Comandante Suprema/);
+    assert.match(html, /Deusa do Foco/);
+    assert.ok(!html.includes('Comandante Supremo'));
+    assert.match(ctx.window.renderProfileModal(), /Comandante Suprema/);
+    ctx.window.openCampaignPicker(); ctx.window.selectCampaignCategory('mythology'); ctx.window.selectCampaignTheme('greek');
+    assert.match(ctx.window.renderQGForTest(), /Discípula/);
+    assert.match(ctx.window.renderQGForTest(), /Heroína/);
+    ctx.window.startCampaign('greek'); ctx.window.confirmForTest();
+    ctx.window.openCampaignHistory(1);
+    assert.match(ctx.window.renderQGForTest(), /Comandante Suprema/);
+    ctx.window.closeCampaignHistory(); ctx.state.xp = 90000; ctx.window.checkLevelUp();
+    ctx.window.startPrestige('army'); ctx.window.confirmForTest();
+    ctx.window.openCampaignHistory(2);
+    assert.match(ctx.window.renderQGForTest(), /Discípula de Atena/);
+    assert.match(ctx.window.renderQGForTest(), /Heroína dos Doze Trabalhos/);
+    assert.equal(ctx.window.formatCampaignTitle('General de Brigada'), 'Generala de Brigada');
+    assert.equal(ctx.window.formatCampaignTitle('Grão-Mestre'), 'Grã-Mestra');
+    assert.equal(ctx.window.formatCampaignTitle('Guardião da Balança'), 'Guardiã da Balança');
+});
+
+test('perfil permite prévia sem salvar, preserva preferências e valida nome', () => {
+    const ctx = engine({ xp: 32287, level: 10, userProfile: { displayName: 'Victor', gender: 'masculino', configured: true, extraPreference: 'preservar' } });
+    const fields = { 'profile-display-name': { value: 'Ana' }, 'profile-preview-title': {}, 'profile-preview-name': {} };
+    let selectedGender = 'feminino';
+    ctx.document = { getElementById: id => fields[id], querySelector: () => ({ value: selectedGender }) };
+    ctx.window.updateProfilePreview();
+    assert.equal(fields['profile-preview-title'].textContent, 'Comandante Suprema');
+    assert.equal(fields['profile-preview-name'].textContent, 'Ana');
+    assert.equal(ctx.state.userProfile.gender, 'masculino');
+    ctx.window.saveUserProfile();
+    assert.equal(ctx.state.userProfile.gender, 'feminino');
+    assert.equal(ctx.state.userProfile.extraPreference, 'preservar');
+    assert.equal(ctx.window.getRankName(), 'Comandante Suprema');
+    assert.equal(ctx.state.xp, 32287);
+    fields['profile-display-name'].value = '   ';
+    ctx.window.saveUserProfile();
+    assert.equal(ctx.window.savesForTest, 1);
+    fields['profile-display-name'].value = 'Ana'; selectedGender = 'neutro';
+    ctx.window.saveUserProfile();
+    assert.equal(ctx.window.getRankName(), 'Nível 10 · Missão Tática original');
+    assert.match(ctx.window.renderProfileModal(), /Sem gênero/);
+});
+
+test('metadados importados não injetam ações no histórico', () => {
+    const ctx = engine({ prestige: { campaigns: [{ number: '1);alert(1)', xp: '<img src=x>', rankLevel: '10', rankName: '<img src=x onerror=alert(1)>', themeName: '<script>bad</script>', endedAt: 'invalid', badgeIds: [] }] } });
+    ctx.window.normalizePrestige();
+    const list = ctx.window.renderCampaignHistoryList();
+    assert.ok(!list.includes('1);alert'));
+    assert.ok(list.includes('&lt;script&gt;bad&lt;/script&gt;'));
+    ctx.window.openCampaignHistory(ctx.state.prestige.campaigns[0].number);
+    const html = ctx.window.renderQGForTest();
+    assert.ok(!html.includes('<img src=x'));
+    assert.match(html, /Data não registrada/);
+});
+
+test('a mesma missão recorrente conta novamente em outra semana e desfazer remove só a conclusão atual', () => {
+    const ctx = engine({ xp: 0, level: 1, prestige: { campaign: 2, themeId: 'army', recordOriginsInitialized: true },
+        tasks: [{ id: 1, day: 'monday', category: 'life', completed: false, xp: 0, energyCost: 0 }] });
+    runInNewContext(sourceBetween('window.cleanTaskRewardFields =', 'window.upsertRecurringTaskOccurrences ='), ctx);
+    ctx.window.toggleTask(1);
+    const firstEvent = ctx.state.tasks[0].rewardedMissionEventId;
+    ctx.state.tasks[0].completed = false;
+    ctx.window.cleanTaskRewardFields(ctx.state.tasks[0]);
+    ctx.window.toggleTask(1);
+    assert.equal(ctx.state.prestige.missionEvents.length, 2);
+    assert.notEqual(ctx.state.tasks[0].rewardedMissionEventId, firstEvent);
+    ctx.window.toggleTask(1);
+    assert.equal(ctx.state.prestige.missionEvents.length, 1);
+    assert.equal(ctx.state.prestige.missionEvents[0].eventId, firstEvent);
+});
+
+test('registro com ganhos em duas campanhas só desconta a parcela atual ao ser removido', () => {
+    const ctx = engine({ xp: 5000, level: 5, studyData: { errorLog: [{ id: 1, campaignId: 1, status: 'resolved', xpAwards: [{ amount: 10, campaign: 1 }, { amount: 30, campaign: 2 }] }] } });
+    ctx.window.startCampaign('greek'); ctx.window.confirmForTest(); ctx.state.xp = 100;
+    ctx.window.deleteCampaign(1, true); ctx.window.confirmForTest();
+    assert.equal(ctx.state.studyData.errorLog.length, 0);
+    assert.equal(ctx.state.xp, 70);
+});
+
+test('gravação real registra promoção, origem e metadados na mesma cópia persistida', () => {
+    const ctx = engine({ xp: 32287, level: 10, userProfile: { displayName: 'Ana', gender: 'feminino', configured: true } });
+    ctx.window.initializeCampaignRecordOrigins();
+    let serialized;
+    ctx.localStorage = { setItem(key, value) { assert.equal(key, 'planeamento_semanal_v11'); serialized = value; } };
+    ctx.calendarSync = { schedule() {} };
+    ctx.window.touchState = () => {};
+    ctx.window.saveToFirestore = () => {};
+    runInNewContext(sourceBetween('window.saveState =', 'window.saveStateNow ='), ctx);
+    ctx.state.tasks.push({ id: 8, text: 'Nova missão' });
+    ctx.state.xp = 33000;
+    ctx.window.saveState(true);
+    const persisted = JSON.parse(serialized);
+    assert.equal(persisted.level, 11);
+    assert.equal(persisted.tasks[0].campaignId, 1);
+    assert.match(persisted.prestige.levelEvents.find(e => e.level === 11).date, /^\d{4}-/);
+    assert.equal(persisted.userProfile.gender, 'feminino');
+    assert.equal(ctx.window.getRankName(), 'Estrategista Mestra');
 });

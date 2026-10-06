@@ -35,33 +35,54 @@ Antes de publicar uma mudança:
 2. abrir a aplicação e validar login, gravação e sincronização;
 3. confirmar o comportamento em uma semana de teste antes de usar dados reais.
 
-## Prestígio
+## Campanhas e Prestígio
 
-O Prestígio é opcional e fica disponível no nível máximo (90.000 XP da
-campanha). Após escolher um subtema e confirmar, a campanha é arquivada e a
-próxima começa no título inicial escolhido, com 0 XP. Moedas, reserva,
-medalhas, emblemas e registros permanecem intactos.
-O XP da carreira soma os resultados das campanhas encerradas e o XP atual.
-Desfazer registros de campanhas encerradas não reduz o XP da campanha atual;
-registros novos continuam reversíveis. Medalhas preservadas não repetem bônus.
-O estado `prestige` acompanha a sincronização e os backups JSON existentes.
+O QG > Progressão > Gerenciar campanha permite recomeçar a qualquer momento,
+com seleção de tema, subtema, modo e revisão do impacto antes de confirmar.
+Arquivar e recomeçar preserva moedas e registros pessoais. Progresso zerado
+zera moedas, reserva, alvo, combo e estatísticas e restaura a bateria; apagar
+histórico ou registros pessoais exige escolhas adicionais explícitas.
 
-O catálogo possui quatro categorias e quinze subtemas: Militar (Exército,
-Marinha, Aeronáutica, Forças Especiais, Espionagem), Mitologias (Grega,
-Romana, Nórdica, Egípcia), Ficção científica (Frota Espacial, Exploradores
-Cósmicos, Marvel — Vingadores) e Fantasia (Ordem dos Cavaleiros, Magos e
-Arcanistas, Guardiões da Floresta). Todos compartilham os quinze níveis e
-limites de XP; somente títulos, referências e apresentação mudam. As
-trajetórias são criadas para o aplicativo. Vingadores usa personagens como
-referências, sem hierarquia de poder ou frases atribuídas a eles.
+Uma campanha encerrada antes do nível máximo não concede Prestígio nem
+emblema de conclusão. Campanhas que alcançaram 90.000 XP contam como
+concluídas. IDs são monotônicos, inclusive após excluir histórico. O XP da
+carreira soma resultados arquivados e XP atual; excluir histórico remove a
+parcela correspondente. Desfazer um ganho antigo não desconta XP nem moedas
+da campanha nova. Ganhos atuais continuam reversíveis.
 
-Campanhas antigas mantêm a trajetória original, que também pode ser repetida.
-O QG > Progressão permite explorar o catálogo antes de atingir o requisito,
-sem alterar o tema nem o XP atual. `prestige.themeId` pertence à campanha
-ativa; o histórico guarda tema e título final da campanha encerrada. Ao
-atingir o nível 15, cada subtema rende um único emblema permanente, sem XP
-ou moedas adicionais. Repetir o subtema acrescenta histórico, sem duplicar
-o emblema. A migração reconstrói os emblemas de campanhas antigas encerradas.
+O catálogo tem quatro temas e quinze subtemas: Militar (Exército, Marinha,
+Aeronáutica, Forças Especiais, Espionagem), Mitologias (Grega, Romana,
+Nórdica, Egípcia), Ficção científica (Frota Espacial, Exploradores Cósmicos,
+Marvel — Vingadores) e Fantasia (Ordem dos Cavaleiros, Magos e Arcanistas,
+Guardiões da Floresta). Todos compartilham quinze níveis e limites de XP.
+Campanhas antigas conservam a trajetória original, que pode ser repetida.
+As trajetórias são fictícias; os personagens dos Vingadores são referências
+sem hierarquia de poder nem frases atribuídas a eles.
+
+A coleção separa medalhas da campanha atual, conquistas por campanha da
+carreira e marcos globais. Títulos de medalhas variam com o tema. Dois novos
+critérios reconhecem dez focos e vinte missões da campanha; as missões são
+registradas por conclusão e atravessam semanas. Emblemas são únicos por
+subtema concluído. Bônus de medalhas são concedidos uma vez por critério na
+carreira: um recibo de IDs já premiados evita repetir bônus através de
+reinícios ou exclusões, sem preservar o progresso visível apagado.
+
+O histórico guarda resultado, título final, eventos de promoção e medalhas
+com datas ISO. Datas anteriores não registradas ficam nulas, nunca estimadas.
+O perfil aplica linguagem feminina, masculina ou sem gênero nas superfícies
+de progressão, catálogo, emblemas e histórico. A prévia do perfil não salva
+alterações até a confirmação de Salvar perfil.
+
+Registros novos recebem `campaignId`; registros anteriores sem origem
+conhecida recebem null. A exclusão de dados vinculados é opcional, apresenta
+contagens por módulo e preserva registros de outras campanhas. Incluir
+registros antigos sem campanha exige uma segunda escolha explícita. Revisões
+de outras campanhas são desvinculadas de sessões apagadas, sem serem
+excluídas. Ganhos atuais de registros removidos são descontados, inclusive
+bônus de missões revertidas. Configurações, perfil e cadastros estruturais
+(disciplinas, rituais, orçamentos etc.) ficam preservados. A exclusão do
+histórico recalcula emblemas e conquistas mantendo as obtidas em campanhas
+restantes. O estado acompanha sincronização e backups JSON existentes.
 
 ## Segurança
 

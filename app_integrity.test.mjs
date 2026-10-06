@@ -244,8 +244,8 @@ const statusWindow = {
     rollbackTaskBadges() {}, spawnFloatingText() {}, checkLevelUp() {},
     saveState() { statusSaves++; }
 };
-runInNewContext(app.slice(app.indexOf('const RANKS ='), app.indexOf('const BADGES_DB =')) + app.slice(app.indexOf('window.normalizePrestige ='), app.indexOf('function getMondayStartDate(')), { window: statusWindow, state: statusState });
-runInNewContext(app.slice(statusStart, statusEnd), { window: statusWindow, state: statusState });
+runInNewContext(app.slice(app.indexOf('const RANKS ='), app.indexOf('const BADGES_DB =')) + app.slice(app.indexOf('function getCorrectLevel('), app.indexOf('function getMondayStartDate(')), { window: statusWindow, state: statusState });
+runInNewContext(app.slice(app.indexOf('window.getCampaignBadgeEvents ='), app.indexOf('window.unlockBadge =')) + app.slice(statusStart, statusEnd), { window: statusWindow, state: statusState });
 boardWindow.getMissionStatus = statusWindow.getMissionStatus;
 assert.equal(statusWindow.getMissionStatus(statusTask), 'planned', 'Missões antigas continuam compatíveis.');
 statusWindow.setMissionStatus(123.45, 'in_progress');
