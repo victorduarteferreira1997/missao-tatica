@@ -27,6 +27,7 @@ function engine() {
             routineData: { rituals: [{ id: 'ritual' }], logs: [{ id: 'rl', campaignId: 1 }] },
             rechargeData: { actions: [{ id: 'custom-recharge', title: 'Pausa teste' }], logs: [{ id: 'rcl', campaignId: 1 }] },
             operationalControl: { demands: [{ id: 'radar', title: 'Demanda teste' }], scans: [{ id: 'scan' }], shutdowns: [{ id: 'shutdown' }], config: { wipLimit: 2 } },
+            rewardOverrides: {r2:{name:'Videogame',cost:600,durationMinutes:120,version:'test'}},
             customRewards: [{ id: 'reward1', title: 'Meta teste', cost: 100 }], rewardPurchases: [{ id: 'rp1', campaignId: 1 }],
             economy: { weekStartKey: '2026-10-05', tacticalReserve: 200, weeklyCoinsEarned: 40, targetReward: { type: 'custom', id: 'reward1', cost: 100 }, history: [{ id: 'economic', campaignId: 1 }], resetLog: [{ id: 'old-reset' }] },
             unlockedBadges: ['primeiro_sangue'], stats: { pomodorosCompleted: 1, rewardsBought: 1 },
@@ -80,7 +81,7 @@ test('abrir, selecionar, revisar e cancelar não alteram os dados', () => {
 test('cada módulo apaga cadastro e histórico preservando os demais módulos e o jogo', () => {
     for (const id of ['missions', 'study', 'finance', 'health', 'focus', 'rituals', 'recharge', 'radar', 'rewards', 'profile']) {
         const ctx = engine(); const before = plain(ctx.state);
-        ctx.uiState.rewardDraft = {title:'Rascunho'}; ctx.uiState.rewardSections = {create:true};
+        ctx.uiState.rewardEditor = {id:'r2'}; ctx.uiState.rewardDraft = {title:'Rascunho'}; ctx.uiState.rewardSections = {create:true};
         const module = ctx.window.cleanupModulesForTest.find(m => m.id === id);
         clean(ctx, [id]); const saved = ctx.persisted();
         for (const other of ctx.window.cleanupModulesForTest.filter(m => m.id !== id)) {
@@ -89,7 +90,7 @@ test('cada módulo apaga cadastro e histórico preservando os demais módulos e 
         for (const key of ['xp', 'coins', 'combo', 'energy', 'unlockedBadges', 'stats', 'prestige']) assert.deepEqual(saved[key], before[key], `${id} não deve zerar ${key}`);
         for (const path of module.paths) assert.equal(path.split('.').reduce((value, key) => value?.[key], saved)?.length || 0, 0, `${id}: ${path}`);
         assert.equal(saved.lastSaveReason, 'data-cleanup-modules'); assert.deepEqual(saved.calendarSync, before.calendarSync);
-        if (id === 'rewards') { assert.deepEqual(plain(ctx.uiState.rewardDraft),{}); assert.deepEqual(plain(ctx.uiState.rewardSections),{}); }
+        if (id === 'rewards') { assert.deepEqual(saved.rewardOverrides,{}); assert.equal(ctx.uiState.rewardEditor,null); assert.deepEqual(plain(ctx.uiState.rewardDraft),{}); assert.deepEqual(plain(ctx.uiState.rewardSections),{}); }
         else assert.equal(ctx.uiState.rewardDraft.title,'Rascunho');
         if (!['missions', 'focus'].includes(id)) assert.equal(ctx.pomodoro.timeLeft, 900, `${id} preserva cronômetro pausado`);
     }

@@ -83,3 +83,56 @@ test('QG conserva rolagem e edição e bloqueia foco quando a confirmação est�
  assert.equal(scroller.scrollTop,240);assert.equal(c.binding.initialFocus,field.id);assert.deepEqual(field.selection,[2,5]);assert.equal(c.binding.blocked,false);
  c.uiState.confirm.show=true;c.window.bindQGDialog(root,snapshot);assert.equal(c.binding.blocked,true);
 });
+
+test('configurar videogame altera próximos resgates e alvo sem mudar preços base ou registros antigos',()=>{
+ const previous={id:'old-vg',rewardId:'r2',title:'30 min de Videogame',cost:220,type:'default',date:'2026-10-01',campaignId:1};
+ const c=engine({rewardPurchases:[previous]});c.window.setRewardTarget('default','r2');const before=plain(c.state);
+ c.window.openRewardEditor('default','r2');assert.equal(c.uiState.rewardEditor.draft.name,'Videogame');assert.equal(c.uiState.rewardEditor.draft.duration,'30');
+ c.window.setRewardEditDraft('duration','120');c.window.setRewardEditDraft('cost','300');c.window.setRewardEditDraft('desc','Sessão escolhida por mim');c.window.saveRewardConfiguration();
+ assert.equal(c.uiState.rewardEditor,null);assert.equal(c.uiState.rewardGroup,'medium');assert.equal(c.state.economy.targetReward.title,'Videogame · 2 h');assert.equal(c.state.economy.targetReward.cost,300);assert.equal(c.state.economy.targetReward.durationMinutes,120);
+ for(const key of ['coins','xp','energy','stats','unlockedBadges','rewardPurchases'])assert.deepEqual(plain(c.state[key]),before[key],key);
+ assert.equal(c.state.economy.tacticalReserve,250);assert.equal(c.window.catalogForTest.find(r=>r.id==='r2').cost,220);
+ const html=c.window.renderRewardCatalog();assert.match(html,/Videogame/);assert.match(html,/2 h/);assert.match(html,/300 MT/);
+ c.window.reviewRewardRedemption('default','r2');assert.match(c.message,/300 MT/);c.confirm();assert.equal(c.state.rewardPurchases[1].title,'Videogame · 2 h');assert.equal(c.state.rewardPurchases[1].durationMinutes,120);assert.equal(c.state.rewardPurchases[1].cost,300);assert.deepEqual(plain(c.state.rewardPurchases[0]),previous);
+});
+test('cancelar configuração e recusar restauração não altera dados; padrão restaura só a opção e seu alvo',()=>{
+ const c=engine();c.window.openRewardEditor('default','r2');c.window.setRewardEditDraft('duration','180');const before=plain(c.state);c.window.closeRewardEditor();assert.deepEqual(plain(c.state),before);
+ c.window.openRewardEditor('default','r2');c.window.setRewardEditDraft('duration','180');c.window.setRewardEditDraft('cost','600');c.window.saveRewardConfiguration();c.window.setRewardTarget('default','r2');
+ c.window.openRewardEditor('default','r2');const configured=plain(c.state);c.window.restoreOfficialRewardDefaults();assert.deepEqual(plain(c.state),configured); // cancelamento preserva tudo
+ c.confirm();assert.equal(c.state.rewardOverrides.r2,undefined);assert.equal(c.state.economy.targetReward.cost,220);assert.equal(c.state.economy.targetReward.title,'30 min de Videogame');assert.equal(c.state.economy.targetReward.durationMinutes,30);assert.equal(c.state.coins,100);assert.equal(c.state.economy.tacticalReserve,250);
+});
+test('duração é opcional e independente do custo; validação não trunca valores e mantém rascunhos',()=>{
+ const c=engine();c.window.openRewardEditor('default','r1');const before=plain(c.state);
+ for(const value of ['0','-1','1.5','NaN','Infinity']){c.window.setRewardEditDraft('duration',value);c.window.saveRewardConfiguration();assert.deepEqual(plain(c.state),before);assert.equal(c.uiState.rewardEditor.draft.duration,value);}
+ c.window.setRewardEditDraft('duration','');for(const value of ['49','50.5','','NaN','Infinity']){c.window.setRewardEditDraft('cost',value);c.window.saveRewardConfiguration();assert.deepEqual(plain(c.state),before);}
+ c.window.setRewardEditDraft('cost','180');c.window.setRewardEditDraft('name','');c.window.saveRewardConfiguration();assert.deepEqual(plain(c.state),before);
+ c.window.setRewardEditDraft('name','Filme <favorito>');c.window.setRewardEditDraft('duration','135');assert.match(c.window.renderRewardEditor(),/Filme &lt;favorito&gt;/);c.window.saveRewardConfiguration();
+ assert.equal(c.window.getOfficialReward('r1').cost,180);assert.equal(c.window.getOfficialReward('r1').title,'Filme <favorito> · 2 h 15 min');assert.equal(c.state.coins,100);
+ c.window.openRewardEditor('default','r1');c.window.setRewardEditDraft('duration','');c.window.saveRewardConfiguration();assert.equal(c.window.getOfficialReward('r1').durationMinutes,null);assert.equal(c.window.getOfficialReward('r1').title,'Filme <favorito>');
+});
+test('editar personalizada preserva ID, arquivo e snapshots; cadastrar aceita duração opcional',()=>{
+ const c=engine({customRewards:[{id:'imported-id',title:'Jogo',cost:100}],rewardPurchases:[{title:'Jogo antigo',cost:100, rewardId:'imported-id'}]});
+ c.window.setRewardTarget('custom','imported-id');c.window.openRewardEditor('custom','imported-id');assert.ok(!c.window.renderRewardEditor().includes('Restaurar padrão'));c.window.setRewardEditDraft('duration','90');c.window.setRewardEditDraft('cost','200');c.window.setRewardEditDraft('name','Jogo em família');c.window.saveRewardConfiguration();
+ const reward=c.state.customRewards[0];assert.equal(reward.id,'imported-id');assert.equal(reward.title,'Jogo em família · 1 h 30 min');assert.equal(reward.active,undefined);assert.equal(c.state.economy.targetReward.cost,200);assert.equal(c.state.rewardPurchases[0].title,'Jogo antigo');assert.equal(c.state.rewardPurchases[0].cost,100);
+ c.field('custom-reward-title','Outra sessão');c.field('custom-reward-cost',100);c.field('custom-reward-duration',0);c.window.addCustomReward();assert.equal(c.state.customRewards.length,1);
+ c.field('custom-reward-duration',240);c.window.addCustomReward();assert.equal(c.state.customRewards.length,2);assert.equal(c.state.customRewards[1].title,'Outra sessão · 4 h');assert.equal(c.state.customRewards[1].durationMinutes,240);
+});
+test('alterar configurações invalida resgate pendente e editores antigos não sobrescrevem mudanças',()=>{
+ const c=engine();c.window.reviewRewardRedemption('default','r2');const pending=c.confirm;c.window.openRewardEditor('default','r2');c.window.setRewardEditDraft('duration','120');c.window.saveRewardConfiguration();const before=plain(c.state);pending();assert.deepEqual(plain(c.state),before);assert.match(c.alert,/mudou/);
+ for(const change of ['settings','campaign','state']){const x=engine();x.window.openRewardEditor('default','r2');x.window.setRewardEditDraft('duration','120');
+  if(change==='settings')x.state.rewardOverrides={r2:{name:'Novo nome',cost:300,durationMinutes:180,version:'remote'}};
+  if(change==='campaign')x.state.prestige.campaign++;
+  if(change==='state')x.state=plain(x.state);
+  const snapshot=plain(x.state);x.window.saveRewardConfiguration();assert.deepEqual(plain(x.state),snapshot,change);assert.match(x.alert,/mudou/);
+ }
+ const x=engine();x.window.openRewardEditor('default','r1');x.window.setRewardEditDraft('name','Em edição');x.window.openRewardEditor('default','r2');assert.equal(x.uiState.rewardEditor.id,'r1');assert.equal(x.uiState.rewardEditor.draft.name,'Em edição');x.confirm();assert.equal(x.uiState.rewardEditor.id,'r2');
+});
+test('configurações persistidas são aplicadas na inicialização, antes dos handlers visuais, e exportam em JSON',()=>{
+ const c=engine();c.window.setRewardTarget('default','r2');c.window.openRewardEditor('default','r2');c.window.setRewardEditDraft('duration','120');c.window.setRewardEditDraft('cost','450');c.window.saveRewardConfiguration();const exported=JSON.stringify(c.state);
+ const early={state:JSON.parse(exported),window:{getCurrentCalendarWeekStartKey:()=> '2026-10-05'}};
+ runInNewContext(section('const REWARDS_SHOP =','const TASK_NATURES =')+section('window.normalizeEconomy =','window.getTaskNature ='),early);
+ assert.equal(early.window.getRewardSource,undefined);assert.ok(app.indexOf('window.getOfficialReward =')<app.indexOf('window.validateState();'));
+ early.window.normalizeEconomy();assert.equal(early.state.economy.targetReward.cost,450);assert.equal(early.state.economy.targetReward.title,'Videogame · 2 h');assert.equal(early.window.getOfficialReward('r2').durationMinutes,120);
+ const reloaded=engine(JSON.parse(exported));assert.match(reloaded.window.renderRewardCatalog().split('<details')[0],/Pequenas/);reloaded.window.setRewardGroup('medium');assert.match(reloaded.window.renderRewardCatalog(),/450 MT/);assert.match(reloaded.window.renderRewardCatalog(),/2 h/);
+ early.state.rewardOverrides.r2={cost:0,durationMinutes:-1,name:'',icon:'<img>'};const fallback=early.window.getOfficialReward('r2');assert.equal(fallback.cost,220);assert.equal(fallback.durationMinutes,30);assert.equal(fallback.name,'Videogame');assert.equal(fallback.icon,'gamepad-2');
+});

@@ -253,6 +253,27 @@ são preservados nas reconstruções do QG; limpeza de Recompensas também limpa
 seus rascunhos. Testes cobrem compatibilidade, filtros, alvos, resgates, saldo,
 confirmações antigas, arquivamento, paginação e edição.
 
+## Configuração de recompensas · v1.9.59
+
+**Configurar**, em cada cartão do QG → Recompensas, abre um único editor com
+nome, custo em MT, duração opcional em minutos e descrição. Por exemplo,
+Videogame pode ter 120 minutos (2 h). Duração e custo são escolhas independentes;
+o aplicativo não recalcula o preço automaticamente. A configuração é por conta,
+permanece no estado salvo/local, na sincronização existente e no backup JSON.
+
+O catálogo oficial mantém seus IDs e padrões. Ajustes são guardados em
+`rewardOverrides`; **Restaurar padrão** exige confirmação. Personalizadas
+podem ser editadas mantendo IDs e resgates antigos. O alvo correspondente
+acompanha nome, duração e preço; moedas e histórico anteriores não mudam.
+Novos resgates guardam a duração escolhida. Limpar Recompensas também apaga
+as configurações e fecha o editor; limpar outras áreas as preserva.
+
+Custo precisa ser inteiro de pelo menos 50 MT. Duração, quando informada,
+precisa ser um inteiro positivo. Cancelar preserva o catálogo. Trocar a opção
+em edição pede confirmação para descartar o rascunho. Confirmações antigas de
+resgate não aceitam configurações alteradas, e editores antigos não sobrescrevem
+mudanças recebidas por importação/sincronização ou troca de campanha.
+
 ## Segurança
 
 O token OAuth do Google fica somente na memória do navegador. Não adicione ao
