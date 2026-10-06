@@ -178,3 +178,27 @@ test('recompensa-alvo mostra saldo combinado, falta e disponibilidade sem interp
     ctx.state.economy.targetReward = null;
     assert.match(ctx.window.renderQGForTest(), /Escolher recompensa/);
 });
+
+test('atalhos do catálogo rolam dentro do QG sem navegar para o endereço base', () => {
+    const ctx = engine();
+    ctx.uiState.statsTab = 'shop';
+    for (const target of [null, { type: 'default', id: 'r5', title: 'Cinema', cost: 600 }]) {
+        ctx.window.normalizeEconomy();
+        ctx.state.economy.targetReward = target;
+        const html = ctx.window.renderQGForTest();
+        const label = target ? 'Ver recompensas' : 'Escolher recompensa';
+        const match = html.match(new RegExp(`<button([^>]+)>${label}</button>`));
+        assert.ok(match, 'Atalho deve ser um botão local');
+        assert.match(match[1], /type="button"/);
+        assert.ok(!html.includes('href="#qg-rewards"'));
+        const action = match[1].match(/onclick="([^"]+)"/)[1];
+        const calls = [];
+        runInNewContext(action, { document: { getElementById: id => {
+            assert.equal(id, 'qg-rewards');
+            return { scrollIntoView: options => calls.push(options) };
+        } } });
+        assert.equal(calls.length, 1);
+        assert.equal(calls[0].behavior, 'smooth');
+        assert.equal(calls[0].block, 'start');
+    }
+});
