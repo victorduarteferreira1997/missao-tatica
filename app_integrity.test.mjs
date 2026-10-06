@@ -4,6 +4,10 @@ import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
+const formHelpersStart = app.indexOf('        window.formDialogStyles =');
+const formHelpersEnd = app.indexOf('        window.renderEditTaskModal =', formHelpersStart);
+const installFormDialogs = target => runInNewContext(app.slice(formHelpersStart, formHelpersEnd), { window: target });
+
 const moduleMatch = app.match(/<script\s+type="module">([\s\S]*?)<\/script>/i);
 
 assert.ok(moduleMatch, 'O módulo principal do app deve existir.');
@@ -19,7 +23,7 @@ assert.equal(
     `O módulo principal precisa compilar antes da publicação.\n${syntaxCheck.stderr}`
 );
 
-const inlineHandlers = [...app.matchAll(/on(?:click|change|input|keypress|dragstart|dragend|dragover|dragleave|drop)="window\.([A-Za-z_$][\w$]*)/g)]
+const inlineHandlers = [...app.matchAll(/on(?:click|change|input|keypress|dragstart|dragend|dragover|dragleave|drop)="window\.(?!\$\{)([A-Za-z_$][\w$]*)/g)]
     .map(match => match[1]);
 const uniqueHandlers = [...new Set(inlineHandlers)].sort();
 
@@ -75,6 +79,7 @@ const createWindow = {
     getTaskCategories: () => [{ id: 'work', label: 'Trabalho' }],
     escapeHtml: value => String(value)
 };
+installFormDialogs(createWindow);
 runInNewContext(app.slice(createModalStart, createModalEnd), {
     window: createWindow, daysOfWeek: createDays, state: { activeTab: 'mon' }
 });
@@ -451,6 +456,7 @@ const demandWindow = {
     getOperationalControl: () => demandRecords,
     saveState: () => { persists++; }, showToast() {}
 };
+installFormDialogs(demandWindow);
 runInNewContext(app.slice(demandDialogStart, demandDialogEnd), {
     window: demandWindow, uiState: demandUi,
     document: { getElementById: id => id === 'op-demand-title-error' ? localError : demandElements[id] },
@@ -508,6 +514,7 @@ const editRendererStart = app.indexOf('        window.renderEditTaskModal = func
 const editRendererEnd = app.indexOf('        window.bindEditTaskDialog = function(', editRendererStart);
 const editable = { id: 91, text: '<Missão recorrente>', day: 'mon', category: 'work', priority: 'alta', complexity: 3, time: '60 min', missionNature: 'normal', startTime: '09:30', endTime: '10:30', recurrenceDays: ['mon', 'tue'], recurrenceGroupId: 'group-91', completed: true, subtasks: [{ id: 1, text: 'Preservar', completed: true }], customField: 'preservar', xp: 100, energyCost: 20 };
 const editWindow = { escapeHtml: radarWindow.escapeHtml, getTaskNature: task => task.missionNature, getTaskCategories: () => [{ id: 'work', label: 'Trabalho' }] };
+installFormDialogs(editWindow);
 runInNewContext(app.slice(editRendererStart, editRendererEnd), { window: editWindow, daysOfWeek: [{ id: 'mon', label: 'Segunda' }, { id: 'tue', label: 'Terça' }] });
 const editMarkup = editWindow.renderEditTaskModal(editable);
 assert.match(editMarkup, /&lt;Missão recorrente&gt;/);
@@ -552,5 +559,41 @@ const editRestoreStart = app.indexOf('if (uiState.showEditTaskModal && uiState.e
 const editRestoreEnd = app.indexOf('window.bindEditTaskDialog(appDiv);', editRestoreStart);
 runInNewContext(app.slice(editRestoreStart, editRestoreEnd), { appDiv: editDraftApp, uiState: editDraftUi, document: { getElementById: id => editDraftFields.find(field => field.id === id) } });
 assert.equal(editDraftFields[0].value, 'Edição em andamento'); assert.equal(editDraftFields[1].checked, true); assert.equal(editDraftSections[0].open, true);
+
+// A estrutura compartilhada mantém as ações reais e a navegação do diálogo.
+for (const markup of [createMarkup, inboxMarkup, newDemandMarkup, closedDemandMarkup, editMarkup]) {
+    const actions = [...markup.matchAll(/window\.([A-Za-z_$][\w$]*)\(/g)];
+    assert.ok(actions.length > 0, 'O diálogo deve renderizar ações verificáveis');
+    for (const [, action] of actions) {
+        assert.ok(new RegExp(`window\\.${action}\\s*=`).test(app), `Ação renderizada sem implementação: ${action}`);
+    }
+}
+let activeControl = null, keyboardCloseCount = 0, prepareCount = 0, bindingCount = 0;
+const control = () => ({ disabled: false, getClientRects: () => [1], focus() { activeControl = this; } });
+const firstControl = control(), lastControl = control();
+const hiddenControl = { ...control(), getClientRects: () => [] };
+const keyboardEvents = {};
+const keyboardDialog = {
+    contains: el => el === firstControl || el === lastControl,
+    querySelector: () => firstControl,
+    querySelectorAll: () => [hiddenControl, firstControl, lastControl],
+    addEventListener: (name, handler) => { keyboardEvents[name] = handler; bindingCount++; }
+};
+const keyboardDocument = { get activeElement() { return activeControl; } };
+const keyboardWindow = {};
+runInNewContext(app.slice(formHelpersStart, formHelpersEnd), { window: keyboardWindow, document: keyboardDocument });
+const dialogOptions = { id: 'test-dialog', initialFocus: 'test-title', close: () => { keyboardCloseCount++; }, prepare: () => { prepareCount++; } };
+const keyboardRoot = { querySelector: () => keyboardDialog };
+keyboardWindow.bindFormDialog(keyboardRoot, { ...dialogOptions, blocked: true });
+assert.equal(bindingCount, 0); assert.equal(prepareCount, 0);
+keyboardWindow.bindFormDialog(keyboardRoot, dialogOptions);
+assert.equal(activeControl, firstControl); assert.equal(prepareCount, 1);
+let prevented = 0, stopped = 0;
+const keyEvent = (key, shiftKey = false) => ({ key, shiftKey, preventDefault() { prevented++; }, stopPropagation() { stopped++; } });
+activeControl = lastControl; keyboardEvents.keydown(keyEvent('Tab'));
+assert.equal(activeControl, firstControl);
+keyboardEvents.keydown(keyEvent('Tab', true)); assert.equal(activeControl, lastControl);
+keyboardEvents.keydown(keyEvent('Escape')); assert.equal(keyboardCloseCount, 1); assert.equal(stopped, 1); assert.equal(prevented, 3);
+assert.doesNotThrow(() => keyboardWindow.bindFormDialog({ querySelector: () => null }, dialogOptions));
 
 console.log(`Integridade da interface: módulo, ${uniqueHandlers.length} handlers, Pomodoro, missões, semana e Radar conferidos.`);
