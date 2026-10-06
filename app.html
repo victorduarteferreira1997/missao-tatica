@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.49-prestige">
+    <meta name="app-build" content="v1.9.50-campaign-themes">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -169,6 +169,46 @@
             { level: 13, name: 'Mito da Produtividade', max: 70000 }, { level: 14, name: 'Titã Executivo', max: 90000 }, { level: 15, name: 'Deus do Foco', max: 999999 }
         ];
 
+        // Os temas mudam a apresentação; os limites de XP são compartilhados.
+        const CAMPAIGN_CATEGORIES = [
+            { id: 'military', name: 'Militar', icon: 'shield' },
+            { id: 'mythology', name: 'Mitologias', icon: 'landmark' },
+            { id: 'scifi', name: 'Ficção científica', icon: 'rocket' },
+            { id: 'fantasy', name: 'Fantasia', icon: 'sparkles' }
+        ];
+        const campaignDefinition = (id, category, name, icon, color, titles, references = '') => ({
+            id, category, name, icon, color,
+            ranks: titles.split('|').map((title, index) => ({ ...RANKS[index], name: title, reference: references.split('|')[index] || '' }))
+        });
+        const CAMPAIGN_THEMES = [
+            { id: 'original', category: 'military', name: 'Missão Tática original', icon: 'star', color: '#a5b4fc', ranks: RANKS },
+            campaignDefinition('army', 'military', 'Exército', 'shield', '#a3e635', 'Recruta|Soldado|Cabo|Sargento|Tenente|Capitão|Major|Coronel|General de Brigada|General de Divisão|General de Exército|Marechal|Estrategista Supremo|Comandante da Vanguarda|Lenda do Exército'),
+            campaignDefinition('navy', 'military', 'Marinha', 'anchor', '#38bdf8', 'Aprendiz de Marinheiro|Marinheiro|Cabo|Sargento|Guarda-Marinha|Segundo-Tenente|Primeiro-Tenente|Capitão-Tenente|Capitão de Corveta|Capitão de Fragata|Capitão de Mar e Guerra|Contra-Almirante|Vice-Almirante|Almirante|Lenda dos Mares'),
+            campaignDefinition('airforce', 'military', 'Aeronáutica', 'plane', '#7dd3fc', 'Recruta|Soldado|Cabo|Sargento|Aspirante|Tenente|Capitão|Major|Tenente-Coronel|Coronel|Brigadeiro|Major-Brigadeiro|Tenente-Brigadeiro|Marechal do Ar|Lenda dos Céus'),
+            campaignDefinition('special', 'military', 'Forças Especiais', 'crosshair', '#fb923c', 'Candidato|Operador em Formação|Operador|Especialista de Campo|Batedor de Elite|Infiltrador|Operador de Elite|Líder de Equipe|Comandante de Unidade|Estrategista de Operações|Comandante de Operações|Mestre da Infiltração|Guardião da Vanguarda|Lenda das Operações|Lenda das Forças Especiais'),
+            campaignDefinition('espionage', 'military', 'Espionagem', 'scan-eye', '#cbd5e1', 'Recruta da Inteligência|Agente em Formação|Observador de Campo|Agente de Campo|Especialista em Vigilância|Analista de Inteligência|Especialista em Infiltração|Agente de Contrainteligência|Agente de Elite|Coordenador de Operações|Chefe de Estação|Diretor de Operações|Estrategista das Sombras|Mestre da Inteligência|Lenda da Espionagem'),
+            campaignDefinition('greek', 'mythology', 'Grega', 'landmark', '#fbbf24', 'Aprendiz da Hélade|Viajante do Egeu|Discípulo de Hermes|Aprendiz de Hefesto|Guardião da Pólis|Discípulo de Atena|Companheiro dos Argonautas|Desbravador do Labirinto|Campeão dos Jogos|Guardião de Delfos|Herói da Hélade|Campeão de Atena|Protetor do Olimpo|Herói dos Doze Trabalhos|Lenda do Olimpo'),
+            campaignDefinition('roman', 'mythology', 'Romana', 'columns-3', '#f87171', 'Aprendiz de Roma|Viajante das Sete Colinas|Discípulo de Mercúrio|Aprendiz de Vulcano|Guardião da Cidade|Discípulo de Minerva|Companheiro de Eneias|Portador da Águia|Campeão da Arena|Guardião de Vesta|Herói de Roma|Campeão de Marte|Protetor do Capitólio|Triunfador Eterno|Lenda de Roma'),
+            campaignDefinition('norse', 'mythology', 'Nórdica', 'axe', '#67e8f9', 'Aprendiz do Norte|Viajante dos Fiordes|Explorador de Midgard|Guardião do Lar|Portador das Runas|Discípulo de Freyja|Navegante dos Nove Mundos|Guardião de Yggdrasil|Aliado das Valquírias|Sentinela de Bifröst|Herói das Sagas|Campeão de Thor|Protetor de Asgard|Campeão de Odin|Lenda dos Nove Mundos'),
+            campaignDefinition('egyptian', 'mythology', 'Egípcia', 'sun', '#fcd34d', 'Aprendiz do Nilo|Viajante das Dunas|Discípulo de Thoth|Guardião dos Papiros|Protetor dos Santuários|Discípulo de Ísis|Portador do Escaravelho|Guardião das Duas Terras|Campeão de Hórus|Guardião da Balança|Viajante da Duat|Campeão de Sekhmet|Protetor da Barca Solar|Guardião de Ma’at|Lenda do Nilo'),
+            campaignDefinition('fleet', 'scifi', 'Frota Espacial', 'orbit', '#818cf8', 'Cadete Espacial|Tripulante|Técnico de Navegação|Piloto|Tenente de Voo|Líder de Esquadrão|Capitão de Nave|Comandante de Esquadrão|Comandante de Frota|Comodoro Estelar|Contra-Almirante|Vice-Almirante|Almirante da Frota|Comandante da Armada|Lenda da Frota Estelar'),
+            campaignDefinition('cosmic', 'scifi', 'Exploradores Cósmicos', 'telescope', '#c084fc', 'Observador das Estrelas|Aprendiz de Navegação|Cartógrafo Lunar|Explorador Planetário|Viajante Orbital|Navegante Estelar|Desbravador de Sistemas|Investigador de Anomalias|Explorador de Nebulosas|Viajante da Fronteira|Cartógrafo Galáctico|Guardião das Rotas|Explorador Intergaláctico|Pioneiro do Desconhecido|Lenda do Cosmos'),
+            campaignDefinition('avengers', 'scifi', 'Marvel — Vingadores', 'shield-check', '#f87171', 'Recruta da Iniciativa|Aprendiz de Precisão|Agente de Campo|Especialista em Adaptação|Inventor de Soluções|Guardião do Equilíbrio|Defensor da Comunidade|Líder de Equipe|Estrategista Visionário|Navegante Cósmico|Defensor dos Reinos|Campeão das Estrelas|Mestre das Possibilidades|Protetor das Realidades|Lenda dos Vingadores', 'Homem-Aranha|Gavião Arqueiro|Viúva Negra|Homem-Formiga|Homem de Ferro|Hulk|Pantera Negra|Capitão América|Visão|Guardiões da Galáxia|Thor|Capitã Marvel|Wanda|Doutor Estranho|Vingadores reunidos'),
+            campaignDefinition('knights', 'fantasy', 'Ordem dos Cavaleiros', 'swords', '#fbbf24', 'Aprendiz da Ordem|Pajem|Escudeiro|Sentinela|Cavaleiro|Cavaleiro do Estandarte|Protetor da Fortaleza|Cavaleiro de Elite|Capitão da Ordem|Campeão do Reino|Comandante da Ordem|Guardião da Coroa|Grão-Mestre|Paladino do Reino|Lenda da Ordem'),
+            campaignDefinition('mages', 'fantasy', 'Magos e Arcanistas', 'wand-sparkles', '#c084fc', 'Aprendiz Arcano|Estudante dos Símbolos|Iniciado das Runas|Conjurador Noviço|Adepto dos Elementos|Tecelão de Encantos|Guardião dos Grimórios|Mago|Mago Especialista|Arcanista|Mestre dos Elementos|Mestre das Runas|Arquimago|Guardião do Conhecimento|Lenda Arcana'),
+            campaignDefinition('forest', 'fantasy', 'Guardiões da Floresta', 'trees', '#6ee7b7', 'Aprendiz do Bosque|Observador das Trilhas|Explorador do Bosque|Cuidador das Fontes|Guardião das Raízes|Sentinela Verde|Aliado dos Animais|Protetor das Clareiras|Guardião das Árvores|Discípulo dos Druidas|Druida|Druida Ancião|Protetor da Floresta|Guardião da Árvore Ancestral|Lenda da Floresta')
+        ];
+        const AVENGERS_MESSAGES = [
+            'Comece com o próximo passo que está ao seu alcance.', 'Escolha um alvo e avance com atenção.',
+            'Prepare o caminho antes de agir.', 'Pequenas ações também fazem diferença.',
+            'Use criatividade e preparo para construir seu próximo avanço.', 'Reconheça sua energia e escolha como usá-la.',
+            'Cuide de quem caminha ao seu lado.', 'Avançar também é saber trabalhar em equipe.',
+            'Observe o contexto antes de decidir.', 'Explore possibilidades e conte com seus aliados.',
+            'Coragem também exige responsabilidade.', 'Mantenha o rumo sem ignorar seus limites.',
+            'Considere novas formas de enfrentar o desafio.', 'Veja o conjunto e escolha o próximo passo.',
+            'Seu legado reúne muitos passos e muitas formas de avançar.'
+        ];
+
         const BADGES_DB = [
             { id: 'primeiro_sangue', icon: 'swords', color: 'text-red-400', title: 'Primeiro Sangue', desc: 'Completou a sua primeira missão.' },
             { id: 'estrategista', icon: 'git-merge', color: 'text-purple-400', title: 'Mente Flexível', desc: 'Moveu uma missão de dia. Agência total.' },
@@ -188,9 +228,9 @@
             { id: 'tesoureiro_tatico', icon: 'wallet', color: 'text-yellow-400', title: 'Tesoureiro Tático', desc: 'Registrou o primeiro dado financeiro.' },
             { id: 'blindagem_financeira', icon: 'shield-check', color: 'text-emerald-500', title: 'Blindagem Financeira', desc: 'Usou uma defesa contra compra impulsiva.' },
             { id: 'comandante_integrado', icon: 'medal', color: 'text-indigo-400', title: 'Comandante Integrado', desc: 'Usou estudos, físico e finanças no mesmo sistema.' },
-            { id: 'campanha_completa', icon: 'flag', color: 'text-amber-300', title: 'Campanha Completa', desc: 'Alcançou a patente máxima em uma campanha.', xpReward: 0 },
+            { id: 'campanha_completa', icon: 'flag', color: 'text-amber-300', title: 'Campanha Completa', desc: 'Alcançou o nível máximo em uma campanha.', xpReward: 0 },
             { id: 'veterano', icon: 'shield-check', color: 'text-indigo-300', title: 'Veterano', desc: 'Iniciou uma nova campanha pelo Prestígio.', xpReward: 0 },
-            { id: 'legado', icon: 'crown', color: 'text-yellow-300', title: 'Legado', desc: 'Alcançou a patente máxima em 3 campanhas diferentes.', xpReward: 0 }
+            { id: 'legado', icon: 'crown', color: 'text-yellow-300', title: 'Legado', desc: 'Alcançou o nível máximo em 3 campanhas diferentes.', xpReward: 0 }
         ];
 
         const REWARDS_SHOP = [
@@ -329,7 +369,7 @@
 
         let uiState = {
             showPanic: false, breathingStep: 0, breathingInterval: null,
-            showLevelUp: false, showStatsModal: false, statsTab: 'roadmap',
+            showLevelUp: false, showStatsModal: false, statsTab: 'roadmap', campaignPicker: null,
             showCreateTaskModal: false,
             createTaskDraft: null,
             expandedSubtasks: {},
@@ -380,13 +420,40 @@
         window.normalizePrestige = function() {
             if (!state.prestige || typeof state.prestige !== 'object') state.prestige = {};
             const p = state.prestige;
-            p.version = 1;
+            p.version = 2;
             if (!Array.isArray(p.campaigns)) p.campaigns = [];
             p.campaign = p.campaigns.length + 1;
             if (!Array.isArray(p.protectedBadgeIds)) p.protectedBadgeIds = [];
             if (!Array.isArray(p.maxCampaigns)) p.maxCampaigns = [];
             if (typeof p.startedAt === 'undefined') p.startedAt = null;
+            if (!CAMPAIGN_THEMES.some(t => t.id === p.themeId)) p.themeId = 'original';
+            if (!Array.isArray(p.emblems)) p.emblems = [];
+            p.campaigns.forEach(c => { if (!CAMPAIGN_THEMES.some(t => t.id === c.themeId)) c.themeId = 'original'; });
             return p;
+        };
+
+        window.getCampaignDefinition = function(id = state.prestige?.themeId) {
+            return CAMPAIGN_THEMES.find(t => t.id === id) || CAMPAIGN_THEMES[0];
+        };
+        window.getCampaignRanks = function() { return window.getCampaignDefinition().ranks; };
+        window.openCampaignPicker = function() {
+            const theme = window.getCampaignDefinition();
+            uiState.campaignPicker = { category: theme.category, themeId: theme.id };
+            render();
+        };
+        window.closeCampaignPicker = function() { uiState.campaignPicker = null; render(); };
+        window.selectCurrentCampaignTheme = function() { window.openCampaignPicker(); };
+        window.selectCampaignCategory = function(category) {
+            if (!uiState.campaignPicker || !CAMPAIGN_CATEGORIES.some(c => c.id === category)) return;
+            if (uiState.campaignPicker.category === category) return;
+            uiState.campaignPicker.category = category;
+            uiState.campaignPicker.themeId = CAMPAIGN_THEMES.find(t => t.category === category && t.id !== 'original').id;
+            render();
+        };
+        window.selectCampaignTheme = function(id) {
+            if (!uiState.campaignPicker || !CAMPAIGN_THEMES.some(t => t.id === id && t.category === uiState.campaignPicker.category)) return;
+            uiState.campaignPicker.themeId = id;
+            render();
         };
 
         window.getCareerXp = function() {
@@ -408,6 +475,12 @@
             if (p.campaigns.length) milestones.push('veterano');
             if (p.maxCampaigns.length >= 3) milestones.push('legado');
             milestones.forEach(id => { if (!state.unlockedBadges.includes(id)) state.unlockedBadges.push(id); });
+            // Emblemas são permanentes e simbólicos: não dão XP nem moedas.
+            const completed = p.campaigns.map(c => ({ themeId: c.themeId, campaign: c.number, earnedAt: c.endedAt }));
+            if (p.maxCampaigns.includes(p.campaign)) completed.push({ themeId: p.themeId, campaign: p.campaign, earnedAt: new Date().toISOString() });
+            completed.forEach(c => {
+                if (!p.emblems.some(e => e.themeId === c.themeId)) p.emblems.push(c);
+            });
         };
 
         window.revertCampaignXp = function(amount, campaign = 1) {
@@ -419,30 +492,35 @@
             return deducted;
         };
 
-        window.startPrestige = function() {
+        window.startPrestige = function(themeId = state.prestige?.themeId || 'original') {
             const p = window.normalizePrestige();
+            const selected = CAMPAIGN_THEMES.find(t => t.id === themeId);
+            if (!selected) { window.showAlertModal('Escolha um subtema válido para a próxima campanha.'); return; }
             if (!window.canStartPrestige()) {
-                window.showAlertModal('O Prestígio fica disponível ao alcançar a patente máxima: 90000 XP nesta campanha.');
+                window.showAlertModal('O Prestígio fica disponível ao alcançar o nível máximo: 90000 XP nesta campanha.');
                 return;
             }
             const expectedCampaign = p.campaign;
-            window.showConfirmModal(`Iniciar a campanha ${expectedCampaign + 1}? Você voltará a Recruta com 0 XP nesta campanha. O XP da carreira, medalhas, moedas, reserva e todos os registros serão preservados. Você também pode cancelar e continuar na patente máxima.`, () => {
+            window.showConfirmModal(`Iniciar a campanha ${expectedCampaign + 1} — ${selected.name}? Seu título inicial será ${selected.ranks[0].name}, com 0 XP nesta campanha. O XP da carreira, emblemas, medalhas, moedas, reserva e todos os registros serão preservados. Você também pode cancelar e continuar no nível máximo.`, () => {
                 const current = window.normalizePrestige();
                 if (current.campaign !== expectedCampaign || !window.canStartPrestige()) return;
                 window.syncPrestigeMilestones();
                 const endedAt = new Date().toISOString();
                 current.campaigns.push({ number: current.campaign, xp: state.xp, rankLevel: state.level,
-                    rankName: RANKS[RANKS.length - 1].name, startedAt: current.startedAt, endedAt,
+                    themeId: current.themeId, themeName: window.getCampaignDefinition().name,
+                    rankName: window.getCampaignRanks()[RANKS.length - 1].name, startedAt: current.startedAt, endedAt,
                     badgeIds: [...state.unlockedBadges] });
                 current.protectedBadgeIds = [...new Set([...current.protectedBadgeIds, ...state.unlockedBadges])];
                 current.campaign = current.campaigns.length + 1;
                 current.startedAt = endedAt;
+                current.themeId = selected.id;
                 state.xp = 0;
                 state.level = 1;
                 uiState.showLevelUp = false;
+                uiState.campaignPicker = null;
                 window.syncPrestigeMilestones();
                 window.saveState(false, 'prestige-start');
-                window.showToast('Nova campanha iniciada', `Prestígio ${current.campaigns.length} · Recruta. Seu legado foi preservado.`, 'flag', 'text-indigo-300');
+                window.showToast('Nova campanha iniciada', `Prestígio ${current.campaigns.length} · ${selected.ranks[0].name}. Seu legado foi preservado.`, selected.icon, 'text-indigo-300');
             });
         };
 
@@ -1894,7 +1972,8 @@
             };
         };
         window.getRankName = function(lvl = state.level) {
-            const rank = (RANKS.find(r => r.level === lvl) || RANKS[RANKS.length - 1]).name;
+            const ranks = window.getCampaignRanks();
+            const rank = (ranks.find(r => r.level === lvl) || ranks[ranks.length - 1]).name;
             const gender = state?.userProfile?.gender || 'masculino';
             const feminineMap = {
                 'Soldado': 'Soldada',
@@ -3196,8 +3275,8 @@
             state.focusMode = true;
             window.saveState();
         };
-        window.toggleStatsModal = function() { uiState.showStatsModal = !uiState.showStatsModal; render(); };
-        window.setStatsTab = function(tab) { uiState.statsTab = tab; render(); };
+        window.toggleStatsModal = function() { uiState.showStatsModal = !uiState.showStatsModal; uiState.campaignPicker = null; render(); };
+        window.setStatsTab = function(tab) { uiState.statsTab = tab; uiState.campaignPicker = null; render(); };
         window.healEnergy = function() { state.energy = 100; window.togglePanicModal(false); window.saveState(); };
         
         window.clearAllMissions = function() {
@@ -5372,7 +5451,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.49</span></div>
+                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.50</span></div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-2">
@@ -5430,7 +5509,7 @@
                                 <span>Nível ${state.level}</span>
                                 ${state.prestige?.campaigns?.length ? `<span>· Prestígio ${state.prestige.campaigns.length}</span>` : ''}
                                 <span>•</span>
-                                <span>${window.getRankProgress().nextXp === null ? `${state.xp} XP acumulados · patente máxima` : `${state.xp} / ${window.getRankProgress().nextXp} XP`}</span>
+                                <span>${window.getRankProgress().nextXp === null ? `${state.xp} XP acumulados · nível máximo` : `${state.xp} / ${window.getRankProgress().nextXp} XP`}</span>
                                 <span>•</span>
                                 <span>${state.coins} MT</span>
                                 ${state.combo > 1 ? `<span>• Combo x${window.getComboMultiplier().toFixed(1)}</span>` : ''}
@@ -5682,7 +5761,7 @@
                             <h2 id="qg-title" class="text-2xl font-black text-white flex items-center gap-3 mb-6 pr-8"><i data-lucide="building-2" class="text-yellow-500 w-8 h-8"></i> Quartel General</h2>
                             
                             <div class="flex flex-wrap gap-2 mb-6 bg-slate-950 p-1 rounded-lg">
-                                ${['roadmap:Patentes', 'badges:Medalhas', 'performance:Desempenho', 'shop:Mercado Negro'].map(tab => {
+                                ${['roadmap:Progressão', 'badges:Medalhas', 'performance:Desempenho', 'shop:Mercado Negro'].map(tab => {
                                     const [id, label] = tab.split(':');
                                     return `<button onclick="window.setStatsTab('${id}')" class="flex-1 min-w-[100px] py-2 text-xs sm:text-sm font-bold rounded-md transition-colors ${uiState.statsTab === id ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'}">${label}</button>`;
                                 }).join('')}
@@ -6147,39 +6226,72 @@
         }
 
         // --- Q.G. ---
+        window.renderCampaignEmblems = function() {
+            const emblems = window.normalizePrestige().emblems;
+            return `<section class="rounded-xl border border-slate-800 p-4"><h3 class="text-sm font-bold text-white">Emblemas de campanha <span class="text-slate-400 ml-1">${emblems.length}</span></h3><p class="text-xs text-slate-400 mt-2">Cada subtema concluído rende um emblema permanente ao alcançar o nível 15. Repetir o tema mantém o emblema e acrescenta uma campanha ao histórico.</p>${emblems.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">${emblems.map(e => {
+                const t = window.getCampaignDefinition(e.themeId);
+                return `<div class="flex items-center gap-3 rounded-lg bg-slate-800/50 p-3"><i data-lucide="${t.icon}" style="color:${t.color}" class="w-6 h-6 shrink-0"></i><div><p class="text-sm font-bold text-white">${window.escapeHtml(t.ranks[14].name)}</p><p class="text-xs text-slate-400 mt-1">${window.escapeHtml(t.name)} · Campanha ${Number(e.campaign) || 1}</p></div></div>`;
+            }).join('')}</div>` : '<p class="text-xs text-slate-500 mt-3">Seu primeiro emblema espera no fim desta campanha.</p>'}</section>`;
+        };
+
+        window.renderCampaignPicker = function() {
+            const picker = uiState.campaignPicker;
+            const selected = window.getCampaignDefinition(picker.themeId);
+            const current = window.getCampaignDefinition();
+            const category = CAMPAIGN_CATEGORIES.find(c => c.id === picker.category);
+            const available = CAMPAIGN_THEMES.filter(t => t.category === category.id && t.id !== 'original');
+            const ready = window.canStartPrestige();
+            const previewRow = rank => `<div class="flex items-start justify-between gap-3 py-2.5 border-b border-slate-800 last:border-0"><div><p class="text-sm text-slate-200"><span class="text-slate-500 mr-2">${rank.level}.</span>${window.escapeHtml(rank.name)}</p>${rank.reference ? `<p class="text-xs text-slate-400 mt-1 ml-6">Referência: ${window.escapeHtml(rank.reference)}</p>` : ''}</div><span class="text-xs text-slate-400 whitespace-nowrap">${window.getRankProgress(rank.level).entryXp} XP</span></div>`;
+            return `<div class="space-y-5">
+                <div class="flex justify-between items-start gap-4"><div><h3 class="text-xl font-black text-white">Escolha sua próxima jornada</h3><p class="text-sm text-slate-400 mt-2">4 temas · 15 subtemas · os mesmos 15 níveis e requisitos de XP.</p></div><button type="button" onclick="window.closeCampaignPicker()" class="shrink-0 text-sm text-slate-300 hover:text-white rounded-lg border border-slate-700 px-3 py-2">Voltar</button></div>
+                <button type="button" onclick="window.selectCurrentCampaignTheme()" class="w-full text-left rounded-xl border border-slate-700 bg-slate-800/50 p-4 hover:border-indigo-400"><span class="text-sm font-bold text-white">Continuar com o tema atual</span><span class="block text-xs text-slate-400 mt-1">${current.name} · repetir a trajetória em uma nova campanha</span></button>
+                <section><h4 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">1. Tema da campanha</h4><div class="grid grid-cols-2 sm:grid-cols-4 gap-2">${CAMPAIGN_CATEGORIES.map(c => `<button type="button" aria-pressed="${c.id === category.id}" onclick="window.selectCampaignCategory('${c.id}')" class="rounded-xl p-3 text-sm font-bold flex items-center justify-center gap-2 ${c.id === category.id ? 'bg-indigo-600 text-white border border-indigo-400' : 'bg-slate-950 border border-slate-700 text-slate-300 hover:border-indigo-400'}"><i data-lucide="${c.icon}" class="w-4 h-4 shrink-0"></i>${c.name}</button>`).join('')}</div></section>
+                <section><h4 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">2. Subtema · ${category.name}</h4><div class="grid grid-cols-1 sm:grid-cols-2 gap-2">${available.map(t => `<button type="button" aria-pressed="${t.id === selected.id}" onclick="window.selectCampaignTheme('${t.id}')" style="${t.id === selected.id ? `border-color:${t.color};background:${t.color}12` : ''}" class="text-left rounded-xl border border-slate-700 p-4 hover:bg-slate-800/60 flex items-center gap-3"><i data-lucide="${t.icon}" style="color:${t.color}" class="w-5 h-5 shrink-0"></i><span class="text-sm font-bold text-white">${t.name}</span>${t.id === selected.id ? '<i data-lucide="check" class="w-4 h-4 text-emerald-300 ml-auto"></i>' : ''}</button>`).join('')}</div></section>
+                <section style="border-color:${selected.color};background:linear-gradient(135deg,${selected.color}12,#020617)" class="rounded-xl border p-5"><p class="text-xs font-bold uppercase tracking-widest" style="color:${selected.color}">3. Prévia · ${selected.name}</p><div class="mt-3">${[0, 4, 9, 14].map(i => previewRow(selected.ranks[i])).join('')}</div><details class="mt-4"><summary class="cursor-pointer text-sm text-slate-300">Ver os 15 níveis</summary><div class="mt-2">${selected.ranks.map(previewRow).join('')}</div></details><p class="text-xs text-slate-400 mt-4">Emblema de conclusão: <span class="text-slate-200 font-bold">${selected.ranks[14].name}</span>.</p>${selected.id === 'avengers' ? '<p class="text-xs text-slate-400 mt-2">Personagens são referências de cada etapa; a ordem não representa uma escala de poder.</p>' : '<p class="text-xs text-slate-400 mt-2">Uma trajetória temática criada para esta campanha.</p>'}</section>
+                <div class="rounded-xl border border-slate-700 p-4"><p class="text-sm text-slate-300">${ready ? `A próxima campanha começa como <strong class="text-white">${selected.ranks[0].name}</strong>, com 0 XP. Você poderá revisar e cancelar na confirmação.` : 'Você pode explorar agora. Para iniciar outra campanha, alcance o nível 15 com 90000 XP na campanha atual.'}</p><p class="text-xs text-slate-400 mt-2">XP da carreira, emblemas, medalhas, moedas e todos os registros ficam preservados.</p><button type="button" onclick="window.startPrestige('${selected.id}')" ${ready ? '' : 'disabled'} class="mt-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-4 py-2.5 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed">${ready ? 'Iniciar campanha com este subtema' : 'Disponível ao concluir a campanha atual'}</button></div>
+            </div>`;
+        };
+
         function renderQGContent() {
             if (uiState.statsTab === 'roadmap') {
+                if (uiState.campaignPicker) return window.renderCampaignPicker();
+                const theme = window.getCampaignDefinition();
+                const ranks = theme.ranks;
+                const military = theme.category === 'military';
                 const rankIndex = Math.max(0, Math.min(RANKS.length - 1, (parseInt(state.level, 10) || 1) - 1));
-                const current = RANKS[rankIndex];
-                const next = RANKS[rankIndex + 1];
-                const past = RANKS.slice(0, rankIndex);
-                const future = RANKS.slice(rankIndex + 2);
+                const current = ranks[rankIndex];
+                const next = ranks[rankIndex + 1];
+                const past = ranks.slice(0, rankIndex);
+                const future = ranks.slice(rankIndex + 2);
                 const progress = window.getRankProgress(current.level);
                 const earnedCount = BADGES_DB.filter(b => state.unlockedBadges.includes(b.id)).length;
                 const economy = window.normalizeEconomy();
                 const target = economy.targetReward;
                 const balance = window.getTotalTacticalCoins();
                 const prestige = window.normalizePrestige();
-                const rankRow = (rank, achieved) => `<div class="flex items-center justify-between gap-3 py-3 border-b border-slate-800 last:border-0"><div class="flex items-center gap-3"><i data-lucide="${achieved ? 'check' : 'lock'}" class="w-4 h-4 ${achieved ? 'text-emerald-400' : 'text-slate-500'} shrink-0"></i><span class="text-sm font-semibold text-slate-200">${rank.name}</span><span class="text-xs text-slate-400">Nível ${rank.level}</span></div><span class="text-xs text-slate-400 whitespace-nowrap">${rank.level === 1 ? 'Patente inicial · 0 XP' : `Disponível a partir de ${window.getRankProgress(rank.level).entryXp} XP`}</span></div>`;
+                const rankRow = (rank, achieved) => `<div class="flex items-center justify-between gap-3 py-3 border-b border-slate-800 last:border-0"><div class="flex items-center gap-3"><i data-lucide="${achieved ? 'check' : 'lock'}" class="w-4 h-4 ${achieved ? 'text-emerald-400' : 'text-slate-500'} shrink-0"></i><span class="text-sm font-semibold text-slate-200">${window.escapeHtml(rank.name)}</span><span class="text-xs text-slate-400">Nível ${rank.level}</span></div><span class="text-xs text-slate-400 whitespace-nowrap">${rank.level === 1 ? `${military ? 'Patente' : 'Título'} inicial · 0 XP` : `Disponível a partir de ${window.getRankProgress(rank.level).entryXp} XP`}</span></div>`;
                 return `<div class="space-y-5">
-                    <section class="rounded-2xl border border-indigo-500/60 bg-gradient-to-br from-indigo-950/80 to-slate-950 p-5 sm:p-6">
-                        <div class="flex items-start gap-4"><div class="bg-indigo-500/15 border border-indigo-500/40 rounded-2xl p-3"><i data-lucide="star" class="w-7 h-7 text-indigo-300"></i></div><div class="flex-1"><p class="text-xs font-bold uppercase tracking-widest text-indigo-300">Sua patente · Nível ${current.level}</p><h3 class="text-2xl font-black text-white mt-1">${current.name}</h3><p class="text-sm text-slate-300 mt-1">${state.xp} XP nesta campanha</p></div></div>
-                        <p class="text-xs text-slate-400 mt-4">${progress.entryXp === 0 ? 'Patente inicial · 0 XP' : `Disponível a partir de ${progress.entryXp} XP`}</p>
-                        ${next ? `<div class="mt-4"><div class="flex justify-between gap-3 text-sm mb-2"><span class="font-semibold text-indigo-200">Rumo a ${next.name}</span><span class="font-bold text-white">${progress.percent}%</span></div><div role="progressbar" aria-label="Progresso até a próxima patente" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress.percent}" class="h-2.5 bg-slate-800 rounded-full overflow-hidden"><div class="h-full bg-indigo-400 rounded-full" style="width:${progress.percent}%"></div></div><p class="text-sm text-indigo-200 mt-3">Próxima promoção: ${progress.nextXp} XP · faltam ${progress.remainingXp} XP</p></div>` : `<p class="text-sm text-indigo-200 mt-4">Patente máxima conquistada · seu XP continua acumulando.</p>`}
+                    <section style="border-color:${theme.color};background:linear-gradient(135deg,${theme.color}18,#020617)" class="rounded-2xl border border-indigo-500/60 bg-gradient-to-br from-indigo-950/80 to-slate-950 p-5 sm:p-6">
+                        <div class="flex items-start gap-4"><div class="bg-indigo-500/15 border border-indigo-500/40 rounded-2xl p-3"><i data-lucide="${theme.icon}" style="color:${theme.color}" class="w-7 h-7"></i></div><div class="flex-1"><p class="text-xs font-bold uppercase tracking-widest text-indigo-300">${military ? 'Sua patente' : 'Seu título'} · Nível ${current.level}</p><h3 class="text-2xl font-black text-white mt-1">${window.escapeHtml(current.name)}</h3><p class="text-sm text-slate-300 mt-1">${state.xp} XP nesta campanha</p>${current.reference ? `<p class="text-xs mt-2" style="color:${theme.color}">Referência: ${window.escapeHtml(current.reference)}</p><p class="text-xs text-slate-400 mt-1">${AVENGERS_MESSAGES[rankIndex]}</p>` : ''}</div></div>
+                        <p class="text-xs text-slate-400 mt-4">${progress.entryXp === 0 ? `${military ? 'Patente' : 'Título'} inicial · 0 XP` : `Disponível a partir de ${progress.entryXp} XP`}</p>
+                        ${next ? `<div class="mt-4"><div class="flex justify-between gap-3 text-sm mb-2"><span class="font-semibold text-indigo-200">Rumo a ${window.escapeHtml(next.name)}</span><span class="font-bold text-white">${progress.percent}%</span></div><div role="progressbar" aria-label="Progresso até o próximo nível" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress.percent}" class="h-2.5 bg-slate-800 rounded-full overflow-hidden"><div class="h-full rounded-full" style="background:${theme.color};width:${progress.percent}%"></div></div><p class="text-sm text-indigo-200 mt-3">Próxima promoção: ${progress.nextXp} XP · faltam ${progress.remainingXp} XP</p></div>` : `<p class="text-sm text-indigo-200 mt-4">${military ? 'Patente máxima conquistada' : 'Título máximo conquistado'} · seu XP continua acumulando.</p>`}
                     </section>
                     <section class="rounded-xl border border-slate-700 bg-slate-800/40 p-5">
                         <div class="flex flex-wrap justify-between gap-3"><h3 class="text-sm font-bold text-white">Campanha ${prestige.campaign}</h3><span class="text-xs font-bold text-indigo-300">Prestígio ${prestige.campaigns.length}</span></div>
-                        <p class="text-sm text-slate-300 mt-2"><span class="font-bold text-white">${window.getCareerXp()} XP</span> na carreira</p>
-                        ${window.canStartPrestige() ? `<p class="text-sm text-slate-400 mt-3">Você chegou à patente máxima. Continue acumulando XP ou inicie uma nova campanha como Recruta.</p><button type="button" onclick="window.startPrestige()" class="mt-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-4 py-2.5 rounded-lg">Iniciar nova campanha</button><p class="text-xs text-slate-400 mt-2">O XP da campanha volta a 0. Seu legado, moedas, medalhas e registros continuam com você.</p>` : `<p class="text-sm text-slate-400 mt-3">Prestígio disponível ao alcançar a patente máxima: 90000 XP nesta campanha.</p>`}
-                        ${prestige.campaigns.length ? `<details class="group mt-4 border-t border-slate-700 pt-3"><summary class="cursor-pointer text-sm text-slate-400 hover:text-white">Histórico de campanhas</summary><div class="mt-3 space-y-2">${prestige.campaigns.slice().reverse().map(c => `<div class="flex flex-wrap justify-between gap-2 text-xs text-slate-300 border-b border-slate-700 pb-2"><span>Campanha ${Number(c.number) || 1} · ${window.escapeHtml(c.rankName || 'Patente máxima')}</span><span>${Math.max(0, Number(c.xp) || 0)} XP · ${window.escapeHtml(new Date(c.endedAt).toLocaleDateString('pt-BR'))}</span></div>`).join('')}</div><p class="text-xs text-slate-400 mt-3">Campanhas encerradas guardam seu resultado. Desfazer registros antigos não altera o XP da campanha atual.</p></details>` : ''}
+                        <p class="text-xs text-slate-400 mt-2">${CAMPAIGN_CATEGORIES.find(c => c.id === theme.category).name} · ${theme.name}</p><p class="text-sm text-slate-300 mt-2"><span class="font-bold text-white">${window.getCareerXp()} XP</span> na carreira</p>
+                        <p class="text-sm text-slate-400 mt-3">${window.canStartPrestige() ? 'Você chegou ao nível máximo. Pode continuar acumulando XP ou escolher a próxima campanha.' : 'Uma nova campanha fica disponível ao alcançar 90000 XP. Explore os temas enquanto avança.'}</p>
+                        <button type="button" onclick="window.openCampaignPicker()" class="mt-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-4 py-2.5 rounded-lg">${window.canStartPrestige() ? 'Escolher próxima campanha' : 'Explorar temas de campanha'}</button>
+                        <p class="text-xs text-slate-400 mt-2">Você escolhe quando recomeçar. Emblemas, moedas, medalhas e registros ficam preservados.</p>
+                        ${prestige.campaigns.length ? `<details class="group mt-4 border-t border-slate-700 pt-3"><summary class="cursor-pointer text-sm text-slate-400 hover:text-white">Histórico de campanhas</summary><div class="mt-3 space-y-2">${prestige.campaigns.slice().reverse().map(c => `<div class="flex flex-wrap justify-between gap-2 text-xs text-slate-300 border-b border-slate-700 pb-2"><span>Campanha ${Number(c.number) || 1} · ${window.escapeHtml(c.themeName || window.getCampaignDefinition(c.themeId).name)} · ${window.escapeHtml(c.rankName || 'Nível máximo')}</span><span>${Math.max(0, Number(c.xp) || 0)} XP · ${window.escapeHtml(new Date(c.endedAt).toLocaleDateString('pt-BR'))}</span></div>`).join('')}</div><p class="text-xs text-slate-400 mt-3">Campanhas encerradas guardam seu resultado. Desfazer registros antigos não altera o XP da campanha atual.</p></details>` : ''}
                     </section>
+                    ${window.renderCampaignEmblems()}
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <button onclick="window.setStatsTab('badges')" class="text-left rounded-xl border border-slate-700 bg-slate-800/50 p-4 hover:border-indigo-400 transition-colors"><div class="flex items-center justify-between gap-3"><span class="text-sm font-bold text-white">${earnedCount} de ${BADGES_DB.length} medalhas</span><i data-lucide="award" class="w-5 h-5 text-amber-300"></i></div><p class="text-xs text-slate-400 mt-2">Ver conquistas e próximos desafios →</p></button>
                         <button onclick="window.setStatsTab('shop')" class="text-left rounded-xl border border-slate-700 bg-slate-800/50 p-4 hover:border-yellow-400 transition-colors"><div class="flex items-center justify-between gap-3"><span class="text-sm font-bold text-yellow-300">${balance} MT disponíveis</span><i data-lucide="target" class="w-5 h-5 text-yellow-300"></i></div><p class="text-xs text-slate-300 mt-2">${target ? `Alvo: ${window.escapeHtml(target.title)} · ${balance >= target.cost ? 'disponível para resgate' : `faltam ${Math.max(0, target.cost - balance)} MT`}` : 'Escolha sua recompensa-alvo →'}</p></button>
                     </div>
-                    ${next ? `<section class="rounded-xl border border-slate-700 p-4"><p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Próxima patente</p>${rankRow(next, false)}</section>` : ''}
-                    ${past.length ? `<details class="group rounded-xl border border-slate-800 bg-slate-950/40"><summary class="cursor-pointer list-none flex items-center justify-between gap-3 p-4 text-sm font-semibold text-slate-300 hover:text-white"><span>Patentes conquistadas <span class="text-emerald-400 ml-2">${past.length}</span></span><i data-lucide="chevron-down" class="w-4 h-4 group-open:rotate-180 transition-transform"></i></summary><div class="px-4 pb-2 border-t border-slate-800">${past.map(rank => rankRow(rank, true)).join('')}</div></details>` : ''}
-                    ${future.length ? `<details class="group rounded-xl border border-slate-800 bg-slate-950/40"><summary class="cursor-pointer list-none flex items-center justify-between gap-3 p-4 text-sm font-semibold text-slate-300 hover:text-white"><span>Patentes futuras <span class="text-slate-400 ml-2">${future.length}</span></span><i data-lucide="chevron-down" class="w-4 h-4 group-open:rotate-180 transition-transform"></i></summary><div class="px-4 pb-2 border-t border-slate-800">${future.map(rank => rankRow(rank, false)).join('')}</div></details>` : ''}
+                    ${next ? `<section class="rounded-xl border border-slate-700 p-4"><p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">${military ? 'Próxima patente' : 'Próximo título'}</p>${rankRow(next, false)}</section>` : ''}
+                    ${past.length ? `<details class="group rounded-xl border border-slate-800 bg-slate-950/40"><summary class="cursor-pointer list-none flex items-center justify-between gap-3 p-4 text-sm font-semibold text-slate-300 hover:text-white"><span>${military ? 'Patentes conquistadas' : 'Títulos conquistados'} <span class="text-emerald-400 ml-2">${past.length}</span></span><i data-lucide="chevron-down" class="w-4 h-4 group-open:rotate-180 transition-transform"></i></summary><div class="px-4 pb-2 border-t border-slate-800">${past.map(rank => rankRow(rank, true)).join('')}</div></details>` : ''}
+                    ${future.length ? `<details class="group rounded-xl border border-slate-800 bg-slate-950/40"><summary class="cursor-pointer list-none flex items-center justify-between gap-3 p-4 text-sm font-semibold text-slate-300 hover:text-white"><span>${military ? 'Patentes futuras' : 'Títulos futuros'} <span class="text-slate-400 ml-2">${future.length}</span></span><i data-lucide="chevron-down" class="w-4 h-4 group-open:rotate-180 transition-transform"></i></summary><div class="px-4 pb-2 border-t border-slate-800">${future.map(rank => rankRow(rank, false)).join('')}</div></details>` : ''}
                 </div>`;
             } else if (uiState.statsTab === 'badges') {
                 const earned = BADGES_DB.filter(b => state.unlockedBadges.includes(b.id));

@@ -33,16 +33,17 @@ function engine(overrides = {}) {
         sourceBetween('function getCorrectLevel(', 'function getMondayStartDate('),
         sourceBetween('window.normalizeEconomy =', 'window.getTaskNature ='),
         sourceBetween('window.getTaskCoinReward =', 'window.setRewardTarget ='),
-        sourceBetween('window.getComboMultiplier =', 'window.getRankName ='),
+        sourceBetween('window.getComboMultiplier =', 'window.getUserDisplayName ='),
         sourceBetween('window.escapeHtml =', '// Ponte temporária'),
         sourceBetween('window.unlockBadge =', 'window.getComboMultiplier ='),
         sourceBetween('window.checkLevelUp =', 'window.showToast ='),
         sourceBetween('window.toggleQuickTask =', 'window.deleteQuickTask ='),
         sourceBetween('window.recalculateLevelFromXp =', 'window.archiveReview ='),
-        sourceBetween('function renderQGContent()', '// --- ESTUDOS ---'),
+        sourceBetween('window.renderCampaignEmblems =', '// --- ESTUDOS ---'),
         'window.renderQGForTest = renderQGContent;',
         'window.rewardsForTest = REWARDS_SHOP;',
-        'window.badgesForTest = BADGES_DB;'
+        'window.badgesForTest = BADGES_DB;',
+        'window.themesForTest = CAMPAIGN_THEMES;'
     ].join('\n'), context);
     return context;
 }
@@ -360,4 +361,154 @@ test('missões novas continuam concedendo e revertendo XP e medalhas na campanha
     assert.ok(!ctx.state.unlockedBadges.includes('primeiro_sangue'));
     assert.ok(ctx.state.unlockedBadges.includes('deep_focus'));
     assert.equal(ctx.window.getCareerXp(), 90000);
+});
+
+test('catálogo contém 4 categorias e 15 subtemas com os mesmos 15 limites de XP', () => {
+    const ctx = engine();
+    const original = ctx.window.themesForTest.find(t => t.id === 'original');
+    const themes = ctx.window.themesForTest.filter(t => t.id !== 'original');
+    assert.equal(themes.length, 15);
+    assert.equal(new Set(themes.map(t => t.id)).size, 15);
+    assert.deepEqual(Object.fromEntries(['military', 'mythology', 'scifi', 'fantasy'].map(c => [c, themes.filter(t => t.category === c).length])),
+        { military: 5, mythology: 4, scifi: 3, fantasy: 3 });
+    for (const theme of themes) {
+        assert.equal(theme.ranks.length, 15);
+        assert.equal(new Set(theme.ranks.map(r => r.name)).size, 15);
+        assert.equal(JSON.stringify(theme.ranks.map(r => [r.level, r.max])), JSON.stringify(original.ranks.map(r => [r.level, r.max])));
+        assert.match(theme.color, /^#[0-9a-f]{6}$/);
+    }
+    const avengers = themes.find(t => t.id === 'avengers');
+    assert.ok(avengers.ranks.every(r => r.reference));
+    assert.equal(avengers.ranks[4].reference, 'Homem de Ferro');
+    assert.equal(avengers.ranks[13].reference, 'Doutor Estranho');
+});
+
+test('explorar qualquer tema só altera a seleção temporária; início continua bloqueado', () => {
+    const ctx = engine({ xp: 32287, level: 10, coins: 3, economy: { tacticalReserve: 231 } });
+    ctx.window.normalizePrestige();
+    const before = JSON.stringify(ctx.state);
+    ctx.window.openCampaignPicker();
+    assert.match(ctx.window.renderQGForTest(), /Escolha sua próxima jornada/);
+    assert.match(ctx.window.renderQGForTest(), /Continuar com o tema atual/);
+    for (const theme of ctx.window.themesForTest.filter(t => t.id !== 'original')) {
+        ctx.window.selectCampaignCategory(theme.category);
+        ctx.window.selectCampaignTheme(theme.id);
+        const html = ctx.window.renderQGForTest();
+        assert.match(html, /Ver os 15 níveis/);
+        assert.ok(html.includes(theme.ranks[0].name));
+        assert.ok(html.includes(theme.ranks[14].name));
+        assert.ok(html.includes(`window.startPrestige('${theme.id}')" disabled`));
+        assert.ok(!html.includes('href='));
+        assert.equal(JSON.stringify(ctx.state), before);
+    }
+    ctx.window.selectCampaignCategory('mythology'); ctx.window.selectCampaignTheme('norse');
+    ctx.window.selectCampaignCategory('mythology');
+    assert.equal(ctx.uiState.campaignPicker.themeId, 'norse', 'Clicar na categoria ativa mantém o subtema');
+    ctx.window.selectCampaignTheme('avengers');
+    assert.equal(ctx.uiState.campaignPicker.themeId, 'norse', 'Ignora subtema de outra categoria');
+    ctx.window.selectCurrentCampaignTheme();
+    assert.equal(ctx.uiState.campaignPicker.themeId, 'original');
+    ctx.window.closeCampaignPicker();
+    assert.match(ctx.window.renderQGForTest(), /Comandante Supremo/);
+    assert.equal(ctx.window.savesForTest, undefined);
+});
+
+test('cada subtema inicia somente após confirmar e exibe títulos e promoção corretos', () => {
+    for (const theme of engine().window.themesForTest.filter(t => t.id !== 'original')) {
+        const ctx = engine({ xp: 90000, level: 15, coins: 234, tasks: [{ id: 1 }] });
+        ctx.window.normalizePrestige();
+        const before = JSON.stringify(ctx.state);
+        ctx.window.startPrestige(theme.id);
+        assert.equal(JSON.stringify(ctx.state), before, 'Cancelar não muda o tema ou XP');
+        assert.ok(ctx.window.confirmMessageForTest.includes(theme.name));
+        assert.ok(ctx.window.confirmMessageForTest.includes(theme.ranks[0].name));
+        ctx.window.confirmForTest();
+        assert.equal(ctx.state.prestige.themeId, theme.id);
+        assert.equal(ctx.state.prestige.campaigns[0].themeId, 'original');
+        assert.equal(ctx.state.prestige.campaigns[0].rankName, 'Deus do Foco');
+        assert.equal(ctx.state.coins, 234);
+        assert.equal(ctx.state.tasks[0].id, 1);
+        assert.equal(ctx.state.xp, 0);
+        assert.equal(ctx.window.getRankName(), theme.ranks[0].name);
+        for (const [level, xp] of [[1, 0], [5, 4500], [10, 25000], [15, 90000]]) {
+            ctx.state.level = level; ctx.state.xp = xp;
+            const html = ctx.window.renderQGForTest();
+            assert.ok(html.includes(`<h3 class="text-2xl font-black text-white mt-1">${theme.ranks[level - 1].name}</h3>`));
+            assert.ok(!html.includes('999999'));
+            if (level < 15) assert.match(html, new RegExp(`Próxima promoção: ${theme.ranks[level - 1].max} XP`));
+        }
+    }
+});
+
+test('referências e frase dos Vingadores acompanham o nível ativo', () => {
+    const ctx = engine({ level: 5, xp: 5000, prestige: { themeId: 'avengers' } });
+    const html = ctx.window.renderQGForTest();
+    assert.match(html, /Inventor de Soluções/);
+    assert.match(html, /Referência: Homem de Ferro/);
+    assert.match(html, /Use criatividade e preparo para construir seu próximo avanço/);
+    assert.match(html, /Seu título · Nível 5/);
+    assert.match(html, /Títulos conquistados/);
+    ctx.window.openCampaignPicker();
+    assert.match(ctx.window.renderQGForTest(), /ordem não representa uma escala de poder/);
+});
+
+test('emblemas são permanentes e únicos por subtema; histórico guarda a trajetória anterior', () => {
+    const ctx = engine({ xp: 90000, level: 15 });
+    ctx.window.syncPrestigeMilestones();
+    assert.equal(ctx.state.prestige.emblems.length, 1);
+    for (const id of ['espionage', 'avengers', 'norse', 'espionage']) {
+        ctx.window.startPrestige(id); ctx.window.confirmForTest();
+        const xpBefore = ctx.state.xp;
+        ctx.window.syncPrestigeMilestones();
+        assert.equal(ctx.state.xp, xpBefore);
+        ctx.state.xp = 90000; ctx.window.checkLevelUp();
+        ctx.window.syncPrestigeMilestones();
+        assert.equal(ctx.state.xp, 90000);
+    }
+    assert.equal(ctx.state.prestige.emblems.length, 4);
+    assert.equal(ctx.state.prestige.emblems.filter(e => e.themeId === 'espionage').length, 1);
+    assert.equal(ctx.state.prestige.campaigns[1].themeId, 'espionage');
+    assert.equal(ctx.state.prestige.campaigns[1].rankName, 'Lenda da Espionagem');
+    assert.equal(ctx.state.prestige.campaigns[2].themeId, 'avengers');
+    assert.equal(ctx.state.prestige.campaigns[2].rankName, 'Lenda dos Vingadores');
+    assert.equal(ctx.window.getCareerXp(), 450000);
+    ctx.window.revertCampaignXp(10, 5);
+    ctx.window.syncPrestigeMilestones();
+    assert.equal(ctx.state.prestige.emblems.length, 4, 'Desfazer XP não retira emblema conquistado');
+    const reloaded = engine(JSON.parse(JSON.stringify(ctx.state)));
+    reloaded.window.normalizePrestige(); reloaded.window.syncPrestigeMilestones();
+    assert.equal(reloaded.state.prestige.themeId, 'espionage');
+    assert.equal(reloaded.state.prestige.emblems.length, 4);
+    const html = reloaded.window.renderQGForTest();
+    assert.match(html, /Espionagem · Lenda da Espionagem/);
+    assert.match(html, /Marvel — Vingadores · Lenda dos Vingadores/);
+});
+
+test('campanhas v1.9.49 migram para original e recuperam emblema sem alterar XP ou história', () => {
+    const ctx = engine({ xp: 200, level: 1, prestige: { version: 1, campaign: 2,
+        campaigns: [{ number: 1, xp: 92500, rankLevel: 15, rankName: 'Deus do Foco', endedAt: '2026-10-06T16:00:00Z' }],
+        maxCampaigns: [1], protectedBadgeIds: ['deep_focus'] } });
+    ctx.window.normalizePrestige(); ctx.window.syncPrestigeMilestones();
+    assert.equal(ctx.state.prestige.themeId, 'original');
+    assert.equal(ctx.state.prestige.campaigns[0].themeId, 'original');
+    assert.equal(ctx.state.prestige.campaigns[0].rankName, 'Deus do Foco');
+    assert.equal(ctx.state.prestige.emblems.length, 1);
+    assert.equal(ctx.state.xp, 200);
+    assert.equal(ctx.window.getCareerXp(), 92700);
+    const before = JSON.stringify(ctx.state);
+    ctx.window.normalizePrestige(); ctx.window.syncPrestigeMilestones();
+    assert.equal(JSON.stringify(ctx.state), before);
+});
+
+test('seleção inválida é rejeitada e confirmação antiga não inicia uma segunda campanha', () => {
+    const ctx = engine({ xp: 90000, level: 15 });
+    ctx.window.startPrestige('<img src=x>');
+    assert.equal(ctx.window.confirmForTest, undefined);
+    assert.match(ctx.window.alertForTest, /subtema válido/);
+    ctx.window.startPrestige('avengers'); const firstConfirm = ctx.window.confirmForTest;
+    ctx.window.startPrestige('norse'); ctx.window.confirmForTest();
+    firstConfirm();
+    assert.equal(ctx.state.prestige.themeId, 'norse');
+    assert.equal(ctx.state.prestige.campaigns.length, 1);
+    assert.equal(ctx.window.savesForTest, 1);
 });
