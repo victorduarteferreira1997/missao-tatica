@@ -16,9 +16,9 @@ export function installFormDialogs(target, document) {
             <div id="${target.escapeHtml(id)}" role="dialog" aria-modal="true" aria-labelledby="${target.escapeHtml(titleId)}" class="modal-enter flex max-h-[92dvh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl">
                 <header class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-800 px-5 py-4">
                     <div><h2 id="${target.escapeHtml(titleId)}" class="text-lg font-semibold text-slate-100">${target.escapeHtml(title)}</h2><p class="mt-1 text-sm text-slate-400">${target.escapeHtml(description)}</p></div>
-                    <button type="button" onclick="target.${closeHandler}()" aria-label="${target.escapeHtml(closeLabel)}" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white"><i data-lucide="x" class="h-5 w-5"></i></button>
+                    <button type="button" onclick="window.${closeHandler}()" aria-label="${target.escapeHtml(closeLabel)}" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white"><i data-lucide="x" class="h-5 w-5"></i></button>
                 </header>
-                <form novalidate onsubmit="event.preventDefault(); target.${submitHandler}()" class="flex min-h-0 flex-1 flex-col">
+                <form novalidate onsubmit="event.preventDefault(); window.${submitHandler}()" class="flex min-h-0 flex-1 flex-col">
                     <div class="min-h-0 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">${body}</div>
                     <footer class="${footerClass}">${footer}</footer>
                 </form>
