@@ -4,10 +4,20 @@ import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 import { installFormDialogs as installDialogModule } from './ui/form_dialogs.v1.js';
 import { installTaskForms } from './ui/task_forms.v1.js';
+import { installPlanningViews } from './ui/planning_views.v1.js';
 
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
 const taskForms = await readFile(new URL('./ui/task_forms.v1.js', import.meta.url), 'utf8');
-const interfaceSource = app + taskForms;
+const planningViews = await readFile(new URL('./ui/planning_views.v1.js', import.meta.url), 'utf8');
+const interfaceSource = app + taskForms + planningViews;
+const installPlanner = (target, options = {}) => installPlanningViews(target, {
+    document: { addEventListener() {} }, daysOfWeek: [], ICONS: { default: 'target' },
+    getState: () => ({}), getUiState: () => ({}), extractMinutesFromTask: () => 30,
+    ...options
+});
+assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v1\.js'/);
+assert.match(app, /html \+= window\.renderWeeklyPlanningOverview\(\)/);
+assert.ok(!app.includes('window.renderDailyMissionBoard ='), 'As visões devem existir apenas no módulo do planejamento.');
 assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v1\.js'/);
 assert.match(app, /installTaskForms\(window, \{ daysOfWeek, getState: \(\) => state, getUiState: \(\) => uiState \}\)/);
 const installFormDialogs = target => installDialogModule(target, {});
@@ -78,7 +88,6 @@ assert.ok(focusPanel.indexOf('onclick="window.closeTaskFocus()"') >= 0
     && focusPanel.indexOf('onclick="window.closeTaskFocus()"') < focusPanel.indexOf('if (allPending.length > 0)'),
     'O retorno deve aparecer mesmo quando não houver missões pendentes.');
 
-const boardStart = app.indexOf('window.renderDailyMissionBoard = function(');
 const createDays = [{ id: 'mon', label: 'Segunda' }, { id: 'tue', label: 'Terça' }];
 const createWindow = {
     getTaskCategories: () => [{ id: 'work', label: 'Trabalho' }],
@@ -185,7 +194,6 @@ runInNewContext(app.slice(restoreDraftStart, restoreDraftEnd), {
 assert.equal(draftFields[0].value, 'Título em edição');
 assert.equal(draftFields[1].checked, true);
 assert.equal(draftSections[0].open, true, 'Redesenhar deve preservar valores, recorrência e seções abertas.');
-const menuStart = app.indexOf('window.closeMissionMenus = function(');
 const menuEvents = {};
 let menuFocus = null;
 const menus = [0, 1].map(id => ({
@@ -193,8 +201,7 @@ const menus = [0, 1].map(id => ({
     querySelector: () => ({ focus() { menuFocus = id; } })
 }));
 const menuWindow = {};
-runInNewContext(app.slice(menuStart, boardStart), {
-    window: menuWindow,
+installPlanner(menuWindow, {
     document: {
         querySelectorAll: () => menus.filter(menu => menu.open),
         querySelector: () => menus.find(menu => menu.open),
@@ -215,7 +222,6 @@ menuWindow.toggleMissionMenu(menuClick(menus[0]));
 menuEvents.keydown({ key: 'Escape', preventDefault() {} });
 assert.equal(menus[0].open, false);
 assert.equal(menuFocus, 0, 'Esc deve devolver o foco ao botão que abriu o painel.');
-const boardEnd = app.indexOf('window.renderQuickCapturePanel = function(', boardStart);
 const boardWindow = {
     getTaskCategory: () => ({ label: 'Trabalho', icon: 'briefcase' }),
     getRecurringDaysLabel: () => '',
@@ -256,7 +262,7 @@ assert.equal(statusState.xp, 0, 'Reabrir pelo status deve reverter o XP existent
 assert.equal(statusTask.completed, false);
 assert.equal(statusWindow.getMissionStatus(statusTask), 'planned');
 const boardUi = { expandedSubtasks: {} };
-runInNewContext(app.slice(boardStart, boardEnd), { window: boardWindow, daysOfWeek: [], uiState: boardUi });
+installPlanner(boardWindow, { getUiState: () => boardUi });
 const board = boardWindow.renderDailyMissionBoard([
     { id: 123.45, text: 'Missão de teste', priority: 'media', subtasks: [{ id: 1, text: 'Etapa' }] }
 ]);
@@ -329,8 +335,6 @@ assert.equal(entryTask.subtasks.length, 3);
 assert.equal(entryDetails.open, true, 'A captura do DOM antigo não deve fechar a lista ao adicionar.');
 
 // A agenda deve manter os itens, a ordem por horário e as ações existentes após a limpeza visual.
-const weeklyStart = app.indexOf('        function renderWeeklyPlanningOverview()');
-const weeklyEnd = app.indexOf('        function renderStudyPlanningContent()', weeklyStart);
 const weeklyTasks = [
     { id: 'late', day: 'mon', text: 'Missão tarde', startTime: '15:00', category: 'work', priority: 'media', subtasks: [] },
     { id: 'free', day: 'mon', text: '<Missão livre>', category: 'work', priority: 'alta', completed: true, subtasks: [] }
@@ -361,7 +365,8 @@ const weeklyContext = {
     formatPtShortDate: date => date.toISOString().slice(5, 10),
     extractMinutesFromTask: () => 30
 };
-runInNewContext(app.slice(weeklyStart, weeklyEnd) + '\nthis.renderWeek = renderWeeklyPlanningOverview;', weeklyContext);
+installPlanner(weeklyWindow, { ...weeklyContext, getState: () => weeklyContext.state, getUiState: () => weeklyContext.uiState });
+weeklyContext.renderWeek = () => weeklyWindow.renderWeeklyPlanningOverview();
 const weeklyMarkup = weeklyContext.renderWeek();
 assert.ok(weeklyMarkup.indexOf('Estudo cedo') < weeklyMarkup.indexOf('Missão tarde'));
 assert.ok(weeklyMarkup.indexOf('Missão tarde') < weeklyMarkup.indexOf('&lt;Missão livre&gt;'));
@@ -377,6 +382,23 @@ weeklyState.studyData.studyPlan.weeklyBlocks = [];
 assert.match(weeklyContext.renderWeek(), /Nenhum item planejado nesta semana/);
 assert.match(weeklyContext.renderWeek(), /window.setPlanningCalendarWeek\('prev'\)/,
     'Sem itens, a navegação ainda deve permitir voltar às outras semanas.');
+
+// A visão semanal deve acompanhar substituição de estado e mudança de semana.
+weeklyContext.state = { tasks: [{ id: 'fresh', day: 'tue', text: 'Missão após importação', category: 'work', subtasks: [] }], studyData: { subjects: [], studyPlan: { weeklyBlocks: [{ day: 'tue', title: 'Estudo após importação', plannedMinutes: 45, status: 'partial' }] } } };
+weeklyWindow.sortTasksForDay = day => weeklyContext.state.tasks.filter(task => task.day === day);
+weeklyContext.uiState = { weeklyExpandedSections: { '2026-10-12:tue': false } };
+weeklyWindow.getActivePlanningWeekStartDate = () => new Date('2026-10-12T12:00:00');
+const importedWeek = weeklyContext.renderWeek();
+assert.match(importedWeek, /Missão após importação/); assert.match(importedWeek, /Estudo após importação/);
+assert.match(importedWeek, /Próxima semana/);
+assert.match(importedWeek, /data-week-day="tue" data-week-section="2026-10-12:tue"  class=/);
+// A expansão diária também deve usar o objeto de interface atual.
+let importedBoardUi = { expandedSubtasks: { '77': true } };
+installPlanner(boardWindow, { getUiState: () => importedBoardUi });
+const importedTask = { id: 77, text: 'Missão com etapas', subtasks: [{ id: 1, text: 'Etapa' }] };
+assert.match(boardWindow.renderDailyMissionBoard([importedTask]), /data-subtasks-task-id="77" open /);
+importedBoardUi = { expandedSubtasks: { '77': false } };
+assert.doesNotMatch(boardWindow.renderDailyMissionBoard([importedTask]), /data-subtasks-task-id="77" open /);
 
 const radarStart = app.indexOf('        window.renderOperationalControl = function()');
 const radarEnd = app.indexOf('        // ==========================================\n        // COCKPIT DIÁRIO', radarStart);
