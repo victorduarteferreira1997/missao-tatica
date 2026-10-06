@@ -85,7 +85,7 @@ const focusPanelStart = app.indexOf('if (state.focusMode) {');
 const focusPanelEnd = app.indexOf('html += window.renderDailyMissionBoard(filteredTasks)', focusPanelStart);
 const focusPanel = app.slice(focusPanelStart, focusPanelEnd);
 assert.ok(focusPanel.indexOf('onclick="window.closeTaskFocus()"') >= 0
-    && focusPanel.indexOf('onclick="window.closeTaskFocus()"') < focusPanel.indexOf('if (allPending.length > 0)'),
+    && focusPanel.indexOf('onclick="window.closeTaskFocus()"') < focusPanel.indexOf('if (allPending.length > 0 || window.isIndependentPomodoro())'),
     'O retorno deve aparecer mesmo quando não houver missões pendentes.');
 
 const createDays = [{ id: 'mon', label: 'Segunda' }, { id: 'tue', label: 'Terça' }];

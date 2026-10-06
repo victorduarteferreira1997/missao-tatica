@@ -22,6 +22,7 @@ function engine(){
  section('const HEALTH_TABS =','// MÓDULO 3: TESOURARIA TÁTICA'),section('window.renderWorkDialog =','const FINANCE_TABS ='),
  section('window.renderHealthForm =','// --- FINANÇAS ---'),
  section('window.findTaskByExactId =','window.renderQGPerformanceDashboard ='),
+ section('window.changeFocusedTask =','window.toggleStatsModal ='),
  'window.healthView=renderHealthContent;'
  ].join('\n'),c);
  c.field=(id,value,extra={})=>elements[id]={id,value:String(value),...extra};return c;
@@ -76,4 +77,32 @@ test('rascunho de Corpo restaura campos e rolagem e é removido após registro',
  const dom=(field,scroll=100)=>{const body={scrollTop:scroll,querySelectorAll:selector=>selector.startsWith('details')?[]:[field]};const dialog={dataset:{workTab:'treinos'},querySelector:()=>body,contains:()=>false};return{querySelector:selector=>selector==='#health-module-dialog'?dialog:null,body};};
  const old=dom(input),snap=c.window.captureWorkDialogs(old);const fresh={...input,value:''},root=dom(fresh,0);c.window.bindWorkDialogs(root,snap);assert.equal(fresh.value,'Ficha digitada');assert.equal(root.body.scrollTop,100);
  c.window.finishHealthForm('treinos');c.window.captureWorkDialogs(old);fresh.value='';c.window.bindWorkDialogs(root,snap);assert.equal(fresh.value,'');assert.equal(c.uiState.workDrafts['health:treinos'],undefined);
+});
+test('Pomodoro livre abre diretamente na visão do dia e renderiza timer mesmo sem missões',()=>{
+ const c=engine();c.state.tasks=[];c.uiState.mainView='week';c.window.openIndependentPomodoro();assert.equal(c.state.focusMode,true);assert.equal(c.uiState.mainView,'day');assert.equal(c.window.isIndependentPomodoro(),true);
+ const a=app.indexOf('            if (state.focusMode) {',app.indexOf('function render()')),b=app.indexOf('            } else {\n                html += window.renderDailyMissionBoard(filteredTasks)',a);assert.ok(a>0&&b>a);
+ runInNewContext(`window.freeWorkspaceTest=function(){let html='';${app.slice(a,b)}} return html;};`,{...c,dailyTasks:[]});
+ const html=c.window.freeWorkspaceTest();assert.match(html,/id="pomodoro-display"/);assert.match(html,/O que você quer fazer/);assert.ok(!html.includes('CONCLUIR MISSÃO'));assert.ok(!html.includes('pomodoro-focused-task-select'));
+});
+test('ciclo livre conserva atividade e nunca assume a missão pendente no início ou término',()=>{
+ const c=engine(),tasks=JSON.stringify(c.state.tasks);c.field('pomodoro-focused-task-select','123.45');c.window.openIndependentPomodoro();c.window.setIndependentActivity('Leitura');assert.equal(c.window.getPomodoroLockedTask(),null);
+ c.window.togglePomodoro();assert.equal(c.pomodoro.currentFocusTaskId,null);assert.equal(c.pomodoro.currentFocusTaskText,'Leitura');c.window.setIndependentActivity('Outra atividade');assert.equal(c.uiState.independentActivity,'Leitura');
+ c.window.handlePomodoroEnd();const data=c.uiState.pomodoroEvaluationData;assert.equal(data.taskId,null);assert.equal(data.taskText,'Leitura');assert.equal(data.independent,true);assert.equal(data.xpAwarded,30);assert.equal(JSON.stringify(c.state.tasks),tasks);
+});
+test('trocar ciclo de missão iniciado por livre exige confirmação e cancelar preserva o ciclo',()=>{
+ const c=engine();c.field('pomodoro-focused-task-select','123.45');c.window.togglePomodoro();c.tick();c.window.togglePomodoro();
+ c.window.showConfirmModal=(message,cb)=>{c.confirm=cb;};const before=JSON.stringify(c.pomodoro);c.window.openIndependentPomodoro();assert.equal(JSON.stringify(c.pomodoro),before);assert.equal(c.state.xp,200);
+ c.confirm();assert.equal(c.window.isIndependentPomodoro(),true);assert.equal(c.pomodoro.timeLeft,1500);assert.equal(c.pomodoro.currentFocusTaskId,null);assert.equal(c.pomodoro.focusLock,null);assert.equal(c.state.xp,200);
+});
+test('trocar livre pausado por missão não retaggeia o ciclo antigo e mantém ID exato',()=>{
+ const c=engine();c.window.openIndependentPomodoro();c.window.setIndependentActivity('Inglês');c.window.togglePomodoro();c.tick();c.window.togglePomodoro();c.window.showConfirmModal=(message,cb)=>{c.confirm=cb;};c.window.openTaskFocus('123.45');assert.equal(c.window.isIndependentPomodoro(),true);
+ c.confirm();assert.equal(c.window.isIndependentPomodoro(),false);assert.equal(c.pomodoro.timeLeft,1500);c.field('pomodoro-focused-task-select','123.45');c.window.togglePomodoro();assert.equal(c.pomodoro.currentFocusTaskId,'123.45');assert.equal(c.pomodoro.currentFocusTaskText,'Missão teste');
+});
+test('avaliação pendente bloqueia novo início e confirmação antiga não interfere em outro ciclo',()=>{
+ const c=engine();c.window.openIndependentPomodoro();c.window.togglePomodoro();c.window.handlePomodoroEnd();const evaluation=c.uiState.pomodoroEvaluationData;c.window.togglePomodoro();assert.equal(c.pomodoro.isRunning,false);assert.equal(c.uiState.pomodoroEvaluationData,evaluation);c.window.openTaskFocus('123.45');assert.equal(c.window.isIndependentPomodoro(),true);
+ c.window.skipPomodoroEvaluation();c.window.showConfirmModal=(message,cb)=>{c.confirm=cb;};c.window.openTaskFocus('123.45');const oldConfirm=c.confirm;c.pomodoro.currentFocusStartedAt='Outro ciclo';oldConfirm();assert.equal(c.window.isIndependentPomodoro(),true);assert.equal(c.pomodoro.currentFocusStartedAt,'Outro ciclo');
+});
+test('atividade opcional funciona vazia, tem limite e é escapada antes de entrar no HTML',()=>{
+ const c=engine();c.window.openIndependentPomodoro();c.window.setIndependentActivity('<img src=x onerror=evil()>');const html=c.window.renderIndependentActivity();assert.ok(!html.includes('<img'));assert.match(html,/&lt;img/);c.window.setIndependentActivity('a'.repeat(300));assert.equal(c.uiState.independentActivity.length,200);
+ c.window.setIndependentActivity('');c.window.togglePomodoro();c.window.handlePomodoroEnd();assert.equal(c.uiState.pomodoroEvaluationData.taskText,'Pomodoro livre');assert.equal(c.uiState.pomodoroEvaluationData.taskId,null);
 });

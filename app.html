@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.56-health-focus">
+    <meta name="app-build" content="v1.9.57-independent-pomodoro">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -438,7 +438,7 @@
             pomodoroEvaluationData: null
         };
 
-        let pomodoro = { isRunning: false, timeLeft: 25 * 60, mode: 'focus', cycle: 1, intervalId: null, currentFocusStartedAt: null, currentFocusTaskId: null, currentFocusTaskText: null, currentFocusTaskDay: null, currentFocusTaskCategory: null, focusLock: null };
+        let pomodoro = { isRunning: false, timeLeft: 25 * 60, mode: 'focus', cycle: 1, intervalId: null, currentFocusStartedAt: null, currentFocusTaskId: null, currentFocusTaskText: null, currentFocusTaskDay: null, currentFocusTaskCategory: null, focusLock: null, independent: state?.focusContext === 'independent' };
 
         // Função definida cedo para evitar crash no validateState quando já existem tarefas salvas.
         window.getTaskCategory = function(categoryId) {
@@ -1951,6 +1951,7 @@
                         currentFocusTaskCategory: null, focusLock: null };
                 }
                 state = next;
+                if(resetTimer)state.focusContext = 'mission';
                 window.validateState();
                 if (!resetTimer) pomodoro = previousTimer;
                 uiState.dataManager = null;
@@ -2977,7 +2978,40 @@
                 : (targetTasks.find(t => !t.completed) || null);
         };
 
+        window.isIndependentPomodoro = function() { return pomodoro.independent === true || (!pomodoro.currentFocusStartedAt && state.focusContext === 'independent'); };
+        window.setIndependentActivity = function(value) {
+            if(pomodoro.currentFocusStartedAt || pomodoro.isRunning)return;
+            uiState.independentActivity=String(value || '').slice(0,200);
+        };
+        window.renderIndependentActivity = function() {
+            const locked=Boolean(pomodoro.currentFocusStartedAt || pomodoro.isRunning);
+            const value=locked ? pomodoro.currentFocusTaskText || uiState.independentActivity || '' : uiState.independentActivity || '';
+            return `<section class="rounded-xl border border-slate-800 bg-slate-950/50 p-4 mb-3 font-sans"><label for="independent-activity" class="block text-sm text-slate-300">O que você quer fazer? <span class="text-xs text-slate-500">(opcional)</span></label><input id="independent-activity" type="text" maxlength="200" value="${window.escapeHtml(value)}" placeholder="Ex.: leitura, inglês, organizar ideias…" oninput="window.setIndependentActivity(this.value)" ${locked?'disabled':''} class="w-full mt-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-white disabled:text-slate-400 outline-none focus:border-indigo-400"><p class="text-xs text-slate-500 mt-2">${locked?'Atividade mantida neste ciclo. Reinicie para alterar.':'O ciclo fica no histórico de foco, sem criar ou concluir uma missão.'}</p></section>`;
+        };
+        window.switchPomodoroContext = function(independent,taskId=null) {
+            if(uiState.pomodoroEvaluationData){window.showAlertModal('Salve ou pule a avaliação pendente antes de mudar o tipo de Pomodoro.');return;}
+            const current=window.isIndependentPomodoro(),sameContext=current===Boolean(independent);
+            const started=Boolean(pomodoro.currentFocusStartedAt || pomodoro.isRunning || pomodoro.mode!=='focus' || pomodoro.timeLeft<state.pomodoroSettings.focus*60);
+            const expectedTimer=pomodoro,expectedStarted=pomodoro.currentFocusStartedAt,expectedContext=current;
+            const apply=()=>{
+                if(pomodoro!==expectedTimer || pomodoro.currentFocusStartedAt!==expectedStarted || window.isIndependentPomodoro()!==expectedContext || uiState.pomodoroEvaluationData)return;
+                const task=independent?null:window.findTaskByExactId(taskId);
+                if(!independent && (!task || task.completed))return;
+                if(!sameContext && started){
+                    clearInterval(pomodoro.intervalId);pomodoro.isRunning=false;pomodoro.mode='focus';pomodoro.cycle=1;pomodoro.timeLeft=state.pomodoroSettings.focus*60;
+                    pomodoro.currentFocusStartedAt=null;pomodoro.currentFocusTaskId=null;pomodoro.currentFocusTaskText=null;pomodoro.currentFocusTaskDay=null;pomodoro.currentFocusTaskCategory=null;pomodoro.focusLock=null;
+                }
+                pomodoro.independent=Boolean(independent);state.focusContext=independent?'independent':'mission';
+                if(task)state.focusedTaskId=String(task.id);
+                state.focusMode=true;uiState.mainView='day';window.saveState();
+            };
+            if(!sameContext && started)window.showConfirmModal('Há um ciclo em andamento ou pausado. Para mudar entre missão e Pomodoro livre, o ciclo atual será reiniciado sem recompensa. Continuar?',apply);
+            else apply();
+        };
+        window.openIndependentPomodoro = function() { window.switchPomodoroContext(true); };
+
         window.getPomodoroLockedTask = function(taskIdFromButton = null) {
+            if(window.isIndependentPomodoro())return null;
             let lockedTask = null;
 
             // Prioridade máxima: o ID EXATO exibido pelo seletor de missão do foco.
@@ -2998,6 +3032,7 @@
         };
 
         window.togglePomodoro = function(taskIdFromButton = null) {
+            if(!pomodoro.isRunning && uiState.pomodoroEvaluationData){window.showAlertModal('Salve ou pule a avaliação antes de iniciar o próximo ciclo.');return;}
             if (pomodoro.isRunning) { 
                 clearInterval(pomodoro.intervalId); 
                 pomodoro.isRunning = false; 
@@ -3008,7 +3043,7 @@
                     const lockedTask = window.getPomodoroLockedTask(taskIdFromButton);
                     const lockedId = lockedTask ? String(lockedTask.id) : null;
                     pomodoro.currentFocusTaskId = lockedId;
-                    pomodoro.currentFocusTaskText = lockedTask ? lockedTask.text : null;
+                    pomodoro.currentFocusTaskText = lockedTask ? lockedTask.text : window.isIndependentPomodoro() ? (uiState.independentActivity?.trim() || 'Pomodoro livre') : null;
                     pomodoro.currentFocusTaskDay = lockedTask ? lockedTask.day : null;
                     pomodoro.currentFocusTaskCategory = lockedTask ? lockedTask.category : null;
                     pomodoro.focusLock = lockedTask ? {
@@ -3044,7 +3079,7 @@
                 const lockedTaskText = activeFocusLock ? activeFocusLock.text : pomodoro.currentFocusTaskText;
                 const hasLockedTask = lockedTaskId !== null && typeof lockedTaskId !== 'undefined' && lockedTaskId !== '';
                 const focusedTask = hasLockedTask ? (window.findTaskByExactId(lockedTaskId) || null) : null;
-                const fallbackTask = !hasLockedTask && window.getCurrentFocusTargetTask ? window.getCurrentFocusTargetTask() : null;
+                const fallbackTask = !window.isIndependentPomodoro() && !hasLockedTask && window.getCurrentFocusTargetTask ? window.getCurrentFocusTargetTask() : null;
                 const finalTaskId = hasLockedTask ? String(lockedTaskId) : (fallbackTask ? String(fallbackTask.id) : null);
                 const finalTaskText = lockedTaskText || (focusedTask ? focusedTask.text : (fallbackTask ? fallbackTask.text : 'Ciclo sem tarefa vinculada'));
                 const startedAt = pomodoro.currentFocusStartedAt || new Date(Date.now() - (focusMinutes * 60000)).toISOString();
@@ -3077,6 +3112,7 @@
                     taskId: finalTaskId,
                     taskText: finalTaskText,
                     focusMinutes,
+                    independent: window.isIndependentPomodoro(),
                     cycleNumber: pomodoro.cycle, campaignId: window.normalizePrestige().campaign, xpCampaign: window.normalizePrestige().campaign, xpAwarded: Math.round(earnedXP)
                 };
                 uiState.customPrompt = { show: true, type: 'pomodoroEvaluation', reviewId: null };
@@ -3712,7 +3748,8 @@
         };
 
         window.setCategoryFilter = function(filterId) { state.currentFilter = filterId; window.saveState(); };
-        window.changeFocusedTask = function(taskId) { 
+        window.changeFocusedTask = function(taskId) {
+            if(window.isIndependentPomodoro()){window.switchPomodoroContext(false,taskId);return;}
             // Guardar o ID exato como string. Alguns IDs de tarefas têm casas decimais;
             // parseInt truncava o valor e podia selecionar outra tarefa no Pomodoro.
             // Durante um ciclo de foco já iniciado, a tarefa fica travada até resetar/terminar o Pomodoro.
@@ -3739,6 +3776,8 @@
             if (event) { event.stopPropagation(); event.preventDefault(); }
             const task = window.findTaskByExactId(taskId);
             if (!task || task.completed) return;
+            if(window.isIndependentPomodoro()){window.switchPomodoroContext(false,taskId);return;}
+            state.focusContext = 'mission';
             state.focusedTaskId = String(task.id);
             state.focusMode = true;
             window.saveState();
@@ -5230,7 +5269,7 @@
                 ['Finalidade','Arquivo de consulta para análise. Para restaurar dados no Missão Tática, use o backup JSON completo.']
             ];
             const sheets = [{ name:'Resumo', widths:[44,110], rows:[['Informação','Valor / explicação'],
-                ['Exportado em',exportedAt.toLocaleString('pt-BR')],['Fuso da exportação',Intl.DateTimeFormat().resolvedOptions().timeZone],['Versão','v1.9.56'],
+                ['Exportado em',exportedAt.toLocaleString('pt-BR')],['Fuso da exportação',Intl.DateTimeFormat().resolvedOptions().timeZone],['Versão','v1.9.57'],
                 ['Receitas registradas (R$)',income],['Contas fixas cadastradas (R$)',fixed],['Gastos variáveis registrados (R$)',variable],
                 ['Resultado estimado (R$)',Math.round((income-fixed-variable)*100)/100],['Contas fixas pendentes (R$)',window.getFinanceSum(rows('fixedExpenses').filter(row=>!row.paid))],
                 ['Receitas: quantidade',rows('incomes').length],['Contas fixas: quantidade',rows('fixedExpenses').length],['Gastos: quantidade',rows('variableExpenses').length],['Diário: quantidade',rows('moneyJournal').length],
@@ -6173,7 +6212,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.56</span></div>
+                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.57</span></div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-2">
@@ -6194,6 +6233,7 @@
                         <i data-lucide="plus" class="w-4 h-4"></i><span>Nova missão</span>
                     </button>
 
+                            <button type="button" onclick="window.openIndependentPomodoro()" class="inline-flex h-10 items-center justify-center gap-2 bg-slate-950/40 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3 rounded-lg text-[11px] sm:text-xs font-bold transition-colors"><i data-lucide="timer" class="w-4 h-4 text-indigo-300 shrink-0"></i><span>Pomodoro livre</span></button>
                             <button onclick="window.toggleStudyModal()" class="inline-flex h-10 items-center justify-center gap-2 bg-slate-950/40 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3 rounded-lg text-[11px] sm:text-xs font-bold transition-colors"><i data-lucide="brain-circuit" class="w-4 h-4 text-cyan-400 shrink-0"></i><span>Inteligência</span></button>
                             <button onclick="window.toggleFinanceModal()" class="inline-flex h-10 items-center justify-center gap-2 bg-slate-950/40 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3 rounded-lg text-[11px] sm:text-xs font-bold transition-colors"><i data-lucide="wallet" class="w-4 h-4 text-amber-400 shrink-0"></i><span>Finanças</span></button>
                             <details class="group">
@@ -6288,6 +6328,7 @@
             const selectedDayLabel = daysOfWeek.find(d => d.id === state.activeTab)?.label || 'Hoje';
             const pendingDailyCount = filteredTasks.filter(t => !t.completed).length;
             const completedDailyCount = filteredTasks.filter(t => t.completed).length;
+            if (!state.focusMode || !window.isIndependentPomodoro()) {
             html += `<section class="mb-3 px-1 py-1 font-sans">
                 <div class="flex items-end justify-between gap-3">
                     <div class="min-w-0">
@@ -6298,11 +6339,13 @@
 
             html += window.renderDailyCategoryBar();
 
+            }
+
             if (state.focusMode) {
                 const targetTasks = state.currentFilter === 'all' ? dailyTasks : dailyTasks.filter(t => t.category === state.currentFilter);
                 const lockedFocusTask = (pomodoro.mode === 'focus' && pomodoro.currentFocusStartedAt && pomodoro.focusLock?.id) ? window.findTaskByExactId(pomodoro.focusLock.id) : null;
                 const stateFocusedTask = window.findTaskByExactId(state.focusedTaskId);
-                const pendingTask = (lockedFocusTask && !lockedFocusTask.completed && lockedFocusTask.day === state.activeTab)
+                const pendingTask = window.isIndependentPomodoro() ? null : (lockedFocusTask && !lockedFocusTask.completed && lockedFocusTask.day === state.activeTab)
                     ? lockedFocusTask
                     : ((stateFocusedTask && !stateFocusedTask.completed && stateFocusedTask.day === state.activeTab) ? stateFocusedTask : targetTasks.find(t => !t.completed));
                 const allPending = targetTasks.filter(t => !t.completed);
@@ -6310,11 +6353,12 @@
 
                 html += `<div class="bg-slate-900 border border-yellow-500/30 rounded-xl p-3 sm:p-4 mb-4 font-mono">
                     <div class="flex items-center justify-between gap-3 border-b border-slate-800 pb-3 mb-3">
-                        <h2 class="text-yellow-400 text-xs font-bold inline-flex items-center gap-2"><i data-lucide="timer" class="w-4 h-4"></i>Modo foco</h2>
+                        <h2 class="text-yellow-400 text-xs font-bold inline-flex items-center gap-2"><i data-lucide="timer" class="w-4 h-4"></i>${window.isIndependentPomodoro()?'Pomodoro livre':'Modo foco'}</h2>
                         <button onclick="window.closeTaskFocus()" class="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 px-3 py-2 text-xs font-bold text-white"><i data-lucide="arrow-left" class="w-4 h-4"></i>Voltar às missões</button>
                     </div>`;
-                if (allPending.length > 0) {
-                    html += `
+                if (allPending.length > 0 || window.isIndependentPomodoro()) {
+                    if(window.isIndependentPomodoro())html += window.renderIndependentActivity();
+                    else html += `
                     <div class="rounded-xl border border-slate-800 bg-slate-950/50 p-3 mb-3">
                         <input type="hidden" id="pomodoro-focused-task-select" value="${window.escapeHtml(String(pendingTask?.id ?? ''))}">
                         <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Missão em foco</div>

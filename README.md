@@ -207,6 +207,25 @@ A pontuação é identificada como autoavaliação, mantendo a fórmula e os bô
 Missão travada, tempo restante, pausas, recompensas e a saída para missões
 continuam seguindo o comportamento anterior.
 
+## Pomodoro livre · v1.9.57
+
+O botão **Pomodoro livre**, na navegação principal, abre o timer sem depender
+de uma missão, inclusive quando não há missões pendentes e a visão atual é
+Semana/Radar. Informe uma atividade opcional e inicie. A atividade fica travada
+até concluir/reiniciar o ciclo. Voltar às missões pausa e mantém o tempo restante;
+abrir Pomodoro livre novamente permite retomar.
+
+Ciclos livres têm ID de missão nulo e a atividade aparece no histórico de foco.
+Nunca usam a missão selecionada como fallback, nem criam/concluem tarefas.
+Pausas, XP, moedas, bateria e avaliação seguem as regras atuais. O modo escolhido
+é preservado como contexto da tela, sem introduzir persistência do cronômetro.
+
+Trocar entre missão e livre exige confirmação se houver ciclo iniciado, pausado
+ou pausa em curso. Cancelar preserva o ciclo; confirmar reinicia sem recompensa.
+Uma avaliação pendente precisa ser salva/pulada antes do próximo ciclo. Testes
+cobrem a renderização sem missões, IDs exatos, atividade congelada, trocas,
+confirmações antigas, histórico e texto escapado.
+
 ## Segurança
 
 O token OAuth do Google fica somente na memória do navegador. Não adicione ao
