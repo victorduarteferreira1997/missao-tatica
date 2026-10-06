@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.53-recovery-rituals">
+    <meta name="app-build" content="v1.9.54-finance-study">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -1969,6 +1969,11 @@
                     }
                     if (uiState.recoveryHistoryPages) uiState.recoveryHistoryPages[kind] = 0;
                 });
+                if (ids.includes('finance')) {
+                    ['receitas','fixas','variaveis','diario'].forEach(tab=>window.clearWorkDraft?.('finance', tab));
+                    uiState.financeSections = {}; uiState.financePages = {};
+                }
+                if (ids.includes('study')) window.clearWorkDraft?.('study', 'log');
                 if (all) uiState.mainView = 'day';
                 window.saveState(false, all ? 'data-reset-all' : 'data-cleanup-modules');
                 window.showToast(all ? 'Missão Tática reiniciado' : 'Limpeza concluída', all ? 'Dados apagados. Configure seu perfil para recomeçar.' : `${selected.map(m => m.name).join(', ')}: dados apagados.`, 'check-circle', 'text-emerald-300');
@@ -4161,7 +4166,7 @@
             uiState.studyTab = defaults[area] || 'plano';
             render();
         };
-        window.setStudyTab = function(tab) { uiState.studyTab = tab; render(); };
+        window.setStudyTab = function(tab) { if (!['plano','log','planning','ciclos','subjects','erros','dashboard','reviews'].includes(tab)) return; uiState.studyTab = tab; render(); };
 
         function renderStudyNavigation() {
             const currentArea = window.getStudyAreaForTab(uiState.studyTab);
@@ -4199,26 +4204,26 @@
             const openErrors = (state.studyData?.errorLog || []).filter(e => e.status === 'open').length;
 
             return `
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
+                <div class="grid grid-cols-4 gap-1 mt-4">
                     ${areas.map(area => `
-                        <button type="button" onclick="window.setStudyArea('${area.id}')" class="text-left rounded-xl border px-3 py-3 transition-all ${currentArea === area.id ? 'bg-cyan-950/45 border-cyan-700/60 text-white' : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'}">
+                        <button type="button" aria-pressed="${currentArea === area.id}" onclick="window.setStudyArea('${area.id}')" class="text-left rounded-lg border px-2 sm:px-3 py-2 transition-all ${currentArea === area.id ? 'bg-cyan-950/45 border-cyan-700/60 text-white' : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'}">
                             <div class="flex items-center justify-between gap-2">
-                                <div class="flex items-center gap-2 min-w-0"><i data-lucide="${area.icon}" class="w-4 h-4 shrink-0 ${currentArea === area.id ? 'text-cyan-300' : 'text-slate-500'}"></i><span class="text-sm font-black truncate">${area.label}</span></div>
-                                ${area.id === 'progress' && dueReviews ? `<span class="shrink-0 rounded-full bg-red-950 text-red-300 border border-red-900/60 px-1.5 py-0.5 text-[9px] font-black">${dueReviews}</span>` : ''}
+                                <div class="flex items-center gap-2 min-w-0"><i data-lucide="${area.icon}" class="hidden sm:block w-4 h-4 shrink-0 ${currentArea === area.id ? 'text-cyan-300' : 'text-slate-500'}"></i><span class="text-xs sm:text-sm font-medium truncate">${area.label}</span></div>
+                                ${area.id === 'progress' && dueReviews ? `<span class="hidden sm:inline shrink-0 rounded-full bg-red-950 text-red-300 border border-red-900/60 px-1.5 py-0.5 text-[9px] font-black">${dueReviews}</span>` : ''}
                             </div>
-                            <div class="text-[9px] uppercase tracking-widest font-bold mt-1 ${currentArea === area.id ? 'text-cyan-500' : 'text-slate-600'}">${area.desc}</div>
+                            <div class="hidden sm:block text-xs mt-1 ${currentArea === area.id ? 'text-cyan-500' : 'text-slate-600'}">${area.desc}</div>
                         </button>
                     `).join('')}
                 </div>
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-950 border border-slate-800 rounded-xl p-2.5 mb-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-950 border border-slate-800 rounded-lg p-1.5 mt-2">
                     <div class="flex flex-wrap gap-2">
                         ${(secondary[currentArea] || []).map(tab => `
-                            <button type="button" onclick="window.setStudyTab('${tab.id}')" class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-black transition-colors ${uiState.studyTab === tab.id ? 'bg-cyan-900/60 text-cyan-100 border border-cyan-700/60' : 'text-slate-400 border border-transparent hover:bg-slate-900 hover:text-slate-200'}">
+                            <button type="button" aria-pressed="${uiState.studyTab === tab.id}" onclick="window.setStudyTab('${tab.id}')" class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${uiState.studyTab === tab.id ? 'bg-cyan-900/60 text-cyan-100 border border-cyan-700/60' : 'text-slate-400 border border-transparent hover:bg-slate-900 hover:text-slate-200'}">
                                 <i data-lucide="${tab.icon}" class="w-3.5 h-3.5"></i>${tab.label}${tab.id === 'reviews' && dueReviews ? `<span class="ml-1 rounded-full bg-red-950 text-red-300 border border-red-900/60 px-1.5 py-0.5 text-[9px]">${dueReviews}</span>` : ''}${tab.id === 'erros' && openErrors ? `<span class="ml-1 rounded-full bg-fuchsia-950 text-fuchsia-300 border border-fuchsia-900/60 px-1.5 py-0.5 text-[9px]">${openErrors}</span>` : ''}
                             </button>
                         `).join('')}
                     </div>
-                    ${currentArea !== 'today' ? `<button type="button" onclick="window.setStudyTab('log')" class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-cyan-800 hover:bg-cyan-700 text-white px-3 py-2 text-[10px] font-black uppercase tracking-widest"><i data-lucide="plus" class="w-3.5 h-3.5"></i> Registrar estudo</button>` : ''}
+                    ${currentArea !== 'today' ? `<button type="button" onclick="window.setStudyTab('log')" class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-cyan-800 hover:bg-cyan-700 text-white px-3 py-2 text-xs font-medium"><i data-lucide="plus" class="w-3.5 h-3.5"></i> Registrar estudo</button>` : ''}
                 </div>`;
         }
 
@@ -4343,7 +4348,9 @@
             const barriers = Array.from(document.querySelectorAll('input[name="session-barriers"]:checked')).map(cb => cb.value);
 
             if (!subjectId) { window.showAlertModal('Selecione uma disciplina.'); return; }
-            if (qCorrect > qTotal) { window.showAlertModal('Acertos > Total.'); return; }
+            if (!Number.isFinite(duration) || duration < 5) { window.showAlertModal('Informe pelo menos 5 minutos de estudo.'); return; }
+            if (qTotal < 0 || qCorrect < 0 || qCorrect > qTotal) { window.showAlertModal('Informe questões e acertos válidos. Os acertos não podem superar o total.'); return; }
+            if (![confBefore, confAfter].every(value=>Number.isFinite(value) && value >= 0 && value <= 5)) { window.showAlertModal('Informe a confiança de 0 a 5.'); return; }
 
             const sessionId = Date.now();
             const typeData = SESSION_TYPES[type] || SESSION_TYPES['leitura'];
@@ -4392,6 +4399,7 @@
             if(state.energy < 20) {
                 setTimeout(() => window.showAlertModal("Bateria Executiva Crítica (<20 HP). O sistema recomenda transição para atividades passivas ou encerramento."), 1000);
             }
+            window.clearWorkDraft('study', 'log');
             window.saveState();
         };
 
@@ -5055,75 +5063,220 @@
         // ==========================================
         // MÓDULO 3: TESOURARIA TÁTICA (FINANÇAS)
         // ==========================================
-        window.toggleFinanceModal = function() { uiState.showFinanceModal = !uiState.showFinanceModal; render(); };
-        window.setFinanceTab = function(tab) { uiState.financeTab = tab; render(); };
-
-        window.addIncome = function() {
-            const desc = document.getElementById('inc-desc').value.trim(); const amt = parseFloat(document.getElementById('inc-amount').value);
-            if(!desc || !amt) return;
-            state.financeData.incomes.push({ id: Date.now(), date: new Date().toISOString(), description: desc, amount: amt, category: document.getElementById('inc-cat').value });
-            if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
-            window.saveState();
+        window.renderWorkDialog = function(kind) {
+            const finance = kind === 'finance';
+            const tab = finance ? uiState.financeTab || 'dashboard' : uiState.studyTab || 'plano';
+            const title = finance ? 'Tesouraria Tática' : 'Centro de Inteligência';
+            const bodyId = finance ? 'finance-module-body' : 'study-modal-scroll';
+            return `<div class="fixed inset-0 bg-slate-950/90 flex items-center justify-center p-3 sm:p-4 z-[60] backdrop-blur-sm font-sans"><section id="${kind}-module-dialog" data-work-tab="${window.escapeHtml(tab)}" role="dialog" aria-modal="true" aria-labelledby="${kind}-module-title" class="modal-enter w-full ${finance ? 'max-w-4xl' : 'max-w-5xl'} max-h-[92dvh] rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col overflow-hidden"><header class="shrink-0 border-b border-slate-800 px-4 sm:px-6 py-4"><div class="flex items-start justify-between gap-4"><div><h2 id="${kind}-module-title" class="text-xl font-semibold text-white">${title}</h2><p class="text-sm text-slate-400 mt-1">${finance ? 'Acompanhe seus registros e escolha o próximo passo.' : 'Planeje, registre e acompanhe seus estudos.'}</p></div><button id="${kind}-module-close" type="button" onclick="window.${finance ? 'toggleFinanceModal' : 'toggleStudyModal'}()" aria-label="Fechar ${title}" class="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="x" class="w-5 h-5"></i></button></div>${finance ? `<nav aria-label="Áreas da Tesouraria" class="flex gap-1 overflow-x-auto mt-4 pb-1">${FINANCE_TABS.map(item=>`<button type="button" onclick="window.setFinanceTab('${item.id}')" aria-pressed="${tab === item.id}" class="rounded-lg px-3 py-2 text-sm whitespace-nowrap ${tab === item.id ? 'bg-yellow-900/35 text-yellow-200' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}">${item.label}</button>`).join('')}</nav><label class="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-3">Período<select id="finance-period" onchange="window.setFinancePeriod(this.value)" class="rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-200">${[{id:'all',label:'Todo o histórico'},{id:'current',label:'Este mês'},{id:'previous',label:'Mês passado'}].map(period=>`<option value="${period.id}" ${(uiState.financePeriod || 'all') === period.id ? 'selected' : ''}>${period.label}</option>`).join('')}</select>${tab === 'fixas' ? '<span>Contas fixas são exibidas em todos os períodos.</span>' : ''}</label>` : renderStudyNavigation()}</header><div id="${bodyId}" class="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6">${finance ? renderFinanceContent() : renderStudyContent()}</div></section></div>`;
         };
-        window.deleteIncome = function(id) { state.financeData.incomes = state.financeData.incomes.filter(i => i.id !== id); window.saveState(); };
+        window.clearWorkDraft = function(kind, tab) {
+            uiState.workDrafts ||= {}; uiState.workDraftReset ||= {};
+            const key = `${kind}:${tab}`;
+            delete uiState.workDrafts[key]; uiState.workDraftReset[key] = true;
+        };
+        window.captureWorkDialogs = function(root) {
+            const snapshots = {};
+            uiState.workDrafts ||= {};
+            for (const kind of ['finance','study']) {
+                const dialog = root.querySelector(`#${kind}-module-dialog`);
+                if (!dialog) continue;
+                const tab = dialog.dataset.workTab, key = `${kind}:${tab}`;
+                const body = dialog.querySelector(kind === 'finance' ? '#finance-module-body' : '#study-modal-scroll');
+                snapshots[kind] = { tab, scrollTop: body?.scrollTop || 0, focusId: dialog.contains(document.activeElement) ? document.activeElement.id : '' };
+                if ((kind === 'finance' || tab === 'log') && !uiState.workDraftReset?.[key]) {
+                    uiState.workDrafts[key] = {
+                        fields: [...(body?.querySelectorAll('input[id], select[id], textarea[id], input[name="session-barriers"]') || [])].map(el=>({ id:el.id, name:el.name, value:el.value, checked:el.checked })),
+                        sections: [...(body?.querySelectorAll('details[data-work-section]') || [])].map(el=>({ key:el.dataset.workSection, open:el.open }))
+                    };
+                }
+            }
+            return snapshots;
+        };
+        window.bindWorkDialogs = function(root, snapshots = {}) {
+            for (const kind of ['finance','study']) {
+                const dialog = root.querySelector(`#${kind}-module-dialog`);
+                if (!dialog) continue;
+                const tab = dialog.dataset.workTab, key = `${kind}:${tab}`;
+                const body = dialog.querySelector(kind === 'finance' ? '#finance-module-body' : '#study-modal-scroll');
+                if (uiState.workDraftReset?.[key]) delete uiState.workDraftReset[key];
+                else {
+                    const draft = uiState.workDrafts?.[key];
+                    const fields = [...(body?.querySelectorAll('input[id], select[id], textarea[id], input[name="session-barriers"]') || [])];
+                    (draft?.fields || []).forEach(field=>{
+                        const input = fields.find(el=>field.id ? el.id === field.id : el.name === field.name && el.value === field.value);
+                        if (input) { input.value = field.value; if (input.type === 'checkbox') input.checked = field.checked; }
+                    });
+                    (body?.querySelectorAll('details[data-work-section]') || []).forEach(el=>{
+                        const saved = draft?.sections?.find(section=>section.key === el.dataset.workSection);
+                        if (saved) el.open = saved.open;
+                    });
+                }
+                const snapshot = snapshots[kind]?.tab === tab ? snapshots[kind] : null;
+                if (body && snapshot) body.scrollTop = snapshot.scrollTop;
+                window.bindFormDialog(root, { id:`${kind}-module-dialog`, initialFocus:snapshot?.focusId || `${kind}-module-close`,
+                    close:kind === 'finance' ? window.toggleFinanceModal : window.toggleStudyModal,
+                    blocked:uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) });
+            }
+        };
 
+        const FINANCE_TABS = [
+            { id: 'dashboard', label: 'Resumo', icon: 'pie-chart' },
+            { id: 'variaveis', label: 'Gastos', icon: 'shopping-bag' },
+            { id: 'fixas', label: 'Contas fixas', icon: 'home' },
+            { id: 'receitas', label: 'Receitas', icon: 'arrow-down-left' },
+            { id: 'diario', label: 'Diário', icon: 'book-open' }
+        ];
+        const FINANCE_COLLECTIONS = { receitas: 'incomes', fixas: 'fixedExpenses', variaveis: 'variableExpenses', diario: 'moneyJournal' };
+        window.toggleFinanceModal = function() { uiState.showFinanceModal = !uiState.showFinanceModal; render(); };
+        window.setFinanceTab = function(tab) { if (!FINANCE_TABS.some(t => t.id === tab)) return; uiState.financeTab = tab; render(); };
+        window.formatFinanceMoney = function(value) {
+            const amount = Number.isFinite(Number(value)) ? Number(value) : 0;
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount);
+        };
+        window.getFinanceSum = function(rows) {
+            return rows.reduce((total, row) => { const cents = Math.round(Number(row.amount) * 100); return total + (Number.isSafeInteger(cents) ? cents : 0); }, 0) / 100;
+        };
+        window.getFinanceDateKey = function(value) {
+            if (!value) return null;
+            const raw = String(value);
+            if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+                const date = new Date(raw + 'T12:00:00');
+                return Number.isFinite(date.getTime()) && window.getLocalDateKey(date) === raw ? raw : null;
+            }
+            const date = new Date(value);
+            return Number.isFinite(date.getTime()) ? window.getLocalDateKey(date) : null;
+        };
+        window.formatFinanceDate = function(value) {
+            const key = window.getFinanceDateKey(value);
+            return key ? new Date(key + 'T12:00:00').toLocaleDateString('pt-BR') : 'Data não registrada';
+        };
+        window.getFinancePeriodKey = function() {
+            const period = uiState.financePeriod || 'all';
+            if (period === 'all') return null;
+            const date = new Date();
+            if (period === 'previous') date.setMonth(date.getMonth() - 1, 1);
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        };
+        window.getFinanceRows = function(tab) {
+            const collection = FINANCE_COLLECTIONS[tab];
+            const rows = state.financeData?.[collection] || [];
+            const month = tab === 'fixas' ? null : window.getFinancePeriodKey();
+            return rows.filter(row => !month || window.getFinanceDateKey(row.date)?.startsWith(month))
+                .slice().sort((a,b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0));
+        };
+        window.getFinanceSummary = function() {
+            const incomes = window.getFinanceRows('receitas');
+            const fixed = window.getFinanceRows('fixas');
+            const variable = window.getFinanceRows('variaveis');
+            const incomeTotal = window.getFinanceSum(incomes), fixedTotal = window.getFinanceSum(fixed), variableTotal = window.getFinanceSum(variable);
+            return { incomes, fixed, variable, incomeTotal, fixedTotal, variableTotal,
+                result: Math.round((incomeTotal - fixedTotal - variableTotal) * 100) / 100,
+                unpaid: fixed.filter(row => !row.paid), unpaidTotal: window.getFinanceSum(fixed.filter(row => !row.paid)),
+                contextTotal: window.getFinanceSum(variable.filter(row => ['Ansiedade', 'Cansaço', 'Recompensa', 'Impulso'].includes(row.trigger))),
+                undated: [...(state.financeData?.incomes || []), ...(state.financeData?.variableExpenses || [])].filter(row => !window.getFinanceDateKey(row.date)).length };
+        };
+        window.setFinancePeriod = function(period) {
+            if (!['all', 'current', 'previous'].includes(period)) return;
+            uiState.financePeriod = period; uiState.financePages = {}; render();
+        };
+        window.setFinancePage = function(tab, page) {
+            if (!FINANCE_COLLECTIONS[tab] || !Number.isInteger(page)) return;
+            uiState.financePages ||= {};
+            uiState.financePages[tab] = Math.max(0, Math.min(Math.max(0, Math.ceil(window.getFinanceRows(tab).length / 10) - 1), page)); render();
+        };
+        window.setFinanceSection = function(tab, section, open) {
+            if (!FINANCE_TABS.some(t => t.id === tab) || !['form', 'context', 'calculation'].includes(section)) return;
+            uiState.financeSections ||= {}; uiState.financeSections[`${tab}:${section}`] = Boolean(open);
+        };
+        window.openFinanceForm = function(tab = uiState.financeTab) {
+            if (!FINANCE_COLLECTIONS[tab]) return;
+            uiState.financeTab = tab; window.setFinanceSection(tab, 'form', true); render();
+            const input = document.getElementById({ receitas:'inc-desc', fixas:'fix-desc', variaveis:'var-desc', diario:'mj-event' }[tab]);
+            input?.scrollIntoView({ block: 'nearest' }); input?.focus({ preventScroll: true });
+        };
+        window.finishFinanceForm = function(tab) {
+            window.clearWorkDraft('finance', tab);
+            window.setFinanceSection(tab, 'form', false);
+            uiState.financePages ||= {}; uiState.financePages[tab] = 0;
+        };
+        window.readFinanceAmount = function(id) {
+            const value = Number(document.getElementById(id)?.value);
+            const cents = Math.round(value * 100);
+            if (!Number.isSafeInteger(cents) || cents <= 0) { window.showAlertModal('Informe um valor válido de pelo menos R$ 0,01.'); return null; }
+            return cents / 100;
+        };
+        window.newFinanceRecordId = function() { return `fin-${Date.now()}-${Math.random().toString(16).slice(2)}`; };
+        window.addIncome = function() {
+            const desc = document.getElementById('inc-desc')?.value.trim();
+            if (!desc) { window.showAlertModal('Informe a origem da receita.'); return; }
+            const amount = window.readFinanceAmount('inc-amount'); if (amount === null) return;
+            state.financeData.incomes.push({ id: window.newFinanceRecordId(), date: new Date().toISOString(), description: desc, amount, category: document.getElementById('inc-cat').value });
+            window.finishFinanceForm('receitas'); window.checkGameTriggers?.(); window.saveState();
+            window.showToast('Receita registrada', window.formatFinanceMoney(amount), 'check-circle', 'text-emerald-300');
+        };
         window.addFixedExpense = function() {
-            const desc = document.getElementById('fix-desc').value.trim(); const amt = parseFloat(document.getElementById('fix-amount').value);
-            if(!desc || !amt) return;
-            state.financeData.fixedExpenses.push({ id: Date.now(), description: desc, amount: amt, category: document.getElementById('fix-cat').value, paid: false });
-            if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
-            window.saveState();
+            const desc = document.getElementById('fix-desc')?.value.trim();
+            if (!desc) { window.showAlertModal('Informe o nome da conta.'); return; }
+            const amount = window.readFinanceAmount('fix-amount'); if (amount === null) return;
+            state.financeData.fixedExpenses.push({ id: window.newFinanceRecordId(), description: desc, amount, category: document.getElementById('fix-cat').value, paid: false, createdAt: new Date().toISOString() });
+            window.finishFinanceForm('fixas'); window.checkGameTriggers?.(); window.saveState();
+            window.showToast('Conta adicionada', window.formatFinanceMoney(amount), 'check-circle', 'text-slate-300');
         };
         window.toggleFixedPaid = function(id) {
-            const e = state.financeData.fixedExpenses.find(x => x.id === id); if(e) { e.paid = !e.paid; window.saveState(); }
+            const row = state.financeData.fixedExpenses.find(item => String(item.id) === String(id));
+            if (!row) return; row.paid = !row.paid; window.saveState();
         };
-        window.deleteFixed = function(id) { state.financeData.fixedExpenses = state.financeData.fixedExpenses.filter(i => i.id !== id); window.saveState(); };
-
+        window.deleteFinanceRecord = function(collection, id) {
+            if (!['incomes', 'fixedExpenses', 'variableExpenses'].includes(collection)) return;
+            const row = state.financeData[collection].find(item => String(item.id) === String(id)); if (!row) return;
+            window.showConfirmModal(`Excluir "${row.description}" (${window.formatFinanceMoney(row.amount)})? O registro será removido dos cálculos. Essa ação é permanente.`, () => {
+                if (!state.financeData[collection].includes(row)) return;
+                state.financeData[collection] = state.financeData[collection].filter(item => item !== row); window.saveState();
+            });
+        };
+        window.deleteIncome = function(id) { window.deleteFinanceRecord('incomes', id); };
+        window.deleteFixed = function(id) { window.deleteFinanceRecord('fixedExpenses', id); };
+        window.deleteVariable = function(id) { window.deleteFinanceRecord('variableExpenses', id); };
         window.tryAddVariableExpense = function() {
-            const desc = document.getElementById('var-desc').value.trim(); const amt = parseFloat(document.getElementById('var-amount').value);
-            const cat = document.getElementById('var-cat').value; const trigger = document.getElementById('var-trigger').value;
-            if(!desc || !amt) { window.showAlertModal('Preencha os campos obrigatórios.'); return; }
-            
-            const data = { id: Date.now(), date: new Date().toISOString(), description: desc, amount: amt, category: cat, trigger };
-            
-            if(['Ansiedade', 'Cansaço', 'Recompensa', 'Impulso'].includes(trigger) || amt >= 150) {
-                uiState.financeGuardianData = data;
-                uiState.customPrompt = { show: true, type: 'financeGuardian' };
-                render();
-            } else {
-                window.confirmAddVariable(data);
-            }
+            const desc = document.getElementById('var-desc')?.value.trim();
+            if (!desc) { window.showAlertModal('Informe a descrição do gasto.'); return; }
+            const amount = window.readFinanceAmount('var-amount'); if (amount === null) return;
+            const category = document.getElementById('var-cat').value, trigger = document.getElementById('var-trigger').value;
+            if (uiState.financeGuardianData) return;
+            const data = { id: window.newFinanceRecordId(), date: new Date().toISOString(), description: desc, amount, category, trigger };
+            if (['Ansiedade', 'Cansaço', 'Recompensa', 'Impulso'].includes(trigger) || amount >= 150) {
+                uiState.financeGuardianData = data; uiState.customPrompt = { show: true, type: 'financeGuardian' }; render();
+            } else window.confirmAddVariable(data);
         };
-
         window.confirmAddVariable = function(data) {
-            state.financeData.variableExpenses.push(data || uiState.financeGuardianData);
-            window.closeCustomPrompt(); uiState.financeGuardianData = null; window.showToast('Gasto Registrado', 'Saída consolidada no orçamento.', 'arrow-down-circle', 'text-red-400'); if (typeof window.checkGameTriggers === "function") window.checkGameTriggers(); window.saveState();
+            const row = data || uiState.financeGuardianData;
+            if (!row || state.financeData.variableExpenses.some(item => String(item.id) === String(row.id))) return;
+            state.financeData.variableExpenses.push(row);
+            uiState.financeGuardianData = null; window.finishFinanceForm('variaveis'); window.closeCustomPrompt();
+            window.checkGameTriggers?.(); window.saveState();
+            window.showToast('Gasto registrado', window.formatFinanceMoney(row.amount), 'check-circle', 'text-slate-300');
         };
-        window.delayPurchase = function() {
-            if(uiState.financeGuardianData) {
-                state.financeData.moneyJournal.push({ id: Date.now(), date: new Date().toISOString(), event: `Tentou comprar: ${uiState.financeGuardianData.description} (R$${uiState.financeGuardianData.amount})`, action: 'Adiou por 24h', mood: 'Ansioso' });
-                state.xp += 50; window.checkLevelUp();
-                window.showToast('Pausa Tática Ativada', 'Excelente comando! +50 XP. Avalie amanhã.', 'shield', 'text-emerald-400');
-            }
-            window.closeCustomPrompt(); uiState.financeGuardianData = null; if (typeof window.checkGameTriggers === "function") window.checkGameTriggers(); window.saveState();
+        window.recordPurchaseDecision = function(action, xp) {
+            const row = uiState.financeGuardianData; if (!row) return;
+            state.financeData.moneyJournal.push({ id: window.newFinanceRecordId(), date: new Date().toISOString(),
+                event: `Compra considerada: ${row.description} (${window.formatFinanceMoney(row.amount)})`, action,
+                mood: action === 'Adiou por 24h' ? 'Ansioso' : 'Confiante', xpAwarded: xp, xpCampaign: window.normalizePrestige().campaign });
+            uiState.financeGuardianData = null; window.finishFinanceForm('variaveis'); window.closeCustomPrompt();
+            state.xp += xp; window.checkLevelUp(); window.checkGameTriggers?.(); window.saveState();
+            window.showToast('Decisão registrada', `${action} · +${xp} XP.`, 'shield-check', 'text-emerald-300');
         };
-        window.cancelPurchase = function() {
-            if(uiState.financeGuardianData) {
-                state.financeData.moneyJournal.push({ id: Date.now(), date: new Date().toISOString(), event: `Evitou comprar: ${uiState.financeGuardianData.description}`, action: 'Cancelou ideia', mood: 'Confiante' });
-                state.xp += 80; window.checkLevelUp();
-                window.showToast('Defesa Perfeita!', 'Ataque ao orçamento neutralizado. +80 XP.', 'shield-check', 'text-emerald-500');
-            }
-            window.closeCustomPrompt(); uiState.financeGuardianData = null; window.saveState();
-        }
-        window.deleteVariable = function(id) { state.financeData.variableExpenses = state.financeData.variableExpenses.filter(i => i.id !== id); window.saveState(); };
-
+        window.delayPurchase = function() { window.recordPurchaseDecision('Adiou por 24h', 50); };
+        window.cancelPurchase = function() { window.recordPurchaseDecision('Cancelou ideia', 80); };
         window.logMoneyJournal = function() {
-            const mood = document.getElementById('mj-mood').value; const event = document.getElementById('mj-event').value.trim(); const thought = document.getElementById('mj-thought').value.trim();
-            if(!event) return;
-            state.financeData.moneyJournal.push({ id: Date.now(), date: new Date().toISOString(), mood, event, thought });
-            state.xp += 15; window.checkLevelUp(); if (typeof window.checkGameTriggers === "function") window.checkGameTriggers(); window.showToast('Diário Salvo', 'Autoconsciência melhora o bolso. +15 XP.', 'book-open', 'text-yellow-400'); window.saveState();
+            const event = document.getElementById('mj-event')?.value.trim();
+            if (!event) { window.showAlertModal('Descreva o que aconteceu.'); return; }
+            state.financeData.moneyJournal.push({ id: window.newFinanceRecordId(), date: new Date().toISOString(),
+                mood: document.getElementById('mj-mood').value, event, thought: document.getElementById('mj-thought').value.trim(),
+                xpAwarded: 15, xpCampaign: window.normalizePrestige().campaign });
+            window.finishFinanceForm('diario'); state.xp += 15; window.checkLevelUp(); window.checkGameTriggers?.(); window.saveState();
+            window.showToast('Reflexão registrada', '+15 XP.', 'book-open', 'text-slate-300');
         };
-
 
         // ==========================================
         // RADAR DE CONTROLE / SITUAÇÃO OPERACIONAL
@@ -5591,6 +5744,7 @@
         function render() {
             const appDiv = document.getElementById('app');
             const recoverySnapshots = window.captureRecoveryDialogs(appDiv);
+            const workSnapshots = window.captureWorkDialogs(appDiv);
             const previousEditDialog = appDiv.querySelector('#edit-task-dialog');
             if (uiState.showEditTaskModal && previousEditDialog) {
                 uiState.editTaskDraft = {
@@ -5727,12 +5881,12 @@
                                 <i data-lucide="shield-alert" class="text-yellow-500 w-8 h-8"></i>
                             </div>
                             <h3 class="text-xl font-black text-white tracking-widest uppercase mb-2">Pausa Tática</h3>
-                            <p class="text-slate-400 text-sm mb-6 leading-relaxed">Você está prestes a gastar <b>R$${uiState.financeGuardianData?.amount}</b> por motivo de <b>${uiState.financeGuardianData?.trigger}</b>. <br><br>Isso resolve um problema real ou apenas altera seu estado emocional temporariamente?</p>
+                            <p class="text-slate-400 text-sm mb-6 leading-relaxed">Você está prestes a gastar <b>${window.formatFinanceMoney(uiState.financeGuardianData?.amount)}</b>, com o contexto <b>${window.escapeHtml(uiState.financeGuardianData?.trigger)}</b>. <br><br>Quer registrar agora ou dar mais tempo para decidir?</p>
                             
                             <div class="space-y-3">
                                 <button onclick="window.cancelPurchase()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold p-3 rounded-xl transition-all shadow-lg flex justify-center items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i> Mudei de ideia (Evitar Gasto)</button>
                                 <button onclick="window.delayPurchase()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold p-3 rounded-xl transition-all flex justify-center items-center gap-2"><i data-lucide="clock" class="w-4 h-4"></i> Adiar decisão por 24h</button>
-                                <button onclick="window.confirmAddVariable()" class="w-full bg-transparent hover:bg-red-900/30 text-slate-500 hover:text-red-400 text-xs font-bold p-3 rounded-xl transition-all">Manter compra (Registrar mesmo assim)</button>
+                                <button onclick="window.confirmAddVariable()" class="w-full bg-transparent hover:bg-slate-800 text-slate-300 hover:text-white text-sm font-medium p-3 rounded-xl transition-all">Registrar compra agora</button>
                             </div>
                         </div>
                     </div>`;
@@ -5827,7 +5981,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.53</span></div>
+                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.54</span></div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-2">
@@ -6148,23 +6302,7 @@
                 </div>`;
             }
 
-            // MODAL CENTRO DE INTELIGÊNCIA (ESTUDOS)
-            if (uiState.showStudyModal) {
-                html += `
-                <div id="study-modal-scroll" class="fixed inset-0 bg-slate-950/95 flex flex-col items-center justify-start p-2 sm:p-6 z-[60] backdrop-blur-lg overflow-y-auto pt-8 font-mono">
-                    <div class="bg-slate-900 border border-cyan-900/50 rounded-2xl w-full max-w-5xl shadow-[0_0_50px_rgba(8,145,178,0.15)] modal-enter relative mb-10">
-                        <button onclick="window.toggleStudyModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full p-2 hover:bg-red-500/20 hover:text-red-400 transition-colors z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
-                        <div class="p-5 sm:p-8">
-                            <div class="flex items-center gap-4 mb-5 border-b border-slate-800 pb-4 pr-10">
-                                <div class="bg-cyan-950 p-3 rounded-xl border border-cyan-800/50 shadow-inner"><i data-lucide="brain" class="text-cyan-400 w-8 h-8"></i></div>
-                                <div class="min-w-0"><h2 class="text-2xl font-black text-white tracking-wide">Centro de Inteligência</h2><p class="text-xs text-slate-500 mt-1">Estudar, planejar, organizar conteúdo e acompanhar progresso sem procurar entre várias abas.</p></div>
-                            </div>
-                            ${renderStudyNavigation()}
-                            <div class="min-h-[400px]">${renderStudyContent()}</div>
-                        </div>
-                    </div>
-                </div>`;
-            }
+            if (uiState.showStudyModal) html += window.renderWorkDialog('study');
 
             // MODAL CENTRO FÍSICO
             if (uiState.showHealthModal) {
@@ -6191,29 +6329,7 @@
             }
 
             // MODAL CENTRO FINANCEIRO
-            if (uiState.showFinanceModal) {
-                html += `
-                <div class="fixed inset-0 bg-slate-950/95 flex flex-col items-center justify-start p-2 sm:p-6 z-[60] backdrop-blur-lg overflow-y-auto pt-8 font-mono">
-                    <div class="bg-slate-900 border border-yellow-900/50 rounded-2xl w-full max-w-4xl shadow-[0_0_50px_rgba(234,179,8,0.1)] modal-enter relative mb-10">
-                        <button onclick="window.toggleFinanceModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full p-2 hover:bg-red-500/20 hover:text-red-400 transition-colors z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
-                        <div class="p-5 sm:p-8">
-                            <div class="flex items-center gap-4 mb-6 border-b border-slate-800 pb-4">
-                                <div class="bg-yellow-950 p-3 rounded-xl border border-yellow-800/50 shadow-inner"><i data-lucide="landmark" class="text-yellow-400 w-8 h-8"></i></div>
-                                <div><h2 class="text-2xl font-black text-white tracking-wide">Tesouraria Tática</h2><p class="text-xs text-yellow-500 font-bold uppercase tracking-widest mt-1">Psicologia do Dinheiro</p></div>
-                            </div>
-                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-6 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
-                                ${[{id: 'dashboard', icon: 'pie-chart', label: 'Dashboard'}, {id: 'variaveis', icon: 'shopping-bag', label: 'Variáveis'}, {id: 'fixas', icon: 'home', label: 'Fixas'}, {id: 'receitas', icon: 'dollar-sign', label: 'Receitas'}, {id: 'diario', icon: 'book-open', label: 'Diário Psi'}].map(tab => `
-                                    <button onclick="window.setFinanceTab('${tab.id}')" class="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all whitespace-nowrap ${uiState.financeTab === tab.id ? 'bg-yellow-900/40 text-yellow-300 border border-yellow-700/50 shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-transparent'}">
-                                        <i data-lucide="${tab.icon}" class="w-4 h-4"></i> ${tab.label}
-                                    </button>
-                                `).join('')}
-                            </div>
-                            <div class="min-h-[400px]">${renderFinanceContent()}</div>
-                        </div>
-                    </div>
-                </div>`;
-            }
-
+            if (uiState.showFinanceModal) html += window.renderWorkDialog('finance');
 
             if (uiState.showRitualModal) html += window.renderRecoveryDialog('ritual');
             if (uiState.showRechargeModal) html += window.renderRecoveryDialog('recharge');
@@ -6240,6 +6356,7 @@
             }
             lucide.createIcons();
             window.bindRecoveryDialogs(appDiv, recoverySnapshots);
+            window.bindWorkDialogs(appDiv, workSnapshots);
             if (typeof window.bindTaskNatureControls === 'function') window.bindTaskNatureControls(appDiv);
             window.bindCreateTaskDialog(appDiv);
             if (uiState.showOperationalDemandModal && uiState.operationalDemandDraft) {
@@ -6363,7 +6480,7 @@
                 <summary class="cursor-pointer list-none px-3 py-3 flex items-center justify-between gap-3 hover:bg-slate-900/50">
                     <div class="min-w-0 flex items-center gap-2">
                         <i data-lucide="book-open" class="w-4 h-4 text-cyan-500"></i>
-                        <div class="min-w-0"><div class="text-xs font-bold text-slate-300">Estudos de ${dayLabel}</div><div class="text-[10px] text-slate-600 mt-0.5">${completed}/${activeBlocks.length} blocos • ${doneMinutes}/${totalMinutes} min</div></div>
+                        <div class="min-w-0"><div class="text-xs font-bold text-slate-300">Estudos de ${dayLabel}</div><div class="text-[10px] text-slate-600 mt-0.5">${completed}/${activeBlocks.length} blocos • ${doneMinutes}/${totalMinutes} min do plano concluído</div></div>
                     </div>
                     <div class="flex items-center gap-2 shrink-0"><span class="text-[10px] font-bold ${pct === 100 ? 'text-emerald-400' : 'text-slate-500'}">${pct}%</span><i data-lucide="chevron-down" class="w-4 h-4 text-slate-600"></i></div>
                 </summary>
@@ -6861,7 +6978,7 @@
                                 <div class="text-right"><div class="text-xl font-black text-cyan-200">${completedBlocks}/${dayBlocks.length}</div><div class="text-[9px] text-slate-600 uppercase font-bold">blocos</div></div>
                             </div>
                             ${nextBlock ? `<div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4"><div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div class="min-w-0"><div class="text-base font-black text-white break-words">${window.escapeHtml(nextBlock.title)}</div><div class="text-xs text-slate-400 mt-1">${nextSubject ? window.escapeHtml(nextSubject.name) + ' • ' : ''}${window.getStudyTypeLabel(nextBlock.studyType)} • ${nextBlock.plannedMinutes} min${nextBlock.startTime ? ' • ' + window.getCalendarTimeLabel(nextBlock, nextBlock.plannedMinutes) : ''}</div></div><button type="button" onclick="window.prefillStudySessionFromPlan('${nextBlock.id}')" class="shrink-0 bg-cyan-700 hover:bg-cyan-600 text-white px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"><i data-lucide="clipboard-pen" class="w-3.5 h-3.5"></i> Registrar sessão</button></div></div>` : dayBlocks.length ? `<div class="bg-emerald-950/20 border border-emerald-900/40 rounded-xl p-4 text-sm text-emerald-300 flex items-center gap-2"><i data-lucide="check-circle-2" class="w-5 h-5"></i> Todos os blocos planejados para ${selectedDay.label} estão concluídos.</div>` : `<div class="border border-dashed border-slate-800 rounded-xl p-5 text-center"><p class="text-sm text-slate-500 mb-3">Nenhum estudo planejado para ${selectedDay.label}.</p><button onclick="window.setStudyTab('planning')" class="bg-cyan-800 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest">Planejar estudo</button></div>`}
-                            ${dayBlocks.length ? `<div class="w-full bg-slate-800 rounded-full h-1.5 mt-4"><div class="bg-cyan-500 h-1.5 rounded-full transition-all" style="width:${progressPct}%"></div></div><div class="flex justify-between gap-3 mt-2 text-[10px] text-slate-500"><span>${completedMinutes}/${plannedMinutes} min realizados</span><button onclick="window.setStudyTab('planning')" class="text-cyan-400 hover:text-cyan-300 font-bold">Ajustar planejamento</button></div>` : ''}
+                            ${dayBlocks.length ? `<div class="w-full bg-slate-800 rounded-full h-1.5 mt-4"><div class="bg-cyan-500 h-1.5 rounded-full transition-all" style="width:${progressPct}%"></div></div><div class="flex justify-between gap-3 mt-2 text-[10px] text-slate-500"><span>${completedMinutes}/${plannedMinutes} min do plano concluído</span><button onclick="window.setStudyTab('planning')" class="text-cyan-400 hover:text-cyan-300 font-bold">Ajustar planejamento</button></div>` : ''}
                         </div>
                         <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col gap-2">
                             <div class="text-[9px] text-slate-600 uppercase font-black tracking-[0.2em] mb-1">Atenção acadêmica</div>
@@ -7139,31 +7256,32 @@
                 let html = `
                 <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 sm:p-6 max-w-2xl mx-auto space-y-5">
                     <div>
-                        <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Disciplina Alvo</label>
+                        <label for="session-subject" class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Disciplina</label>
                         <select id="session-subject" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
                             <option value="" disabled selected>Selecione...</option>
                             ${window.renderStudySubjectOptions({ includeEmpty: false })}
                         </select>
                     </div>
                     <div>
-                        <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Tópico Específico</label>
+                        <label for="session-topic" class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Tópico</label>
                         <input type="text" id="session-topic" placeholder="Ex: Direitos Políticos..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Modo de Operação</label>
+                            <label for="session-type" class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Tipo de estudo</label>
                             <select id="session-type" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
                                 ${Object.entries(SESSION_TYPES).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('')}
                             </select>
                         </div>
                         <div>
-                            <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Tempo (Min)</label>
+                            <label for="session-duration" class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Duração (min)</label>
                             <input type="number" id="session-duration" value="60" min="5" step="5" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
                         </div>
                     </div>
+                    <details data-work-section="context" class="rounded-xl border border-slate-800 p-4"><summary class="text-sm text-slate-400 cursor-pointer">Contexto da sessão · opcional</summary><div class="space-y-4 mt-4">
                     <div class="grid grid-cols-2 gap-4">
-                        <div><label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Confiança ANTES (0-5)</label><input type="number" id="session-conf-before" value="2" min="0" max="5" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white"></div>
-                        <div><label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Confiança DEPOIS (0-5)</label><input type="number" id="session-conf-after" value="4" min="0" max="5" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white"></div>
+                        <div><label for="session-conf-before" class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Confiança ANTES (0-5)</label><input type="number" id="session-conf-before" value="2" min="0" max="5" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white"></div>
+                        <div><label for="session-conf-after" class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Confiança DEPOIS (0-5)</label><input type="number" id="session-conf-after" value="4" min="0" max="5" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white"></div>
                     </div>
                     <div>
                         <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Barreiras de Foco (Opcional)</label>
@@ -7171,14 +7289,16 @@
                             ${['Celular','Sono','Cansaço','Ansiedade','Interrupções'].map(b => `<label class="flex items-center gap-2 bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-md text-xs cursor-pointer"><input type="checkbox" name="session-barriers" value="${b}" class="accent-cyan-500"> ${b}</label>`).join('')}
                         </div>
                     </div>
-                    <div class="bg-indigo-950/20 border border-indigo-900/30 p-4 rounded-xl">
-                        <label class="text-xs font-bold text-indigo-400 uppercase tracking-widest block mb-3"><i data-lucide="target" class="w-4 h-4 inline"></i> Metacognição (Questões)</label>
+                    </div></details>
+                    <details data-work-section="questions" class="border border-slate-800 p-4 rounded-xl">
+                        <summary class="text-sm text-slate-400 cursor-pointer">Questões · opcional</summary><div class="mt-4">
+
                         <div class="grid grid-cols-2 gap-4">
-                            <div><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Total</label><input type="number" id="session-q-total" value="0" min="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white"></div>
-                            <div><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Acertos</label><input type="number" id="session-q-correct" value="0" min="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white"></div>
+                            <div><label for="session-q-total" class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Total</label><input type="number" id="session-q-total" value="0" min="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white"></div>
+                            <div><label for="session-q-correct" class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Acertos</label><input type="number" id="session-q-correct" value="0" min="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white"></div>
                         </div>
-                    </div>
-                    <button onclick="window.logStudySession()" class="w-full bg-cyan-700 hover:bg-cyan-600 text-white font-black uppercase tracking-widest py-4 rounded-xl mt-4 transition-all">Registrar sessão</button>
+                    </div></details>
+                    <button type="button" onclick="window.logStudySession()" class="w-full bg-cyan-700 hover:bg-cyan-600 text-white font-medium py-3 rounded-xl mt-4 transition-all">Registrar sessão</button>
                 </div>`;
                 return html;
             }
@@ -7541,103 +7661,40 @@
         }
 
         // --- FINANÇAS ---
+        window.renderFinanceForm = function(tab) {
+            const field = 'w-full mt-1.5 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400';
+            const input = (id,label,type='text') => `<label class="block text-sm text-slate-300">${label}<input id="${id}" type="${type}" ${type === 'number' ? 'min="0.01" step="0.01" inputmode="decimal"' : 'maxlength="200"'} class="${field}"></label>`;
+            const select = (id,label,options) => `<label class="block text-sm text-slate-300">${label}<select id="${id}" class="${field}">${options.map(option=>`<option>${option}</option>`).join('')}</select></label>`;
+            const settings = {
+                receitas:{ title:'Registrar receita',handler:'addIncome',body:`<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${input('inc-desc','Origem')}${input('inc-amount','Valor (R$)','number')}</div>${select('inc-cat','Categoria',['Salário','Consultoria / PJ','Extra','Outro'])}` },
+                fixas:{ title:'Adicionar conta fixa',handler:'addFixedExpense',body:`<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${input('fix-desc','Nome da conta')}${input('fix-amount','Valor (R$)','number')}</div>${select('fix-cat','Categoria',['Moradia','Água/Luz/Internet','Saúde','Educação','Assinaturas','Dívidas','Outro'])}` },
+                variaveis:{title:'Registrar gasto',handler:'tryAddVariableExpense',body:`<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${input('var-desc','Descrição')}${input('var-amount','Valor (R$)','number')}</div><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${select('var-cat','Categoria',['Alimentação fora','Mercado','Transporte','Saúde','Lazer','Roupas','Tecnologia','Educação','Outro'])}${select('var-trigger','Contexto da compra',['Necessidade real','Planejado','Ansiedade','Cansaço','Recompensa','Impulso','Tédio'])}</div><p class="text-xs text-slate-500">Compras a partir de R$ 150 ou com determinados contextos passam pela revisão antes de registrar.</p>`},
+                diario:{title:'Escrever uma reflexão',handler:'logMoneyJournal',body:`${input('mj-event','O que aconteceu?')}${select('mj-mood','Como você se sentiu?',['Ansioso com contas','Confiante','Frustrado com gastos','Calmo'])}<label class="block text-sm text-slate-300">Reflexão <span class="text-xs text-slate-500">(opcional)</span><textarea id="mj-thought" rows="3" maxlength="2000" class="${field}"></textarea></label><p class="text-xs text-slate-500">Registrar uma reflexão concede 15 XP.</p>`}
+            };
+            const form = settings[tab]; if (!form) return '';
+            return `<details ${uiState.financeSections?.[`${tab}:form`] ? 'open' : ''} ontoggle="window.setFinanceSection('${tab}', 'form', this.open)" class="rounded-xl border border-slate-800 bg-slate-950/30 p-4"><summary class="cursor-pointer text-sm font-medium text-slate-300">${form.title}</summary><form novalidate onsubmit="event.preventDefault(); window.${form.handler}()" class="space-y-4 mt-4">${form.body}<div class="flex justify-end"><button type="submit" class="rounded-lg border border-yellow-800/60 bg-yellow-900/35 text-yellow-200 hover:bg-yellow-900/60 px-4 py-2.5 text-sm font-medium">${form.title}</button></div></form></details>`;
+        };
+        window.renderFinanceRows = function(tab) {
+            const all = window.getFinanceRows(tab);
+            const page = Math.min(Math.max(0, Math.ceil(all.length / 10) - 1), uiState.financePages?.[tab] || 0);
+            const pages = Math.max(1, Math.ceil(all.length / 10));
+            const handler = { receitas:'deleteIncome', fixas:'deleteFixed', variaveis:'deleteVariable' }[tab];
+            return `<div class="divide-y divide-slate-800">${all.slice(page * 10, page * 10 + 10).map(row => {
+                const arg = window.recoveryHandlerArgument(row.id);
+                if (tab === 'diario') return `<article class="py-4"><p class="text-xs text-slate-500">${window.formatFinanceDate(row.date)} · ${window.escapeHtml(row.mood || 'Sem humor registrado')}</p><h4 class="text-sm font-medium text-slate-200 mt-2 break-words">${window.escapeHtml(row.event)}</h4>${row.action ? `<p class="text-xs text-emerald-300 mt-2">${window.escapeHtml(row.action)}</p>` : ''}${row.thought ? `<p class="text-sm text-slate-400 mt-2 whitespace-pre-line break-words">${window.escapeHtml(row.thought)}</p>` : ''}</article>`;
+                return `<div class="flex items-start justify-between gap-4 py-4"><div class="flex items-start gap-3 min-w-0">${tab === 'fixas' ? `<button type="button" onclick="window.toggleFixedPaid(${arg})" aria-label="${window.escapeHtml(`${row.paid ? 'Marcar como pendente' : 'Marcar como paga'}: ${row.description}`)}" aria-pressed="${Boolean(row.paid)}" class="mt-0.5 text-slate-500 hover:text-emerald-300"><i data-lucide="${row.paid ? 'check-circle' : 'circle'}" class="w-5 h-5 ${row.paid ? 'text-emerald-400' : ''}"></i></button>` : ''}<div class="min-w-0"><p class="text-sm font-medium ${row.paid && tab === 'fixas' ? 'text-slate-500' : 'text-slate-200'} break-words">${window.escapeHtml(row.description)}</p><p class="text-xs text-slate-500 mt-1">${tab === 'fixas' ? row.paid ? 'Paga' : 'Pendente' : window.formatFinanceDate(row.date)}${row.category ? ` · ${window.escapeHtml(row.category)}` : ''}</p>${tab === 'variaveis' && row.trigger ? `<p class="text-xs text-slate-500 mt-1">${window.escapeHtml(row.trigger)}</p>` : ''}</div></div><div class="flex items-center gap-3 shrink-0"><span class="text-sm tabular-nums ${tab === 'receitas' ? 'text-emerald-300' : 'text-slate-300'}">${window.formatFinanceMoney(row.amount)}</span><button type="button" onclick="window.${handler}(${arg})" aria-label="${window.escapeHtml('Excluir registro: ' + row.description)}" class="text-slate-600 hover:text-red-300 focus:text-red-300 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
+            }).join('') || '<p class="text-sm text-slate-500 py-6 text-center">Nenhum registro neste período.</p>'}</div>${pages > 1 ? `<div class="flex justify-between items-center gap-3 border-t border-slate-800 pt-3"><button type="button" onclick="window.setFinancePage('${tab}', ${page - 1})" ${page ? '' : 'disabled'} class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 disabled:opacity-30">Anterior</button><span class="text-xs text-slate-500">${page + 1} de ${pages}</span><button type="button" onclick="window.setFinancePage('${tab}', ${page + 1})" ${page < pages - 1 ? '' : 'disabled'} class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 disabled:opacity-30">Próxima</button></div>` : ''}`;
+        };
         function renderFinanceContent() {
-            if(uiState.financeTab === 'dashboard') {
-                const inc = state.financeData.incomes.reduce((a,b)=>a+b.amount,0);
-                const fix = state.financeData.fixedExpenses.reduce((a,b)=>a+b.amount,0);
-                const val = state.financeData.variableExpenses.reduce((a,b)=>a+b.amount,0);
-                const bal = inc - fix - val;
-                
-                const impulsive = state.financeData.variableExpenses.filter(v => ['Ansiedade','Cansaço','Recompensa','Impulso'].includes(v.trigger)).reduce((a,b)=>a+b.amount,0);
-
-                let html = `
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center text-center"><i data-lucide="arrow-up-circle" class="text-emerald-400 mb-2 w-6 h-6"></i><span class="text-xl font-black text-white text-emerald-400">R$${inc.toFixed(0)}</span><span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Receitas</span></div>
-                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center text-center"><i data-lucide="home" class="text-blue-400 mb-2 w-6 h-6"></i><span class="text-xl font-black text-white">R$${fix.toFixed(0)}</span><span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Fixas</span></div>
-                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center text-center"><i data-lucide="shopping-bag" class="text-orange-400 mb-2 w-6 h-6"></i><span class="text-xl font-black text-white text-orange-400">R$${val.toFixed(0)}</span><span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Variáveis</span></div>
-                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center text-center relative overflow-hidden"><i data-lucide="wallet" class="text-yellow-400 mb-2 w-6 h-6 z-10"></i><span class="text-xl font-black text-white z-10">R$${bal.toFixed(0)}</span><span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1 z-10">Saldo Operacional</span></div>
-                </div>
-                
-                <div class="bg-red-950/20 border border-red-900/30 p-5 rounded-xl mb-6 flex items-center justify-between">
-                    <div><h4 class="font-bold text-sm text-red-400 mb-1 flex items-center gap-2"><i data-lucide="alert-triangle" class="w-4 h-4"></i> Vazamento Emocional</h4><p class="text-xs text-slate-400">Soma de gastos por gatilhos: Ansiedade, Cansaço, Recompensa ou Impulso.</p></div>
-                    <div class="text-2xl font-black text-red-500">R$${impulsive.toFixed(0)}</div>
-                </div>
-                
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Últimas Movimentações Variáveis</h3><div class="space-y-2">`;
-                if(state.financeData.variableExpenses.length === 0) html += `<p class="text-xs text-slate-500">Limpo.</p>`;
-                state.financeData.variableExpenses.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,5).forEach(v => {
-                    const isImpulsive = ['Ansiedade','Cansaço','Recompensa','Impulso'].includes(v.trigger);
-                    html += `<div class="bg-slate-950 border border-slate-800 p-3 rounded-lg flex justify-between items-center"><div class="flex flex-col"><span class="text-[9px] uppercase font-bold text-slate-500 mb-0.5">${new Date(v.date).toLocaleDateString()} | ${v.category}</span><span class="text-sm font-bold text-white flex items-center gap-2">${v.description} ${isImpulsive?`<span class="w-2 h-2 rounded-full bg-red-500" title="Gatilho Emocional"></span>`:''}</span></div><span class="text-xs text-orange-400 font-bold">R$${v.amount.toFixed(2)}</span></div>`;
-                });
-                return html + `</div>`;
+            const tab = uiState.financeTab || 'dashboard';
+            const summary = window.getFinanceSummary();
+            if (tab === 'dashboard') {
+                return `<div class="space-y-5"><section class="rounded-xl border border-yellow-900/40 bg-yellow-950/10 p-5"><div class="flex flex-wrap justify-between items-start gap-4"><div><p class="text-sm text-slate-400">Resultado estimado</p><p class="text-3xl font-semibold tabular-nums mt-2 ${summary.result < 0 ? 'text-amber-200' : 'text-slate-100'}">${window.formatFinanceMoney(summary.result)}</p><p class="text-xs text-slate-500 mt-2">Receitas − contas fixas cadastradas − gastos variáveis do período.</p></div><button type="button" onclick="window.openFinanceForm('variaveis')" class="rounded-lg border border-yellow-800/60 bg-yellow-900/35 px-4 py-2.5 text-sm text-yellow-200 hover:bg-yellow-900/60">Registrar gasto</button></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5 pt-4 border-t border-slate-800">${[{label:'Receitas',value:summary.incomeTotal,tab:'receitas'},{label:'Contas fixas',value:summary.fixedTotal,tab:'fixas'},{label:'Gastos variáveis',value:summary.variableTotal,tab:'variaveis'}].map(metric=>`<button type="button" onclick="window.setFinanceTab('${metric.tab}')" class="text-left rounded-lg hover:bg-slate-800/40 p-2 -m-2"><p class="text-xs text-slate-500">${metric.label}</p><p class="text-lg font-medium tabular-nums text-slate-200 mt-1">${window.formatFinanceMoney(metric.value)}</p></button>`).join('')}</div></section>${summary.unpaid.length ? `<section class="rounded-xl border border-slate-800 p-4 flex justify-between items-center gap-4"><div><p class="text-sm text-slate-300">${summary.unpaid.length} conta${summary.unpaid.length === 1 ? '' : 's'} fixa${summary.unpaid.length === 1 ? '' : 's'} pendente${summary.unpaid.length === 1 ? '' : 's'}</p><p class="text-xs text-slate-500 mt-1">${window.formatFinanceMoney(summary.unpaidTotal)} · status marcado manualmente</p></div><button type="button" onclick="window.setFinanceTab('fixas')" class="text-sm text-yellow-200 shrink-0">Ver contas</button></section>` : ''}<section class="rounded-xl border border-slate-800 p-4"><div class="flex justify-between items-center gap-3"><h3 class="text-sm font-medium text-slate-200">Gastos recentes</h3><button type="button" onclick="window.setFinanceTab('variaveis')" class="text-xs text-slate-400 hover:text-white">Ver todos</button></div><div class="divide-y divide-slate-800 mt-2">${summary.variable.slice(0,5).map(row=>`<div class="flex justify-between items-start gap-4 py-3"><div class="min-w-0"><p class="text-sm text-slate-300 break-words">${window.escapeHtml(row.description)}</p><p class="text-xs text-slate-500 mt-1">${window.formatFinanceDate(row.date)}${row.category ? ` · ${window.escapeHtml(row.category)}` : ''}</p></div><p class="text-sm text-slate-300 tabular-nums shrink-0">${window.formatFinanceMoney(row.amount)}</p></div>`).join('') || '<p class="text-sm text-slate-500 py-4">Nenhum gasto registrado neste período.</p>'}</div></section><details ${uiState.financeSections?.['dashboard:context'] ? 'open' : ''} ontoggle="window.setFinanceSection('dashboard', 'context', this.open)" class="rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer text-sm text-slate-400">Contexto dos gastos</summary><p class="text-sm text-slate-300 mt-3">${window.formatFinanceMoney(summary.contextTotal)} marcados como Ansiedade, Cansaço, Recompensa ou Impulso.</p><p class="text-xs text-slate-500 mt-2">A classificação vem do que você informou ao registrar. Consulte o diário para acompanhar suas decisões.</p></details><details ${uiState.financeSections?.['dashboard:calculation'] ? 'open' : ''} ontoggle="window.setFinanceSection('dashboard', 'calculation', this.open)" class="rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer text-sm text-slate-400">Como este resultado é calculado</summary><p class="text-xs leading-relaxed text-slate-400 mt-3">Todas as contas fixas cadastradas entram no cálculo, pagas ou pendentes. Elas não possuem competência mensal. Receitas e gastos variáveis seguem o período escolhido. O resultado não representa saldo bancário e não inclui dívidas, metas ou orçamentos que não tenham sido registrados como despesas.</p></details>${window.getFinancePeriodKey() && summary.undated ? `<p class="text-xs text-slate-500">${summary.undated} lançamento${summary.undated === 1 ? '' : 's'} sem data válida fica${summary.undated === 1 ? '' : 'm'} fora do filtro mensal. Consulte Todo o histórico.</p>` : ''}</div>`;
             }
-            else if(uiState.financeTab === 'variaveis') {
-                let html = `
-                <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl mb-6 space-y-4">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Descrição</label><input type="text" id="var-desc" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"></div>
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Valor (R$)</label><input type="number" id="var-amount" step="0.01" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"></div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Categoria</label><select id="var-cat" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"><option>Alimentação fora</option><option>Mercado</option><option>Transporte</option><option>Saúde</option><option>Lazer</option><option>Roupas</option><option>Tecnologia</option><option>Educação</option><option>Outro</option></select></div>
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase text-fuchsia-400">Gatilho Psi</label><select id="var-trigger" class="w-full bg-slate-900 border border-fuchsia-900/50 rounded-lg p-2.5 text-xs text-fuchsia-100 outline-none"><option>Necessidade real</option><option>Planejado</option><option class="text-red-400">Ansiedade</option><option class="text-red-400">Cansaço</option><option class="text-red-400">Recompensa</option><option class="text-red-400">Impulso</option><option>Tédio</option></select></div>
-                    </div>
-                    <button onclick="window.tryAddVariableExpense()" class="w-full bg-yellow-900/50 hover:bg-yellow-800 text-yellow-400 font-bold py-2.5 rounded-lg border border-yellow-700/50 text-xs transition-colors">Debitar Fundo Tático</button>
-                </div>
-                <div class="space-y-2">`;
-                state.financeData.variableExpenses.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(v => {
-                    html += `<div class="bg-slate-950 border border-slate-800 p-3 rounded-lg flex justify-between items-center group"><div class="flex flex-col"><span class="text-[9px] uppercase font-bold text-slate-500 mb-0.5">${new Date(v.date).toLocaleDateString()} | ${v.trigger}</span><span class="text-sm font-bold text-white">${v.description}</span></div><div class="flex items-center gap-3"><span class="text-xs text-orange-400 font-bold">R$${v.amount.toFixed(2)}</span><button onclick="window.deleteVariable(${v.id})" class="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
-                });
-                return html + `</div>`;
-            }
-            else if(uiState.financeTab === 'fixas') {
-                let html = `
-                <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl mb-6 space-y-4">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Conta / Dívida</label><input type="text" id="fix-desc" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"></div>
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Valor (R$)</label><input type="number" id="fix-amount" step="0.01" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"></div>
-                    </div>
-                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Categoria</label><select id="fix-cat" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"><option>Moradia</option><option>Água/Luz/Internet</option><option>Saúde</option><option>Educação</option><option>Assinaturas</option><option>Dívidas</option><option>Outro</option></select></div>
-                    <button onclick="window.addFixedExpense()" class="w-full bg-blue-900/50 hover:bg-blue-800 text-blue-300 font-bold py-2.5 rounded-lg border border-blue-700/50 text-xs transition-colors">Adicionar Custo Fixo</button>
-                </div><div class="space-y-2">`;
-                state.financeData.fixedExpenses.forEach(f => {
-                    const paidStyle = f.paid ? 'opacity-50 line-through' : '';
-                    html += `<div class="bg-slate-950 border border-slate-800 p-3 rounded-lg flex justify-between items-center group"><div class="flex items-center gap-3"><button onclick="window.toggleFixedPaid(${f.id})"><i data-lucide="${f.paid?'check-circle':'circle'}" class="w-5 h-5 ${f.paid?'text-emerald-500':'text-slate-600'}"></i></button><div class="flex flex-col ${paidStyle}"><span class="text-sm font-bold text-white">${f.description}</span></div></div><div class="flex items-center gap-3"><span class="text-xs text-blue-400 font-bold ${paidStyle}">R$${f.amount.toFixed(2)}</span><button onclick="window.deleteFixed(${f.id})" class="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
-                });
-                return html + `</div>`;
-            }
-            else if(uiState.financeTab === 'receitas') {
-                let html = `
-                <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl mb-6 space-y-4">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Origem</label><input type="text" id="inc-desc" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"></div>
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Valor (R$)</label><input type="number" id="inc-amount" step="0.01" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"></div>
-                    </div>
-                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Categoria</label><select id="inc-cat" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"><option>Salário</option><option>Consultoria / PJ</option><option>Extra</option><option>Outro</option></select></div>
-                    <button onclick="window.addIncome()" class="w-full bg-emerald-900/50 hover:bg-emerald-800 text-emerald-400 font-bold py-2.5 rounded-lg border border-emerald-700/50 text-xs transition-colors">Injetar Capital</button>
-                </div><div class="space-y-2">`;
-                state.financeData.incomes.forEach(i => {
-                    html += `<div class="bg-slate-950 border border-slate-800 p-3 rounded-lg flex justify-between items-center group"><div class="flex flex-col"><span class="text-sm font-bold text-white">${i.description}</span></div><div class="flex items-center gap-3"><span class="text-xs text-emerald-400 font-bold">R$${i.amount.toFixed(2)}</span><button onclick="window.deleteIncome(${i.id})" class="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
-                });
-                return html + `</div>`;
-            }
-            else if(uiState.financeTab === 'diario') {
-                let html = `
-                <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl mb-6">
-                    <h3 class="text-sm font-bold text-slate-300 mb-3"><i data-lucide="book-open" class="inline w-4 h-4 text-fuchsia-400 mr-2"></i>Journal Financeiro</h3>
-                    <div class="space-y-3">
-                        <select id="mj-mood" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"><option>Ansioso com contas</option><option>Confiante</option><option>Frustrado com gastos</option><option>Calmo</option></select>
-                        <input type="text" id="mj-event" placeholder="Evento (Ex: Paguei fatura alta, Vontade de comprar X)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none">
-                        <textarea id="mj-thought" placeholder="O que pensou/sentiu?" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none h-16"></textarea>
-                        <button onclick="window.logMoneyJournal()" class="w-full bg-fuchsia-900/50 hover:bg-fuchsia-800 text-fuchsia-300 font-bold py-2 rounded-lg border border-fuchsia-700/50 text-xs">Registrar Reflexão (+15 XP)</button>
-                    </div>
-                </div><div class="space-y-3">`;
-                state.financeData.moneyJournal.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(m => {
-                    html += `<div class="bg-slate-950 border border-slate-800 p-4 rounded-xl"><div class="flex items-center gap-2 mb-2"><span class="text-[9px] uppercase font-bold text-slate-500">${new Date(m.date).toLocaleDateString()}</span><span class="text-[9px] uppercase font-bold bg-slate-900 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700">${m.mood}</span></div><h4 class="font-bold text-white text-sm mb-1">${m.event}</h4>${m.action ? `<p class="text-[10px] text-emerald-400 font-bold mb-1 uppercase">Ação: ${m.action}</p>`:''}<p class="text-xs text-slate-400">${m.thought}</p></div>`;
-                });
-                return html + `</div>`;
-            }
-            return '';
+            if (!FINANCE_COLLECTIONS[tab]) return '';
+            const count = window.getFinanceRows(tab).length;
+            const heading = { receitas:'Receitas registradas', fixas:'Contas fixas cadastradas', variaveis:'Gastos registrados', diario:'Reflexões e decisões' }[tab];
+            return `<div class="space-y-5"><div class="flex flex-wrap justify-between items-center gap-3"><div><h3 class="text-sm font-medium text-slate-200">${heading}</h3><p class="text-xs text-slate-500 mt-1">${count} registro${count === 1 ? '' : 's'}${tab === 'fixas' ? ' · status manual, sem competência mensal' : ''}</p></div><button type="button" onclick="window.openFinanceForm('${tab}')" class="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800">${tab === 'diario' ? 'Nova reflexão' : tab === 'fixas' ? 'Adicionar conta' : tab === 'receitas' ? 'Registrar receita' : 'Registrar gasto'}</button></div>${window.renderFinanceForm(tab)}<section class="rounded-xl border border-slate-800 px-4">${window.renderFinanceRows(tab)}</section></div>`;
         }
 
     </script>

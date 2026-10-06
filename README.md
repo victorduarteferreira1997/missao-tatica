@@ -26,7 +26,7 @@ não quebrar favoritos existentes.
 Requer Node.js 18 ou mais recente:
 
 ```bash
-TZ=America/Sao_Paulo node --test app_integrity.test.mjs calendar_sync.test.mjs security.test.mjs gamification.test.mjs data_cleanup.test.mjs recovery_ui.test.mjs
+TZ=America/Sao_Paulo node --test app_integrity.test.mjs calendar_sync.test.mjs security.test.mjs gamification.test.mjs data_cleanup.test.mjs recovery_ui.test.mjs finance_study.test.mjs
 ```
 
 Antes de publicar uma mudança:
@@ -133,6 +133,31 @@ O histórico oferece hoje ou todos os registros, com páginas de dez itens e
 datas antigas desconhecidas explícitas. Reconstruções da interface mantêm
 rascunhos, seções, rolagem e foco; salvar limpa o rascunho correspondente.
 Títulos, descrições e IDs são escapados antes de entrar no HTML.
+
+## Tesouraria e Estudos · v1.9.54
+
+Tesouraria começa com resultado estimado, receitas, contas fixas e gastos
+variáveis. O filtro oferece todo o histórico (padrão), mês atual ou anterior.
+As contas fixas não possuem competência mensal: continuam aparecendo e
+entrando no cálculo em qualquer período, pagas ou pendentes. O status é manual.
+O resultado não é saldo bancário; a explicação completa fica recolhida.
+Datas ausentes/inválidas ficam acessíveis em todo o histórico. Datas sem horário
+são tratadas como datas locais, sem deslocar o primeiro dia do mês.
+
+Cadastros e contexto dos gastos começam recolhidos. Há páginas de dez registros,
+exclusão confirmada e valores formatados em reais. Novos valores positivos são
+validados e somados em centavos; descrições e IDs importados são escapados.
+Revisão de compras conserva as regras e os bônus existentes; novos registros do
+diário guardam XP e campanha para permitir exclusão futura correta.
+
+Estudos conserva as oito abas em quatro áreas com navegação compacta e cabeçalho
+fixo. Confiança, barreiras e questões continuam disponíveis em seções opcionais
+recolhidas. Duração e questões inválidas não são registradas. Minutos de blocos
+concluídos são identificados como minutos do plano, distintos de sessões reais.
+Tesouraria e registro de estudos preservam rascunhos entre abas e reconstruções,
+incluindo seleções, seções, foco e rolagem. Salvar ou limpar o módulo remove o
+rascunho correspondente. As janelas têm título acessível, Escape e controle de Tab,
+sem interferir em confirmações sobrepostas.
 
 ## Segurança
 
