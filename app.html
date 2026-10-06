@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.48-coin-summary">
+    <meta name="app-build" content="v1.9.49-prestige">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -187,7 +187,10 @@
             { id: 'corpo_em_movimento', icon: 'dumbbell', color: 'text-rose-400', title: 'Corpo em Movimento', desc: 'Registrou o primeiro treino.' },
             { id: 'tesoureiro_tatico', icon: 'wallet', color: 'text-yellow-400', title: 'Tesoureiro Tático', desc: 'Registrou o primeiro dado financeiro.' },
             { id: 'blindagem_financeira', icon: 'shield-check', color: 'text-emerald-500', title: 'Blindagem Financeira', desc: 'Usou uma defesa contra compra impulsiva.' },
-            { id: 'comandante_integrado', icon: 'medal', color: 'text-indigo-400', title: 'Comandante Integrado', desc: 'Usou estudos, físico e finanças no mesmo sistema.' }
+            { id: 'comandante_integrado', icon: 'medal', color: 'text-indigo-400', title: 'Comandante Integrado', desc: 'Usou estudos, físico e finanças no mesmo sistema.' },
+            { id: 'campanha_completa', icon: 'flag', color: 'text-amber-300', title: 'Campanha Completa', desc: 'Alcançou a patente máxima em uma campanha.', xpReward: 0 },
+            { id: 'veterano', icon: 'shield-check', color: 'text-indigo-300', title: 'Veterano', desc: 'Iniciou uma nova campanha pelo Prestígio.', xpReward: 0 },
+            { id: 'legado', icon: 'crown', color: 'text-yellow-300', title: 'Legado', desc: 'Alcançou a patente máxima em 3 campanhas diferentes.', xpReward: 0 }
         ];
 
         const REWARDS_SHOP = [
@@ -373,6 +376,76 @@
             return Math.min(correctLevel, RANKS.length);
         }
 
+        // O XP atual pertence à campanha; campanhas encerradas guardam seu resultado.
+        window.normalizePrestige = function() {
+            if (!state.prestige || typeof state.prestige !== 'object') state.prestige = {};
+            const p = state.prestige;
+            p.version = 1;
+            if (!Array.isArray(p.campaigns)) p.campaigns = [];
+            p.campaign = p.campaigns.length + 1;
+            if (!Array.isArray(p.protectedBadgeIds)) p.protectedBadgeIds = [];
+            if (!Array.isArray(p.maxCampaigns)) p.maxCampaigns = [];
+            if (typeof p.startedAt === 'undefined') p.startedAt = null;
+            return p;
+        };
+
+        window.getCareerXp = function() {
+            const p = window.normalizePrestige();
+            return p.campaigns.reduce((sum, c) => sum + Math.max(0, Number(c.xp) || 0), 0) + Math.max(0, Number(state.xp) || 0);
+        };
+
+        window.canStartPrestige = function() {
+            return state.level === RANKS.length && state.xp >= RANKS[RANKS.length - 2].max;
+        };
+
+        window.syncPrestigeMilestones = function() {
+            const p = window.normalizePrestige();
+            const reached = p.campaigns.map((c, index) => c.number || index + 1);
+            if (window.canStartPrestige()) reached.push(p.campaign);
+            p.maxCampaigns = [...new Set([...p.maxCampaigns, ...reached])];
+            const milestones = [];
+            if (p.maxCampaigns.length) milestones.push('campanha_completa');
+            if (p.campaigns.length) milestones.push('veterano');
+            if (p.maxCampaigns.length >= 3) milestones.push('legado');
+            milestones.forEach(id => { if (!state.unlockedBadges.includes(id)) state.unlockedBadges.push(id); });
+        };
+
+        window.revertCampaignXp = function(amount, campaign = 1) {
+            const p = window.normalizePrestige();
+            // Desfazer um registro histórico não retira XP da campanha atual.
+            if (Number(campaign) !== p.campaign) return 0;
+            const deducted = Math.min(Math.max(0, Number(state.xp) || 0), Math.max(0, Number(amount) || 0));
+            state.xp = Math.max(0, state.xp - deducted);
+            return deducted;
+        };
+
+        window.startPrestige = function() {
+            const p = window.normalizePrestige();
+            if (!window.canStartPrestige()) {
+                window.showAlertModal('O Prestígio fica disponível ao alcançar a patente máxima: 90000 XP nesta campanha.');
+                return;
+            }
+            const expectedCampaign = p.campaign;
+            window.showConfirmModal(`Iniciar a campanha ${expectedCampaign + 1}? Você voltará a Recruta com 0 XP nesta campanha. O XP da carreira, medalhas, moedas, reserva e todos os registros serão preservados. Você também pode cancelar e continuar na patente máxima.`, () => {
+                const current = window.normalizePrestige();
+                if (current.campaign !== expectedCampaign || !window.canStartPrestige()) return;
+                window.syncPrestigeMilestones();
+                const endedAt = new Date().toISOString();
+                current.campaigns.push({ number: current.campaign, xp: state.xp, rankLevel: state.level,
+                    rankName: RANKS[RANKS.length - 1].name, startedAt: current.startedAt, endedAt,
+                    badgeIds: [...state.unlockedBadges] });
+                current.protectedBadgeIds = [...new Set([...current.protectedBadgeIds, ...state.unlockedBadges])];
+                current.campaign = current.campaigns.length + 1;
+                current.startedAt = endedAt;
+                state.xp = 0;
+                state.level = 1;
+                uiState.showLevelUp = false;
+                window.syncPrestigeMilestones();
+                window.saveState(false, 'prestige-start');
+                window.showToast('Nova campanha iniciada', `Prestígio ${current.campaigns.length} · Recruta. Seu legado foi preservado.`, 'flag', 'text-indigo-300');
+            });
+        };
+
 
         function getMondayStartDate(date = new Date()) {
             const d = new Date(date);
@@ -528,6 +601,7 @@
             delete task.rewardedCoins;
             delete task.rewardedEnergyCost;
             delete task.rewardedBadgeIds;
+            delete task.rewardedCampaign;
             return task;
         };
 
@@ -975,6 +1049,8 @@
             if (!Array.isArray(state.taskDeletionLog)) state.taskDeletionLog = [];
             if (!state.unlockedBadges) state.unlockedBadges = [];
             if (!state.tasks) state.tasks = []; 
+            window.normalizePrestige();
+            window.syncPrestigeMilestones();
             if (!state.currentPlanningWeekStart) state.currentPlanningWeekStart = window.getCurrentCalendarWeekStartKey();
             if (Number.isNaN(dateFromDateKey(state.currentPlanningWeekStart).getTime())) state.currentPlanningWeekStart = window.getCurrentCalendarWeekStartKey();
             if (!state.currentFilter) state.currentFilter = 'all';
@@ -1303,7 +1379,7 @@
                         await writeStateToFirestore(currentUser);
                         window.updateSyncStatus('Salvo na nuvem');
                     } else {
-                        state = { ...state, ...cloudState };
+                        state = { ...state, ...cloudState, prestige: cloudState.prestige || null };
                         state.ownerUid = uid;
                         window.validateState();
                         localStorage.setItem('planeamento_semanal_v11', JSON.stringify(state));
@@ -1743,7 +1819,7 @@
         window.unlockBadge = function(badgeId) {
             if (!state.unlockedBadges.includes(badgeId)) {
                 state.unlockedBadges.push(badgeId); const b = BADGES_DB.find(x => x.id === badgeId);
-                if (b) { window.showToast(`Conquista Desbloqueada!`, b.title, b.icon, b.color); state.xp += 100; }
+                if (b) { window.showToast(`Conquista Desbloqueada!`, b.title, b.icon, b.color); state.xp += b.xpReward ?? 100; }
             }
         };
 
@@ -1774,6 +1850,7 @@
             if (state.financeData?.moneyJournal?.some(m => m.action && (m.action.includes('Adiou') || m.action.includes('Cancelou')))) activeBadges.push('blindagem_financeira');
             if ((state.studyData?.sessions?.length >= 1) && (state.healthData?.workouts?.length >= 1) && hasFinanceData) activeBadges.push('comandante_integrado');
 
+            ['campanha_completa', 'veterano', 'legado'].forEach(id => { if (state.unlockedBadges.includes(id)) activeBadges.push(id); });
             return activeBadges;
         };
 
@@ -1782,10 +1859,12 @@
             if (badgeIds.length === 0) return;
 
             const stillQualified = window.getCurrentlyQualifiedBadgeIds();
-            const badgesToRemove = badgeIds.filter(badgeId => !stillQualified.includes(badgeId));
+            const protectedIds = window.normalizePrestige().protectedBadgeIds;
+            const badgesToRemove = badgeIds.filter(badgeId => !stillQualified.includes(badgeId) && !protectedIds.includes(badgeId));
             if (badgesToRemove.length > 0) {
                 state.unlockedBadges = state.unlockedBadges.filter(badgeId => !badgesToRemove.includes(badgeId));
-                state.xp = Math.max(0, state.xp - (badgesToRemove.length * 100));
+                const bonusXp = badgesToRemove.reduce((sum, id) => sum + (BADGES_DB.find(b => b.id === id)?.xpReward ?? 100), 0);
+                window.revertCampaignXp(bonusXp, task.rewardedCampaign || 1);
                 if (typeof getCorrectLevel === 'function') state.level = getCorrectLevel(state.xp);
                 const names = badgesToRemove.map(id => BADGES_DB.find(b => b.id === id)?.title || id).join(', ');
                 window.showToast('Conquista revertida', `${names}. A medalha saiu porque a missão foi desmarcada.`, 'rotate-ccw', 'text-orange-400');
@@ -1864,6 +1943,7 @@
         window.checkLevelUp = function() {
             let nextMax = window.getXpForCurrentLevel(); let levelChanged = false;
             while (state.xp >= nextMax && state.level < RANKS.length) { state.level += 1; nextMax = window.getXpForCurrentLevel(); levelChanged = true; }
+            window.syncPrestigeMilestones();
             if (levelChanged) { state.energy = Math.min(100, state.energy + 50); uiState.showLevelUp = true; setTimeout(() => { uiState.showLevelUp = false; render(); }, 4000); }
         };
 
@@ -1902,7 +1982,7 @@
                 const energyToRestore = typeof task.rewardedEnergyCost === 'number' ? task.rewardedEnergyCost : task.energyCost;
                 const affectedCombo = typeof task.rewardedAffectsCombo === 'boolean' ? task.rewardedAffectsCombo : (deductedXp > 0 || deductedCoins > 0);
 
-                if (deductedXp > 0) state.xp = Math.max(0, state.xp - deductedXp);
+                const xpReverted = deductedXp > 0 ? window.revertCampaignXp(deductedXp, task.rewardedCampaign || 1) : 0;
                 if (deductedCoins > 0) window.revokeTacticalCoins(deductedCoins, 'missao-desmarcada');
                 if (energyToRestore) window.changeEnergy(energyToRestore);
                 if (affectedCombo) state.combo = Math.max(0, state.combo - 1);
@@ -1914,12 +1994,14 @@
                 delete task.rewardedEnergyCost;
                 delete task.rewardedAffectsCombo;
                 delete task.rewardedNature;
+                delete task.rewardedCampaign;
 
-                const undoText = deductedXp > 0 ? `-${deductedXp} XP` : 'Missão reaberta';
+                const undoText = xpReverted > 0 ? `-${xpReverted} XP` : 'Missão reaberta';
                 window.spawnFloatingText(event, undoText, deductedXp > 0 ? 'text-red-400' : 'text-slate-400');
             } else {
                 task.completed = true;
                 task.rewardedNature = nature;
+                task.rewardedCampaign = window.normalizePrestige().campaign;
 
                 if (nature === 'neutral') {
                     task.rewardedXp = 0;
@@ -2356,7 +2438,12 @@
         };
         window.toggleQuickTask = function(id) {
             const qt = state.quickTasks.find(q => q.id === id);
-            if(qt) { qt.done = !qt.done; if (qt.done) { state.xp += 10; window.checkLevelUp(); } else { state.xp = Math.max(0, state.xp - 10); } window.saveState(); }
+            if(qt) {
+                qt.done = !qt.done;
+                if (qt.done) { qt.xpCampaign = window.normalizePrestige().campaign; state.xp += 10; window.checkLevelUp(); }
+                else { window.revertCampaignXp(10, qt.xpCampaign || 1); state.level = getCorrectLevel(state.xp); }
+                window.saveState();
+            }
         };
         window.deleteQuickTask = function(id) { state.quickTasks = state.quickTasks.filter(q => q.id !== id); window.saveState(); };
 
@@ -3814,7 +3901,7 @@
             state.studyData.sessions.push({
                 id: sessionId, subjectId, type, duration, qTotal, qCorrect, topic, 
                 date: new Date().toISOString(), confBefore, confAfter, barriers,
-                xpAwarded: xpEarned, energyDeltaApplied: energyDelta, generatedReviewIds: generatedReviewIds, createdAt: new Date().toISOString()
+                xpAwarded: xpEarned, xpCampaign: window.normalizePrestige().campaign, energyDeltaApplied: energyDelta, generatedReviewIds: generatedReviewIds, createdAt: new Date().toISOString()
             });
 
             state.xp += xpEarned; window.changeEnergy(energyDelta);
@@ -3854,7 +3941,7 @@
                     const typeData = SESSION_TYPES[session.type] || SESSION_TYPES['leitura'];
                     xpToDeduct = Math.round(((session.duration * 1.5) + (session.qCorrect * 3)) * typeData.mult);
                 }
-                state.xp -= xpToDeduct;
+                window.revertCampaignXp(xpToDeduct, session.xpCampaign || 1);
 
                 let energyToRevert = session.energyDeltaApplied;
                 if (typeof energyToRevert === 'undefined') {
@@ -3870,7 +3957,7 @@
                 
                 reviewsToRemove.forEach(r => {
                     if (r.xpAwarded) {
-                        state.xp -= r.xpAwarded;
+                        window.revertCampaignXp(r.xpAwarded, r.xpCampaign || 1);
                     }
                 });
 
@@ -3924,6 +4011,7 @@
                 review.status = 'completed'; 
                 review.completedAt = new Date().toISOString();
                 review.xpAwarded = xp;
+                review.xpCampaign = window.normalizePrestige().campaign;
                 review.difficultyOrigin = diffStr;
                 
                 state.xp += xp; window.checkLevelUp();
@@ -5054,7 +5142,7 @@
             const dailyTasks = window.sortTasksForDay(state.activeTab);
             let filteredTasks = dailyTasks;
             if (state.currentFilter && state.currentFilter !== 'all') filteredTasks = dailyTasks.filter(t => t.category === state.currentFilter);
-            const xpPercent = Math.min(100, (state.xp / window.getXpForCurrentLevel()) * 100);
+            const xpPercent = window.getRankProgress().percent;
             const calendarInboxPending = calendarSync.getInbox().length;
 
             let html = ``;
@@ -5284,7 +5372,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.48</span></div>
+                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.49</span></div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-2">
@@ -5340,6 +5428,7 @@
                             </div>
                             <div class="mt-2 text-xs text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1">
                                 <span>Nível ${state.level}</span>
+                                ${state.prestige?.campaigns?.length ? `<span>· Prestígio ${state.prestige.campaigns.length}</span>` : ''}
                                 <span>•</span>
                                 <span>${window.getRankProgress().nextXp === null ? `${state.xp} XP acumulados · patente máxima` : `${state.xp} / ${window.getRankProgress().nextXp} XP`}</span>
                                 <span>•</span>
@@ -6070,12 +6159,19 @@
                 const economy = window.normalizeEconomy();
                 const target = economy.targetReward;
                 const balance = window.getTotalTacticalCoins();
+                const prestige = window.normalizePrestige();
                 const rankRow = (rank, achieved) => `<div class="flex items-center justify-between gap-3 py-3 border-b border-slate-800 last:border-0"><div class="flex items-center gap-3"><i data-lucide="${achieved ? 'check' : 'lock'}" class="w-4 h-4 ${achieved ? 'text-emerald-400' : 'text-slate-500'} shrink-0"></i><span class="text-sm font-semibold text-slate-200">${rank.name}</span><span class="text-xs text-slate-400">Nível ${rank.level}</span></div><span class="text-xs text-slate-400 whitespace-nowrap">${rank.level === 1 ? 'Patente inicial · 0 XP' : `Disponível a partir de ${window.getRankProgress(rank.level).entryXp} XP`}</span></div>`;
                 return `<div class="space-y-5">
                     <section class="rounded-2xl border border-indigo-500/60 bg-gradient-to-br from-indigo-950/80 to-slate-950 p-5 sm:p-6">
-                        <div class="flex items-start gap-4"><div class="bg-indigo-500/15 border border-indigo-500/40 rounded-2xl p-3"><i data-lucide="star" class="w-7 h-7 text-indigo-300"></i></div><div class="flex-1"><p class="text-xs font-bold uppercase tracking-widest text-indigo-300">Sua patente · Nível ${current.level}</p><h3 class="text-2xl font-black text-white mt-1">${current.name}</h3><p class="text-sm text-slate-300 mt-1">${state.xp} XP acumulados</p></div></div>
+                        <div class="flex items-start gap-4"><div class="bg-indigo-500/15 border border-indigo-500/40 rounded-2xl p-3"><i data-lucide="star" class="w-7 h-7 text-indigo-300"></i></div><div class="flex-1"><p class="text-xs font-bold uppercase tracking-widest text-indigo-300">Sua patente · Nível ${current.level}</p><h3 class="text-2xl font-black text-white mt-1">${current.name}</h3><p class="text-sm text-slate-300 mt-1">${state.xp} XP nesta campanha</p></div></div>
                         <p class="text-xs text-slate-400 mt-4">${progress.entryXp === 0 ? 'Patente inicial · 0 XP' : `Disponível a partir de ${progress.entryXp} XP`}</p>
                         ${next ? `<div class="mt-4"><div class="flex justify-between gap-3 text-sm mb-2"><span class="font-semibold text-indigo-200">Rumo a ${next.name}</span><span class="font-bold text-white">${progress.percent}%</span></div><div role="progressbar" aria-label="Progresso até a próxima patente" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress.percent}" class="h-2.5 bg-slate-800 rounded-full overflow-hidden"><div class="h-full bg-indigo-400 rounded-full" style="width:${progress.percent}%"></div></div><p class="text-sm text-indigo-200 mt-3">Próxima promoção: ${progress.nextXp} XP · faltam ${progress.remainingXp} XP</p></div>` : `<p class="text-sm text-indigo-200 mt-4">Patente máxima conquistada · seu XP continua acumulando.</p>`}
+                    </section>
+                    <section class="rounded-xl border border-slate-700 bg-slate-800/40 p-5">
+                        <div class="flex flex-wrap justify-between gap-3"><h3 class="text-sm font-bold text-white">Campanha ${prestige.campaign}</h3><span class="text-xs font-bold text-indigo-300">Prestígio ${prestige.campaigns.length}</span></div>
+                        <p class="text-sm text-slate-300 mt-2"><span class="font-bold text-white">${window.getCareerXp()} XP</span> na carreira</p>
+                        ${window.canStartPrestige() ? `<p class="text-sm text-slate-400 mt-3">Você chegou à patente máxima. Continue acumulando XP ou inicie uma nova campanha como Recruta.</p><button type="button" onclick="window.startPrestige()" class="mt-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-4 py-2.5 rounded-lg">Iniciar nova campanha</button><p class="text-xs text-slate-400 mt-2">O XP da campanha volta a 0. Seu legado, moedas, medalhas e registros continuam com você.</p>` : `<p class="text-sm text-slate-400 mt-3">Prestígio disponível ao alcançar a patente máxima: 90000 XP nesta campanha.</p>`}
+                        ${prestige.campaigns.length ? `<details class="group mt-4 border-t border-slate-700 pt-3"><summary class="cursor-pointer text-sm text-slate-400 hover:text-white">Histórico de campanhas</summary><div class="mt-3 space-y-2">${prestige.campaigns.slice().reverse().map(c => `<div class="flex flex-wrap justify-between gap-2 text-xs text-slate-300 border-b border-slate-700 pb-2"><span>Campanha ${Number(c.number) || 1} · ${window.escapeHtml(c.rankName || 'Patente máxima')}</span><span>${Math.max(0, Number(c.xp) || 0)} XP · ${window.escapeHtml(new Date(c.endedAt).toLocaleDateString('pt-BR'))}</span></div>`).join('')}</div><p class="text-xs text-slate-400 mt-3">Campanhas encerradas guardam seu resultado. Desfazer registros antigos não altera o XP da campanha atual.</p></details>` : ''}
                     </section>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <button onclick="window.setStatsTab('badges')" class="text-left rounded-xl border border-slate-700 bg-slate-800/50 p-4 hover:border-indigo-400 transition-colors"><div class="flex items-center justify-between gap-3"><span class="text-sm font-bold text-white">${earnedCount} de ${BADGES_DB.length} medalhas</span><i data-lucide="award" class="w-5 h-5 text-amber-300"></i></div><p class="text-xs text-slate-400 mt-2">Ver conquistas e próximos desafios →</p></button>

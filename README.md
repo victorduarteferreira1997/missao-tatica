@@ -35,6 +35,16 @@ Antes de publicar uma mudança:
 2. abrir a aplicação e validar login, gravação e sincronização;
 3. confirmar o comportamento em uma semana de teste antes de usar dados reais.
 
+## Prestígio
+
+O Prestígio é opcional e fica disponível na patente máxima (90.000 XP da
+campanha). Após confirmação, a campanha é arquivada e a próxima começa como
+Recruta, com 0 XP. Moedas, reserva, medalhas e registros permanecem intactos.
+O XP da carreira soma os resultados das campanhas encerradas e o XP atual.
+Desfazer registros de campanhas encerradas não reduz o XP da campanha atual;
+registros novos continuam reversíveis. Medalhas preservadas não repetem bônus.
+O estado `prestige` acompanha a sincronização e os backups JSON existentes.
+
 ## Segurança
 
 O token OAuth do Google fica somente na memória do navegador. Não adicione ao

@@ -12,21 +12,33 @@ function sourceBetween(start, end) {
 }
 function engine(overrides = {}) {
     const state = {
-        xp: 25100, level: 10, energy: 60, coins: 100, unlockedBadges: ['deep_focus'],
+        xp: 25100, level: 10, energy: 60, coins: 100, combo: 0, unlockedBadges: ['deep_focus'],
         tasks: [], stats: {}, customRewards: [],
         ...overrides
     };
     const context = {
         state, uiState: { statsTab: 'roadmap' },
         daysOfWeek: [{ id: 'monday' }, { id: 'tuesday' }],
-        window: { getCurrentCalendarWeekStartKey: () => '2026-10-05' }
+        setTimeout: () => 0, render() {},
+        window: {
+            getCurrentCalendarWeekStartKey: () => '2026-10-05',
+            showToast() {}, showAlertModal(message) { this.alertForTest = message; },
+            showConfirmModal(message, callback) { this.confirmMessageForTest = message; this.confirmForTest = callback; },
+            saveState() { this.savesForTest = (this.savesForTest || 0) + 1; },
+            getTaskNature: () => 'normal', isNormalMission: () => true, spawnFloatingText() {}
+        }
     };
     runInNewContext([
         sourceBetween('const RANKS =', 'const TASK_NATURES ='),
+        sourceBetween('function getCorrectLevel(', 'function getMondayStartDate('),
         sourceBetween('window.normalizeEconomy =', 'window.getTaskNature ='),
-        sourceBetween('window.getRankProgress =', 'window.getRankName ='),
+        sourceBetween('window.getTaskCoinReward =', 'window.setRewardTarget ='),
+        sourceBetween('window.getComboMultiplier =', 'window.getRankName ='),
         sourceBetween('window.escapeHtml =', '// Ponte temporária'),
-        sourceBetween('window.getCurrentlyQualifiedBadgeIds =', 'window.rollbackTaskBadges ='),
+        sourceBetween('window.unlockBadge =', 'window.getComboMultiplier ='),
+        sourceBetween('window.checkLevelUp =', 'window.showToast ='),
+        sourceBetween('window.toggleQuickTask =', 'window.deleteQuickTask ='),
+        sourceBetween('window.recalculateLevelFromXp =', 'window.archiveReview ='),
         sourceBetween('function renderQGContent()', '// --- ESTUDOS ---'),
         'window.renderQGForTest = renderQGContent;',
         'window.rewardsForTest = REWARDS_SHOP;',
@@ -127,6 +139,7 @@ test('QG destaca a patente atual e mantém toda a carreira em seções expansív
     for (const [level, xp] of [[1, 0], [10, 32287], [15, 95000]]) {
         const { window, state } = engine({ level, xp });
         window.normalizeEconomy();
+        window.normalizePrestige();
         const before = JSON.stringify(state);
         const html = window.renderQGForTest();
         assert.equal(JSON.stringify(state), before, 'Renderizar não altera o progresso');
@@ -201,4 +214,150 @@ test('atalhos do catálogo rolam dentro do QG sem navegar para o endereço base'
         assert.equal(calls[0].behavior, 'smooth');
         assert.equal(calls[0].block, 'start');
     }
+});
+
+test('migração inicial do Prestígio é idempotente e preserva os dados anteriores', () => {
+    const ctx = engine({ coins: 3, economy: { tacticalReserve: 231 }, quickTasks: [{ id: 1, done: true }],
+        studyData: { sessions: [{ id: 1, xpAwarded: 100 }], reviews: [] },
+        financeData: { incomes: [{ amount: 500 }] }, healthData: { workouts: [{ id: 2 }] } });
+    const before = JSON.stringify(ctx.state);
+    ctx.window.normalizePrestige();
+    assert.equal(ctx.state.prestige.campaign, 1);
+    assert.equal(ctx.window.getCareerXp(), 25100);
+    const { prestige, ...rest } = ctx.state;
+    assert.equal(JSON.stringify(rest), before);
+    const migrated = JSON.stringify(ctx.state);
+    ctx.window.normalizePrestige();
+    assert.equal(JSON.stringify(ctx.state), migrated);
+});
+
+test('Prestígio exige 90000 XP e confirmação; cancelar mantém a campanha', () => {
+    for (const xp of [0, 89999]) {
+        const ctx = engine({ xp, level: 15 });
+        ctx.window.startPrestige();
+        assert.ok(ctx.window.alertForTest);
+        assert.equal(ctx.window.confirmForTest, undefined);
+        assert.equal(ctx.state.prestige.campaigns.length, 0);
+    }
+    const ctx = engine({ xp: 90000, level: 15 });
+    ctx.window.normalizePrestige();
+    const before = JSON.stringify(ctx.state);
+    ctx.window.startPrestige();
+    assert.match(ctx.window.confirmMessageForTest, /0 XP nesta campanha/);
+    assert.equal(JSON.stringify(ctx.state), before, 'Abrir/cancelar a confirmação não reinicia');
+    ctx.state.xp = 89999;
+    ctx.window.confirmForTest();
+    assert.equal(ctx.state.prestige.campaign, 1, 'Revalida o requisito ao confirmar');
+});
+
+test('iniciar Prestígio arquiva a campanha e preserva moedas, medalhas e todos os registros', () => {
+    const ctx = engine({ xp: 92500, level: 15, energy: 42, combo: 3, coins: 3,
+        economy: { tacticalReserve: 231, targetReward: { type: 'default', id: 'r7', cost: 1200 } },
+        tasks: [{ id: 9, completed: true, rewardedXp: 100, rewardedBadgeIds: ['primeiro_sangue'] }],
+        quickTasks: [{ id: 2, done: true }], unlockedBadges: ['primeiro_sangue', 'deep_focus'],
+        studyData: { sessions: [{ id: 10, xpAwarded: 100 }], reviews: [{ id: 11, status: 'completed', xpAwarded: 20 }] },
+        financeData: { incomes: [{ amount: 500 }] }, healthData: { workouts: [{ id: 12 }] },
+        routineData: { logs: [{ ritualId: 4 }] }, rechargeData: { logs: [{ id: 5 }] },
+        focusData: { cycles: [{ id: 6 }] }, rewardPurchases: [{ id: 7 }], customRewards: [{ id: 8 }]
+    });
+    const preservedKeys = ['energy', 'combo', 'coins', 'economy', 'tasks', 'quickTasks', 'studyData',
+        'financeData', 'healthData', 'routineData', 'rechargeData', 'focusData', 'rewardPurchases', 'customRewards', 'stats'];
+    const before = JSON.stringify(preservedKeys.map(key => ctx.state[key]));
+    ctx.window.startPrestige();
+    const confirm = ctx.window.confirmForTest;
+    confirm();
+    assert.equal(ctx.state.xp, 0);
+    assert.equal(ctx.state.level, 1);
+    assert.equal(ctx.state.prestige.campaign, 2);
+    assert.equal(ctx.window.getCareerXp(), 92500);
+    assert.equal(JSON.stringify(preservedKeys.map(key => ctx.state[key])), before);
+    for (const id of ['primeiro_sangue', 'deep_focus', 'campanha_completa', 'veterano']) assert.ok(ctx.state.unlockedBadges.includes(id));
+    assert.equal(ctx.state.prestige.campaigns[0].xp, 92500);
+    assert.equal(ctx.state.prestige.campaigns[0].rankLevel, 15);
+    assert.equal(ctx.window.savesForTest, 1);
+    confirm();
+    assert.equal(ctx.state.prestige.campaigns.length, 1, 'Confirmar duas vezes não duplica');
+    assert.equal(ctx.window.savesForTest, 1);
+    const reloaded = engine(JSON.parse(JSON.stringify(ctx.state)));
+    reloaded.window.normalizePrestige();
+    assert.equal(reloaded.window.getCareerXp(), 92500);
+    assert.equal(reloaded.state.prestige.campaign, 2);
+    const html = reloaded.window.renderQGForTest();
+    assert.match(html, /Campanha 2/);
+    assert.match(html, /Prestígio 1/);
+    assert.match(html, /Histórico de campanhas/);
+});
+
+test('desfazer missões e tarefas rápidas antigas protege XP e medalhas da nova campanha', () => {
+    const ctx = engine({ xp: 90000, level: 15,
+        tasks: [{ id: 1, completed: true, rewardedXp: 100, rewardedBadgeIds: ['primeiro_sangue'], category: 'life', day: 'monday' }],
+        quickTasks: [{ id: 2, done: true }], unlockedBadges: ['primeiro_sangue', 'deep_focus'] });
+    ctx.window.startPrestige(); ctx.window.confirmForTest();
+    ctx.state.xp = 150;
+    ctx.window.toggleTask(1);
+    ctx.window.toggleQuickTask(2);
+    assert.equal(ctx.state.xp, 150);
+    assert.equal(ctx.window.getCareerXp(), 90150);
+    assert.ok(ctx.state.unlockedBadges.includes('primeiro_sangue'));
+    ctx.window.unlockBadge('primeiro_sangue');
+    assert.equal(ctx.state.xp, 150, 'Medalhas antigas não repetem o bônus');
+    ctx.window.toggleQuickTask(2);
+    assert.equal(ctx.state.quickTasks[0].xpCampaign, 2);
+    assert.equal(ctx.state.xp, 160);
+    ctx.window.toggleQuickTask(2);
+    assert.equal(ctx.state.xp, 150, 'Ganhos novos continuam reversíveis');
+});
+
+test('excluir estudo antigo desconta somente revisões feitas na campanha atual', () => {
+    const ctx = engine({ xp: 90000, level: 15, studyData: {
+        sessions: [{ id: 10, xpAwarded: 100, energyDeltaApplied: 0 }],
+        reviews: [{ id: 11, sourceSessionId: 10, xpAwarded: 20 }, { id: 12, sourceSessionId: 10, xpAwarded: 35, xpCampaign: 2 }]
+    } });
+    ctx.window.startPrestige(); ctx.window.confirmForTest();
+    ctx.state.xp = 150;
+    ctx.window.deleteStudySession(10); ctx.window.confirmForTest();
+    assert.equal(ctx.state.xp, 115);
+    assert.equal(ctx.state.studyData.sessions.length, 0);
+    assert.equal(ctx.state.studyData.reviews.length, 0);
+    assert.equal(ctx.state.prestige.campaigns[0].xp, 90000);
+});
+
+test('progressão continua após o Prestígio e marcos de campanha não concedem XP repetido', () => {
+    const ctx = engine({ xp: 89999, level: 14 });
+    ctx.window.normalizePrestige();
+    ctx.state.xp++;
+    ctx.window.checkLevelUp();
+    assert.equal(ctx.state.level, 15);
+    assert.ok(ctx.state.unlockedBadges.includes('campanha_completa'));
+    assert.equal(ctx.state.xp, 90000, 'Marco de campanha é simbólico');
+    for (let campaign = 1; campaign <= 2; campaign++) {
+        ctx.window.startPrestige(); ctx.window.confirmForTest();
+        assert.equal(ctx.state.level, 1);
+        assert.equal(ctx.state.xp, 0);
+        ctx.state.xp = 600; ctx.window.checkLevelUp();
+        assert.equal(ctx.state.level, 2);
+        ctx.state.xp = 90000; ctx.window.checkLevelUp();
+    }
+    assert.equal(ctx.state.prestige.campaign, 3);
+    assert.ok(ctx.state.unlockedBadges.includes('legado'));
+    assert.equal(ctx.window.getCareerXp(), 270000);
+    ctx.window.syncPrestigeMilestones();
+    assert.equal(ctx.state.unlockedBadges.filter(id => id === 'legado').length, 1);
+    assert.equal(ctx.state.xp, 90000);
+});
+
+test('missões novas continuam concedendo e revertendo XP e medalhas na campanha correta', () => {
+    const ctx = engine({ xp: 90000, level: 15 });
+    ctx.window.startPrestige(); ctx.window.confirmForTest();
+    ctx.state.tasks.push({ id: 1, completed: false, xp: 100, energyCost: 0, priority: 'media', category: 'life', day: 'monday' });
+    ctx.window.toggleTask(1);
+    assert.equal(ctx.state.tasks[0].rewardedCampaign, 2);
+    assert.equal(ctx.state.xp, 300, 'Missão e duas conquistas novas');
+    assert.ok(ctx.state.unlockedBadges.includes('primeiro_sangue'));
+    ctx.window.toggleTask(1);
+    assert.equal(ctx.state.xp, 0);
+    assert.equal(ctx.state.level, 1);
+    assert.ok(!ctx.state.unlockedBadges.includes('primeiro_sangue'));
+    assert.ok(ctx.state.unlockedBadges.includes('deep_focus'));
+    assert.equal(ctx.window.getCareerXp(), 90000);
 });

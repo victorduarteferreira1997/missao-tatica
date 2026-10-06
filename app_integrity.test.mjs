@@ -244,6 +244,7 @@ const statusWindow = {
     rollbackTaskBadges() {}, spawnFloatingText() {}, checkLevelUp() {},
     saveState() { statusSaves++; }
 };
+runInNewContext(app.slice(app.indexOf('window.normalizePrestige ='), app.indexOf('function getMondayStartDate(')), { window: statusWindow, state: statusState });
 runInNewContext(app.slice(statusStart, statusEnd), { window: statusWindow, state: statusState });
 boardWindow.getMissionStatus = statusWindow.getMissionStatus;
 assert.equal(statusWindow.getMissionStatus(statusTask), 'planned', 'Missões antigas continuam compatíveis.');
