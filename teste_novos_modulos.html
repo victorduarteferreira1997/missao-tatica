@@ -1,113 +1,16 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex">
-<title>Missão Tática — Prévia visual</title>
-<style>
-:root{
-  --bg:#020617;--panel:#0f172a;--panel2:#111827;--line:#1e293b;--muted:#64748b;
-  --text:#e2e8f0;--white:#f8fafc;--indigo:#6366f1;--cyan:#22d3ee;--amber:#f59e0b;
-  --green:#22c55e;--red:#ef4444
-}
-*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial}
-.wrap{max-width:980px;margin:0 auto;padding:20px}
-.top{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:14px 0 18px}
-.brand{display:flex;gap:12px;align-items:center}.mark{width:38px;height:38px;border-radius:12px;background:#312e81;border:1px solid #4338ca;display:grid;place-items:center;font-weight:900}
-.title{font-weight:900;letter-spacing:.04em}.sub{font-size:12px;color:var(--muted);margin-top:2px}
-.sync{font-size:12px;color:#94a3b8;border:1px solid var(--line);border-radius:9px;padding:7px 10px;background:#020617}
-.grid2{display:grid;grid-template-columns:1.15fr 1fr;gap:10px}
-.primary{background:#4f46e5;border:1px solid #6366f1;border-radius:14px;padding:14px 16px;color:white;text-align:left}
-.primary b{display:block;font-size:15px}.primary span{display:block;font-size:11px;opacity:.75;margin-top:3px}
-.tools{background:rgba(15,23,42,.75);border:1px solid var(--line);border-radius:14px;padding:9px}
-.label{font-size:10px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.15em;margin:0 0 8px 2px}
-.toolrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tool{background:#0f172a;border:1px solid var(--line);border-radius:10px;padding:11px;text-align:center;font-size:12px;font-weight:700}
-.hud{display:grid;grid-template-columns:.8fr 1.7fr;gap:10px;margin-top:12px}.card{background:rgba(15,23,42,.85);border:1px solid var(--line);border-radius:14px;padding:14px}
-.clock{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.clock strong{font-size:28px;color:white;display:block}.clock span{font-size:11px;color:var(--muted)}
-.hphead{display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.14em}.hphead b{font-size:15px;color:white}
-.bar{height:8px;border-radius:99px;background:#1e293b;margin-top:9px;overflow:hidden}.bar i{display:block;width:72%;height:100%;background:var(--green);border-radius:99px}
-.meta{font-size:10px;color:var(--muted);margin-top:9px}.nav{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:#0f172a;border:1px solid var(--line);border-radius:13px;padding:5px;margin-top:12px}
-.nav button{border:0;background:transparent;color:#64748b;border-radius:9px;padding:10px;font-weight:800;font-size:12px;cursor:pointer}.nav button.active{background:#4f46e5;color:white}
-.section{margin-top:14px}.sectionhead{display:flex;justify-content:space-between;align-items:end;margin-bottom:8px}.sectionhead h2{font-size:18px;margin:0;color:white}.sectionhead small{color:var(--muted)}
-.btn{border:1px solid var(--line);background:#0f172a;color:#cbd5e1;border-radius:9px;padding:8px 10px;font-size:11px;font-weight:800}
-.task{display:grid;grid-template-columns:70px 1fr auto;gap:12px;align-items:start;padding:14px 2px;border-top:1px solid #172033}.task:first-child{border-top:0}.time{font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#94a3b8}.task b{display:block;color:white;font-size:14px}.task p{margin:4px 0 0;color:#64748b;font-size:11px}.pill{display:inline-block;margin-top:7px;border:1px solid #334155;border-radius:99px;padding:4px 7px;font-size:9px;color:#94a3b8}.focus{border-color:#3730a3;color:#c7d2fe}
-.notice{margin-top:14px;border:1px solid #78350f;background:rgba(120,53,15,.12);border-radius:13px;padding:12px 14px}.notice b{color:#fbbf24;font-size:12px}.notice p{font-size:11px;color:#94a3b8;margin:4px 0 0}
-.empty{padding:28px;text-align:center;color:#64748b;border:1px dashed #334155;border-radius:14px;margin-top:12px}
-.previewtag{position:fixed;right:14px;bottom:14px;background:#111827;border:1px solid #334155;color:#94a3b8;border-radius:9px;padding:8px 10px;font-size:10px}
-.view{display:none}.view.active{display:block}
-@media(max-width:700px){.wrap{padding:12px}.grid2,.hud{grid-template-columns:1fr}.task{grid-template-columns:55px 1fr}.task .btn{grid-column:2}.top{align-items:flex-start}.sync{display:none}}
-</style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="refresh" content="0; url=app.html">
+    <meta name="robots" content="noindex">
+    <title>Missão Tática</title>
+    <script>
+        window.location.replace('app.html' + window.location.search + window.location.hash);
+    </script>
 </head>
 <body>
-<div class="wrap">
-  <div class="top">
-    <div class="brand">
-      <div class="mark">MT</div>
-      <div><div class="title">Missão Tática <span style="font-size:10px;color:#64748b">v1.9.11 preview</span></div><div class="sub">Quartel operacional</div></div>
-    </div>
-    <div class="sync">● Prévia visual · sem Firebase</div>
-  </div>
-
-  <div class="grid2">
-    <button class="primary"><b>＋ Nova missão</b><span>Capture o que precisa ser executado.</span></button>
-    <div class="tools">
-      <div class="label">Ferramentas</div>
-      <div class="toolrow"><div class="tool">◉ Inteligência</div><div class="tool">▣ Finanças</div></div>
-    </div>
-  </div>
-
-  <div class="hud">
-    <div class="card clock"><strong>11:19</strong><span>Segunda-feira · 05 de outubro</span></div>
-    <div class="card">
-      <div class="hphead"><span>▰ Bateria executiva</span><b>72%</b></div>
-      <div class="bar"><i></i></div>
-      <div class="meta">Nível 10 &nbsp;•&nbsp; 26.434 XP &nbsp;•&nbsp; 5 MT</div>
-    </div>
-  </div>
-
-  <div class="nav">
-    <button class="active" data-view="today">Hoje</button>
-    <button data-view="week">Semana</button>
-    <button data-view="radar">Radar</button>
-  </div>
-
-  <div id="today" class="view active">
-    <div class="section">
-      <div class="sectionhead"><div><small>Execução do dia</small><h2>Missões de hoje</h2></div><button class="btn">＋ Nova missão</button></div>
-      <div class="card" style="padding:4px 14px">
-        <div class="task"><div class="time">09:00</div><div><b>Revisar evidências do assessment</b><p>Trabalho · Alta · 60 min</p><span class="pill focus">▶ Foco</span></div><button class="btn">✓</button></div>
-        <div class="task"><div class="time">14:00</div><div><b>Atualizar Roadmap de Segurança</b><p>Trabalho · Média · 90 min</p><span class="pill">Próxima ação definida</span></div><button class="btn">✓</button></div>
-        <div class="task"><div class="time">18:30</div><div><b>Compromisso pessoal</b><p>Pessoal · Logística · 60 min</p></div><button class="btn">✓</button></div>
-      </div>
-    </div>
-    <div class="notice"><b>⚠ Situação operacional</b><p>1 follow-up pede atenção hoje. O Radar continua monitorando as demais demandas conhecidas.</p></div>
-    <div class="section"><div class="sectionhead"><div><small>Apoio</small><h2>Estudos</h2></div><button class="btn">Abrir Inteligência</button></div><div class="card"><div style="font-size:12px;color:#cbd5e1">1 bloco planejado · 60 min</div><div style="font-size:11px;color:#64748b;margin-top:4px">Próximo: conteúdo planejado para hoje.</div></div></div>
-  </div>
-
-  <div id="week" class="view">
-    <div class="section"><div class="sectionhead"><div><small>Planejamento</small><h2>Semana Geral</h2></div></div>
-      <div class="card"><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center;font-size:11px">
-        <div><b>SEG</b><p>4</p></div><div><b>TER</b><p>6</p></div><div><b>QUA</b><p>5</p></div><div><b>QUI</b><p>5</p></div><div><b>SEX</b><p>3</p></div><div><b>SÁB</b><p>2</p></div><div><b>DOM</b><p>1</p></div>
-      </div></div>
-    </div>
-  </div>
-
-  <div id="radar" class="view">
-    <div class="section"><div class="sectionhead"><div><small>Controle contínuo</small><h2>Situação operacional</h2></div><button class="btn">＋ Capturar demanda</button></div>
-      <div class="notice"><b>Follow-up hoje</b><p>Assessment de cliente · aguardando área técnica · prazo final próximo.</p></div>
-      <div class="card" style="margin-top:10px"><div style="font-size:12px;font-weight:800;color:white">Demais demandas sob controle</div><div style="font-size:11px;color:#64748b;margin-top:5px">Nenhuma outra exceção imediata nesta prévia.</div></div>
-    </div>
-  </div>
-</div>
-<div class="previewtag">DEMO · nada é salvo</div>
-<script>
-document.querySelectorAll('.nav button').forEach(btn=>btn.addEventListener('click',()=>{
-  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById(btn.dataset.view).classList.add('active');
-}));
-</script>
+    <p>Esta versão foi incorporada ao ambiente oficial. Abrindo o <a href="app.html">Missão Tática</a>…</p>
 </body>
 </html>
