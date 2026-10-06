@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.39-edit-dialog">
+    <meta name="app-build" content="v1.9.40-shared-dialogs">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -2765,21 +2765,58 @@
             return String(value ?? '').replace(/[&<>'"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[ch]));
         };
 
+        // Estrutura visual e navegação compartilhadas dos formulários.
+        window.formDialogStyles = Object.freeze({
+            field: 'w-full mt-1.5 min-h-11 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400',
+            fieldMinWidth: 'w-full mt-1.5 min-h-11 min-w-0 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400',
+            label: 'block text-sm font-medium text-slate-300',
+            summary: 'list-none flex min-h-11 cursor-pointer items-center justify-between gap-3 py-2 text-sm text-slate-300 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400',
+            footer: 'shrink-0 border-t border-slate-700 bg-slate-900 px-5 py-3',
+            compactFooter: 'flex shrink-0 justify-end gap-2 border-t border-slate-800 px-5 py-3'
+        });
+
+        window.renderFormDialog = function({ id, titleId, title, description, closeLabel, closeHandler, submitHandler, body, footer, layer = 'z-50', footerClass = window.formDialogStyles.footer }) {
+            return `<div class="fixed inset-0 ${layer} flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm font-sans">
+                <div id="${window.escapeHtml(id)}" role="dialog" aria-modal="true" aria-labelledby="${window.escapeHtml(titleId)}" class="modal-enter flex max-h-[92dvh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl">
+                    <header class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-800 px-5 py-4">
+                        <div><h2 id="${window.escapeHtml(titleId)}" class="text-lg font-semibold text-slate-100">${window.escapeHtml(title)}</h2><p class="mt-1 text-sm text-slate-400">${window.escapeHtml(description)}</p></div>
+                        <button type="button" onclick="window.${closeHandler}()" aria-label="${window.escapeHtml(closeLabel)}" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white"><i data-lucide="x" class="h-5 w-5"></i></button>
+                    </header>
+                    <form novalidate onsubmit="event.preventDefault(); window.${submitHandler}()" class="flex min-h-0 flex-1 flex-col">
+                        <div class="min-h-0 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">${body}</div>
+                        <footer class="${footerClass}">${footer}</footer>
+                    </form>
+                </div>
+            </div>`;
+        };
+
+        window.bindFormDialog = function(root, { id, initialFocus, close, blocked = false, prepare }) {
+            const dialog = root.querySelector(`#${id}`);
+            if (!dialog || blocked) return;
+            if (prepare) prepare();
+            if (!dialog.contains(document.activeElement)) dialog.querySelector(`#${initialFocus}`)?.focus({ preventScroll: true });
+            dialog.addEventListener('keydown', event => {
+                if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); return; }
+                if (event.key !== 'Tab') return;
+                const controls = [...dialog.querySelectorAll('button, input, select, textarea, summary, [tabindex="0"]')].filter(el => !el.disabled && el.getClientRects().length);
+                const first = controls[0], last = controls[controls.length - 1];
+                if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+                else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+            });
+        };
+
         window.renderEditTaskModal = function(task) {
             const rawTime = parseInt(String(task.time || '30').replace(/[^0-9]/g, ''), 10) || 30;
             const nature = window.getTaskNature(task);
             const recurrence = Array.isArray(task.recurrenceDays) ? task.recurrenceDays : [];
-            const fieldClass = 'w-full mt-1.5 min-h-11 min-w-0 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400';
-            const labelClass = 'block text-sm font-medium text-slate-300';
-            const summaryClass = 'list-none flex min-h-11 cursor-pointer items-center justify-between gap-3 py-2 text-sm text-slate-300 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400';
-            return `<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm font-sans">
-                <div id="edit-task-dialog" role="dialog" aria-modal="true" aria-labelledby="et-dialog-title" class="modal-enter flex max-h-[92dvh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl">
-                    <header class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-800 px-5 py-4">
-                        <div><h2 id="et-dialog-title" class="text-lg font-semibold text-slate-100">Editar missão</h2><p class="mt-1 text-sm text-slate-400">Ajuste o que precisa e salve as alterações.</p></div>
-                        <button type="button" onclick="window.closeEditTaskModal()" aria-label="Fechar edição de missão" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white"><i data-lucide="x" class="h-5 w-5"></i></button>
-                    </header>
-                    <form novalidate onsubmit="event.preventDefault(); window.saveEditedTask()" class="flex min-h-0 flex-1 flex-col">
-                        <div class="min-h-0 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
+            const fieldClass = window.formDialogStyles.fieldMinWidth;
+            const labelClass = window.formDialogStyles.label;
+            const summaryClass = window.formDialogStyles.summary;
+            return window.renderFormDialog({
+                id: 'edit-task-dialog', titleId: 'et-dialog-title', title: 'Editar missão',
+                description: 'Ajuste o que precisa e salve as alterações.', closeLabel: 'Fechar edição de missão',
+                closeHandler: 'closeEditTaskModal', submitHandler: 'saveEditedTask',
+                body: `
                             <div><label for="et-text" class="${labelClass}">O que você vai fazer? <span class="ml-2 text-xs font-normal text-slate-400">Obrigatório</span></label><input id="et-text" type="text" value="${window.escapeHtml(task.text || '')}" aria-describedby="et-title-error" oninput="this.removeAttribute('aria-invalid'); document.getElementById('et-title-error').classList.add('hidden')" class="${fieldClass}"><p id="et-title-error" role="alert" class="hidden mt-1.5 text-xs text-red-300">Dê um nome à missão para continuar.</p></div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div><label for="et-day" class="${labelClass}">Dia</label><select id="et-day" class="${fieldClass}">${daysOfWeek.map(d => `<option value="${d.id}" ${d.id === task.day ? 'selected' : ''}>${d.label}</option>`).join('')}</select></div>
@@ -2806,29 +2843,18 @@
                                     <div class="pt-2 pb-4"><label for="et-complexity" class="${labelClass}">Dificuldade de 1 a 5</label><input id="et-complexity" type="number" min="1" max="5" value="${task.complexity || 2}" oninput="window.updateEditPreviewCalc()" class="${fieldClass} max-w-24"><p class="mt-2 text-xs leading-relaxed text-slate-400">1 é simples; 5 exige muito esforço.</p></div>
                                 </details>
                             </div>
-                            ${task.completed ? `<p class="rounded-lg border border-amber-900/50 bg-amber-950/20 p-3 text-xs leading-relaxed text-amber-200">Esta missão já foi concluída. Editar não recalcula as recompensas já recebidas.</p>` : ''}
-                        </div>
-                        <footer class="shrink-0 border-t border-slate-700 bg-slate-900 px-5 py-3">
+                            ${task.completed ? `<p class="rounded-lg border border-amber-900/50 bg-amber-950/20 p-3 text-xs leading-relaxed text-amber-200">Esta missão já foi concluída. Editar não recalcula as recompensas já recebidas.</p>` : ''}`,
+                footer: `
                             <div class="mb-3 flex flex-wrap items-center gap-2 text-xs"><span class="mr-auto text-slate-400">Impacto estimado</span><span id="et-xp-preview" class="rounded bg-indigo-950 px-2 py-1 text-indigo-200">+${task.xp || 0} XP</span><span id="et-hp-preview" class="rounded bg-slate-800 px-2 py-1 text-slate-300">${task.energyCost < 0 ? '+' : '-'}${Math.abs(task.energyCost || 0)} HP</span></div>
-                            <div class="flex justify-end gap-2"><button type="button" onclick="window.closeEditTaskModal()" class="min-h-10 rounded-lg px-4 text-sm font-medium text-slate-300 hover:bg-slate-800">Cancelar</button><button type="submit" class="min-h-10 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-300">Salvar alterações</button></div>
-                        </footer>
-                    </form>
-                </div>
-            </div>`;
+                            <div class="flex justify-end gap-2"><button type="button" onclick="window.closeEditTaskModal()" class="min-h-10 rounded-lg px-4 text-sm font-medium text-slate-300 hover:bg-slate-800">Cancelar</button><button type="submit" class="min-h-10 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-300">Salvar alterações</button></div>`
+            });
         };
 
         window.bindEditTaskDialog = function(root) {
-            const dialog = root.querySelector('#edit-task-dialog');
-            if (!dialog || uiState.alert.show || uiState.confirm.show) return;
-            window.updateTaskNatureButtons('et'); window.updateEditPreviewCalc();
-            if (!dialog.contains(document.activeElement)) dialog.querySelector('#et-text')?.focus({ preventScroll: true });
-            dialog.addEventListener('keydown', event => {
-                if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); window.closeEditTaskModal(); return; }
-                if (event.key !== 'Tab') return;
-                const controls = [...dialog.querySelectorAll('button, input, select, textarea, summary, [tabindex="0"]')].filter(el => !el.disabled && el.getClientRects().length);
-                const first = controls[0], last = controls[controls.length - 1];
-                if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
-                else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+            window.bindFormDialog(root, {
+                id: 'edit-task-dialog', initialFocus: 'et-text', close: () => window.closeEditTaskModal(),
+                blocked: uiState.alert.show || uiState.confirm.show,
+                prepare: () => { window.updateTaskNatureButtons('et'); window.updateEditPreviewCalc(); }
             });
         };
 
@@ -4628,17 +4654,15 @@
             const status = demand?.workflowStatus || 'active';
             const attention = demand?.attentionLevel || 'controlled';
             const source = demand?.source || 'manual';
-            const fieldClass = 'w-full mt-1.5 min-h-11 min-w-0 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400';
+            const fieldClass = window.formDialogStyles.fieldMinWidth;
             const input = (id, label, value = '', type = 'text', placeholder = '') => `<div class="min-w-0"><label for="${id}" class="block text-sm font-medium text-slate-300">${label}</label><input id="${id}" type="${type}" value="${window.escapeHtml(value)}" placeholder="${placeholder}" class="${fieldClass}"></div>`;
             const options = (values, selected) => values.map(([value, label]) => `<option value="${value}" ${value === selected ? 'selected' : ''}>${label}</option>`).join('');
-            return `<div class="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm font-sans">
-                <div id="operational-demand-dialog" role="dialog" aria-modal="true" aria-labelledby="op-demand-dialog-title" class="modal-enter flex max-h-[92dvh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl">
-                    <header class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-800 px-5 py-4">
-                        <div><h2 id="op-demand-dialog-title" class="text-lg font-semibold text-slate-100">${demand ? 'Editar demanda' : 'Nova demanda'}</h2><p class="mt-1 text-sm text-slate-400">Registre o assunto e o próximo passo para avançar.</p></div>
-                        <button type="button" onclick="window.closeOperationalDemandModal()" aria-label="Fechar demanda" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white"><i data-lucide="x" class="h-5 w-5"></i></button>
-                    </header>
-                    <form novalidate onsubmit="event.preventDefault(); window.saveOperationalDemand()" class="flex min-h-0 flex-1 flex-col">
-                        <div class="min-h-0 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
+            return window.renderFormDialog({
+                id: 'operational-demand-dialog', titleId: 'op-demand-dialog-title', title: demand ? 'Editar demanda' : 'Nova demanda',
+                description: 'Registre o assunto e o próximo passo para avançar.', closeLabel: 'Fechar demanda',
+                closeHandler: 'closeOperationalDemandModal', submitHandler: 'saveOperationalDemand',
+                layer: 'z-[80]', footerClass: window.formDialogStyles.compactFooter,
+                body: `
                             <div><label for="op-demand-title" class="block text-sm font-medium text-slate-300">Qual assunto precisa de acompanhamento? <span class="ml-2 text-xs font-normal text-slate-400">Obrigatório</span></label><input id="op-demand-title" type="text" value="${window.escapeHtml(demand?.title || '')}" placeholder="Ex.: Avaliação de segurança do cliente" aria-describedby="op-demand-title-error" oninput="this.removeAttribute('aria-invalid'); document.getElementById('op-demand-title-error').classList.add('hidden')" class="${fieldClass}"><p id="op-demand-title-error" role="alert" class="hidden mt-1.5 text-xs text-red-300">Dê um nome à demanda para continuar.</p></div>
                             <div><label for="op-demand-next-action" class="block text-sm font-medium text-slate-300">Próxima ação</label><textarea id="op-demand-next-action" rows="2" placeholder="Ex.: Revisar a documentação recebida" class="${fieldClass} resize-y">${window.escapeHtml(demand?.nextAction || '')}</textarea></div>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -4657,29 +4681,18 @@
                                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${input('op-demand-owner', 'Responsável', demand?.owner || window.getUserDisplayName?.() || '')}${input('op-demand-requester', 'Solicitante', demand?.requester || '')}</div>
                                     <div><label for="op-demand-source" class="block text-sm font-medium text-slate-300">Origem</label><select id="op-demand-source" class="${fieldClass}">${options([['manual', 'Registro manual'], ['slack', 'Slack'], ['email', 'E-mail'], ['calendar', 'Calendário'], ['meeting', 'Reunião ou anotação'], ['verbal', 'Compromisso verbal'], ['other', 'Outra']], source)}</select></div>
                                 </div>
-                            </details>
-                        </div>
-                        <footer class="flex shrink-0 justify-end gap-2 border-t border-slate-800 px-5 py-3">
+                            </details>`,
+                footer: `
                             <button type="button" onclick="window.closeOperationalDemandModal()" class="min-h-10 rounded-lg px-4 text-sm font-medium text-slate-300 hover:bg-slate-800">Cancelar</button>
-                            <button type="submit" class="min-h-10 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-300">${demand ? 'Salvar alterações' : 'Criar demanda'}</button>
-                        </footer>
-                    </form>
-                </div>
-            </div>`;
+                            <button type="submit" class="min-h-10 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-300">${demand ? 'Salvar alterações' : 'Criar demanda'}</button>`
+            });
         };
 
         window.bindOperationalDemandDialog = function(root) {
-            const dialog = root.querySelector('#operational-demand-dialog');
-            if (!dialog || uiState.alert.show || uiState.confirm.show) return;
-            window.syncOperationalWaitingFields();
-            if (!dialog.contains(document.activeElement)) dialog.querySelector('#op-demand-title')?.focus({ preventScroll: true });
-            dialog.addEventListener('keydown', event => {
-                if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); window.closeOperationalDemandModal(); return; }
-                if (event.key !== 'Tab') return;
-                const controls = [...dialog.querySelectorAll('button, input, select, textarea, summary, [tabindex="0"]')].filter(el => !el.disabled && el.getClientRects().length);
-                const first = controls[0], last = controls[controls.length - 1];
-                if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
-                else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+            window.bindFormDialog(root, {
+                id: 'operational-demand-dialog', initialFocus: 'op-demand-title', close: () => window.closeOperationalDemandModal(),
+                blocked: uiState.alert.show || uiState.confirm.show,
+                prepare: () => window.syncOperationalWaitingFields()
             });
         };
 
@@ -5096,18 +5109,14 @@
         };
 
         window.renderCreateTaskModal = function(calendarInboxSource = null) {
-            const fieldClass = 'w-full mt-1.5 min-h-11 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400';
-            const labelClass = 'block text-sm font-medium text-slate-300';
-            const summaryClass = 'list-none flex min-h-11 cursor-pointer items-center justify-between gap-3 py-2 text-sm text-slate-300 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400';
-            return `
-            <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm font-sans">
-                <div id="create-task-dialog" role="dialog" aria-modal="true" aria-labelledby="create-task-title" class="modal-enter flex max-h-[92dvh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl">
-                    <header class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-800 px-5 py-4">
-                        <div><h2 id="create-task-title" class="text-lg font-semibold text-slate-100">Nova missão</h2><p class="mt-1 text-sm text-slate-400">${calendarInboxSource ? 'Organize este compromisso do Google Agenda.' : 'Defina a próxima ação. Os detalhes podem ficar para depois.'}</p></div>
-                        <button type="button" onclick="window.toggleCreateTaskModal()" aria-label="Fechar criação de missão" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
-                    </header>
-                    <form novalidate onsubmit="event.preventDefault(); window.saveNewTask()" class="flex min-h-0 flex-1 flex-col">
-                        <div class="min-h-0 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
+            const fieldClass = window.formDialogStyles.field;
+            const labelClass = window.formDialogStyles.label;
+            const summaryClass = window.formDialogStyles.summary;
+            return window.renderFormDialog({
+                id: 'create-task-dialog', titleId: 'create-task-title', title: 'Nova missão',
+                description: calendarInboxSource ? 'Organize este compromisso do Google Agenda.' : 'Defina a próxima ação. Os detalhes podem ficar para depois.',
+                closeLabel: 'Fechar criação de missão', closeHandler: 'toggleCreateTaskModal', submitHandler: 'saveNewTask',
+                body: `
                             ${calendarInboxSource ? '<p class="rounded-lg border border-sky-800/60 bg-sky-950/30 p-3 text-xs leading-relaxed text-sky-200">Vinculada ao evento original. A conversão cria uma única missão e não duplica o compromisso no Google Agenda.</p>' : ''}
                             <div>
                                 <label for="ct-text" class="${labelClass}">O que você vai fazer? <span class="ml-2 text-xs font-normal text-slate-400">Obrigatório</span></label>
@@ -5142,30 +5151,17 @@
                                     <summary class="${summaryClass}"><span>Ajustar dificuldade</span><i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i></summary>
                                     <div class="pt-2 pb-4"><label for="ct-complexity" class="${labelClass}">Dificuldade de 1 a 5</label><input id="ct-complexity" type="number" min="1" max="5" value="2" oninput="window.updatePreviewCalc()" class="${fieldClass} max-w-24"><p class="mt-2 text-xs leading-relaxed text-slate-400">1 é simples; 5 exige muito esforço. O padrão é 2.</p></div>
                                 </details>
-                            </div>
-                        </div>
-                        <footer class="shrink-0 border-t border-slate-700 bg-slate-900 px-5 py-3">
+                            </div>`,
+                footer: `
                             <div class="mb-3 flex flex-wrap items-center gap-2 text-xs"><span class="mr-auto text-slate-400">Impacto estimado</span><span id="ct-xp-preview" class="rounded bg-indigo-950 px-2 py-1 text-indigo-200">+0 XP</span><span id="ct-hp-preview" class="rounded bg-red-950 px-2 py-1 text-red-200">−0 HP</span></div>
-                            <div class="flex justify-end gap-2"><button type="button" onclick="window.toggleCreateTaskModal()" class="min-h-10 rounded-lg px-4 text-sm font-medium text-slate-300 hover:bg-slate-800">Cancelar</button><button type="submit" class="min-h-10 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-300">Criar missão</button></div>
-                        </footer>
-                    </form>
-                </div>
-            </div>`;
+                            <div class="flex justify-end gap-2"><button type="button" onclick="window.toggleCreateTaskModal()" class="min-h-10 rounded-lg px-4 text-sm font-medium text-slate-300 hover:bg-slate-800">Cancelar</button><button type="submit" class="min-h-10 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-300">Criar missão</button></div>`
+            });
         };
 
         window.bindCreateTaskDialog = function(root) {
-            const dialog = root.querySelector('#create-task-dialog');
-            if (!dialog || uiState.showCategoryModal || uiState.alert.show || uiState.confirm.show) return;
-            if (!dialog.contains(document.activeElement)) dialog.querySelector('#ct-text')?.focus({ preventScroll: true });
-            dialog.addEventListener('keydown', event => {
-                if (event.key === 'Escape') {
-                    event.preventDefault(); event.stopPropagation(); window.toggleCreateTaskModal(); return;
-                }
-                if (event.key !== 'Tab') return;
-                const controls = [...dialog.querySelectorAll('button, input, select, textarea, summary, [tabindex="0"]')].filter(el => !el.disabled && el.getClientRects().length);
-                const first = controls[0], last = controls[controls.length - 1];
-                if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
-                else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+            window.bindFormDialog(root, {
+                id: 'create-task-dialog', initialFocus: 'ct-text', close: () => window.toggleCreateTaskModal(),
+                blocked: uiState.showCategoryModal || uiState.alert.show || uiState.confirm.show
             });
         };
 
@@ -5601,7 +5597,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.39</span></div>
+                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.40</span></div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-2">
