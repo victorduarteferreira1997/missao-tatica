@@ -26,7 +26,7 @@ não quebrar favoritos existentes.
 Requer Node.js 18 ou mais recente:
 
 ```bash
-TZ=America/Sao_Paulo node --test app_integrity.test.mjs calendar_sync.test.mjs security.test.mjs gamification.test.mjs
+TZ=America/Sao_Paulo node --test app_integrity.test.mjs calendar_sync.test.mjs security.test.mjs gamification.test.mjs data_cleanup.test.mjs
 ```
 
 Antes de publicar uma mudança:
@@ -83,6 +83,33 @@ bônus de missões revertidas. Configurações, perfil e cadastros estruturais
 (disciplinas, rituais, orçamentos etc.) ficam preservados. A exclusão do
 histórico recalcula emblemas e conquistas mantendo as obtidas em campanhas
 restantes. O estado acompanha sincronização e backups JSON existentes.
+
+## Limpeza por módulo
+
+No rodapé, `Dados e reinício → Gerenciar dados` abre um painel com seleção
+independente para Missões, Estudos, Finanças, Corpo, Pomodoro, Rituais,
+Recarga, Radar, Recompensas, Gamificação e Perfil. A entrada fica recolhida
+e nenhuma área vem selecionada. O painel apresenta cadastros e históricos
+afetados, resumo, backup completo opcional e confirmação antes da limpeza.
+
+Limpar módulos preserva XP, moedas e campanhas. A seleção Gamificação zera
+também todo o progresso e inicia uma campanha vazia, mantendo o tema atual
+e um ID novo quando existem outros dados preservados. Registros antigos não
+voltam a premiar a nova campanha. Recompensas e perfil são escolhas separadas.
+Selecionar todas as áreas restaura o estado inicial, campanha original e
+perfil vazio. Cadastros padrão reaparecem; personalizados são removidos.
+
+A conexão e a identidade de sincronização com o Google permanecem. Na
+próxima sincronização, eventos removidos do planejamento da semana visível
+podem ser apagados no calendário gerenciado Missão Tática; compromissos da
+agenda principal permanecem e podem reaparecer na entrada da agenda.
+O painel bloqueia a execução com cronômetro ativo, avaliação ou compra
+pendente, carregamento de estado ou sincronização de agenda em andamento.
+Cronômetros pausados são preservados na limpeza de módulos não relacionados.
+
+Exportar backup JSON guarda todo o estado do aplicativo. A importação
+existente substitui esse estado inteiro, sem mesclar campanhas. Os testes
+executam a exportação, o reinício e a restauração reais com dados sintéticos.
 
 ## Segurança
 

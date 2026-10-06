@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.51-campaign-lifecycle">
+    <meta name="app-build" content="v1.9.52-data-management">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -1812,6 +1812,171 @@
                 } catch(err) { window.showAlertModal("Erro ao processar o arquivo."); }
             };
             reader.readAsText(file); event.target.value = '';
+        };
+
+        // ==========================================
+        // GERENCIAMENTO DE DADOS POR MÓDULO
+        // ==========================================
+        const DATA_CLEANUP_MODULES = [
+            { id: 'missions', name: 'Missões', icon: 'list-checks', group: 'modules', desc: 'Quadro, recorrências, capturas rápidas e categorias.', keys: ['tasks', 'quickTasks', 'taskDeletionLog', 'taskCategories', 'deletedTaskCategoryIds'], paths: ['tasks', 'quickTasks'] },
+            { id: 'study', name: 'Estudos', icon: 'book-open', group: 'modules', desc: 'Disciplinas, sessões, revisões, erros, ciclos e planejamento.', keys: ['studyData'], paths: ['studyData.subjects', 'studyData.sessions', 'studyData.reviews', 'studyData.errorLog', 'studyData.cycles', 'studyData.studyPlan.weeklyBlocks'] },
+            { id: 'finance', name: 'Finanças', icon: 'wallet', group: 'modules', desc: 'Receitas, despesas, dívidas, metas, orçamentos e diário.', keys: ['financeData'], paths: ['financeData.incomes', 'financeData.fixedExpenses', 'financeData.variableExpenses', 'financeData.debts', 'financeData.goals', 'financeData.categoryBudgets', 'financeData.moneyJournal'] },
+            { id: 'health', name: 'Corpo', icon: 'activity', group: 'modules', desc: 'Treinos, medidas, hábitos e metas físicas.', keys: ['healthData'], paths: ['healthData.workouts', 'healthData.bodyMetrics', 'healthData.habits', 'healthData.goals'] },
+            { id: 'focus', name: 'Pomodoro', icon: 'timer', group: 'modules', desc: 'Histórico de foco e configurações do cronômetro.', keys: ['focusData', 'pomodoroSettings'], paths: ['focusData.cycles'] },
+            { id: 'rituals', name: 'Rituais', icon: 'clipboard-check', group: 'modules', desc: 'Rituais cadastrados e histórico de execução.', keys: ['routineData'], paths: ['routineData.rituals', 'routineData.logs'] },
+            { id: 'recharge', name: 'Recarga', icon: 'battery-charging', group: 'modules', desc: 'Ações personalizadas e histórico de recarga.', keys: ['rechargeData'], paths: ['rechargeData.logs'] },
+            { id: 'radar', name: 'Radar', icon: 'radar', group: 'modules', desc: 'Demandas, revisões, encerramentos e ajustes do Radar.', keys: ['operationalControl'], paths: ['operationalControl.demands', 'operationalControl.scans', 'operationalControl.shutdowns'] },
+            { id: 'rewards', name: 'Recompensas', icon: 'gift', group: 'career', desc: 'Recompensas personalizadas, resgates e recompensa-alvo.', keys: ['customRewards', 'rewardPurchases'], paths: ['customRewards', 'rewardPurchases'] },
+            { id: 'game', name: 'Gamificação', icon: 'award', group: 'career', desc: 'XP, moedas, reserva, patentes, medalhas e todas as campanhas.', keys: [], paths: ['prestige.campaigns'] },
+            { id: 'profile', name: 'Perfil', icon: 'user-round', group: 'preferences', desc: 'Nome, linguagem dos títulos e preferências do perfil.', keys: ['userProfile'], paths: [] }
+        ];
+        window.getDataCleanupSelection = function(ids = uiState.dataManager?.selected) {
+            return DATA_CLEANUP_MODULES.filter(m => Array.isArray(ids) && ids.includes(m.id));
+        };
+        window.getDataCleanupCount = function(module) {
+            const count = module.paths.reduce((total, path) => {
+                const records = path.split('.').reduce((value, key) => value?.[key], state);
+                return total + (Array.isArray(records) ? records.length : 0);
+            }, 0);
+            return module.id === 'recharge' ? count + (state.rechargeData?.actions || []).filter(a => !a.isDefault).length : count;
+        };
+        window.openDataManager = function() {
+            uiState.dataManager = { selected: [], preferencesOpen: false };
+            render();
+            document.getElementById('cleanup-select-all')?.focus();
+        };
+        window.closeDataManager = function() {
+            uiState.dataManager = null; render();
+            document.getElementById('open-data-manager')?.focus();
+        };
+        window.handleDataManagerKeydown = function(event) {
+            if (uiState.confirm.show || uiState.alert.show) return;
+            if (event.key === 'Escape') { event.preventDefault(); window.closeDataManager(); return; }
+            if (event.key !== 'Tab') return;
+            const elements = [...event.currentTarget.querySelectorAll('button:not(:disabled), input, summary')]
+                .filter(el => el.getClientRects().length);
+            const first = elements[0]; const last = elements[elements.length - 1];
+            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+        };
+        window.refreshDataManager = function(focusId) {
+            const body = document.getElementById('data-manager-body');
+            const scrollTop = body?.scrollTop || 0;
+            render();
+            const updated = document.getElementById('data-manager-body');
+            if (updated) updated.scrollTop = scrollTop;
+            document.getElementById(focusId)?.focus({ preventScroll: true });
+        };
+        window.setDataCleanupSelection = function(id, checked) {
+            if (!uiState.dataManager || !DATA_CLEANUP_MODULES.some(m => m.id === id)) return;
+            const selected = new Set(uiState.dataManager.selected);
+            if (checked) selected.add(id); else selected.delete(id);
+            uiState.dataManager.selected = [...selected];
+            window.refreshDataManager(`cleanup-${id}`);
+        };
+        window.selectAllDataCleanup = function(checked) {
+            if (!uiState.dataManager) return;
+            uiState.dataManager.selected = checked ? DATA_CLEANUP_MODULES.map(m => m.id) : [];
+            if (checked) uiState.dataManager.preferencesOpen = true;
+            window.refreshDataManager(checked ? 'cleanup-select-all' : 'cleanup-deselect-all');
+        };
+        window.setDataCleanupPreferencesOpen = function(open) {
+            if (uiState.dataManager) uiState.dataManager.preferencesOpen = open;
+        };
+        window.dataCleanupBlocked = function() {
+            return window.campaignTransitionBlocked() || calendarSync.view().busy || currentSyncStatus === 'Carregando...';
+        };
+        // Constrói uma cópia: revisar ou cancelar nunca altera os dados existentes.
+        window.buildDataCleanupState = function(ids, original = state) {
+            const selected = window.getDataCleanupSelection(ids);
+            if (!selected.length) return null;
+            const all = selected.length === DATA_CLEANUP_MODULES.length;
+            const has = id => selected.some(m => m.id === id);
+            const next = all ? {
+                activeTab: 'monday', currentFilter: 'all', currentPlanningWeekStart: original.currentPlanningWeekStart,
+                ownerUid: original.ownerUid, calendarSync: original.calendarSync ? JSON.parse(JSON.stringify(original.calendarSync)) : undefined,
+                calendarSyncTest: original.calendarSyncTest ? JSON.parse(JSON.stringify(original.calendarSyncTest)) : undefined,
+                calendarInboxItems: []
+            } : JSON.parse(JSON.stringify(original));
+            selected.forEach(module => module.keys.forEach(key => { delete next[key]; }));
+            if (has('missions')) {
+                next.focusedTaskId = null; next.focusMode = false; next.currentFilter = 'all';
+                // Mantém os compromissos externos; somente a vinculação à missão apagada é removida.
+                (next.calendarInboxItems || []).forEach(item => {
+                    if (item.status === 'converted') { item.status = 'pending'; item.linkedTaskId = null; }
+                });
+            }
+            if (has('rewards') && next.economy) next.economy.targetReward = null;
+            if (has('game')) {
+                const p = original.prestige || {};
+                const campaign = all ? 1 : Math.max(Number(p.nextCampaignNumber) || 1, (Number(p.campaign) || 1) + 1, ...(p.campaigns || []).map(c => (Number(c.number) || 0) + 1));
+                // Os registros preservados não pertencem à campanha nova e não podem reativar ganhos antigos.
+                CAMPAIGN_RECORD_PATHS.forEach(({ path }) => {
+                    const records = path.split('.').reduce((value, key) => value?.[key], next);
+                    if (Array.isArray(records)) records.forEach(record => { if (typeof record.campaignId === 'undefined') record.campaignId = null; });
+                });
+                const now = new Date().toISOString();
+                Object.assign(next, { xp: 0, level: 1, coins: 0, combo: 0, energy: 100, unlockedBadges: [],
+                    stats: { pomodorosCompleted: 0, tasksMoved: 0, maxComboReached: 0, rewardsBought: 0 },
+                    prestige: { version: 3, campaign, nextCampaignNumber: campaign + 1,
+                        themeId: all ? 'original' : (p.themeId || 'original'), startedAt: now,
+                        campaigns: [], protectedBadgeIds: [], maxCampaigns: [], emblems: [], bonusClaimedBadgeIds: [],
+                        badgeEvents: [], levelEvents: [{ level: 1, date: now }], missionEvents: [], missionEventSequence: 0,
+                        currentStats: {}, deletedCampaignIds: [], recordOriginsInitialized: true } });
+                next.economy = { targetReward: has('rewards') ? null : (next.economy?.targetReward || null) };
+            }
+            return next;
+        };
+        window.reviewDataCleanup = function() {
+            const selected = window.getDataCleanupSelection();
+            if (!selected.length) { window.showAlertModal('Selecione ao menos uma área para limpar.'); return; }
+            if (window.dataCleanupBlocked()) { window.showAlertModal('Pause o Pomodoro, conclua as avaliações ou compras pendentes e aguarde a sincronização em andamento antes de limpar dados.'); return; }
+            const ids = selected.map(m => m.id);
+            const all = ids.length === DATA_CLEANUP_MODULES.length;
+            const expectedState = state;
+            const expectedManager = uiState.dataManager;
+            const message = `${all ? 'Reiniciar todo o Missão Tática?' : 'Apagar os dados das áreas selecionadas?'}\n\n${selected.map(m => m.name).join(' · ')}\n\n${ids.includes('game') ? 'XP, moedas, medalhas e histórico de todas as campanhas serão zerados.' : 'XP, moedas, medalhas e histórico de campanhas serão preservados.'}${ids.includes('missions') || ids.includes('study') ? '\nEventos correspondentes da semana visível no calendário Missão Tática poderão ser removidos na próxima sincronização. Compromissos da sua agenda principal permanecem.' : ''}\n\n${all ? 'As configurações iniciais serão restauradas. A conexão com o Google será mantida.' : 'As áreas não selecionadas serão preservadas.'}\nEsta limpeza é permanente. Um backup JSON restaura o aplicativo inteiro, substituindo os dados atuais.`;
+            window.showConfirmModal(message, () => {
+                if (state !== expectedState || uiState.dataManager !== expectedManager) return;
+                if (window.dataCleanupBlocked()) { window.showAlertModal('Há uma ação ou sincronização em andamento. Aguarde e revise a limpeza novamente.'); return; }
+                // Recalcula a cópia a partir do estado atual; novas entradas nunca se perdem fora da seleção.
+                const next = window.buildDataCleanupState(ids);
+                if (!next) return;
+                const resetTimer = ids.includes('missions') || ids.includes('focus') || ids.includes('game');
+                const previousTimer = { ...pomodoro };
+                if (resetTimer) {
+                    clearInterval(pomodoro.intervalId);
+                    pomodoro = { isRunning: false, timeLeft: (next.pomodoroSettings?.focus || 25) * 60, mode: 'focus', cycle: 1, intervalId: null,
+                        currentFocusStartedAt: null, currentFocusTaskId: null, currentFocusTaskText: null, currentFocusTaskDay: null,
+                        currentFocusTaskCategory: null, focusLock: null };
+                }
+                state = next;
+                window.validateState();
+                if (!resetTimer) pomodoro = previousTimer;
+                uiState.dataManager = null;
+                uiState.showLevelUp = false; uiState.campaignPicker = null; uiState.campaignHistoryId = null;
+                uiState.expandedSubtasks = {}; uiState.weeklyExpandedSections = {}; uiState.radarExpandedSections = {};
+                uiState.editingStudyBlockId = null; uiState.editingTaskId = null; uiState.editTaskDraft = null;
+                uiState.createTaskDraft = null; uiState.operationalDemandDraft = null; uiState.editingOperationalDemandId = null;
+                uiState.calendarInboxEventId = null; uiState.studyPlanningTrackId = '';
+                ['showStatsModal', 'showCreateTaskModal', 'showEditTaskModal', 'showStudyModal', 'showHealthModal', 'showFinanceModal', 'showRitualModal', 'showRechargeModal', 'showCategoryModal', 'showOperationalDemandModal', 'showProfileModal'].forEach(key => { uiState[key] = false; });
+                uiState.deleteTaskPrompt = { show: false, taskId: null };
+                if (all) uiState.mainView = 'day';
+                window.saveState(false, all ? 'data-reset-all' : 'data-cleanup-modules');
+                window.showToast(all ? 'Missão Tática reiniciado' : 'Limpeza concluída', all ? 'Dados apagados. Configure seu perfil para recomeçar.' : `${selected.map(m => m.name).join(', ')}: dados apagados.`, 'check-circle', 'text-emerald-300');
+            });
+        };
+        window.renderDataManager = function() {
+            if (!uiState.dataManager) return '';
+            const selected = window.getDataCleanupSelection();
+            const all = selected.length === DATA_CLEANUP_MODULES.length;
+            const hasGame = selected.some(m => m.id === 'game');
+            const card = module => {
+                const checked = selected.some(m => m.id === module.id);
+                const count = window.getDataCleanupCount(module);
+                return `<label class="flex items-start gap-3 rounded-xl border p-3.5 cursor-pointer transition-colors ${checked ? 'border-indigo-500/70 bg-indigo-950/30' : 'border-slate-800 bg-slate-950/40 hover:border-slate-600'}"><input id="cleanup-${module.id}" type="checkbox" onchange="window.setDataCleanupSelection('${module.id}', this.checked)" ${checked ? 'checked' : ''} class="mt-1 h-4 w-4 shrink-0 accent-indigo-500"><div class="min-w-0"><div class="flex items-center gap-2 text-sm font-bold text-slate-200"><i data-lucide="${module.icon}" class="w-4 h-4 text-slate-400 shrink-0"></i>${module.name}</div><p class="text-xs leading-relaxed text-slate-400 mt-1">${module.desc}</p>${module.id !== 'profile' && module.id !== 'game' ? `<p class="text-[11px] text-slate-500 mt-2">${count} registro${count === 1 ? '' : 's'} · inclui cadastros e histórico</p>` : ''}</div></label>`;
+            };
+            return `<div class="fixed inset-0 bg-slate-950/90 z-[80] p-4 flex items-center justify-center backdrop-blur-sm"><section role="dialog" aria-modal="true" aria-labelledby="data-manager-title" onkeydown="window.handleDataManagerKeydown(event)" class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl font-sans"><header class="flex items-start justify-between gap-4 px-6 py-5 border-b border-slate-800 shrink-0"><div><h2 id="data-manager-title" class="text-xl font-bold text-white">Gerenciar dados</h2><p class="text-sm text-slate-400 mt-1">Limpe algumas áreas ou comece do zero.</p></div><button type="button" onclick="window.closeDataManager()" aria-label="Fechar gerenciamento de dados" class="text-slate-400 hover:text-white rounded-lg p-2 hover:bg-slate-800"><i data-lucide="x" class="w-5 h-5"></i></button></header><div id="data-manager-body" class="overflow-y-auto p-6 space-y-6"><div class="flex flex-wrap justify-between items-center gap-3"><p class="text-xs text-slate-400">Nada vem selecionado. A limpeza inclui dados de todas as campanhas.</p><div class="flex gap-3 text-xs"><button id="cleanup-select-all" type="button" onclick="window.selectAllDataCleanup(true)" class="font-semibold text-indigo-300 hover:text-indigo-200">Selecionar tudo</button><button id="cleanup-deselect-all" type="button" onclick="window.selectAllDataCleanup(false)" class="text-slate-400 hover:text-white">Desmarcar</button></div></div><section><h3 class="text-sm font-semibold text-slate-200 mb-3">Módulos</h3><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${DATA_CLEANUP_MODULES.filter(m => m.group === 'modules').map(card).join('')}</div></section><section><h3 class="text-sm font-semibold text-slate-200 mb-1">Recompensas e progresso</h3><p class="text-xs text-slate-400 mb-3">Apagar um módulo mantém suas conquistas. Para zerar também o jogo, selecione Gamificação.</p><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${DATA_CLEANUP_MODULES.filter(m => m.group === 'career').map(card).join('')}</div></section><details ${uiState.dataManager.preferencesOpen ? 'open' : ''} ontoggle="window.setDataCleanupPreferencesOpen(this.open)" class="rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer text-sm text-slate-300">Perfil e preferências</summary><div class="mt-3">${card(DATA_CLEANUP_MODULES.find(m => m.id === 'profile'))}</div></details><section aria-live="polite" class="rounded-xl border ${selected.length ? 'border-amber-900/50 bg-amber-950/15' : 'border-slate-800 bg-slate-950/40'} p-4"><h3 class="text-sm font-semibold text-slate-200">${all ? 'Reinício completo' : `${selected.length} área${selected.length === 1 ? '' : 's'} selecionada${selected.length === 1 ? '' : 's'}`}</h3><p class="text-xs leading-relaxed text-slate-400 mt-2">${selected.length ? selected.map(m => m.name).join(' · ') : 'Marque somente o que deseja apagar.'}</p>${selected.length ? `<p class="text-xs leading-relaxed ${hasGame ? 'text-amber-200/90' : 'text-slate-300'} mt-3">${hasGame ? 'XP, moedas, medalhas e histórico de todas as campanhas serão zerados. Uma campanha vazia começará no nível 1.' : 'XP, moedas, medalhas e histórico de campanhas serão preservados.'}</p>` : ''}<p class="text-xs leading-relaxed text-slate-500 mt-3">Cadastros personalizados são apagados nas áreas selecionadas. Opções padrão reaparecem. A conexão com o Google é mantida.</p>${selected.some(m => ['missions', 'study'].includes(m.id)) ? '<p class="text-xs leading-relaxed text-slate-400 mt-3">A sincronização poderá remover os eventos correspondentes da semana visível no calendário Missão Tática. Compromissos da agenda principal permanecem; podem reaparecer na entrada da agenda.</p>' : ''}</section><div class="flex items-start gap-3"><i data-lucide="download" class="w-4 h-4 mt-0.5 shrink-0 text-slate-500"></i><div><button type="button" onclick="window.exportData()" class="text-sm text-indigo-300 hover:text-indigo-200 font-semibold">Exportar backup completo</button><p class="text-xs text-slate-500 leading-relaxed mt-1">Opcional antes da limpeza. A importação substitui todos os dados do aplicativo.</p></div></div></div><footer class="px-6 py-4 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0"><p class="text-xs text-slate-500">Você revisa e confirma no próximo passo.</p><div class="flex gap-3"><button type="button" onclick="window.closeDataManager()" class="px-4 py-2.5 rounded-lg border border-slate-700 text-sm text-slate-300 hover:bg-slate-800">Cancelar</button><button type="button" onclick="window.reviewDataCleanup()" ${selected.length ? '' : 'disabled'} class="px-4 py-2.5 rounded-lg text-sm font-semibold bg-red-900/50 border border-red-800/60 text-red-200 hover:bg-red-900/70 disabled:opacity-40 disabled:cursor-not-allowed">Revisar limpeza</button></div></footer></section></div>`;
         };
 
         // ------------------------------------------
@@ -5516,6 +5681,8 @@
             }
 
 
+            html += window.renderDataManager();
+
             const profileNeedsSetup = !state?.userProfile?.configured;
             if (profileNeedsSetup || uiState.showProfileModal) {
                 html += window.renderProfileModal(profileNeedsSetup);
@@ -5684,7 +5851,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.51</span></div>
+                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.52</span></div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-2">
@@ -6109,9 +6276,9 @@
             // RODAPÉ: BACKUP E REINICIAR
             html += `
             <div class="flex flex-wrap justify-center gap-4 pb-8 pt-4 border-t border-slate-800/50 mt-8 relative">
-                <button onclick="window.exportData()" class="text-xs text-slate-500 hover:text-emerald-400 font-bold uppercase tracking-widest transition-colors font-mono flex items-center gap-1"><i data-lucide="download" class="w-3 h-3"></i> Exportar JSON</button>
-                <button onclick="window.triggerImport()" class="text-xs text-slate-500 hover:text-blue-400 font-bold uppercase tracking-widest transition-colors font-mono flex items-center gap-1"><i data-lucide="upload" class="w-3 h-3"></i> Importar JSON</button>
-                <button onclick="window.clearAllMissions()" class="text-xs text-slate-500 hover:text-red-400 font-bold uppercase tracking-widest transition-colors font-mono flex items-center gap-1" title="Apaga missões comuns e recorrentes, preservando os demais módulos"><i data-lucide="trash-2" class="w-3 h-3"></i> Limpar todas as missões</button>
+                <button onclick="window.exportData()" class="text-xs text-slate-500 hover:text-emerald-400 font-bold uppercase tracking-widest transition-colors font-mono flex items-center gap-1"><i data-lucide="download" class="w-3 h-3"></i> Exportar backup JSON</button>
+                <button onclick="window.triggerImport()" class="text-xs text-slate-500 hover:text-blue-400 font-bold uppercase tracking-widest transition-colors font-mono flex items-center gap-1"><i data-lucide="upload" class="w-3 h-3"></i> Importar backup JSON</button>
+                <details class="w-full max-w-md mx-auto rounded-xl border border-slate-800/70 bg-slate-950/30 text-center"><summary class="cursor-pointer text-xs text-slate-500 hover:text-slate-300 py-3">Dados e reinício</summary><div class="px-4 pb-4"><p class="text-xs text-slate-500 leading-relaxed mb-3">Limpeza por módulo ou reinício completo, com revisão antes de confirmar.</p><button id="open-data-manager" type="button" onclick="window.openDataManager()" class="text-sm text-slate-300 hover:text-white rounded-lg border border-slate-700 px-4 py-2">Gerenciar dados</button></div></details>
                 <p class="text-[10px] text-slate-500 text-center w-full mt-4 font-mono">Ambiente oficial de rotina · sincronização segura com o Google Agenda.</p>
             </div>`;
 
