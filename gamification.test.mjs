@@ -25,6 +25,7 @@ function engine(overrides = {}) {
         sourceBetween('const RANKS =', 'const TASK_NATURES ='),
         sourceBetween('window.normalizeEconomy =', 'window.getTaskNature ='),
         sourceBetween('window.getRankProgress =', 'window.getRankName ='),
+        sourceBetween('window.escapeHtml =', '// Ponte temporária'),
         sourceBetween('window.getCurrentlyQualifiedBadgeIds =', 'window.rollbackTaskBadges ='),
         sourceBetween('function renderQGContent()', '// --- ESTUDOS ---'),
         'window.renderQGForTest = renderQGContent;',
@@ -120,4 +121,60 @@ test('descrições de medalhas correspondem aos critérios existentes', () => {
     assert.equal(description('legal_eagle'), 'Concluiu 3 missões da categoria Advocacia.');
     assert.match(description('deep_focus'), /qualquer categoria/);
     assert.match(description('operador_1_7_30'), /pelo menos 3 revisões/);
+});
+
+test('QG destaca a patente atual e mantém toda a carreira em seções expansíveis', () => {
+    for (const [level, xp] of [[1, 0], [10, 32287], [15, 95000]]) {
+        const { window, state } = engine({ level, xp });
+        window.normalizeEconomy();
+        const before = JSON.stringify(state);
+        const html = window.renderQGForTest();
+        assert.equal(JSON.stringify(state), before, 'Renderizar não altera o progresso');
+        assert.match(html, new RegExp(`Sua patente · Nível ${level}`));
+        assert.equal((html.match(/Nível \d+/g) || []).length, 15, 'Cada patente aparece uma vez');
+        if (level === 10) {
+            assert.match(html, /aria-valuenow="91"/);
+            assert.match(html, /faltam 713 XP/);
+            assert.ok(html.indexOf('Sua patente') < html.indexOf('Patentes conquistadas'));
+            assert.ok(!/<details[^>]*\bopen\b/.test(html));
+        }
+        if (level === 1) assert.ok(!html.includes('Patentes conquistadas'));
+        if (level === 15) assert.ok(!html.includes('Próxima patente'));
+    }
+});
+
+test('medalhas separa conquistas de desafios sem esconder critérios', () => {
+    const ctx = engine();
+    ctx.uiState.statsTab = 'badges';
+    const html = ctx.window.renderQGForTest();
+    assert.match(html, /1 de \d+ medalhas conquistadas/);
+    assert.ok(html.indexOf('Foco Absoluto') < html.indexOf('Próximos desafios'));
+    for (const badge of ctx.window.badgesForTest) {
+        assert.equal(html.split(`<h4 class="font-bold text-white text-sm">${badge.title}</h4>`).length - 1, 1);
+        assert.ok(html.includes(badge.desc));
+    }
+    ctx.state.unlockedBadges = ctx.window.badgesForTest.map(b => b.id);
+    assert.match(ctx.window.renderQGForTest(), /Coleção completa/);
+    ctx.state.unlockedBadges = [];
+    assert.match(ctx.window.renderQGForTest(), /Suas primeiras conquistas/);
+});
+
+test('recompensa-alvo mostra saldo combinado, falta e disponibilidade sem interpretar o título como HTML', () => {
+    const ctx = engine({ coins: 3, economy: { tacticalReserve: 231,
+        targetReward: { type: 'custom', id: '22', title: '<img src=x onerror=alert(1)>', cost: 300 } } });
+    ctx.uiState.statsTab = 'shop';
+    let html = ctx.window.renderQGForTest();
+    assert.match(html, /234 MT/);
+    assert.match(html, /Faltam 66 MT para seu alvo de 300 MT/);
+    assert.match(html, /aria-valuenow="78"/);
+    assert.ok(html.includes('&lt;img src=x onerror=alert(1)&gt;'));
+    assert.ok(!html.includes('<img src=x'));
+    assert.match(html, /50% do saldo semanal/);
+    assert.ok(!html.includes('NaN'));
+    ctx.state.coins = 100;
+    html = ctx.window.renderQGForTest();
+    assert.match(html, /Alvo alcançado/);
+    assert.match(html, /aria-valuenow="100"/);
+    ctx.state.economy.targetReward = null;
+    assert.match(ctx.window.renderQGForTest(), /Escolher recompensa/);
 });

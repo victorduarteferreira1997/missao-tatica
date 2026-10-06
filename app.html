@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.44-gamification-rules">
+    <meta name="app-build" content="v1.9.45-qg-layout">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -5284,7 +5284,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.44</span></div>
+                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.45</span></div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-2">
@@ -5586,11 +5586,11 @@
             // MODAL Q.G.
             if (uiState.showStatsModal) {
                 html += `
-                <div class="fixed inset-0 bg-black/90 flex flex-col items-center justify-start p-2 sm:p-6 z-[60] backdrop-blur-md overflow-y-auto pt-10 font-mono">
-                    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl shadow-2xl modal-enter relative mb-10">
-                        <button onclick="window.toggleStatsModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full p-1"><i data-lucide="x"></i></button>
+                <div class="fixed inset-0 bg-black/90 flex flex-col items-center justify-start p-2 sm:p-6 z-[60] backdrop-blur-md overflow-y-auto pt-10 font-sans">
+                    <div role="dialog" aria-modal="true" aria-labelledby="qg-title" class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-4xl shadow-2xl modal-enter relative mb-10">
+                        <button aria-label="Fechar Quartel General" onclick="window.toggleStatsModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full p-1"><i data-lucide="x"></i></button>
                         <div class="p-5 sm:p-8">
-                            <h2 class="text-2xl font-black text-white flex items-center gap-3 mb-6"><i data-lucide="building-2" class="text-yellow-500 w-8 h-8"></i> Quartel General</h2>
+                            <h2 id="qg-title" class="text-2xl font-black text-white flex items-center gap-3 mb-6 pr-8"><i data-lucide="building-2" class="text-yellow-500 w-8 h-8"></i> Quartel General</h2>
                             
                             <div class="flex flex-wrap gap-2 mb-6 bg-slate-950 p-1 rounded-lg">
                                 ${['roadmap:Patentes', 'badges:Medalhas', 'performance:Desempenho', 'shop:Mercado Negro'].map(tab => {
@@ -6060,39 +6060,48 @@
         // --- Q.G. ---
         function renderQGContent() {
             if (uiState.statsTab === 'roadmap') {
-                let html = `<div class="space-y-3">`;
-                RANKS.forEach(rank => {
-                    const isCurrent = rank.level === state.level; const isPast = rank.level < state.level;
-                    const progress = window.getRankProgress(rank.level);
-                    const bgClass = isCurrent ? 'bg-indigo-900/40 border-indigo-500 shadow-md shadow-indigo-950/20' : (isPast ? 'bg-slate-800/50 border-slate-700 opacity-50' : 'bg-slate-900 border-slate-800');
-                    html += `
-                    <div class="flex items-center gap-4 p-3 rounded-xl border ${bgClass} transition-all">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center bg-slate-950 border border-slate-700 shrink-0"><i data-lucide="${isCurrent ? 'star' : (isPast ? 'check' : 'lock')}" class="w-5 h-5 ${isCurrent ? 'text-indigo-400' : 'text-slate-500'}"></i></div>
-                        <div class="flex-1">
-                            <h4 class="font-bold text-white text-sm sm:text-base">${rank.name} <span class="text-xs font-normal text-slate-500 ml-2">Nível ${rank.level}</span></h4>
-                            <div class="text-xs text-slate-400 mt-0.5">${progress.entryXp === 0 ? 'Patente inicial · 0 XP' : `Disponível a partir de ${progress.entryXp} XP`}</div>
-                            ${isCurrent ? `<div class="text-xs text-indigo-300 mt-1">${progress.nextXp === null ? 'Patente máxima conquistada · seu XP continua acumulando.' : `Próxima promoção: ${progress.nextXp} XP · faltam ${progress.remainingXp} XP`}</div>` : ''}
-                        </div>
-                        ${isCurrent ? `<div class="text-xs font-black text-indigo-400 uppercase tracking-widest bg-indigo-950 px-3 py-1 rounded-full border border-indigo-900/50 animate-pulse">VOCÊ</div>` : ''}
-                    </div>`;
-                });
-                return html + `</div>`;
+                const rankIndex = Math.max(0, Math.min(RANKS.length - 1, (parseInt(state.level, 10) || 1) - 1));
+                const current = RANKS[rankIndex];
+                const next = RANKS[rankIndex + 1];
+                const past = RANKS.slice(0, rankIndex);
+                const future = RANKS.slice(rankIndex + 2);
+                const progress = window.getRankProgress(current.level);
+                const earnedCount = BADGES_DB.filter(b => state.unlockedBadges.includes(b.id)).length;
+                const economy = window.normalizeEconomy();
+                const target = economy.targetReward;
+                const balance = window.getTotalTacticalCoins();
+                const rankRow = (rank, achieved) => `<div class="flex items-center justify-between gap-3 py-3 border-b border-slate-800 last:border-0"><div class="flex items-center gap-3"><i data-lucide="${achieved ? 'check' : 'lock'}" class="w-4 h-4 ${achieved ? 'text-emerald-400' : 'text-slate-500'} shrink-0"></i><span class="text-sm font-semibold text-slate-200">${rank.name}</span><span class="text-xs text-slate-400">Nível ${rank.level}</span></div><span class="text-xs text-slate-400 whitespace-nowrap">${rank.level === 1 ? 'Patente inicial · 0 XP' : `Disponível a partir de ${window.getRankProgress(rank.level).entryXp} XP`}</span></div>`;
+                return `<div class="space-y-5">
+                    <section class="rounded-2xl border border-indigo-500/60 bg-gradient-to-br from-indigo-950/80 to-slate-950 p-5 sm:p-6">
+                        <div class="flex items-start gap-4"><div class="bg-indigo-500/15 border border-indigo-500/40 rounded-2xl p-3"><i data-lucide="star" class="w-7 h-7 text-indigo-300"></i></div><div class="flex-1"><p class="text-xs font-bold uppercase tracking-widest text-indigo-300">Sua patente · Nível ${current.level}</p><h3 class="text-2xl font-black text-white mt-1">${current.name}</h3><p class="text-sm text-slate-300 mt-1">${state.xp} XP acumulados</p></div></div>
+                        <p class="text-xs text-slate-400 mt-4">${progress.entryXp === 0 ? 'Patente inicial · 0 XP' : `Disponível a partir de ${progress.entryXp} XP`}</p>
+                        ${next ? `<div class="mt-4"><div class="flex justify-between gap-3 text-sm mb-2"><span class="font-semibold text-indigo-200">Rumo a ${next.name}</span><span class="font-bold text-white">${progress.percent}%</span></div><div role="progressbar" aria-label="Progresso até a próxima patente" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress.percent}" class="h-2.5 bg-slate-800 rounded-full overflow-hidden"><div class="h-full bg-indigo-400 rounded-full" style="width:${progress.percent}%"></div></div><p class="text-sm text-indigo-200 mt-3">Próxima promoção: ${progress.nextXp} XP · faltam ${progress.remainingXp} XP</p></div>` : `<p class="text-sm text-indigo-200 mt-4">Patente máxima conquistada · seu XP continua acumulando.</p>`}
+                    </section>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button onclick="window.setStatsTab('badges')" class="text-left rounded-xl border border-slate-700 bg-slate-800/50 p-4 hover:border-indigo-400 transition-colors"><div class="flex items-center justify-between gap-3"><span class="text-sm font-bold text-white">${earnedCount} de ${BADGES_DB.length} medalhas</span><i data-lucide="award" class="w-5 h-5 text-amber-300"></i></div><p class="text-xs text-slate-400 mt-2">Ver conquistas e próximos desafios →</p></button>
+                        <button onclick="window.setStatsTab('shop')" class="text-left rounded-xl border border-slate-700 bg-slate-800/50 p-4 hover:border-yellow-400 transition-colors"><div class="flex items-center justify-between gap-3"><span class="text-sm font-bold text-yellow-300">${balance} MT disponíveis</span><i data-lucide="target" class="w-5 h-5 text-yellow-300"></i></div><p class="text-xs text-slate-300 mt-2">${target ? `Alvo: ${window.escapeHtml(target.title)} · ${balance >= target.cost ? 'disponível para resgate' : `faltam ${Math.max(0, target.cost - balance)} MT`}` : 'Escolha sua recompensa-alvo →'}</p></button>
+                    </div>
+                    ${next ? `<section class="rounded-xl border border-slate-700 p-4"><p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Próxima patente</p>${rankRow(next, false)}</section>` : ''}
+                    ${past.length ? `<details class="group rounded-xl border border-slate-800 bg-slate-950/40"><summary class="cursor-pointer list-none flex items-center justify-between gap-3 p-4 text-sm font-semibold text-slate-300 hover:text-white"><span>Patentes conquistadas <span class="text-emerald-400 ml-2">${past.length}</span></span><i data-lucide="chevron-down" class="w-4 h-4 group-open:rotate-180 transition-transform"></i></summary><div class="px-4 pb-2 border-t border-slate-800">${past.map(rank => rankRow(rank, true)).join('')}</div></details>` : ''}
+                    ${future.length ? `<details class="group rounded-xl border border-slate-800 bg-slate-950/40"><summary class="cursor-pointer list-none flex items-center justify-between gap-3 p-4 text-sm font-semibold text-slate-300 hover:text-white"><span>Patentes futuras <span class="text-slate-400 ml-2">${future.length}</span></span><i data-lucide="chevron-down" class="w-4 h-4 group-open:rotate-180 transition-transform"></i></summary><div class="px-4 pb-2 border-t border-slate-800">${future.map(rank => rankRow(rank, false)).join('')}</div></details>` : ''}
+                </div>`;
             } else if (uiState.statsTab === 'badges') {
-                let html = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">`;
-                BADGES_DB.forEach(badge => {
+                const earned = BADGES_DB.filter(b => state.unlockedBadges.includes(b.id));
+                const locked = BADGES_DB.filter(b => !state.unlockedBadges.includes(b.id));
+                const badgeCard = badge => {
                     const unlocked = state.unlockedBadges.includes(badge.id);
-                    const bgClass = unlocked ? 'bg-slate-800 border-slate-600 shadow-inner' : 'bg-slate-900/50 border-slate-800 opacity-60 grayscale';
-                    html += `
+                    const bgClass = unlocked ? 'bg-slate-800/70 border-emerald-900/60' : 'bg-slate-950/50 border-slate-800';
+                    return `
                     <div class="flex items-start gap-4 p-4 rounded-xl border ${bgClass} transition-all">
                         <div class="w-12 h-12 rounded-full flex items-center justify-center bg-slate-950 border border-slate-700 shrink-0"><i data-lucide="${badge.icon}" class="w-6 h-6 ${unlocked ? badge.color : 'text-slate-600'}"></i></div>
                         <div>
                             <h4 class="font-bold text-white text-sm">${badge.title}</h4>
                             <p class="text-xs text-slate-400 mt-1 leading-tight">${badge.desc}</p>
-                            ${unlocked ? `<span class="inline-block mt-2 text-[10px] uppercase font-bold text-emerald-500 bg-emerald-950 px-2 py-0.5 rounded">Ativo</span>` : `<span class="inline-block mt-2 text-[10px] uppercase font-bold text-slate-600 bg-slate-900 px-2 py-0.5 rounded">Bloqueado</span>`}
+                            ${unlocked ? `<span class="inline-block mt-2 text-[10px] uppercase font-bold text-emerald-300 bg-emerald-950 px-2 py-0.5 rounded">Conquistada</span>` : `<span class="inline-block mt-2 text-[10px] uppercase font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded">A conquistar</span>`}
                         </div>
                     </div>`;
-                });
-                return html + `</div>`;
+                };
+                return `<div class="space-y-6"><section class="rounded-xl border border-amber-900/50 bg-amber-950/15 p-5"><p class="text-xs text-amber-300 uppercase tracking-widest font-bold">Sua coleção</p><h3 class="text-xl text-white font-black mt-1">${earned.length} de ${BADGES_DB.length} medalhas conquistadas</h3><p class="text-sm text-slate-400 mt-2">Cada medalha reconhece uma ação concreta. Consulte o critério para escolher seu próximo desafio.</p></section><section><h3 class="text-sm font-bold text-emerald-300 mb-3">Conquistadas</h3>${earned.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${earned.map(badgeCard).join('')}</div>` : `<p class="text-sm text-slate-400 border border-dashed border-slate-700 rounded-xl p-4">Suas primeiras conquistas aparecerão aqui.</p>`}</section>${locked.length ? `<section><h3 class="text-sm font-bold text-slate-300 mb-3">Próximos desafios</h3><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${locked.map(badgeCard).join('')}</div></section>` : `<p class="text-sm text-amber-300">Coleção completa. Todas as medalhas atuais foram conquistadas.</p>`}</div>`;
             } else if (uiState.statsTab === 'performance') {
                 return window.renderQGPerformanceDashboard ? window.renderQGPerformanceDashboard() : '<div class="text-slate-500 text-sm">Painel de desempenho indisponível.</div>';
             } else if (uiState.statsTab === 'shop') {
@@ -6106,20 +6115,21 @@
                 <div class="bg-yellow-950/20 border border-yellow-900/50 p-4 rounded-xl mb-4">
                     <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                         <div>
-                            <h3 class="text-yellow-500 font-black uppercase text-sm flex items-center gap-2"><i data-lucide="coins" class="w-4 h-4"></i> Economia Tática 2.0</h3>
-                            <p class="text-xs text-slate-400 mt-1">XP mede evolução. Moedas agora são recurso escasso para recompensas reais.</p>
+                            <p class="text-xs font-bold uppercase tracking-widest text-yellow-300">Saldo para recompensas</p>
+                            <h3 class="text-3xl font-black text-yellow-300 mt-1">${totalCoins} MT <span class="text-sm font-medium text-slate-300">disponíveis</span></h3>
+                            <p class="text-sm text-slate-400 mt-2">Saldo da semana + Reserva Tática. Escolha um alvo e acompanhe sua conquista.</p>
                         </div>
-                        <button onclick="window.resetTacticalCoins()" class="bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-900/60 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1 self-start"><i data-lucide="refresh-ccw" class="w-3 h-3"></i> Resetar moedas</button>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
                         <div class="bg-slate-950 border border-slate-800 rounded-xl p-3"><p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Moedas da semana</p><div class="text-2xl font-black text-yellow-400 mt-1">${state.coins} MT</div></div>
                         <div class="bg-slate-950 border border-slate-800 rounded-xl p-3"><p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Reserva Tática</p><div class="text-2xl font-black text-amber-300 mt-1">${economy.tacticalReserve}/${economy.reserveCap}</div></div>
-                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-3"><p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Teto semanal</p><div class="text-2xl font-black text-cyan-300 mt-1">${economy.weeklyCoinsEarned}/${economy.weeklyCap}</div><div class="w-full bg-slate-800 h-1.5 rounded-full mt-2"><div class="bg-cyan-400 h-1.5 rounded-full" style="width:${weeklyPct}%"></div></div></div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-3"><p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Ganhos nesta semana</p><div class="text-2xl font-black text-cyan-300 mt-1">${economy.weeklyCoinsEarned}/${economy.weeklyCap} <span class="text-xs">MT</span></div><div class="w-full bg-slate-800 h-1.5 rounded-full mt-2"><div class="bg-cyan-400 h-1.5 rounded-full" style="width:${weeklyPct}%"></div></div><p class="text-xs text-slate-400 mt-2">Limite de ganhos; não é o saldo disponível.</p></div>
                     </div>
-                    ${target ? `<div class="mt-4 bg-slate-950 border border-yellow-900/40 rounded-xl p-4"><div class="flex items-center justify-between gap-3 mb-2"><div><p class="text-[10px] text-yellow-500 uppercase font-black tracking-widest">Recompensa-alvo</p><h4 class="text-sm font-bold text-white flex items-center gap-2"><i data-lucide="${target.icon || 'target'}" class="w-4 h-4 text-yellow-300"></i>${target.title}</h4></div><button onclick="window.clearRewardTarget()" class="text-[10px] text-slate-500 hover:text-red-300 uppercase font-bold">limpar</button></div><div class="flex items-center gap-3"><div class="flex-1 bg-slate-800 h-2 rounded-full"><div class="bg-yellow-400 h-2 rounded-full" style="width:${targetPct}%"></div></div><span class="text-xs font-bold text-yellow-300">${totalCoins}/${target.cost} MT</span></div></div>` : `<div class="mt-4 bg-slate-950 border border-dashed border-slate-800 rounded-xl p-4 text-xs text-slate-500">Escolha uma recompensa-alvo para dar sentido às moedas acumuladas.</div>`}
+                    ${target ? `<div class="mt-4 bg-slate-950 border border-yellow-500/50 rounded-xl p-4"><div class="flex items-center justify-between gap-3 mb-3"><div><p class="text-xs text-yellow-300 uppercase font-bold tracking-widest">Recompensa-alvo</p><h4 class="text-lg font-bold text-white mt-1">${window.escapeHtml(target.title)}</h4></div><button aria-label="Remover recompensa-alvo" onclick="window.clearRewardTarget()" class="text-xs text-slate-400 hover:text-red-300 font-bold">Remover alvo</button></div><div class="flex items-center gap-3"><div role="progressbar" aria-label="Progresso da recompensa-alvo" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${targetPct}" class="flex-1 bg-slate-800 h-2 rounded-full overflow-hidden"><div class="bg-yellow-400 h-2 rounded-full" style="width:${targetPct}%"></div></div><span class="text-sm font-bold text-yellow-300">${targetPct}%</span></div><p class="text-sm ${totalCoins >= target.cost ? 'text-emerald-300' : 'text-slate-300'} mt-3">${totalCoins >= target.cost ? 'Alvo alcançado. Você já pode resgatar esta recompensa.' : `Faltam ${Math.max(0, target.cost - totalCoins)} MT para seu alvo de ${target.cost} MT.`}</p><a href="#qg-rewards" class="inline-block mt-3 text-xs font-bold text-yellow-300 hover:text-yellow-100 underline underline-offset-4">Ver recompensas</a></div>` : `<div class="mt-4 bg-slate-950 border border-dashed border-slate-700 rounded-xl p-4"><p class="text-sm font-semibold text-slate-200">Qual será sua próxima recompensa?</p><p class="text-sm text-slate-400 mt-1">Use “Definir alvo” em uma das opções abaixo para acompanhar o progresso.</p><a href="#qg-rewards" class="inline-block mt-3 text-xs font-bold text-yellow-300 hover:text-yellow-100 underline underline-offset-4">Escolher recompensa</a></div>`}
+                    <details class="group mt-4 border-t border-yellow-900/40 pt-3"><summary class="cursor-pointer text-xs text-slate-400 hover:text-slate-200">Regras e manutenção das moedas</summary><div class="pt-3 text-xs text-slate-400 space-y-3"><p>Ao virar a semana, ${Math.round(ECONOMY_DEFAULTS.rolloverToReservePercent * 100)}% do saldo semanal vai para a reserva, até o limite de ${economy.reserveCap} MT. O restante do saldo semanal é zerado.</p><button onclick="window.resetTacticalCoins()" class="text-red-300 hover:text-red-200 border border-red-900/60 px-3 py-2 rounded-lg text-xs font-semibold">Resetar moedas</button></div></details>
                 </div>
                 
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 mt-6 flex items-center gap-2"><i data-lucide="star" class="w-4 h-4 text-yellow-500"></i> Oficiais</h3>
+                <h3 id="qg-rewards" class="scroll-mt-6 text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 mt-6 flex items-center gap-2"><i data-lucide="star" class="w-4 h-4 text-yellow-500"></i> Recompensas oficiais</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">`;
                 
                 REWARDS_SHOP.forEach(r => {
@@ -6133,7 +6143,7 @@
                             ${isTarget ? `<span class="inline-flex items-center gap-1 mt-2 text-[10px] uppercase font-black text-yellow-300 bg-yellow-950/40 px-2 py-1 rounded border border-yellow-900/50"><i data-lucide="target" class="w-3 h-3"></i> Alvo atual</span>` : ''}
                         </div>
                         <div class="grid grid-cols-2 gap-2 mt-4">
-                            <button onclick="window.setRewardTarget('default','${r.id}')" class="py-2 rounded-lg text-[10px] font-black uppercase tracking-widest bg-slate-900 hover:bg-slate-700 text-slate-300 border border-slate-700">Alvo</button>
+                            <button onclick="window.setRewardTarget('default','${r.id}')" class="py-2 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-700 text-slate-300 border border-slate-700">${isTarget ? 'Alvo atual' : 'Definir alvo'}</button>
                             <button onclick="window.buyReward('${r.id}')" ${canAfford ? '' : 'disabled'} class="py-2 rounded-lg text-xs font-bold transition-colors ${canAfford ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-slate-900 text-slate-400 cursor-not-allowed'}">${canAfford ? 'Resgatar' : `Faltam ${Math.max(0, r.cost - totalCoins)} MT`}</button>
                         </div>
                     </div>`;
@@ -6151,11 +6161,11 @@
                             <button onclick="window.deleteCustomReward(${r.id})" class="absolute top-2 right-2 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="x" class="w-4 h-4"></i></button>
                             <div>
                                 <div class="flex justify-between items-start mb-2"><i data-lucide="${r.icon}" class="text-white w-6 h-6"></i><span class="bg-slate-950 text-yellow-400 text-xs font-bold px-2 py-1 rounded border border-yellow-900/50">${r.cost} MT</span></div>
-                                <h4 class="font-bold text-white text-sm">${r.title}</h4><p class="text-xs text-slate-400 mt-1 leading-tight">${r.desc}</p>
+                                <h4 class="font-bold text-white text-sm">${window.escapeHtml(r.title)}</h4><p class="text-xs text-slate-400 mt-1 leading-tight">${window.escapeHtml(r.desc || '')}</p>
                                 ${isTarget ? `<span class="inline-flex items-center gap-1 mt-2 text-[10px] uppercase font-black text-yellow-300 bg-yellow-950/40 px-2 py-1 rounded border border-yellow-900/50"><i data-lucide="target" class="w-3 h-3"></i> Alvo atual</span>` : ''}
                             </div>
                             <div class="grid grid-cols-2 gap-2 mt-4">
-                                <button onclick="window.setRewardTarget('custom','${r.id}')" class="py-2 rounded-lg text-[10px] font-black uppercase tracking-widest bg-slate-900 hover:bg-slate-700 text-slate-300 border border-slate-700">Alvo</button>
+                                <button onclick="window.setRewardTarget('custom','${r.id}')" class="py-2 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-700 text-slate-300 border border-slate-700">${isTarget ? 'Alvo atual' : 'Definir alvo'}</button>
                                 <button onclick="window.buyCustomReward(${r.id})" ${canAfford ? '' : 'disabled'} class="py-2 rounded-lg text-xs font-bold transition-colors ${canAfford ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-slate-900 text-slate-400 cursor-not-allowed'}">${canAfford ? 'Resgatar' : `Faltam ${Math.max(0, r.cost - totalCoins)} MT`}</button>
                             </div>
                         </div>`;
