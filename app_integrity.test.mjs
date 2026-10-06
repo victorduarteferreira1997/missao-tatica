@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
+import { installFormDialogs as installDialogModule } from './ui/form_dialogs.v1.js';
 
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
-const formHelpersStart = app.indexOf('        window.formDialogStyles =');
-const formHelpersEnd = app.indexOf('        window.renderEditTaskModal =', formHelpersStart);
-const installFormDialogs = target => runInNewContext(app.slice(formHelpersStart, formHelpersEnd), { window: target });
+const installFormDialogs = target => installDialogModule(target, {});
+assert.match(app, /import \{ installFormDialogs \} from '\.\/ui\/form_dialogs\.v1\.js'/);
+assert.match(app, /installFormDialogs\(window, document\)/);
+assert.ok(!app.includes('window.renderFormDialog ='), 'A estrutura deve existir apenas no módulo compartilhado.');
 
 const moduleMatch = app.match(/<script\s+type="module">([\s\S]*?)<\/script>/i);
 
@@ -568,6 +570,16 @@ for (const markup of [createMarkup, inboxMarkup, newDemandMarkup, closedDemandMa
         assert.ok(new RegExp(`window\\.${action}\\s*=`).test(app), `Ação renderizada sem implementação: ${action}`);
     }
 }
+const sharedHandlerWindow = { escapeHtml: value => String(value), closeExample() { this.closed = true; }, saveExample() { this.saved = true; } };
+installFormDialogs(sharedHandlerWindow);
+const sharedMarkup = sharedHandlerWindow.renderFormDialog({ id: 'example-dialog', titleId: 'example-title', title: 'Exemplo', description: '', closeLabel: 'Fechar', closeHandler: 'closeExample', submitHandler: 'saveExample', body: '', footer: '' });
+assert.doesNotMatch(sharedMarkup, /target\./, 'O HTML deve chamar os handlers globais do app.');
+const sharedClick = sharedMarkup.match(/onclick="([^"]+)"/)[1];
+const sharedSubmit = sharedMarkup.match(/onsubmit="([^"]+)"/)[1];
+let submitPrevented = false;
+runInNewContext(sharedClick, { window: sharedHandlerWindow });
+runInNewContext(sharedSubmit, { window: sharedHandlerWindow, event: { preventDefault() { submitPrevented = true; } } });
+assert.equal(sharedHandlerWindow.closed, true); assert.equal(sharedHandlerWindow.saved, true); assert.equal(submitPrevented, true);
 let activeControl = null, keyboardCloseCount = 0, prepareCount = 0, bindingCount = 0;
 const control = () => ({ disabled: false, getClientRects: () => [1], focus() { activeControl = this; } });
 const firstControl = control(), lastControl = control();
@@ -581,7 +593,7 @@ const keyboardDialog = {
 };
 const keyboardDocument = { get activeElement() { return activeControl; } };
 const keyboardWindow = {};
-runInNewContext(app.slice(formHelpersStart, formHelpersEnd), { window: keyboardWindow, document: keyboardDocument });
+installDialogModule(keyboardWindow, keyboardDocument);
 const dialogOptions = { id: 'test-dialog', initialFocus: 'test-title', close: () => { keyboardCloseCount++; }, prepare: () => { prepareCount++; } };
 const keyboardRoot = { querySelector: () => keyboardDialog };
 keyboardWindow.bindFormDialog(keyboardRoot, { ...dialogOptions, blocked: true });
