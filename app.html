@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.52-data-management">
+    <meta name="app-build" content="v1.9.53-recovery-rituals">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -1961,6 +1961,14 @@
                 uiState.calendarInboxEventId = null; uiState.studyPlanningTrackId = '';
                 ['showStatsModal', 'showCreateTaskModal', 'showEditTaskModal', 'showStudyModal', 'showHealthModal', 'showFinanceModal', 'showRitualModal', 'showRechargeModal', 'showCategoryModal', 'showOperationalDemandModal', 'showProfileModal'].forEach(key => { uiState[key] = false; });
                 uiState.deleteTaskPrompt = { show: false, taskId: null };
+                ['ritual', 'recharge'].forEach(kind => {
+                    if (!ids.includes(kind === 'ritual' ? 'rituals' : 'recharge')) return;
+                    if (typeof window.clearRecoveryDraft === 'function') window.clearRecoveryDraft(kind);
+                    for (const suffix of ['create', 'manage', 'history', 'settings']) {
+                        if (uiState.recoverySections) uiState.recoverySections[`${kind}-${suffix}`] = false;
+                    }
+                    if (uiState.recoveryHistoryPages) uiState.recoveryHistoryPages[kind] = 0;
+                });
                 if (all) uiState.mainView = 'day';
                 window.saveState(false, all ? 'data-reset-all' : 'data-cleanup-modules');
                 window.showToast(all ? 'Missão Tática reiniciado' : 'Limpeza concluída', all ? 'Dados apagados. Configure seu perfil para recomeçar.' : `${selected.map(m => m.name).join(', ')}: dados apagados.`, 'check-circle', 'text-emerald-300');
@@ -3737,6 +3745,110 @@
         window.toggleRitualModal = function() { uiState.showRitualModal = !uiState.showRitualModal; render(); };
         window.toggleRechargeModal = function() { uiState.showRechargeModal = !uiState.showRechargeModal; render(); };
 
+        // Seções e rascunhos são apenas estado de interface, nunca progresso do usuário.
+        window.setRecoverySection = function(key, open) {
+            if (!['recharge-create', 'recharge-manage', 'recharge-history', 'ritual-create', 'ritual-manage', 'ritual-history', 'recharge-settings', 'ritual-settings'].includes(key)) return;
+            uiState.recoverySections ||= {};
+            uiState.recoverySections[key] = Boolean(open);
+        };
+        window.clearRecoveryDraft = function(kind) {
+            uiState.recoveryDrafts ||= {}; uiState.recoveryDraftReset ||= {};
+            delete uiState.recoveryDrafts[kind]; uiState.recoveryDraftReset[kind] = true;
+        };
+        window.getRecoveryLogDateKey = function(log) {
+            const value = log.date || log.completedAt;
+            return value && Number.isFinite(Date.parse(value)) ? window.getLocalDateKey(value) : null;
+        };
+        window.openRecoverySection = function(key, focusId) {
+            window.setRecoverySection(key, true);
+            render();
+            const field = document.getElementById(focusId);
+            field?.scrollIntoView({ block: 'nearest' }); field?.focus({ preventScroll: true });
+        };
+        window.setRechargeDurationFilter = function(filter) {
+            if (!['short', 'medium', 'all'].includes(filter)) return;
+            uiState.rechargeDurationFilter = filter; render();
+            document.getElementById(`recharge-filter-${filter}`)?.focus({ preventScroll: true });
+        };
+        window.getVisibleRechargeActions = function() {
+            const filter = uiState.rechargeDurationFilter || 'short';
+            const limit = filter === 'short' ? 5 : filter === 'medium' ? 15 : 240;
+            return window.getRechargeActions().filter(a => (Number(a.duration) || 5) <= limit);
+        };
+        window.recoveryHandlerArgument = function(id) { return window.escapeHtml(JSON.stringify(String(id))); };
+        window.getRecoveryIcon = function(icon, fallback) { return /^[a-z0-9-]+$/.test(String(icon || '')) ? icon : fallback; };
+        window.renderRecoveryEffects = function(xp, hp) {
+            const finite = n => Number.isFinite(Number(n)) ? Number(n) : 0;
+            xp = finite(xp); hp = finite(hp);
+            return `${xp ? `<span class="text-xs text-indigo-300">${xp > 0 ? '+' : ''}${xp} XP</span>` : ''}${hp ? `<span class="text-xs ${hp > 0 ? 'text-emerald-300' : 'text-slate-400'}">${hp > 0 ? '+' : ''}${hp} HP</span>` : ''}`;
+        };
+        window.getRecoveryHistory = function(kind) {
+            const recharge = kind === 'recharge';
+            const logs = recharge ? state.rechargeData?.logs || [] : state.routineData?.logs || [];
+            const scope = uiState.recoveryHistoryFilters?.[kind] || 'today';
+            const today = window.getLocalDateKey();
+            const rows = logs.filter(log => scope === 'all' || window.getRecoveryLogDateKey(log) === today)
+                .slice().sort((a,b) => (Date.parse(b.date || b.completedAt) || 0) - (Date.parse(a.date || a.completedAt) || 0));
+            const pages = Math.max(1, Math.ceil(rows.length / 10));
+            const page = Math.min(pages - 1, Math.max(0, Number(uiState.recoveryHistoryPages?.[kind]) || 0));
+            return { scope, rows: rows.slice(page * 10, page * 10 + 10), total: rows.length, page, pages };
+        };
+        window.setRecoveryHistoryFilter = function(kind, scope) {
+            if (!['recharge', 'ritual'].includes(kind) || !['today', 'all'].includes(scope)) return;
+            uiState.recoveryHistoryFilters ||= {}; uiState.recoveryHistoryPages ||= {};
+            uiState.recoveryHistoryFilters[kind] = scope; uiState.recoveryHistoryPages[kind] = 0; render();
+        };
+        window.setRecoveryHistoryPage = function(kind, page) {
+            if (!['recharge', 'ritual'].includes(kind) || !Number.isInteger(page)) return;
+            const history = window.getRecoveryHistory(kind);
+            uiState.recoveryHistoryPages ||= {};
+            uiState.recoveryHistoryPages[kind] = Math.max(0, Math.min(history.pages - 1, page)); render();
+        };
+        window.renderRecoveryHistory = function(kind) {
+            const history = window.getRecoveryHistory(kind);
+            return `<div class="flex items-center justify-between gap-3 mb-3"><div class="flex gap-2">${['today', 'all'].map(scope => `<button type="button" onclick="window.setRecoveryHistoryFilter('${kind}', '${scope}')" aria-pressed="${history.scope === scope}" class="rounded-lg px-3 py-2 text-xs ${history.scope === scope ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800'}">${scope === 'today' ? 'Hoje' : 'Todo o histórico'}</button>`).join('')}</div><span class="text-xs text-slate-500">${history.total} registro${history.total === 1 ? '' : 's'}</span></div><div class="divide-y divide-slate-800">${history.rows.map(log => {
+                const ritual = kind === 'ritual' ? state.routineData?.rituals?.find(r => String(r.id) === String(log.ritualId)) : null;
+                const title = log.title || ritual?.title || (kind === 'ritual' ? 'Ritual sem cadastro' : 'Recarga');
+                return `<div class="flex justify-between items-start gap-4 py-3"><div class="min-w-0"><p class="text-sm text-slate-200 break-words">${window.escapeHtml(title)}</p><p class="text-xs text-slate-500 mt-1">${window.escapeHtml(window.formatCampaignDate(log.date || log.completedAt))}${kind === 'recharge' ? ` · ${Number(log.duration) || 0} min` : ''}</p></div><div class="flex flex-col items-end gap-1 shrink-0">${window.renderRecoveryEffects(log.xpAwarded, kind === 'recharge' ? log.energyGainApplied : log.energyDeltaApplied)}</div></div>`;
+            }).join('') || `<p class="text-sm text-slate-500 py-4">${history.scope === 'today' ? 'Nenhum registro hoje.' : 'O histórico aparece após o primeiro registro.'}</p>`}</div>${history.pages > 1 ? `<div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-800"><button type="button" onclick="window.setRecoveryHistoryPage('${kind}', ${history.page - 1})" ${history.page ? '' : 'disabled'} class="text-xs text-slate-300 disabled:opacity-30 px-3 py-2 rounded-lg border border-slate-700">Anterior</button><span class="text-xs text-slate-500">${history.page + 1} de ${history.pages}</span><button type="button" onclick="window.setRecoveryHistoryPage('${kind}', ${history.page + 1})" ${history.page < history.pages - 1 ? '' : 'disabled'} class="text-xs text-slate-300 disabled:opacity-30 px-3 py-2 rounded-lg border border-slate-700">Próxima</button></div>` : ''}`;
+        };
+        window.renderRecoveryDialog = function(kind) {
+            const recharge = kind === 'recharge';
+            const title = recharge ? 'Recarga' : 'Rituais';
+            const closeHandler = recharge ? 'toggleRechargeModal' : 'toggleRitualModal';
+            return `<div class="fixed inset-0 bg-slate-950/90 flex items-center justify-center p-4 z-[60] backdrop-blur-sm font-sans"><section id="${kind}-module-dialog" role="dialog" aria-modal="true" aria-labelledby="${kind}-module-title" class="modal-enter w-full max-w-4xl max-h-[92vh] rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col overflow-hidden"><header class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-800 px-6 py-5"><div><h2 id="${kind}-module-title" class="text-xl font-semibold text-white">${title}</h2><p class="text-sm text-slate-400 mt-1">${recharge ? 'Faça uma pausa. Registre quando terminar.' : 'Pequenos passos para começar e encerrar o dia.'}</p></div><button id="${kind}-module-close" type="button" onclick="window.${closeHandler}()" aria-label="Fechar ${title}" class="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="x" class="w-5 h-5"></i></button></header><div id="${kind}-module-body" class="min-h-0 overflow-y-auto overscroll-contain p-6">${recharge ? window.renderRechargeModule() : window.renderRitualsSection()}</div></section></div>`;
+        };
+        window.captureRecoveryDialogs = function(root) {
+            const snapshots = {};
+            uiState.recoveryDrafts ||= {};
+            for (const kind of ['ritual', 'recharge']) {
+                const dialog = root.querySelector(`#${kind}-module-dialog`);
+                if (!dialog) continue;
+                snapshots[kind] = { scrollTop: dialog.querySelector(`#${kind}-module-body`)?.scrollTop || 0,
+                    focusId: dialog.contains(document.activeElement) ? document.activeElement.id : '' };
+                if (!uiState.recoveryDraftReset?.[kind]) {
+                    uiState.recoveryDrafts[kind] = [...dialog.querySelectorAll('input[id], select[id]')].map(el => ({ id: el.id, value: el.value }));
+                }
+            }
+            return snapshots;
+        };
+        window.bindRecoveryDialogs = function(root, snapshots = {}) {
+            for (const kind of ['ritual', 'recharge']) {
+                const dialog = root.querySelector(`#${kind}-module-dialog`);
+                if (!dialog) continue;
+                if (uiState.recoveryDraftReset?.[kind]) delete uiState.recoveryDraftReset[kind];
+                else (uiState.recoveryDrafts?.[kind] || []).forEach(field => {
+                    const input = document.getElementById(field.id);
+                    if (input && dialog.contains(input)) input.value = field.value;
+                });
+                const body = dialog.querySelector(`#${kind}-module-body`);
+                if (body && snapshots[kind]) body.scrollTop = snapshots[kind].scrollTop;
+                window.bindFormDialog(root, { id: `${kind}-module-dialog`, initialFocus: snapshots[kind]?.focusId || `${kind}-module-close`,
+                    close: kind === 'ritual' ? window.toggleRitualModal : window.toggleRechargeModal,
+                    blocked: uiState.confirm.show || uiState.alert.show || Boolean(uiState.dataManager) });
+            }
+        };
+
         // ==========================================
         // MÓDULO: RECARGA EXECUTIVA
         // ==========================================
@@ -3818,6 +3930,8 @@
                 createdAt: new Date().toISOString()
             });
 
+            window.clearRecoveryDraft('recharge');
+            window.setRecoverySection('recharge-create', false);
             window.saveState();
             window.showToast('Recarga criada', 'Nova opção adicionada ao Arsenal de Energia.', 'battery-charging', 'text-emerald-400');
         };
@@ -3826,109 +3940,39 @@
             const action = state.rechargeData?.actions?.find(a => String(a.id) === String(actionId));
             if (!action) { window.showAlertModal('Recarga não encontrada.'); return; }
             const message = action.isDefault
-                ? `Remover "${action.title}" do painel? Você pode recuperar os padrões futuramente em uma nova versão.`
-                : `Excluir a recarga personalizada "${action.title}"? O histórico já registrado será preservado.`;
+                ? `Arquivar "${action.title}"? Ela sairá das opções. Você pode restaurá-la em Gerenciar ações. O histórico será preservado.`
+                : `Arquivar a recarga personalizada "${action.title}"? O histórico será preservado e você pode restaurá-la em Gerenciar ações.`;
             window.showConfirmModal(message, () => {
-                action.active = false;
+                const current = state.rechargeData?.actions?.find(a => String(a.id) === String(actionId));
+                if (!current) return;
+                current.active = false;
                 window.saveState();
-                window.showToast('Recarga removida', 'O histórico foi preservado.', 'archive', 'text-slate-300');
+                window.showToast('Recarga arquivada', 'O histórico foi preservado.', 'archive', 'text-slate-300');
             });
         };
 
+        window.restoreRechargeAction = function(actionId) {
+            const action = state.rechargeData?.actions?.find(a => String(a.id) === String(actionId));
+            if (!action || action.active !== false) return;
+            action.active = true; window.saveState();
+            window.showToast('Recarga restaurada', 'A ação voltou para suas opções.', 'rotate-ccw', 'text-emerald-300');
+        };
         window.renderRechargeModule = function() {
-            const actions = window.getRechargeActions();
-            const todayKey = window.getLocalDateKey();
-            const todayLogs = (state.rechargeData?.logs || [])
-                .filter(log => window.getLocalDateKey(log.date) === todayKey)
-                .sort((a, b) => new Date(b.date) - new Date(a.date));
+            const actions = window.getVisibleRechargeActions();
+            const filter = uiState.rechargeDurationFilter || 'short';
+            const energy = Math.max(0, Math.min(100, Number(state.energy) || 0));
+            const todayLogs = (state.rechargeData?.logs || []).filter(log => window.getRecoveryLogDateKey(log) === window.getLocalDateKey());
             const totalHpToday = todayLogs.reduce((sum, log) => sum + (Number(log.energyGainApplied) || 0), 0);
-
-            const actionCards = actions.map(action => {
-                const hp = Number(action.energyGain) || 0;
-                const xp = Number(action.xp) || 0;
-                return `
-                    <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3 hover:border-emerald-800/60 transition-colors">
-                        <div class="flex items-start gap-3">
-                            <div class="bg-emerald-950/50 border border-emerald-900/50 rounded-xl p-2 shrink-0"><i data-lucide="${action.icon || 'battery-charging'}" class="w-5 h-5 text-emerald-400"></i></div>
-                            <div class="min-w-0">
-                                <h4 class="text-sm font-black text-white leading-tight">${action.title}</h4>
-                                <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">${action.description || ''}</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-widest">
-                            <span class="bg-emerald-950/40 text-emerald-400 border border-emerald-900/50 px-2 py-1 rounded-full">+${hp} HP</span>
-                            <span class="bg-slate-900 text-slate-400 border border-slate-800 px-2 py-1 rounded-full">${action.duration || 5} min</span>
-                            ${xp ? `<span class="bg-indigo-950/40 text-indigo-400 border border-indigo-900/50 px-2 py-1 rounded-full">+${xp} XP</span>` : ''}
-                        </div>
-                        <div class="flex gap-2 mt-auto">
-                            <button onclick="window.useRechargeAction('${action.id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2.5 rounded-xl text-xs uppercase tracking-widest transition-colors">Executar recarga</button>
-                            <button onclick="window.deleteRechargeAction('${action.id}')" class="bg-slate-900 hover:bg-red-950/50 text-slate-500 hover:text-red-400 border border-slate-800 px-3 rounded-xl transition-colors" title="Remover recarga"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                        </div>
-                    </div>`;
-            }).join('');
-
-            const logsHtml = todayLogs.length ? todayLogs.slice(0, 8).map(log => `
-                <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex justify-between items-center gap-3">
-                    <div>
-                        <div class="text-xs font-bold text-white">${log.title}</div>
-                        <div class="text-[10px] text-slate-500 uppercase tracking-widest mt-0.5">${new Date(log.date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})} • ${log.duration || 0} min</div>
-                    </div>
-                    <div class="text-emerald-400 text-xs font-black">+${log.energyGainApplied || 0} HP</div>
-                </div>
-            `).join('') : `<p class="text-xs text-slate-500 italic">Nenhuma recarga registrada hoje.</p>`;
-
-            return `
-                <div class="grid grid-cols-1 lg:grid-cols-[1fr_0.8fr] gap-5">
-                    <div class="space-y-5">
-                        <div class="bg-slate-950/70 border border-emerald-900/30 rounded-2xl p-4">
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                                <div>
-                                    <h3 class="text-sm font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2"><i data-lucide="battery-charging" class="w-4 h-4"></i> Arsenal de Recarga</h3>
-                                    <p class="text-xs text-slate-400 mt-1">Ações rápidas que recuperam HP sem poluir o board de tarefas.</p>
-                                </div>
-                                <div class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-right">
-                                    <div class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">HP Atual</div>
-                                    <div class="text-xl font-black ${state.energy < 20 ? 'text-red-400' : 'text-emerald-400'}">${state.energy}%</div>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">${actionCards}</div>
-                        </div>
-                    </div>
-
-                    <div class="space-y-5">
-                        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4">
-                            <h3 class="text-sm font-black text-white uppercase tracking-widest mb-3 flex items-center gap-2"><i data-lucide="plus-circle" class="w-4 h-4 text-emerald-400"></i> Criar recarga</h3>
-                            <div class="space-y-3">
-                                <div><label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nome</label><input id="recharge-title" placeholder="Ex.: Café sem tela, banho, leitura leve" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500"></div>
-                                <div><label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Descrição</label><input id="recharge-desc" placeholder="Explique quando usar esta recarga" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500"></div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div><label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">HP recuperado</label><input id="recharge-energy" type="number" value="10" min="1" max="100" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500"></div>
-                                    <div><label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Duração min.</label><input id="recharge-duration" type="number" value="5" min="1" max="240" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500"></div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div><label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">XP opcional</label><input id="recharge-xp" type="number" value="0" min="0" max="100" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500"></div>
-                                    <div><label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Ícone</label><select id="recharge-icon" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500"><option value="battery-charging">Bateria</option><option value="coffee">Café</option><option value="utensils">Almoço</option><option value="bed">Cochilo</option><option value="gamepad-2">Jogo</option><option value="wind">Respiração</option><option value="footprints">Caminhada</option><option value="sparkles">Espiritual</option></select></div>
-                                </div>
-                                <button onclick="window.addRechargeAction()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl text-xs uppercase tracking-widest transition-colors">Criar recarga</button>
-                            </div>
-                        </div>
-
-                        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4">
-                            <div class="flex justify-between items-start gap-3 mb-3">
-                                <div>
-                                    <h3 class="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2"><i data-lucide="history" class="w-4 h-4 text-emerald-400"></i> Hoje</h3>
-                                    <p class="text-xs text-slate-500 mt-1">HP recuperado hoje: <span class="text-emerald-400 font-bold">+${totalHpToday}</span></p>
-                                </div>
-                            </div>
-                            <div class="space-y-2">${logsHtml}</div>
-                        </div>
-
-                        <div class="bg-indigo-950/20 border border-indigo-900/40 rounded-2xl p-4 text-xs text-slate-300 leading-relaxed">
-                            <div class="font-black text-indigo-300 uppercase tracking-widest mb-2 flex items-center gap-2"><i data-lucide="brain" class="w-4 h-4"></i> Nota tática</div>
-                            Recargas curtas funcionam melhor quando têm começo e fim. Priorize pausa sem tela, movimento leve, alimentação tranquila, respiração lenta e descanso breve. Jogo também pode recarregar, desde que seja usado com limite claro.
-                        </div>
-                    </div>
-                </div>`;
+            const open = key => uiState.recoverySections?.[key] ? 'open' : '';
+            const all = (state.rechargeData?.actions || []).slice().sort((a,b) => Number(a.active === false) - Number(b.active === false) || String(a.title).localeCompare(String(b.title), 'pt-BR'));
+            const field = 'w-full mt-1.5 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-400';
+            const summary = 'flex items-center justify-between gap-3 cursor-pointer text-sm font-medium text-slate-300';
+            return `<div class="space-y-5"><section class="rounded-xl border border-emerald-900/40 bg-emerald-950/15 p-5"><div class="flex items-center justify-between gap-5"><div><p class="text-sm text-slate-300">Bateria executiva</p><p class="text-xs text-slate-400 mt-1">${energy >= 100 ? 'Bateria completa. Você pode descansar mesmo sem registrar HP.' : 'Escolha uma pausa que cabe no seu tempo.'}</p></div><p class="text-3xl font-semibold tabular-nums ${energy < 20 ? 'text-amber-300' : 'text-emerald-300'}">${energy}<span class="text-base text-slate-500">%</span></p></div><div role="progressbar" aria-label="Bateria executiva" aria-valuenow="${energy}" aria-valuemin="0" aria-valuemax="100" class="h-2 rounded-full bg-slate-800 mt-4 overflow-hidden"><div class="h-full rounded-full ${energy < 20 ? 'bg-amber-400' : 'bg-emerald-500'}" style="width:${energy}%"></div></div></section><section><div class="flex flex-wrap justify-between items-center gap-3 mb-4"><h3 class="text-sm font-semibold text-slate-200">Quanto tempo você tem?</h3><div class="flex gap-1 rounded-lg bg-slate-950 border border-slate-800 p-1">${[{id:'short', name:'Até 5 min'}, {id:'medium', name:'Até 15 min'}, {id:'all', name:'Todas'}].map(option => `<button id="recharge-filter-${option.id}" type="button" onclick="window.setRechargeDurationFilter('${option.id}')" aria-pressed="${filter === option.id}" class="rounded-md px-3 py-2 text-xs ${filter === option.id ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}">${option.name}</button>`).join('')}</div></div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">${actions.map(action => {
+                const hp = Math.max(0, Math.min(100, Number(action.energyGain) || 0));
+                const applicable = Math.min(hp, 100 - energy);
+                const full = energy >= 100 && hp > 0;
+                return `<article class="rounded-xl border border-slate-800 bg-slate-950/40 p-4 flex flex-col"><div class="flex items-start gap-2.5"><i data-lucide="${window.getRecoveryIcon(action.icon, 'battery-charging')}" class="w-5 h-5 mt-0.5 shrink-0 text-emerald-400"></i><h4 class="text-sm font-semibold leading-snug text-slate-100 break-words">${window.escapeHtml(action.title)}</h4></div><p class="text-xs leading-relaxed text-slate-400 mt-3 flex-1 break-words">${window.escapeHtml(action.description || '')}</p><div class="flex flex-wrap gap-x-3 gap-y-1 items-center mt-4"><span class="text-xs text-slate-300">${Number(action.duration) || 5} min</span>${window.renderRecoveryEffects(Math.max(0, Math.min(100, Number(action.xp) || 0)), applicable)}${full ? '<span class="text-xs text-slate-500">Bateria completa</span>' : ''}</div><button type="button" onclick="window.useRechargeAction(${window.recoveryHandlerArgument(action.id)})" ${full ? 'disabled' : ''} class="mt-4 w-full rounded-lg border border-emerald-800/60 bg-emerald-900/35 px-3 py-2.5 text-sm font-medium text-emerald-200 hover:bg-emerald-900/60 disabled:opacity-40 disabled:cursor-not-allowed">Registrar recarga</button></article>`;
+            }).join('') || `<div class="sm:col-span-2 lg:col-span-3 rounded-xl border border-dashed border-slate-700 px-5 py-6 text-center"><p class="text-sm text-slate-400">Nenhuma ação ativa neste tempo.</p><button type="button" onclick="window.setRechargeDurationFilter('all')" class="mt-3 text-sm text-emerald-300">Ver todas as opções</button></div>`}</div><p class="text-xs text-slate-500 mt-3">Registrar confirma a pausa realizada; não inicia um cronômetro. Recargas padrão não gastam moedas.</p></section><div class="space-y-3 border-t border-slate-800 pt-5"><details id="recharge-create-section" ${open('recharge-create')} ontoggle="window.setRecoverySection('recharge-create', this.open)" class="rounded-xl border border-slate-800 p-4"><summary class="${summary}"><span>Criar uma recarga</span><i data-lucide="plus" class="w-4 h-4 text-slate-500"></i></summary><form novalidate onsubmit="event.preventDefault(); window.addRechargeAction()" class="space-y-4 mt-4"><label class="block text-sm text-slate-300">Nome<input id="recharge-title" maxlength="100" placeholder="Ex.: Leitura leve sem tela" class="${field}"></label><label class="block text-sm text-slate-300">Quando usar <span class="text-xs text-slate-500">(opcional)</span><input id="recharge-desc" maxlength="300" placeholder="Uma descrição curta" class="${field}"></label><div class="grid grid-cols-2 gap-3"><label class="block text-sm text-slate-300">Duração em minutos<input id="recharge-duration" type="number" value="5" min="1" max="240" class="${field}"></label><label class="block text-sm text-slate-300">HP recuperado<input id="recharge-energy" type="number" value="10" min="1" max="100" class="${field}"></label></div><details ${open('recharge-settings')} ontoggle="window.setRecoverySection('recharge-settings', this.open)" class="border-t border-slate-800 pt-3"><summary class="text-xs text-slate-400 cursor-pointer">Ajustes opcionais</summary><div class="grid grid-cols-2 gap-3 mt-3"><label class="block text-sm text-slate-300">XP<input id="recharge-xp" type="number" value="0" min="0" max="100" class="${field}"></label><label class="block text-sm text-slate-300">Ícone<select id="recharge-icon" class="${field}">${[{id:'battery-charging',label:'Bateria'}, {id:'coffee',label:'Café'}, {id:'utensils',label:'Refeição'}, {id:'bed',label:'Descanso'}, {id:'gamepad-2',label:'Jogo'}, {id:'wind',label:'Respiração'}, {id:'footprints',label:'Caminhada'}, {id:'sparkles',label:'Espiritual'}].map(i => `<option value="${i.id}">${i.label}</option>`).join('')}</select></label></div><p class="text-xs text-slate-500 mt-2">O padrão é 0 XP. Descansar não depende de pontuação.</p></details><div class="flex justify-end"><button type="submit" class="rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2.5 text-sm font-medium">Salvar recarga</button></div></form></details><details ${open('recharge-history')} ontoggle="window.setRecoverySection('recharge-history', this.open)" class="rounded-xl border border-slate-800 p-4"><summary class="${summary}"><span>Histórico de recargas</span><span class="text-xs text-slate-500">Hoje: ${todayLogs.length} · +${totalHpToday} HP</span></summary><div class="mt-4">${window.renderRecoveryHistory('recharge')}</div></details><details ${open('recharge-manage')} ontoggle="window.setRecoverySection('recharge-manage', this.open)" class="rounded-xl border border-slate-800 p-4"><summary class="${summary}"><span>Gerenciar ações</span><i data-lucide="settings-2" class="w-4 h-4 text-slate-500"></i></summary><p class="text-xs text-slate-500 mt-3">Arquivar retira a ação das opções e preserva o histórico.</p><div class="mt-3 divide-y divide-slate-800">${all.map(action => `<div class="flex items-center justify-between gap-4 py-3"><div class="min-w-0"><p class="text-sm text-slate-300 break-words">${window.escapeHtml(action.title)}</p><p class="text-xs text-slate-500 mt-1">${action.active === false ? 'Arquivada' : 'Ativa'} · ${action.isDefault ? 'Padrão' : 'Personalizada'}</p></div><button type="button" onclick="window.${action.active === false ? 'restoreRechargeAction' : 'deleteRechargeAction'}(${window.recoveryHandlerArgument(action.id)})" class="shrink-0 rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-400 hover:text-white">${action.active === false ? 'Restaurar' : 'Arquivar'}</button></div>`).join('') || '<p class="text-sm text-slate-500 py-3">Nenhuma ação cadastrada.</p>'}</div></details></div></div>`;
         };
 
         // ==========================================
@@ -3944,6 +3988,8 @@
             if (!['morning', 'night'].includes(period)) { window.showAlertModal('Período inválido.'); return; }
             if (isNaN(xp)) xp = 10;
             if (isNaN(energyDelta)) energyDelta = 0;
+            xp = Math.max(0, Math.min(100, xp));
+            energyDelta = Math.max(-100, Math.min(100, energyDelta));
 
             state.routineData.rituals.push({
                 id: Date.now(),
@@ -3955,18 +4001,20 @@
                 createdAt: new Date().toISOString()
             });
 
+            window.clearRecoveryDraft('ritual');
+            window.setRecoverySection('ritual-create', false);
             if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
             window.saveState();
             window.showToast('Ritual criado', 'Protocolo operacional adicionado.', 'clipboard-check', 'text-emerald-400');
         };
 
         window.completeRitual = function(ritualId) {
-            const ritual = state.routineData.rituals.find(r => r.id === ritualId && r.active !== false);
+            const ritual = state.routineData.rituals.find(r => String(r.id) === String(ritualId) && r.active !== false);
             if (!ritual) { window.showAlertModal('Ritual não encontrado.'); return; }
 
             const todayKey = window.getLocalDateKey();
             const alreadyDone = state.routineData.logs.some(log => 
-                log.ritualId === ritualId && window.getLocalDateKey(log.date || log.completedAt) === todayKey
+                String(log.ritualId) === String(ritualId) && window.getRecoveryLogDateKey(log) === todayKey
             );
 
             if (alreadyDone) {
@@ -3975,19 +4023,21 @@
             }
 
             const xpAwarded = Number.isFinite(Number(ritual.xp)) ? Number(ritual.xp) : 10;
-            const energyDeltaApplied = Number.isFinite(Number(ritual.energyDelta)) ? Number(ritual.energyDelta) : 0;
+            const energyDeltaPlanned = Number.isFinite(Number(ritual.energyDelta)) ? Number(ritual.energyDelta) : 0;
+            const beforeEnergy = state.energy;
+            window.changeEnergy(energyDeltaPlanned);
 
             state.routineData.logs.push({
                 id: Date.now(),
-                ritualId,
+                ritualId: ritual.id, title: ritual.title, period: ritual.period,
                 date: new Date().toISOString(),
                 completedAt: new Date().toISOString(),
                 xpAwarded, xpCampaign: window.normalizePrestige().campaign,
-                energyDeltaApplied
+                energyDeltaPlanned, energyDeltaApplied: state.energy - beforeEnergy,
+                beforeEnergy, afterEnergy: state.energy
             });
 
             state.xp += xpAwarded;
-            window.changeEnergy(energyDeltaApplied);
             window.checkLevelUp();
             if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
             window.saveState();
@@ -3996,7 +4046,7 @@
 
         window.deleteRitual = function(ritualId) {
             window.showConfirmModal('Deseja arquivar este ritual? O histórico será preservado.', () => {
-                const ritual = state.routineData.rituals.find(r => r.id === ritualId);
+                const ritual = state.routineData.rituals.find(r => String(r.id) === String(ritualId));
                 if (!ritual) { window.showAlertModal('Ritual não encontrado.'); return; }
                 ritual.active = false;
                 window.saveState();
@@ -4019,122 +4069,47 @@
         window.isRitualCompletedToday = function(ritualId) {
             const todayKey = window.getLocalDateKey();
             return state.routineData.logs.some(log => 
-                log.ritualId === ritualId && window.getLocalDateKey(log.date || log.completedAt) === todayKey
+                String(log.ritualId) === String(ritualId) && window.getRecoveryLogDateKey(log) === todayKey
             );
         };
 
+        const RITUAL_SUGGESTIONS = [
+            { title: 'Beber água', period: 'morning', xp: 10, hp: 5 },
+            { title: 'Planejar 3 prioridades', period: 'morning', xp: 15, hp: 0 },
+            { title: 'Alongamento leve', period: 'morning', xp: 10, hp: 5 },
+            { title: 'Separar roupa do dia seguinte', period: 'night', xp: 10, hp: 0 },
+            { title: 'Desligar telas', period: 'night', xp: 15, hp: 5 },
+            { title: 'Medicação prescrita', period: 'night', xp: 10, hp: 0 }
+        ];
+        window.chooseRitualSuggestion = function(index) {
+            const suggestion = RITUAL_SUGGESTIONS[index];
+            if (!suggestion) return;
+            window.openRecoverySection('ritual-create', 'ritual-title');
+            window.fillRitualSuggestion(suggestion.title, suggestion.period, suggestion.xp, suggestion.hp);
+        };
+        window.restoreRitual = function(ritualId) {
+            const ritual = state.routineData?.rituals?.find(r => String(r.id) === String(ritualId));
+            if (!ritual || ritual.active !== false) return;
+            ritual.active = true; window.saveState();
+            window.showToast('Ritual restaurado', 'O ritual voltou para sua rotina.', 'rotate-ccw', 'text-emerald-300');
+        };
         window.renderRitualsSection = function() {
-            const rituals = (state.routineData?.rituals || []).filter(r => r.active !== false);
-            const morning = rituals.filter(r => r.period === 'morning');
-            const night = rituals.filter(r => r.period === 'night');
-
-            const renderRitualList = (items, emptyText) => {
-                if (!items.length) return `<p class="text-xs text-slate-500 italic">${emptyText}</p>`;
-
-                return items.map(r => {
+            const all = state.routineData?.rituals || [];
+            const rituals = all.filter(r => r.active !== false);
+            const done = rituals.filter(r => window.isRitualCompletedToday(r.id)).length;
+            const open = key => uiState.recoverySections?.[key] ? 'open' : '';
+            const field = 'w-full mt-1.5 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-emerald-400';
+            const summary = 'flex justify-between items-center gap-3 cursor-pointer text-sm font-medium text-slate-300';
+            const renderPeriod = (period, title, icon, color) => {
+                const rows = rituals.filter(r => r.period === period);
+                const completed = rows.filter(r => window.isRitualCompletedToday(r.id)).length;
+                return `<section class="rounded-xl border border-slate-800 bg-slate-950/30 p-4"><div class="flex justify-between items-center gap-3 mb-2"><h3 class="text-sm font-semibold ${color} flex items-center gap-2"><i data-lucide="${icon}" class="w-4 h-4"></i>${title}</h3><span class="text-xs text-slate-500">${completed}/${rows.length}</span></div><div class="divide-y divide-slate-800">${rows.map(r => {
                     const doneToday = window.isRitualCompletedToday(r.id);
-                    const hpText = Number(r.energyDelta || 0) === 0 ? 'HP 0' : `${Number(r.energyDelta) > 0 ? '+' : ''}${r.energyDelta} HP`;
-                    const hpClass = Number(r.energyDelta || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
-
-                    return `
-                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div>
-                            <h4 class="text-sm font-bold text-white">${r.title}</h4>
-                            <div class="flex flex-wrap gap-2 mt-1 text-[10px] font-bold uppercase tracking-widest">
-                                <span class="text-indigo-400 bg-indigo-950/40 border border-indigo-900/50 px-2 py-0.5 rounded">+${r.xp || 10} XP</span>
-                                <span class="${hpClass} bg-slate-900 border border-slate-700 px-2 py-0.5 rounded">${hpText}</span>
-                                ${doneToday ? `<span class="text-emerald-400 bg-emerald-950/40 border border-emerald-900/50 px-2 py-0.5 rounded">Concluído hoje</span>` : ''}
-                            </div>
-                        </div>
-                        <div class="flex gap-2 shrink-0">
-                            ${doneToday 
-                                ? `<button disabled class="px-3 py-2 rounded-lg bg-emerald-950/30 text-emerald-500 border border-emerald-900/40 text-xs font-bold cursor-default">Feito</button>`
-                                : `<button onclick="window.completeRitual(${r.id})" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors">Concluir hoje</button>`
-                            }
-                            <button onclick="window.deleteRitual(${r.id})" class="px-3 py-2 rounded-lg bg-slate-900 hover:bg-red-950/40 text-slate-500 hover:text-red-400 border border-slate-800 text-xs font-bold transition-colors" title="Arquivar ritual"><i data-lucide="archive" class="w-4 h-4"></i></button>
-                        </div>
-                    </div>`;
-                }).join('');
+                    const xp = Number.isFinite(Number(r.xp)) ? Number(r.xp) : 10;
+                    return `<div class="flex items-start justify-between gap-3 py-3"><div class="min-w-0"><p class="text-sm ${doneToday ? 'text-slate-500' : 'text-slate-200'} break-words">${window.escapeHtml(r.title)}</p><div class="flex flex-wrap gap-3 mt-1.5">${window.renderRecoveryEffects(xp, r.energyDelta)}</div></div><button type="button" onclick="window.completeRitual(${window.recoveryHandlerArgument(r.id)})" ${doneToday ? 'disabled' : ''} class="shrink-0 rounded-lg px-3 py-2 text-xs font-medium ${doneToday ? 'text-emerald-400/70 border border-transparent' : 'border border-emerald-800/60 bg-emerald-900/35 text-emerald-200 hover:bg-emerald-900/60'}">${doneToday ? 'Feito hoje' : 'Concluir'}</button></div>`;
+                }).join('') || `<p class="text-xs text-slate-500 py-3">Nenhum ritual ${period === 'morning' ? 'matinal' : 'noturno'} ativo.</p>`}</div></section>`;
             };
-
-            return `
-            <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 mb-4 font-mono">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                    <div>
-                        <h2 class="text-sm font-black tracking-widest uppercase text-emerald-400 flex items-center gap-2"><i data-lucide="clipboard-check" class="w-4 h-4"></i> Rituais Operacionais</h2>
-                        <p class="text-xs text-slate-500 mt-1">Protocolos matinais e noturnos integrados à gamificação.</p>
-                    </div>
-                    <div class="text-[10px] uppercase tracking-widest font-bold text-slate-500 bg-slate-950 border border-slate-800 px-3 py-1 rounded-full">Rotina 1.0</div>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
-                    <div class="bg-slate-950/40 border border-slate-800 rounded-xl p-4">
-                        <h3 class="text-xs font-bold uppercase tracking-widest text-yellow-400 mb-3 flex items-center gap-2"><i data-lucide="sunrise" class="w-4 h-4"></i> Ritual Matinal</h3>
-                        <div class="space-y-2">${renderRitualList(morning, 'Nenhum ritual matinal ativo.')}</div>
-                    </div>
-                    <div class="bg-slate-950/40 border border-slate-800 rounded-xl p-4">
-                        <h3 class="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-3 flex items-center gap-2"><i data-lucide="moon" class="w-4 h-4"></i> Ritual Noturno</h3>
-                        <div class="space-y-2">${renderRitualList(night, 'Nenhum ritual noturno ativo.')}</div>
-                    </div>
-                </div>
-
-                ${rituals.length === 0 ? `<div class="mb-4 bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-500 italic">Nenhum ritual ativo. Crie um protocolo matinal ou noturno.</div>` : ''}
-
-                <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
-                    <h3 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Criar Ritual</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                        <label class="block lg:col-span-2">
-                            <span class="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1">Nome do ritual</span>
-                            <input id="ritual-title" type="text" placeholder="Ex.: Beber água" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500">
-                        </label>
-                        <label class="block">
-                            <span class="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1">Período</span>
-                            <select id="ritual-period" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500">
-                                <option value="morning">Manhã</option>
-                                <option value="night">Noite</option>
-                            </select>
-                        </label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <label class="block">
-                                <span class="block text-[10px] uppercase tracking-widest font-bold text-indigo-400 mb-1">XP</span>
-                                <input id="ritual-xp" type="number" value="10" placeholder="10" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500">
-                            </label>
-                            <label class="block">
-                                <span class="block text-[10px] uppercase tracking-widest font-bold text-emerald-400 mb-1">HP</span>
-                                <input id="ritual-energy" type="number" value="0" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-emerald-500">
-                            </label>
-                        </div>
-                    </div>
-                    <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-3 mb-4 text-[11px] text-slate-400 leading-relaxed">
-                        <b class="text-indigo-300">XP</b> é a experiência ganha ao concluir o ritual. <b class="text-emerald-300">HP</b> altera sua Bateria Executiva: número positivo recupera energia, número negativo consome energia. Ex.: <span class="text-emerald-400">5</span> recupera HP; <span class="text-red-400">-5</span> consome HP.
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                        <div>
-                            <p class="text-[10px] uppercase font-bold text-slate-500 mb-2">Sugestões matinais</p>
-                            <div class="flex flex-wrap gap-2">
-                                <button onclick="window.fillRitualSuggestion('Beber água', 'morning', 10, 5)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">Beber água</button>
-                                <button onclick="window.fillRitualSuggestion('Luz natural por alguns minutos', 'morning', 10, 5)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">Luz natural</button>
-                                <button onclick="window.fillRitualSuggestion('Alongamento leve', 'morning', 10, 5)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">Alongamento</button>
-                                <button onclick="window.fillRitualSuggestion('Planejar 3 prioridades', 'morning', 15, 0)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">3 prioridades</button>
-                                <button onclick="window.fillRitualSuggestion('Medicação prescrita', 'morning', 10, 0)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">Medicação prescrita</button>
-                            </div>
-                        </div>
-                        <div>
-                            <p class="text-[10px] uppercase font-bold text-slate-500 mb-2">Sugestões noturnas</p>
-                            <div class="flex flex-wrap gap-2">
-                                <button onclick="window.fillRitualSuggestion('Desligar telas', 'night', 15, 5)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">Desligar telas</button>
-                                <button onclick="window.fillRitualSuggestion('Separar roupa do dia seguinte', 'night', 10, 0)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">Separar roupa</button>
-                                <button onclick="window.fillRitualSuggestion('Higiene do sono', 'night', 15, 5)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">Higiene do sono</button>
-                                <button onclick="window.fillRitualSuggestion('Diário rápido', 'night', 10, 0)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">Diário rápido</button>
-                                <button onclick="window.fillRitualSuggestion('Medicação prescrita', 'night', 10, 0)" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-2 py-1 rounded text-[10px] text-slate-300">Medicação prescrita</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button onclick="window.addRitual()" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-black uppercase tracking-widest py-3 rounded-xl text-xs transition-colors">Criar Ritual</button>
-                </div>
-            </section>`;
+            return `<div class="space-y-5"><section class="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-emerald-900/40 bg-emerald-950/15 p-5"><div><p class="text-sm font-medium text-slate-200">${rituals.length ? done === rituals.length ? 'Seus rituais de hoje estão concluídos' : 'Sua rotina de hoje' : 'Monte uma rotina que cabe no seu dia'}</p><p class="text-xs text-slate-400 mt-1">${rituals.length ? `${done} de ${rituals.length} concluídos · cada ritual pode ser registrado uma vez por dia.` : 'Comece com um ou dois passos simples. Você pode ajustar depois.'}</p></div><button type="button" onclick="window.openRecoverySection('ritual-create', 'ritual-title')" class="rounded-lg border border-slate-700 text-sm text-slate-300 hover:text-white hover:bg-slate-800 px-3 py-2">${rituals.length ? 'Novo ritual' : 'Criar primeiro ritual'}</button></section>${rituals.length ? `<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">${renderPeriod('morning', 'Manhã', 'sunrise', 'text-amber-200')}${renderPeriod('night', 'Noite', 'moon', 'text-indigo-200')}</div>` : ''}<div class="space-y-3 ${rituals.length ? 'border-t border-slate-800 pt-5' : ''}"><details id="ritual-create-section" ${open('ritual-create')} ontoggle="window.setRecoverySection('ritual-create', this.open)" class="rounded-xl border border-slate-800 p-4"><summary class="${summary}"><span>Criar um ritual</span><i data-lucide="plus" class="w-4 h-4 text-slate-500"></i></summary><form novalidate onsubmit="event.preventDefault(); window.addRitual()" class="space-y-4 mt-4"><label class="block text-sm text-slate-300">Nome do ritual<input id="ritual-title" maxlength="100" placeholder="Ex.: Separar a roupa de amanhã" class="${field}"></label><label class="block text-sm text-slate-300">Período<select id="ritual-period" class="${field}"><option value="morning">Manhã</option><option value="night">Noite</option></select></label><details class="border-t border-slate-800 pt-3"><summary class="text-xs text-slate-400 cursor-pointer">Usar uma sugestão</summary><div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">${['morning','night'].map(period => `<div><p class="text-xs text-slate-500 mb-2">${period === 'morning' ? 'Manhã' : 'Noite'}</p><div class="flex flex-wrap gap-2">${RITUAL_SUGGESTIONS.map((suggestion,index) => suggestion.period === period ? `<button type="button" onclick="window.chooseRitualSuggestion(${index})" class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800">${suggestion.title}</button>` : '').join('')}</div></div>`).join('')}</div></details><details ${open('ritual-settings')} ontoggle="window.setRecoverySection('ritual-settings', this.open)" class="border-t border-slate-800 pt-3"><summary class="text-xs text-slate-400 cursor-pointer">Ajustar XP e energia</summary><div class="grid grid-cols-2 gap-3 mt-3"><label class="block text-sm text-slate-300">XP por conclusão<input id="ritual-xp" type="number" value="10" min="0" max="100" class="${field}"></label><label class="block text-sm text-slate-300">Variação de HP<input id="ritual-energy" type="number" value="0" min="-100" max="100" class="${field}"></label></div><p class="text-xs text-slate-500 mt-2">HP positivo recupera energia; negativo consome. Use 0 para manter a bateria como está.</p></details><div class="flex justify-end"><button type="submit" class="rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2.5 text-sm font-medium">Salvar ritual</button></div></form></details><details ${open('ritual-history')} ontoggle="window.setRecoverySection('ritual-history', this.open)" class="rounded-xl border border-slate-800 p-4"><summary class="${summary}"><span>Histórico de rituais</span><i data-lucide="history" class="w-4 h-4 text-slate-500"></i></summary><div class="mt-4">${window.renderRecoveryHistory('ritual')}</div></details><details ${open('ritual-manage')} ontoggle="window.setRecoverySection('ritual-manage', this.open)" class="rounded-xl border border-slate-800 p-4"><summary class="${summary}"><span>Gerenciar rituais</span><i data-lucide="settings-2" class="w-4 h-4 text-slate-500"></i></summary><p class="text-xs text-slate-500 mt-3">Arquivar retira o ritual da rotina e mantém suas conclusões.</p><div class="mt-3 divide-y divide-slate-800">${all.slice().sort((a,b) => Number(a.active === false) - Number(b.active === false)).map(r => `<div class="flex items-center justify-between gap-4 py-3"><div class="min-w-0"><p class="text-sm text-slate-300 break-words">${window.escapeHtml(r.title)}</p><p class="text-xs text-slate-500 mt-1">${r.active === false ? 'Arquivado' : 'Ativo'} · ${r.period === 'morning' ? 'Manhã' : 'Noite'}</p></div><button type="button" onclick="window.${r.active === false ? 'restoreRitual' : 'deleteRitual'}(${window.recoveryHandlerArgument(r.id)})" class="shrink-0 rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-400 hover:text-white">${r.active === false ? 'Restaurar' : 'Arquivar'}</button></div>`).join('') || '<p class="text-sm text-slate-500 py-3">Nenhum ritual cadastrado.</p>'}</div></details></div></div>`;
         };
 
         // ==========================================
@@ -5615,6 +5590,7 @@
         // ==========================================
         function render() {
             const appDiv = document.getElementById('app');
+            const recoverySnapshots = window.captureRecoveryDialogs(appDiv);
             const previousEditDialog = appDiv.querySelector('#edit-task-dialog');
             if (uiState.showEditTaskModal && previousEditDialog) {
                 uiState.editTaskDraft = {
@@ -5851,7 +5827,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.52</span></div>
+                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.53</span></div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-2">
@@ -6239,39 +6215,8 @@
             }
 
 
-            // MODAL RITUAIS OPERACIONAIS
-            if (uiState.showRitualModal) {
-                html += `
-                <div class="fixed inset-0 bg-slate-950/95 flex flex-col items-center justify-start p-2 sm:p-6 z-[60] backdrop-blur-lg overflow-y-auto pt-8 font-mono">
-                    <div class="bg-slate-900 border border-emerald-900/50 rounded-2xl w-full max-w-4xl shadow-[0_0_50px_rgba(16,185,129,0.12)] modal-enter relative mb-10">
-                        <button onclick="window.toggleRitualModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full p-2 hover:bg-red-500/20 hover:text-red-400 transition-colors z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
-                        <div class="p-5 sm:p-8">
-                            <div class="flex items-center gap-4 mb-6 border-b border-slate-800 pb-4">
-                                <div class="bg-emerald-950 p-3 rounded-xl border border-emerald-800/50 shadow-inner"><i data-lucide="clipboard-check" class="text-emerald-400 w-8 h-8"></i></div>
-                                <div><h2 class="text-2xl font-black text-white tracking-wide">Rituais Operacionais</h2><p class="text-xs text-emerald-500 font-bold uppercase tracking-widest mt-1">Protocolos matinais e noturnos</p></div>
-                            </div>
-                            <div class="min-h-[400px]">${window.renderRitualsSection()}</div>
-                        </div>
-                    </div>
-                </div>`;
-            }
-
-            // MODAL RECARGA EXECUTIVA
-            if (uiState.showRechargeModal) {
-                html += `
-                <div class="fixed inset-0 bg-slate-950/95 flex flex-col items-center justify-start p-2 sm:p-6 z-[60] backdrop-blur-lg overflow-y-auto pt-8 font-mono">
-                    <div class="bg-slate-900 border border-emerald-900/50 rounded-2xl w-full max-w-6xl shadow-[0_0_50px_rgba(16,185,129,0.12)] modal-enter relative mb-10">
-                        <button onclick="window.toggleRechargeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full p-2 hover:bg-red-500/20 hover:text-red-400 transition-colors z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
-                        <div class="p-5 sm:p-8">
-                            <div class="flex items-center gap-4 mb-6 border-b border-slate-800 pb-4">
-                                <div class="bg-emerald-950 p-3 rounded-xl border border-emerald-800/50 shadow-inner"><i data-lucide="battery-charging" class="text-emerald-400 w-8 h-8"></i></div>
-                                <div><h2 class="text-2xl font-black text-white tracking-wide">Recarga Executiva</h2><p class="text-xs text-emerald-500 font-bold uppercase tracking-widest mt-1">Recuperar bateria sem poluir o board de missões</p></div>
-                            </div>
-                            <div class="min-h-[400px]">${window.renderRechargeModule()}</div>
-                        </div>
-                    </div>
-                </div>`;
-            }
+            if (uiState.showRitualModal) html += window.renderRecoveryDialog('ritual');
+            if (uiState.showRechargeModal) html += window.renderRecoveryDialog('recharge');
 
             // RODAPÉ: BACKUP E REINICIAR
             html += `
@@ -6294,6 +6239,7 @@
                 });
             }
             lucide.createIcons();
+            window.bindRecoveryDialogs(appDiv, recoverySnapshots);
             if (typeof window.bindTaskNatureControls === 'function') window.bindTaskNatureControls(appDiv);
             window.bindCreateTaskDialog(appDiv);
             if (uiState.showOperationalDemandModal && uiState.operationalDemandDraft) {

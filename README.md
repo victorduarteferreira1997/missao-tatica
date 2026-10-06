@@ -26,7 +26,7 @@ não quebrar favoritos existentes.
 Requer Node.js 18 ou mais recente:
 
 ```bash
-TZ=America/Sao_Paulo node --test app_integrity.test.mjs calendar_sync.test.mjs security.test.mjs gamification.test.mjs data_cleanup.test.mjs
+TZ=America/Sao_Paulo node --test app_integrity.test.mjs calendar_sync.test.mjs security.test.mjs gamification.test.mjs data_cleanup.test.mjs recovery_ui.test.mjs
 ```
 
 Antes de publicar uma mudança:
@@ -110,6 +110,29 @@ Cronômetros pausados são preservados na limpeza de módulos não relacionados.
 Exportar backup JSON guarda todo o estado do aplicativo. A importação
 existente substitui esse estado inteiro, sem mesclar campanhas. Os testes
 executam a exportação, o reinício e a restauração reais com dados sintéticos.
+
+## Recarga e Rituais
+
+As janelas usam cabeçalho fixo, conteúdo rolável, fonte de leitura e teclado
+do módulo compartilhado de diálogos. Recarga destaca a bateria, opções por
+tempo (até 5 minutos, até 15 minutos ou todas) e o registro após a pausa.
+Não inicia um cronômetro. HP mostrado respeita o espaço disponível na
+bateria; padrões continuam gratuitos e sem XP. Configurações e ações
+personalizadas anteriores são preservadas.
+
+Rituais mostra a rotina de hoje, separados por manhã e noite, com conclusão
+individual e contagem por período. Zero XP é exibido corretamente. Cada
+ritual continua limitado a uma conclusão por dia local, inclusive com IDs
+numéricos ou textuais de backups. Datas desconhecidas não viram conclusões
+de hoje. Novos registros guardam título e período, XP da campanha e HP
+planejado/aplicado, respeitando o limite da bateria.
+
+Criação, ajustes, histórico e gerenciamento ficam recolhidos por padrão.
+As duas áreas permitem arquivar/restaurar cadastros sem remover registros.
+O histórico oferece hoje ou todos os registros, com páginas de dez itens e
+datas antigas desconhecidas explícitas. Reconstruções da interface mantêm
+rascunhos, seções, rolagem e foco; salvar limpa o rascunho correspondente.
+Títulos, descrições e IDs são escapados antes de entrar no HTML.
 
 ## Segurança
 
