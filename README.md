@@ -26,7 +26,7 @@ não quebrar favoritos existentes.
 Requer Node.js 18 ou mais recente:
 
 ```bash
-TZ=America/Sao_Paulo node --test app_integrity.test.mjs calendar_sync.test.mjs security.test.mjs gamification.test.mjs data_cleanup.test.mjs recovery_ui.test.mjs finance_study.test.mjs
+TZ=America/Sao_Paulo node --test app_integrity.test.mjs calendar_sync.test.mjs security.test.mjs gamification.test.mjs data_cleanup.test.mjs recovery_ui.test.mjs finance_study.test.mjs finance_export.test.mjs
 ```
 
 Antes de publicar uma mudança:
@@ -158,6 +158,31 @@ Tesouraria e registro de estudos preservam rascunhos entre abas e reconstruçõe
 incluindo seleções, seções, foco e rolagem. Salvar ou limpar o módulo remove o
 rascunho correspondente. As janelas têm título acessível, Escape e controle de Tab,
 sem interferir em confirmações sobrepostas.
+
+## Exportação financeira Excel · v1.9.55
+
+Em Tesouraria, **Exportar planilha (.xlsx)** baixa um arquivo Excel com todo o
+histórico financeiro, independentemente do filtro da tela. Anexe o arquivo no
+chat do consultor financeiro. A exportação é somente leitura e ocorre no
+navegador, sem enviar dados a um novo serviço nem exigir bibliotecas de rede.
+
+Abas: Resumo, Por mês, Receitas, Contas fixas, Gastos, Diário, Dívidas, Metas e
+Orçamentos. As coleções vazias continuam identificadas. Campos adicionais dos
+registros mantêm colunas próprias; outros campos financeiros ficam em Dados
+adicionais. Textos acima do limite de uma célula são preservados em partes na
+aba Textos longos. IDs e datas originais são texto, valores monetários são
+numéricos, cabeçalhos ficam fixos e as listas oferecem filtros.
+
+O resumo explica escopo, cálculo estimado, competência ausente das contas fixas,
+datas/valores inválidos e limites da análise. Dívidas, metas e orçamentos são
+incluídos como registrados sem duplicar o desconto no resultado estimado.
+O quadro mensal agrupa receitas e gastos variáveis por data local; não atribui
+contas fixas a meses nem interpreta diferenças como saldo disponível.
+
+Este XLSX serve para consulta. A importação no aplicativo continua usando o
+backup JSON completo. Descrições iniciadas por símbolos de fórmula são células
+de texto. Os testes abrem o pacote ZIP/XLSX com leitor independente (`openpyxl`
+em Python) e verificam registros, tipos, datas, textos longos e recursos de download.
 
 ## Segurança
 

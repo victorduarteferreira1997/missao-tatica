@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.54-finance-study">
+    <meta name="app-build" content="v1.9.55-finance-export">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -5068,7 +5068,7 @@
             const tab = finance ? uiState.financeTab || 'dashboard' : uiState.studyTab || 'plano';
             const title = finance ? 'Tesouraria Tática' : 'Centro de Inteligência';
             const bodyId = finance ? 'finance-module-body' : 'study-modal-scroll';
-            return `<div class="fixed inset-0 bg-slate-950/90 flex items-center justify-center p-3 sm:p-4 z-[60] backdrop-blur-sm font-sans"><section id="${kind}-module-dialog" data-work-tab="${window.escapeHtml(tab)}" role="dialog" aria-modal="true" aria-labelledby="${kind}-module-title" class="modal-enter w-full ${finance ? 'max-w-4xl' : 'max-w-5xl'} max-h-[92dvh] rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col overflow-hidden"><header class="shrink-0 border-b border-slate-800 px-4 sm:px-6 py-4"><div class="flex items-start justify-between gap-4"><div><h2 id="${kind}-module-title" class="text-xl font-semibold text-white">${title}</h2><p class="text-sm text-slate-400 mt-1">${finance ? 'Acompanhe seus registros e escolha o próximo passo.' : 'Planeje, registre e acompanhe seus estudos.'}</p></div><button id="${kind}-module-close" type="button" onclick="window.${finance ? 'toggleFinanceModal' : 'toggleStudyModal'}()" aria-label="Fechar ${title}" class="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="x" class="w-5 h-5"></i></button></div>${finance ? `<nav aria-label="Áreas da Tesouraria" class="flex gap-1 overflow-x-auto mt-4 pb-1">${FINANCE_TABS.map(item=>`<button type="button" onclick="window.setFinanceTab('${item.id}')" aria-pressed="${tab === item.id}" class="rounded-lg px-3 py-2 text-sm whitespace-nowrap ${tab === item.id ? 'bg-yellow-900/35 text-yellow-200' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}">${item.label}</button>`).join('')}</nav><label class="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-3">Período<select id="finance-period" onchange="window.setFinancePeriod(this.value)" class="rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-200">${[{id:'all',label:'Todo o histórico'},{id:'current',label:'Este mês'},{id:'previous',label:'Mês passado'}].map(period=>`<option value="${period.id}" ${(uiState.financePeriod || 'all') === period.id ? 'selected' : ''}>${period.label}</option>`).join('')}</select>${tab === 'fixas' ? '<span>Contas fixas são exibidas em todos os períodos.</span>' : ''}</label>` : renderStudyNavigation()}</header><div id="${bodyId}" class="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6">${finance ? renderFinanceContent() : renderStudyContent()}</div></section></div>`;
+            return `<div class="fixed inset-0 bg-slate-950/90 flex items-center justify-center p-3 sm:p-4 z-[60] backdrop-blur-sm font-sans"><section id="${kind}-module-dialog" data-work-tab="${window.escapeHtml(tab)}" role="dialog" aria-modal="true" aria-labelledby="${kind}-module-title" class="modal-enter w-full ${finance ? 'max-w-4xl' : 'max-w-5xl'} max-h-[92dvh] rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col overflow-hidden"><header class="shrink-0 border-b border-slate-800 px-4 sm:px-6 py-4"><div class="flex items-start justify-between gap-4"><div><h2 id="${kind}-module-title" class="text-xl font-semibold text-white">${title}</h2><p class="text-sm text-slate-400 mt-1">${finance ? 'Acompanhe seus registros e escolha o próximo passo.' : 'Planeje, registre e acompanhe seus estudos.'}</p></div><button id="${kind}-module-close" type="button" onclick="window.${finance ? 'toggleFinanceModal' : 'toggleStudyModal'}()" aria-label="Fechar ${title}" class="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="x" class="w-5 h-5"></i></button></div>${finance ? `<nav aria-label="Áreas da Tesouraria" class="flex gap-1 overflow-x-auto mt-4 pb-1">${FINANCE_TABS.map(item=>`<button type="button" onclick="window.setFinanceTab('${item.id}')" aria-pressed="${tab === item.id}" class="rounded-lg px-3 py-2 text-sm whitespace-nowrap ${tab === item.id ? 'bg-yellow-900/35 text-yellow-200' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}">${item.label}</button>`).join('')}</nav><label class="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-3">Período<select id="finance-period" onchange="window.setFinancePeriod(this.value)" class="rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-200">${[{id:'all',label:'Todo o histórico'},{id:'current',label:'Este mês'},{id:'previous',label:'Mês passado'}].map(period=>`<option value="${period.id}" ${(uiState.financePeriod || 'all') === period.id ? 'selected' : ''}>${period.label}</option>`).join('')}</select>${tab === 'fixas' ? '<span>Contas fixas são exibidas em todos os períodos.</span>' : ''}</label><div class="flex flex-wrap items-center justify-between gap-2 mt-3"><button type="button" onclick="window.exportFinanceSpreadsheet()" class="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800"><i data-lucide="download" class="w-4 h-4"></i>Exportar planilha (.xlsx)</button><span class="text-xs text-slate-500">Todo o histórico · pronta para anexar ao consultor</span></div>` : renderStudyNavigation()}</header><div id="${bodyId}" class="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6">${finance ? renderFinanceContent() : renderStudyContent()}</div></section></div>`;
         };
         window.clearWorkDraft = function(kind, tab) {
             uiState.workDrafts ||= {}; uiState.workDraftReset ||= {};
@@ -5151,6 +5151,150 @@
             const key = window.getFinanceDateKey(value);
             return key ? new Date(key + 'T12:00:00').toLocaleDateString('pt-BR') : 'Data não registrada';
         };
+        // Exportação financeira XLSX: somente leitura, sem dependências de rede.
+        window.buildFinanceExportSheets = function(finance = state.financeData || {}, exportedAt = new Date()) {
+            const collections = ['incomes','fixedExpenses','variableExpenses','moneyJournal','debts','goals','categoryBudgets'];
+            const rows = key => Array.isArray(finance[key]) ? finance[key].map(row=>row && typeof row === 'object' && !Array.isArray(row) ? row : {registro:row}) : [];
+            const sum = key => window.getFinanceSum(rows(key));
+            const validAmount = value => value !== null && value !== '' && Number.isSafeInteger(Math.round(Number(value) * 100));
+            const undated = [...rows('incomes'), ...rows('variableExpenses')].filter(row=>!window.getFinanceDateKey(row.date)).length;
+            const invalid = [...rows('incomes'), ...rows('fixedExpenses'), ...rows('variableExpenses')].filter(row=>!validAmount(row.amount)).length;
+            const months = new Map();
+            for (const [collection,field] of [['incomes','income'],['variableExpenses','expense']]) {
+                for (const row of rows(collection)) {
+                    const month = window.getFinanceDateKey(row.date)?.slice(0,7) || 'Sem data válida';
+                    if (!months.has(month)) months.set(month, { income:0,expense:0,incomeCount:0,expenseCount:0 });
+                    const item = months.get(month);
+                    if (validAmount(row.amount)) item[field] += Math.round(Number(row.amount) * 100);
+                    item[field + 'Count']++;
+                }
+            }
+            const income = sum('incomes'), fixed = sum('fixedExpenses'), variable = sum('variableExpenses');
+            const notes = [
+                ['Escopo','Todo o histórico financeiro armazenado, de todas as campanhas. O filtro da tela não limita esta exportação.'],
+                ['Resultado estimado','Receitas − todas as contas fixas cadastradas − gastos variáveis. Não representa saldo bancário.'],
+                ['Contas fixas','Status manual. Não possuem competência mensal e não são multiplicadas pelo número de meses. Pagas e pendentes entram uma única vez no resumo geral.'],
+                ['Resumo por mês','Receitas e gastos variáveis pela data local. Contas fixas ficam fora deste quadro porque não possuem competência mensal. A diferença mensal não é saldo disponível.'],
+                ['Dívidas, metas e orçamentos','Exportados como cadastrados, quando existentes. Não entram novamente no resultado estimado. Ausência de registros não significa ausência de dívidas.'],
+                ['Datas','Data local em DD/MM/AAAA e data original preservada. Contas sem data continuam sem data. Datas inválidas aparecem no grupo Sem data válida.'],
+                ['Valores','Valores monetários em reais; totais somados em centavos. Valores inválidos são preservados nos registros e ignorados nos totais.'],
+                ['Contexto e diário','Classificações e reflexões informadas por você. Decisões de adiar/cancelar compras no diário não são despesas registradas.'],
+                ['Campos adicionais','Colunas adicionais preservam metadados dos registros. Outros dados financeiros aparecem em Dados adicionais. Textos acima do limite do Excel aparecem completos em Textos longos.'],
+                ['Finalidade','Arquivo de consulta para análise. Para restaurar dados no Missão Tática, use o backup JSON completo.']
+            ];
+            const sheets = [{ name:'Resumo', widths:[44,110], rows:[['Informação','Valor / explicação'],
+                ['Exportado em',exportedAt.toLocaleString('pt-BR')],['Fuso da exportação',Intl.DateTimeFormat().resolvedOptions().timeZone],['Versão','v1.9.55'],
+                ['Receitas registradas (R$)',income],['Contas fixas cadastradas (R$)',fixed],['Gastos variáveis registrados (R$)',variable],
+                ['Resultado estimado (R$)',Math.round((income-fixed-variable)*100)/100],['Contas fixas pendentes (R$)',window.getFinanceSum(rows('fixedExpenses').filter(row=>!row.paid))],
+                ['Receitas: quantidade',rows('incomes').length],['Contas fixas: quantidade',rows('fixedExpenses').length],['Gastos: quantidade',rows('variableExpenses').length],['Diário: quantidade',rows('moneyJournal').length],
+                ['Dívidas: quantidade',rows('debts').length],['Metas: quantidade',rows('goals').length],['Orçamentos: quantidade',rows('categoryBudgets').length],
+                ['Lançamentos sem data válida',undated],['Lançamentos com valor inválido',invalid],...notes], moneyRows:[5,6,7,8,9] },
+                { name:'Por mês',widths:[24,26,26,32,22,22],moneyColumns:[1,2,3],rows:[['Mês (AAAA-MM)','Receitas (R$)','Gastos variáveis (R$)','Diferença, sem contas fixas (R$)','Qtd. receitas','Qtd. gastos'],
+                    ...[...months.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([month,item])=>[month,item.income/100,item.expense/100,(item.income-item.expense)/100,item.incomeCount,item.expenseCount])] }
+            ];
+            const labels = { id:'ID',date:'Data original',createdAt:'Cadastro original',description:'Descrição',category:'Categoria',amount:'Valor (R$)',paid:'Paga?',trigger:'Contexto da compra',event:'O que aconteceu',action:'Decisão',mood:'Como se sentiu',thought:'Reflexão',campaignId:'Campanha de origem',xpCampaign:'Campanha do XP',xpAwarded:'XP registrado',title:'Título',name:'Nome',status:'Status',dueDate:'Vencimento original',totalAmount:'Valor total (R$)',remainingAmount:'Valor restante (R$)',targetAmount:'Meta (R$)',currentAmount:'Valor atual (R$)',monthlyPayment:'Parcela mensal (R$)',interestRate:'Taxa cadastrada',notes:'Observações',limit:'Limite cadastrado',budget:'Orçamento cadastrado' };
+            const table = (key,name,preferred) => {
+                const records = rows(key);
+                const keys = [...preferred,...new Set(records.flatMap(row=>row && typeof row === 'object' ? Object.keys(row) : ['registro']).filter(field=>!preferred.includes(field)))];
+                const numericMoney = ['amount','totalAmount','remainingAmount','targetAmount','currentAmount','monthlyPayment'];
+                const headers = [...(['incomes','variableExpenses','moneyJournal'].includes(key) ? ['Data local'] : []),...keys.map(field=>labels[field] || field)];
+                const offset = headers.length - keys.length;
+                sheets.push({ name, widths:headers.map(label=>/Descrição|Reflexão|aconteceu|Observações/.test(label)?55:24), moneyColumns:keys.flatMap((field,i)=>numericMoney.includes(field)?[i+offset]:[]), rows:[headers,...records.map(row=>{
+                    const record = row && typeof row === 'object' ? row : {registro:row};
+                    return [...(offset ? [window.formatFinanceDate(record.date)] : []),...keys.map(field=>{
+                        const value = record[field];
+                        if (value === undefined || value === null) return '';
+                        if (field === 'paid') return value ? 'Sim' : 'Não';
+                        if (numericMoney.includes(field) && validAmount(value)) return Number(value);
+                        if (typeof value === 'object') return JSON.stringify(value);
+                        // IDs and original timestamps remain text, including numeric IDs.
+                        if (['id','date','createdAt','dueDate','campaignId','xpCampaign'].includes(field)) return String(value);
+                        return value;
+                    })];
+                })] });
+            };
+            table('incomes','Receitas',['id','date','description','amount','category']);
+            table('fixedExpenses','Contas fixas',['id','description','amount','category','paid','createdAt']);
+            table('variableExpenses','Gastos',['id','date','description','amount','category','trigger']);
+            table('moneyJournal','Diário',['id','date','event','mood','action','thought']);
+            table('debts','Dívidas',['id','description']); table('goals','Metas',['id','title']); table('categoryBudgets','Orçamentos',['id','category']);
+            const extra = Object.entries(finance).filter(([key])=>!collections.includes(key)).map(([key,value])=>[key,typeof value === 'object' ? JSON.stringify(value) : String(value ?? '')]);
+            if (extra.length) sheets.push({name:'Dados adicionais',widths:[35,100],rows:[['Campo financeiro','Conteúdo original'],...extra]});
+            const longText = [['Aba','Linha na aba','Coluna','Parte','Texto completo em partes']];
+            for (const sheet of sheets) for (let r=1;r<sheet.rows.length;r++) for(let c=0;c<sheet.rows[r].length;c++) {
+                const value = sheet.rows[r][c];
+                if (typeof value !== 'string' || value.length <= 32767) continue;
+                let start=0,part=1;
+                while(start<value.length) { let end=Math.min(start+30000,value.length); if (end<value.length && /[\uD800-\uDBFF]/.test(value[end-1])) end--; longText.push([sheet.name,r+1,String(sheet.rows[0][c]),part++,value.slice(start,end)]);start=end; }
+                sheet.rows[r][c]=value.slice(0,30000).replace(/[\uD800-\uDBFF]$/,'')+'\n[Texto completo na aba Textos longos]';
+            }
+            if (longText.length>1) sheets.push({name:'Textos longos',widths:[24,16,30,12,100],rows:longText});
+            return sheets;
+        };
+        window.financeXlsxXml = function(value) {
+            // Control characters forbidden by XML 1.0 are represented visibly.
+            return String(value ?? '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/g,c=>'\\u'+c.charCodeAt(0).toString(16).padStart(4,'0')).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+        };
+        window.buildFinanceXlsx = function(sheets) {
+            const xml = window.financeXlsxXml;
+            const prefix = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+            const ns = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+            const relNs = 'http://schemas.openxmlformats.org/package/2006/relationships';
+            const officeRel = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+            const colName = index => { let name=''; for(let n=index+1;n;n=Math.floor((n-1)/26)) name=String.fromCharCode(65+(n-1)%26)+name; return name; };
+            const files = [
+                ['[Content_Types].xml',prefix+`<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`],
+                ['_rels/.rels',prefix+`<Relationships xmlns="${relNs}"><Relationship Id="rId1" Type="${officeRel}/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+                ['xl/workbook.xml',prefix+`<workbook xmlns="${ns}" xmlns:r="${officeRel}"><sheets>${sheets.map((sheet,i)=>`<sheet name="${xml(sheet.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets></workbook>`],
+                ['xl/_rels/workbook.xml.rels',prefix+`<Relationships xmlns="${relNs}">${sheets.map((_,i)=>`<Relationship Id="rId${i+1}" Type="${officeRel}/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length+1}" Type="${officeRel}/styles" Target="styles.xml"/></Relationships>`],
+                ['xl/styles.xml',prefix+`<styleSheet xmlns="${ns}"><numFmts count="1"><numFmt numFmtId="164" formatCode="&quot;R$&quot; #,##0.00;[Red]-&quot;R$&quot; #,##0.00"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF243447"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFill="1" applyFont="1"><alignment vertical="center" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"><alignment vertical="top"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`]
+            ];
+            sheets.forEach((sheet,i)=>{
+                if (sheet.rows.length>1048576 || sheet.rows.some(row=>row.length>16384)) throw new Error('Quantidade de registros acima do limite do Excel.');
+                const maxCols = sheet.rows.reduce((max,row)=>Math.max(max,row.length),1), end = `${colName(maxCols-1)}${sheet.rows.length}`;
+                const data = sheet.rows.map((row,r)=>`<row r="${r+1}" ${r===0?'ht="32" customHeight="1"':''}>${row.map((value,c)=>{
+                    const money = sheet.moneyColumns?.includes(c) || (c===1 && sheet.moneyRows?.includes(r+1));
+                    const style = r===0 ? 1 : money ? 2 : 0;
+                    const ref = `${colName(c)}${r+1}`;
+                    if (typeof value==='number' && Number.isFinite(value)) return `<c r="${ref}" s="${style}"><v>${value}</v></c>`;
+                    if (typeof value==='boolean') return `<c r="${ref}" s="${style}" t="b"><v>${value?1:0}</v></c>`;
+                    // Inline strings prevent descriptions starting with =,+,-,@ from becoming formulas.
+                    return `<c r="${ref}" s="${style}" t="inlineStr"><is><t xml:space="preserve">${xml(value)}</t></is></c>`;
+                }).join('')}</row>`).join('');
+                files.push([`xl/worksheets/sheet${i+1}.xml`,prefix+`<worksheet xmlns="${ns}"><dimension ref="A1:${end}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="18"/><cols>${Array.from({length:maxCols},(_,c)=>`<col min="${c+1}" max="${c+1}" width="${sheet.widths?.[c] || 24}" customWidth="1"/>`).join('')}</cols><sheetData>${data}</sheetData>${sheet.name==='Resumo'?'':`<autoFilter ref="A1:${end}"/>`}<pageMargins left="0.3" right="0.3" top="0.5" bottom="0.5" header="0.2" footer="0.2"/></worksheet>`]);
+            });
+            // ZIP store: standard XLSX package, no compression library or CDN required.
+            const encoder = new TextEncoder(), chunks = [], central = []; let offset=0;
+            const crcTable = new Uint32Array(256);
+            for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;crcTable[n]=c>>>0;}
+            const crc32 = bytes => {let crc=0xFFFFFFFF;for(const byte of bytes)crc=crcTable[(crc^byte)&255]^(crc>>>8);return(crc^0xFFFFFFFF)>>>0;};
+            for(const [path,content] of files){
+                const name=encoder.encode(path), data=encoder.encode(content), crc=crc32(data);
+                const local=new Uint8Array(30+name.length), lv=new DataView(local.buffer);
+                lv.setUint32(0,0x04034b50,true);lv.setUint16(4,20,true);lv.setUint16(6,0x800,true);lv.setUint16(12,33,true);lv.setUint32(14,crc,true);lv.setUint32(18,data.length,true);lv.setUint32(22,data.length,true);lv.setUint16(26,name.length,true);local.set(name,30);
+                const directory=new Uint8Array(46+name.length),dv=new DataView(directory.buffer);
+                dv.setUint32(0,0x02014b50,true);dv.setUint16(4,20,true);dv.setUint16(6,20,true);dv.setUint16(8,0x800,true);dv.setUint16(14,33,true);dv.setUint32(16,crc,true);dv.setUint32(20,data.length,true);dv.setUint32(24,data.length,true);dv.setUint16(28,name.length,true);dv.setUint32(42,offset,true);directory.set(name,46);
+                chunks.push(local,data);central.push(directory);offset+=local.length+data.length;
+            }
+            const centralSize=central.reduce((n,chunk)=>n+chunk.length,0), end=new Uint8Array(22),ev=new DataView(end.buffer);
+            ev.setUint32(0,0x06054b50,true);ev.setUint16(8,files.length,true);ev.setUint16(10,files.length,true);ev.setUint32(12,centralSize,true);ev.setUint32(16,offset,true);
+            const result=new Uint8Array(offset+centralSize+22);let cursor=0;for(const chunk of [...chunks,...central,end]){result.set(chunk,cursor);cursor+=chunk.length;}return result;
+        };
+        window.exportFinanceSpreadsheet = function() {
+            if (uiState.financeExportBusy) return;
+            uiState.financeExportBusy = true;
+            let link, objectUrl;
+            try {
+                const now = new Date(), sheets=window.buildFinanceExportSheets(state.financeData || {},now), bytes=window.buildFinanceXlsx(sheets);
+                objectUrl=URL.createObjectURL(new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+                link=document.createElement('a');link.href=objectUrl;link.download=`missao_tatica_financas_${window.getLocalDateKey(now)}.xlsx`;
+                document.body.appendChild(link);link.click();
+                window.showToast('Planilha financeira exportada','Todo o histórico. Anexe o arquivo .xlsx no chat do seu consultor.','download','text-emerald-300');
+            } catch (error) { window.showAlertModal('Não foi possível exportar a planilha. '+error.message); }
+            finally { link?.remove(); if(objectUrl)setTimeout(()=>URL.revokeObjectURL(objectUrl),30000); uiState.financeExportBusy=false; }
+        };
+        // Fim da exportação financeira XLSX.
+
         window.getFinancePeriodKey = function() {
             const period = uiState.financePeriod || 'all';
             if (period === 'all') return null;
@@ -5981,7 +6125,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.54</span></div>
+                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.55</span></div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-2">
