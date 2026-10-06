@@ -26,7 +26,7 @@ não quebrar favoritos existentes.
 Requer Node.js 18 ou mais recente:
 
 ```bash
-TZ=America/Sao_Paulo node --test app_integrity.test.mjs calendar_sync.test.mjs security.test.mjs
+TZ=America/Sao_Paulo node --test app_integrity.test.mjs calendar_sync.test.mjs security.test.mjs gamification.test.mjs
 ```
 
 Antes de publicar uma mudança:
