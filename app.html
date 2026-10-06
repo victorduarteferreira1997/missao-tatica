@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.38-form-contrast">
+    <meta name="app-build" content="v1.9.39-edit-dialog">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -54,7 +54,8 @@
         .drag-handle:active { cursor: grabbing; }
         /* Controles nativos acompanham o fundo escuro dos formulários. */
         #operational-demand-dialog input[type="date"],
-        #create-task-dialog input[type="time"] {
+        #create-task-dialog input[type="time"],
+        #edit-task-dialog input[type="time"] {
             color-scheme: dark;
         }
     </style>
@@ -329,7 +330,7 @@
             weeklyExpandedSections: {},
             radarExpandedSections: {},
             calendarInboxEventId: null,
-            showEditTaskModal: false, editingTaskId: null,
+            showEditTaskModal: false, editingTaskId: null, editTaskDraft: null,
             showProfileModal: false,
             deleteTaskPrompt: { show: false, taskId: null },
             showStudyModal: false, studyTab: 'plano',
@@ -792,7 +793,7 @@
             const summary = document.getElementById(`${prefix}-nature-summary`);
             if (summary) {
                 const data = summaries[selected] || summaries.normal;
-                if (prefix === 'ct') {
+                if (prefix === 'ct' || prefix === 'et') {
                     const descriptions = {
                         normal: 'Trabalho, estudo ou treino: rende XP e moedas e consome energia.',
                         neutral: 'Compromisso ou deslocamento: entra na agenda sem alterar XP ou energia.',
@@ -2764,17 +2765,86 @@
             return String(value ?? '').replace(/[&<>'"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[ch]));
         };
 
+        window.renderEditTaskModal = function(task) {
+            const rawTime = parseInt(String(task.time || '30').replace(/[^0-9]/g, ''), 10) || 30;
+            const nature = window.getTaskNature(task);
+            const recurrence = Array.isArray(task.recurrenceDays) ? task.recurrenceDays : [];
+            const fieldClass = 'w-full mt-1.5 min-h-11 min-w-0 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400';
+            const labelClass = 'block text-sm font-medium text-slate-300';
+            const summaryClass = 'list-none flex min-h-11 cursor-pointer items-center justify-between gap-3 py-2 text-sm text-slate-300 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400';
+            return `<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-sm font-sans">
+                <div id="edit-task-dialog" role="dialog" aria-modal="true" aria-labelledby="et-dialog-title" class="modal-enter flex max-h-[92dvh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl">
+                    <header class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-800 px-5 py-4">
+                        <div><h2 id="et-dialog-title" class="text-lg font-semibold text-slate-100">Editar missão</h2><p class="mt-1 text-sm text-slate-400">Ajuste o que precisa e salve as alterações.</p></div>
+                        <button type="button" onclick="window.closeEditTaskModal()" aria-label="Fechar edição de missão" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white"><i data-lucide="x" class="h-5 w-5"></i></button>
+                    </header>
+                    <form novalidate onsubmit="event.preventDefault(); window.saveEditedTask()" class="flex min-h-0 flex-1 flex-col">
+                        <div class="min-h-0 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
+                            <div><label for="et-text" class="${labelClass}">O que você vai fazer? <span class="ml-2 text-xs font-normal text-slate-400">Obrigatório</span></label><input id="et-text" type="text" value="${window.escapeHtml(task.text || '')}" aria-describedby="et-title-error" oninput="this.removeAttribute('aria-invalid'); document.getElementById('et-title-error').classList.add('hidden')" class="${fieldClass}"><p id="et-title-error" role="alert" class="hidden mt-1.5 text-xs text-red-300">Dê um nome à missão para continuar.</p></div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div><label for="et-day" class="${labelClass}">Dia</label><select id="et-day" class="${fieldClass}">${daysOfWeek.map(d => `<option value="${d.id}" ${d.id === task.day ? 'selected' : ''}>${d.label}</option>`).join('')}</select></div>
+                                <div><label for="et-category" class="${labelClass}">Categoria</label><select id="et-category" class="${fieldClass}">${window.getTaskCategories().map(cat => `<option value="${window.escapeHtml(cat.id)}" ${cat.id === task.category ? 'selected' : ''}>${window.escapeHtml(cat.label)}</option>`).join('')}</select></div>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                <div class="col-span-2 sm:col-span-1"><label for="et-nature" class="${labelClass}">Tipo</label><select id="et-nature" onchange="window.handleTaskNatureChange('et')" class="${fieldClass}"><option value="normal" ${nature === 'normal' ? 'selected' : ''}>Normal</option><option value="neutral" ${nature === 'neutral' ? 'selected' : ''}>Logística</option><option value="recharge" ${nature === 'recharge' ? 'selected' : ''}>Recarga</option></select></div>
+                                <div><label for="et-priority" class="${labelClass}">Prioridade</label><select id="et-priority" onchange="window.updateEditPreviewCalc()" class="${fieldClass}">${[['essencial', 'Essencial'], ['alta', 'Alta'], ['media', 'Média'], ['baixa', 'Baixa']].map(([value, label]) => `<option value="${value}" ${value === (task.priority || 'media') ? 'selected' : ''}>${label}</option>`).join('')}</select></div>
+                                <div><label for="et-time" class="${labelClass}">Duração <span class="text-xs font-normal text-slate-400">(min)</span></label><input id="et-time" type="number" value="${rawTime}" step="15" oninput="window.updateEditPreviewCalc()" class="${fieldClass}"></div>
+                            </div>
+                            <input type="hidden" id="et-impact-type" value="${nature === 'recharge' ? 'recharge' : 'drain'}">
+                            <p id="et-nature-summary" class="text-xs leading-relaxed text-slate-400"></p>
+                            <div class="divide-y divide-slate-800 border-t border-slate-800">
+                                <details data-edit-section="schedule" ${task.startTime || task.endTime ? 'open' : ''}>
+                                    <summary class="${summaryClass}"><span>Definir horário</span><i data-lucide="chevron-down" class="h-4 w-4 text-slate-400"></i></summary>
+                                    <div class="grid grid-cols-2 gap-x-3 gap-y-2 pt-2 pb-4"><div><label for="et-start-time" class="${labelClass}">Início</label><input id="et-start-time" type="time" value="${window.escapeHtml(task.startTime || '')}" class="${fieldClass}"></div><div><label for="et-end-time" class="${labelClass}">Fim</label><input id="et-end-time" type="time" value="${window.escapeHtml(task.endTime || '')}" class="${fieldClass}"></div><p class="col-span-2 text-xs leading-relaxed text-slate-400">Sem horário, entra no Google Agenda como evento de dia inteiro.</p></div>
+                                </details>
+                                <details data-edit-section="recurrence" ${recurrence.length ? 'open' : ''}>
+                                    <summary class="${summaryClass}"><span>Repetir durante a semana${recurrence.length ? ` · ${recurrence.length} dias` : ''}</span><i data-lucide="chevron-down" class="h-4 w-4 text-slate-400"></i></summary>
+                                    <div class="pt-2 pb-4 space-y-3"><div class="grid grid-cols-2 sm:grid-cols-4 gap-2">${daysOfWeek.map(d => `<label for="et-repeat-${d.id}" class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 px-2 text-xs text-slate-300 hover:border-indigo-400"><input id="et-repeat-${d.id}" type="checkbox" class="accent-indigo-500" ${recurrence.includes(d.id) ? 'checked' : ''}>${d.label}</label>`).join('')}</div><div class="flex gap-4"><button type="button" onclick="window.setEditTaskRecurrence('all')" class="text-xs text-indigo-300 hover:text-indigo-200">Todos os dias</button><button type="button" onclick="window.setEditTaskRecurrence('clear')" class="text-xs text-slate-400 hover:text-slate-200">Limpar seleção</button></div><p class="text-xs leading-relaxed text-slate-400">Ao salvar, as alterações se aplicam aos dias selecionados. Sem seleção, esta missão deixa de se repetir.</p></div>
+                                </details>
+                                <details data-edit-section="effort" id="et-effort-panel">
+                                    <summary class="${summaryClass}"><span>Ajustar dificuldade</span><i data-lucide="chevron-down" class="h-4 w-4 text-slate-400"></i></summary>
+                                    <div class="pt-2 pb-4"><label for="et-complexity" class="${labelClass}">Dificuldade de 1 a 5</label><input id="et-complexity" type="number" min="1" max="5" value="${task.complexity || 2}" oninput="window.updateEditPreviewCalc()" class="${fieldClass} max-w-24"><p class="mt-2 text-xs leading-relaxed text-slate-400">1 é simples; 5 exige muito esforço.</p></div>
+                                </details>
+                            </div>
+                            ${task.completed ? `<p class="rounded-lg border border-amber-900/50 bg-amber-950/20 p-3 text-xs leading-relaxed text-amber-200">Esta missão já foi concluída. Editar não recalcula as recompensas já recebidas.</p>` : ''}
+                        </div>
+                        <footer class="shrink-0 border-t border-slate-700 bg-slate-900 px-5 py-3">
+                            <div class="mb-3 flex flex-wrap items-center gap-2 text-xs"><span class="mr-auto text-slate-400">Impacto estimado</span><span id="et-xp-preview" class="rounded bg-indigo-950 px-2 py-1 text-indigo-200">+${task.xp || 0} XP</span><span id="et-hp-preview" class="rounded bg-slate-800 px-2 py-1 text-slate-300">${task.energyCost < 0 ? '+' : '-'}${Math.abs(task.energyCost || 0)} HP</span></div>
+                            <div class="flex justify-end gap-2"><button type="button" onclick="window.closeEditTaskModal()" class="min-h-10 rounded-lg px-4 text-sm font-medium text-slate-300 hover:bg-slate-800">Cancelar</button><button type="submit" class="min-h-10 rounded-lg bg-indigo-600 px-5 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-300">Salvar alterações</button></div>
+                        </footer>
+                    </form>
+                </div>
+            </div>`;
+        };
+
+        window.bindEditTaskDialog = function(root) {
+            const dialog = root.querySelector('#edit-task-dialog');
+            if (!dialog || uiState.alert.show || uiState.confirm.show) return;
+            window.updateTaskNatureButtons('et'); window.updateEditPreviewCalc();
+            if (!dialog.contains(document.activeElement)) dialog.querySelector('#et-text')?.focus({ preventScroll: true });
+            dialog.addEventListener('keydown', event => {
+                if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); window.closeEditTaskModal(); return; }
+                if (event.key !== 'Tab') return;
+                const controls = [...dialog.querySelectorAll('button, input, select, textarea, summary, [tabindex="0"]')].filter(el => !el.disabled && el.getClientRects().length);
+                const first = controls[0], last = controls[controls.length - 1];
+                if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+                else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+            });
+        };
+
         window.openEditTaskModal = function(taskId, event) {
             if (event) { event.stopPropagation(); event.preventDefault(); }
             const task = state.tasks.find(t => t.id == taskId);
             if (!task) { window.showAlertModal('Missão não encontrada.'); return; }
             uiState.editingTaskId = task.id;
+            uiState.editTaskDraft = null;
             uiState.showEditTaskModal = true;
             render();
             setTimeout(() => { window.updateTaskNatureButtons?.('et'); window.updateEditPreviewCalc?.(); }, 50);
         };
 
         window.closeEditTaskModal = function() {
+            uiState.editTaskDraft = null;
             uiState.showEditTaskModal = false;
             uiState.editingTaskId = null;
             render();
@@ -2820,7 +2890,13 @@
             const task = state.tasks.find(t => t.id == uiState.editingTaskId);
             if (!task) { window.showAlertModal('Missão não encontrada.'); return; }
             const text = document.getElementById('et-text')?.value.trim();
-            if (!text) { window.showAlertModal('Título vazio.'); return; }
+            if (!text) {
+                const input = document.getElementById('et-text');
+                input?.setAttribute('aria-invalid', 'true');
+                document.getElementById('et-title-error')?.classList.remove('hidden');
+                input?.focus();
+                return;
+            }
             const oldDay = task.day;
             const newDay = document.getElementById('et-day')?.value || task.day || state.activeTab;
             const activeCategories = window.getTaskCategories();
@@ -2870,6 +2946,7 @@
                 [...new Set([...oldGroupDays, ...recurrenceDays, oldDay])].forEach(dayId => {
                     if (typeof window.reindexTaskOrderForDay === 'function') window.reindexTaskOrderForDay(dayId);
                 });
+                uiState.editTaskDraft = null;
                 uiState.showEditTaskModal = false;
                 uiState.editingTaskId = null;
                 window.showToast('Recorrência atualizada', `Horário sincronizado em ${recurrenceDays.length} dia(s): ${window.getRecurringDaysLabel(recurrenceDays)}.`, 'repeat', 'text-violet-300');
@@ -2889,6 +2966,7 @@
                 if (typeof task.order !== 'number') task.order = window.getNextTaskOrder(newDay);
                 window.reindexTaskOrderForDay(newDay);
             }
+            uiState.editTaskDraft = null;
             uiState.showEditTaskModal = false;
             uiState.editingTaskId = null;
             window.showToast('Missão atualizada', 'Horário, dificuldade, tempo e categoria foram ajustados. O dia será reordenado automaticamente.', 'pencil', 'text-amber-400');
@@ -5259,6 +5337,13 @@
         // ==========================================
         function render() {
             const appDiv = document.getElementById('app');
+            const previousEditDialog = appDiv.querySelector('#edit-task-dialog');
+            if (uiState.showEditTaskModal && previousEditDialog) {
+                uiState.editTaskDraft = {
+                    fields: [...previousEditDialog.querySelectorAll('input[id], select[id]')].map(el => ({ id: el.id, value: el.value, checked: el.checked })),
+                    sections: [...previousEditDialog.querySelectorAll('details[data-edit-section]')].map(el => ({ key: el.dataset.editSection, open: el.open }))
+                };
+            }
             const previousDemandDialog = appDiv.querySelector('#operational-demand-dialog');
             if (uiState.showOperationalDemandModal && previousDemandDialog) {
                 uiState.operationalDemandDraft = {
@@ -5516,7 +5601,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.38</span></div>
+                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.39</span></div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-2">
@@ -5812,87 +5897,7 @@
             // MODAL EDITAR TAREFA
             if (uiState.showEditTaskModal) {
                 const task = state.tasks.find(t => t.id == uiState.editingTaskId);
-                if (task) {
-                    const taskText = window.escapeHtml(task.text || '');
-                    const rawTime = parseInt(String(task.time || '30').replace(/[^0-9]/g, ''), 10) || 30;
-                    const currentComplexity = task.complexity || 2;
-                    const currentImpactType = task.impactType || (task.energyCost < 0 ? 'recharge' : 'drain');
-                    const currentNature = window.getTaskNature(task);
-                    const recurrenceDays = Array.isArray(task.recurrenceDays) ? task.recurrenceDays : [];
-                    html += `
-                    <div class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm font-mono">
-                        <div class="bg-slate-900 border border-amber-800/60 rounded-2xl p-5 max-w-2xl w-full shadow-2xl modal-enter overflow-y-auto max-h-[90vh]">
-                            <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
-                                <h2 class="text-lg font-black text-amber-400 flex items-center gap-2"><i data-lucide="pencil"></i> Editar Missão</h2>
-                                <button onclick="window.closeEditTaskModal()" class="text-slate-500 hover:text-white"><i data-lucide="x"></i></button>
-                            </div>
-                            <div class="space-y-4">
-                                <div><label class="text-xs font-bold text-slate-400 uppercase">Título</label><input type="text" id="et-text" value="${taskText}" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-amber-500 outline-none"></div>
-                                <div class="bg-slate-950/70 border border-cyan-900/40 rounded-xl p-3 space-y-3">
-                                    <div>
-                                        <label class="text-xs font-black text-cyan-300 uppercase flex items-center gap-2"><i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i> Tipo de missão</label>
-                                        <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Use o seletor abaixo. Logística não dá XP, moedas, combo ou HP.</p>
-                                    </div>
-                                    <div>
-                                        <label class="text-xs font-bold text-slate-400 uppercase">Selecione o tipo</label>
-                                        <select id="et-nature" onchange="window.handleTaskNatureChange('et')" class="w-full mt-1 bg-slate-950 border border-cyan-800/60 rounded-xl p-3 text-sm text-white outline-none focus:border-cyan-400">
-                                            <option value="normal" ${currentNature === 'normal' ? 'selected' : ''}>Normal — XP, moedas, combo e HP</option>
-                                            <option value="neutral" ${currentNature === 'neutral' ? 'selected' : ''}>Logística — agenda sem XP, moedas, combo ou HP</option>
-                                            <option value="recharge" ${currentNature === 'recharge' ? 'selected' : ''}>Recarga — recupera HP sem XP, moedas ou combo</option>
-                                        </select>
-                                    </div>
-                                    <div id="et-nature-summary" class="rounded-lg border p-3 text-[11px] leading-relaxed"></div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div><label class="text-xs font-bold text-slate-400 uppercase">Dia</label><select id="et-day" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">${daysOfWeek.map(d => `<option value="${d.id}" ${d.id === task.day ? 'selected' : ''}>${d.label}</option>`).join('')}</select></div>
-                                    <div><label class="text-xs font-bold text-slate-400 uppercase">Categoria</label>
-                                        <select id="et-category" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">
-                                            ${window.getTaskCategories().map(cat => `<option value="${cat.id}" ${cat.id === task.category ? 'selected' : ''}>${cat.label}</option>`).join('')}
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="bg-slate-950/70 border border-violet-900/40 rounded-xl p-3 space-y-3">
-                                    <div>
-                                        <label class="text-xs font-bold text-violet-300 uppercase flex items-center gap-2"><i data-lucide="repeat" class="w-3.5 h-3.5"></i> Recorrência semanal</label>
-                                        <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Ajuste em quais dias esta missão deve aparecer. Sem dias marcados = missão comum.</p>
-                                    </div>
-                                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                        ${daysOfWeek.map(d => `<label class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg px-2 py-2 text-xs text-slate-300 hover:border-violet-700 cursor-pointer"><input id="et-repeat-${d.id}" type="checkbox" class="accent-violet-500" ${recurrenceDays.includes(d.id) ? 'checked' : ''}> ${d.label}</label>`).join('')}
-                                    </div>
-                                    <div class="flex flex-wrap gap-2">
-                                        <button type="button" onclick="window.setEditTaskRecurrence('all')" class="text-[10px] bg-violet-900/40 hover:bg-violet-800 text-violet-200 border border-violet-700/50 px-2 py-1 rounded font-bold uppercase">Todos os dias</button>
-                                        <button type="button" onclick="window.setEditTaskRecurrence('clear')" class="text-[10px] bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 px-2 py-1 rounded font-bold uppercase">Limpar recorrência</button>
-                                    </div>
-                                </div>
-                                <input type="hidden" id="et-impact-type" value="${currentNature === 'recharge' ? 'recharge' : 'drain'}">
-                                <div class="bg-slate-950/50 border border-slate-800 rounded-xl p-3 space-y-3" id="et-effort-panel">
-                                    <div class="flex items-center justify-between gap-3">
-                                        <label class="text-xs font-bold text-slate-400 uppercase">Esforço e duração</label>
-                                        <span id="et-effort-note" class="text-[10px] text-slate-600 text-right">Ajusta o impacto conforme o tipo escolhido.</span>
-                                    </div>
-                                    <div class="grid grid-cols-3 gap-2">
-                                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Prioridade</label><select id="et-priority" onchange="window.updateEditPreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none"><option value="essencial" ${task.priority === 'essencial' ? 'selected' : ''}>Essencial</option><option value="alta" ${task.priority === 'alta' ? 'selected' : ''}>Alta</option><option value="media" ${(!task.priority || task.priority === 'media') ? 'selected' : ''}>Média</option><option value="baixa" ${task.priority === 'baixa' ? 'selected' : ''}>Baixa</option></select></div>
-                                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Dif.</label><input type="number" id="et-complexity" min="1" max="5" value="${currentComplexity}" oninput="window.updateEditPreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none"></div>
-                                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Min.</label><input type="number" id="et-time" value="${rawTime}" step="15" oninput="window.updateEditPreviewCalc()" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none"></div>
-                                    </div>
-                                </div>
-                                <div class="bg-slate-950/70 border border-cyan-900/40 rounded-xl p-3 space-y-3">
-                                    <div><label class="text-xs font-bold text-cyan-300 uppercase flex items-center gap-2"><i data-lucide="calendar-clock" class="w-3.5 h-3.5"></i> Agenda / Google Calendar <span class="text-slate-600 normal-case">(opcional)</span></label><p class="text-[11px] text-slate-500 mt-1 leading-relaxed">Sem horário, a missão será exportada como evento de dia inteiro. Com horário inicial, entra no horário definido.</p></div>
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Início</label><input type="time" id="et-start-time" value="${task.startTime || ''}" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none"></div>
-                                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Fim</label><input type="time" id="et-end-time" value="${task.endTime || ''}" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none"></div>
-                                    </div>
-                                </div>
-                                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex justify-between items-center mt-2">
-                                    <span class="text-xs font-bold text-slate-400 uppercase">Novo Impacto:</span>
-                                    <div class="flex gap-2"><span id="et-xp-preview" class="bg-indigo-900/50 text-indigo-400 px-3 py-1 rounded-md text-xs font-bold">+${task.xp || 0} XP</span><span id="et-hp-preview" class="${task.energyCost < 0 ? 'bg-emerald-900/50 text-emerald-400' : 'bg-red-900/50 text-red-400'} px-3 py-1 rounded-md text-xs font-bold">${task.energyCost < 0 ? '+' : '-'}${Math.abs(task.energyCost || 0)} HP</span></div>
-                                </div>
-                                ${task.completed ? `<div class="bg-amber-950/20 border border-amber-800/50 rounded-xl p-3 text-[11px] text-amber-200 leading-relaxed"><strong>Atenção:</strong> esta missão já está concluída. A edição altera os parâmetros da missão para uso futuro, mas não recalcula automaticamente o XP já recebido até você desmarcar/concluir novamente.</div>` : ''}
-                                <button onclick="window.saveEditedTask()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl mt-2 transition-colors">Salvar Alterações</button>
-                            </div>
-                        </div>
-                    </div>`;
-                }
+                if (task) html += window.renderEditTaskModal(task);
             }
 
             // MODAL Q.G.
@@ -6051,6 +6056,17 @@
                 });
             }
             window.bindOperationalDemandDialog(appDiv);
+            if (uiState.showEditTaskModal && uiState.editTaskDraft) {
+                uiState.editTaskDraft.fields.forEach(field => {
+                    const el = document.getElementById(field.id);
+                    if (el) { el.value = field.value; if (el.type === 'checkbox') el.checked = field.checked; }
+                });
+                appDiv.querySelectorAll('#edit-task-dialog details[data-edit-section]').forEach(el => {
+                    const saved = uiState.editTaskDraft.sections.find(section => section.key === el.dataset.editSection);
+                    if (saved) el.open = saved.open;
+                });
+            }
+            window.bindEditTaskDialog(appDiv);
 
             
             // Render specific components that require external DOM access safely
