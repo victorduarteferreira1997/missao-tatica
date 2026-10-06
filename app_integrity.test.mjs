@@ -3,8 +3,13 @@ import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 import { installFormDialogs as installDialogModule } from './ui/form_dialogs.v1.js';
+import { installTaskForms } from './ui/task_forms.v1.js';
 
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
+const taskForms = await readFile(new URL('./ui/task_forms.v1.js', import.meta.url), 'utf8');
+const interfaceSource = app + taskForms;
+assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v1\.js'/);
+assert.match(app, /installTaskForms\(window, \{ daysOfWeek, getState: \(\) => state, getUiState: \(\) => uiState \}\)/);
 const installFormDialogs = target => installDialogModule(target, {});
 assert.match(app, /import \{ installFormDialogs \} from '\.\/ui\/form_dialogs\.v1\.js'/);
 assert.match(app, /installFormDialogs\(window, document\)/);
@@ -25,7 +30,7 @@ assert.equal(
     `O módulo principal precisa compilar antes da publicação.\n${syntaxCheck.stderr}`
 );
 
-const inlineHandlers = [...app.matchAll(/on(?:click|change|input|keypress|dragstart|dragend|dragover|dragleave|drop)="window\.(?!\$\{)([A-Za-z_$][\w$]*)/g)]
+const inlineHandlers = [...interfaceSource.matchAll(/on(?:click|change|input|keypress|dragstart|dragend|dragover|dragleave|drop)="window\.(?!\$\{)([A-Za-z_$][\w$]*)/g)]
     .map(match => match[1]);
 const uniqueHandlers = [...new Set(inlineHandlers)].sort();
 
@@ -33,7 +38,7 @@ assert.ok(uniqueHandlers.length > 0, 'A interface deve expor handlers para os co
 
 const missingHandlers = uniqueHandlers.filter(name => {
     const declaration = new RegExp(`window\\.${name.replace(/[$]/g, '\\$&')}\\s*=`);
-    return !declaration.test(app);
+    return !declaration.test(interfaceSource);
 });
 
 assert.deepEqual(
@@ -74,17 +79,13 @@ assert.ok(focusPanel.indexOf('onclick="window.closeTaskFocus()"') >= 0
     'O retorno deve aparecer mesmo quando não houver missões pendentes.');
 
 const boardStart = app.indexOf('window.renderDailyMissionBoard = function(');
-const createModalStart = app.indexOf('window.renderCreateTaskModal = function(');
-const createModalEnd = app.indexOf('window.bindCreateTaskDialog = function(', createModalStart);
 const createDays = [{ id: 'mon', label: 'Segunda' }, { id: 'tue', label: 'Terça' }];
 const createWindow = {
     getTaskCategories: () => [{ id: 'work', label: 'Trabalho' }],
     escapeHtml: value => String(value)
 };
 installFormDialogs(createWindow);
-runInNewContext(app.slice(createModalStart, createModalEnd), {
-    window: createWindow, daysOfWeek: createDays, state: { activeTab: 'mon' }
-});
+installTaskForms(createWindow, { daysOfWeek: createDays, getState: () => ({ activeTab: 'mon' }), getUiState: () => ({}) });
 const createMarkup = createWindow.renderCreateTaskModal();
 const createIds = [...createMarkup.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
 assert.equal(new Set(createIds).size, createIds.length, 'O formulário não pode repetir IDs.');
@@ -443,7 +444,7 @@ assert.match(radarWindow.renderOperationalControl(), /Nenhuma demanda em acompan
 assert.match(radarWindow.renderOperationalControl(), /window.openOperationalDemandModal\(\)/);
 
 // Nova demanda: campos existentes, edição de encerradas e validação local.
-const demandDialogStart = app.indexOf('        window.renderOperationalDemandModal = function(');
+const demandDialogStart = app.indexOf('        window.openOperationalDemandModal = function(');
 const demandDialogEnd = app.indexOf('        window.closeOperationalDemand = function(', demandDialogStart);
 const demandUi = { editingOperationalDemandId: null, alert: { show: false }, confirm: { show: false } };
 const demandRecords = { demands: [{ id: 'done', title: '<Assunto encerrado>', workflowStatus: 'closed', owner: 'Victor', customField: 'preservar' }] };
@@ -459,6 +460,7 @@ const demandWindow = {
     saveState: () => { persists++; }, showToast() {}
 };
 installFormDialogs(demandWindow);
+installTaskForms(demandWindow, { daysOfWeek: createDays, getState: () => ({}), getUiState: () => demandUi });
 runInNewContext(app.slice(demandDialogStart, demandDialogEnd), {
     window: demandWindow, uiState: demandUi,
     document: { getElementById: id => id === 'op-demand-title-error' ? localError : demandElements[id] },
@@ -512,12 +514,10 @@ assert.equal(opDraftFields[1].value, 'waiting');
 assert.equal(opDraftSections[0].open, true);
 
 // Edição: valores existentes, recorrência e recompensas já recebidas.
-const editRendererStart = app.indexOf('        window.renderEditTaskModal = function(');
-const editRendererEnd = app.indexOf('        window.bindEditTaskDialog = function(', editRendererStart);
 const editable = { id: 91, text: '<Missão recorrente>', day: 'mon', category: 'work', priority: 'alta', complexity: 3, time: '60 min', missionNature: 'normal', startTime: '09:30', endTime: '10:30', recurrenceDays: ['mon', 'tue'], recurrenceGroupId: 'group-91', completed: true, subtasks: [{ id: 1, text: 'Preservar', completed: true }], customField: 'preservar', xp: 100, energyCost: 20 };
 const editWindow = { escapeHtml: radarWindow.escapeHtml, getTaskNature: task => task.missionNature, getTaskCategories: () => [{ id: 'work', label: 'Trabalho' }] };
 installFormDialogs(editWindow);
-runInNewContext(app.slice(editRendererStart, editRendererEnd), { window: editWindow, daysOfWeek: [{ id: 'mon', label: 'Segunda' }, { id: 'tue', label: 'Terça' }] });
+installTaskForms(editWindow, { daysOfWeek: createDays, getState: () => ({}), getUiState: () => ({}) });
 const editMarkup = editWindow.renderEditTaskModal(editable);
 assert.match(editMarkup, /&lt;Missão recorrente&gt;/);
 assert.match(editMarkup, /role="dialog" aria-modal="true"/);
@@ -561,6 +561,36 @@ const editRestoreStart = app.indexOf('if (uiState.showEditTaskModal && uiState.e
 const editRestoreEnd = app.indexOf('window.bindEditTaskDialog(appDiv);', editRestoreStart);
 runInNewContext(app.slice(editRestoreStart, editRestoreEnd), { appDiv: editDraftApp, uiState: editDraftUi, document: { getElementById: id => editDraftFields.find(field => field.id === id) } });
 assert.equal(editDraftFields[0].value, 'Edição em andamento'); assert.equal(editDraftFields[1].checked, true); assert.equal(editDraftSections[0].open, true);
+
+// Login/importação podem substituir os objetos: a interface deve consultar o estado atual.
+let liveTaskState = { activeTab: 'mon' };
+let liveDialogState = { editingOperationalDemandId: null, showCategoryModal: false, alert: { show: false }, confirm: { show: false } };
+let lastBinding = null, liveCloses = 0, prepared = [];
+const liveFormsWindow = {
+    escapeHtml: radarWindow.escapeHtml, getTaskCategories: createWindow.getTaskCategories,
+    getOperationalDemand: id => ({ id, title: 'Demanda atual', workflowStatus: 'waiting' }),
+    bindFormDialog: (root, options) => { lastBinding = options; },
+    toggleCreateTaskModal() { liveCloses++; }, closeEditTaskModal() { liveCloses++; }, closeOperationalDemandModal() { liveCloses++; },
+    updateTaskNatureButtons: prefix => prepared.push(prefix), updateEditPreviewCalc: () => prepared.push('preview'), syncOperationalWaitingFields: () => prepared.push('waiting')
+};
+installFormDialogs(liveFormsWindow);
+// Preservar o capturador de opções após a instalação da estrutura compartilhada.
+liveFormsWindow.bindFormDialog = (root, options) => { lastBinding = options; };
+installTaskForms(liveFormsWindow, { daysOfWeek: createDays, getState: () => liveTaskState, getUiState: () => liveDialogState });
+assert.match(liveFormsWindow.renderCreateTaskModal(), /value="mon" selected/);
+liveTaskState = { activeTab: 'tue' };
+assert.match(liveFormsWindow.renderCreateTaskModal(), /value="tue" selected/);
+liveDialogState = { editingOperationalDemandId: 'current', showCategoryModal: true, alert: { show: false }, confirm: { show: false } };
+assert.match(liveFormsWindow.renderOperationalDemandModal(), /value="Demanda atual"/);
+assert.match(liveFormsWindow.renderOperationalDemandModal(), /value="waiting" selected/);
+liveFormsWindow.bindCreateTaskDialog({}); assert.equal(lastBinding.blocked, true);
+liveDialogState = { editingOperationalDemandId: null, showCategoryModal: false, alert: { show: false }, confirm: { show: false } };
+liveFormsWindow.bindCreateTaskDialog({}); assert.equal(lastBinding.blocked, false); lastBinding.close();
+liveFormsWindow.bindEditTaskDialog({}); lastBinding.prepare(); lastBinding.close();
+liveFormsWindow.bindOperationalDemandDialog({}); lastBinding.prepare(); lastBinding.close();
+assert.equal(liveCloses, 3); assert.deepEqual(prepared, ['et', 'preview', 'waiting']);
+liveDialogState.confirm.show = true;
+for (const bind of ['bindCreateTaskDialog', 'bindEditTaskDialog', 'bindOperationalDemandDialog']) { liveFormsWindow[bind]({}); assert.equal(lastBinding.blocked, true); }
 
 // A estrutura compartilhada mantém as ações reais e a navegação do diálogo.
 for (const markup of [createMarkup, inboxMarkup, newDemandMarkup, closedDemandMarkup, editMarkup]) {
