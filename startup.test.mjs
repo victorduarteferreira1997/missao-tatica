@@ -39,7 +39,26 @@ test('integração completa monta Missões, Semana, Radar e todas as janelas sem
  for(const flag of ['showRitualModal','showRechargeModal','showProfileModal']){b.ui[flag]=true;b.render();assert.ok(b.elements.app.innerHTML.length>1000);b.ui[flag]=false;}
  b.window.openIndependentPomodoro();assert.match(b.elements.app.innerHTML,/Pomodoro livre/);assert.match(b.elements.app.innerHTML,/independent-activity/);assert.equal(b.state.tasks.length,0);
 });
-test('entradas principal/antiga preservam parâmetros e prévias sem parâmetros abrem a versão revisada',async()=>{
- for(const file of ['index.html','teste_novos_modulos.html']){const html=await readFile(new URL('./'+file,import.meta.url),'utf8');const source=html.match(/<script>([\s\S]*?)<\/script>/)[1];let url;runInNewContext(source,{window:{location:{search:'?v=v1.9.59',hash:'#qg',replace:value=>url=value}}});assert.equal(url,'app.html?v=v1.9.59#qg');}
- for(const file of ['preview_layout_verified.html','preview_layout_simplification.html']){const html=await readFile(new URL('./'+file,import.meta.url),'utf8');assert.match(html,/c3a974c4e82589e5a3fd35d739b3aac7ea565054/);assert.ok(!html.includes('v1.9.34'));assert.match(html,/requestedCommit/);assert.match(html,/actualBuild.startsWith\(version/);}
+test('entradas antigas preservam favoritos, parâmetros codificados e fragmentos',async()=>{
+ const routes={'index.html':'app.html','teste_novos_modulos.html':'app.html','preview_layout_v1_9_11.html':'app.html','preview_layout_v1_9_13.html':'app.html','preview_layout_simplification.html':'preview_layout_verified.html'};
+ for(const [file,target] of Object.entries(routes)){
+  const html=await readFile(new URL('./'+file,import.meta.url),'utf8');const source=html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  for(const [search,hash] of [['',''],['?v=v1.9.43&build=275773da50ca0b46b42398717e6b2bc1afe652ca','#qg'],['?texto=a%26b%20c','#semana']]){
+   let url;runInNewContext(source,{window:{location:{search,hash,replace:value=>url=value}}});assert.equal(url,target+search+hash);
+  }
+  assert.ok(html.includes('url='+target));assert.ok(html.includes('href="'+target+'"'));
+ }
+});
+test('carregador único mantém snapshots antigos e rejeita uma versão recebida diferente',async()=>{
+ const html=await readFile(new URL('./preview_layout_verified.html',import.meta.url),'utf8');const source=html.match(/<script>([\s\S]*?)<\/script>/)[1];
+ async function load(search,build){
+  let fetched,written;const status={textContent:''};
+  const document={getElementById:()=>status,open(){},write:value=>written=value,close(){}};
+  class DOMParser{parseFromString(){return {querySelector:()=>({content:build})};}}
+  runInNewContext(source,{URLSearchParams,location:{search},document,DOMParser,fetch:async url=>{fetched=url;return {ok:true,text:async()=>'<html>snapshot</html>'};}});
+  await new Promise(resolve=>setImmediate(resolve));return {fetched,written,status:status.textContent};
+ }
+ const current=await load('','v1.9.59-configurable-rewards');assert.ok(current.fetched.includes('/c3a974c4e82589e5a3fd35d739b3aac7ea565054/app.html'));assert.equal(current.written,'<html>snapshot</html>');
+ const old=await load('?v=v1.9.43&build=275773da50ca0b46b42398717e6b2bc1afe652ca','v1.9.43-planning');assert.ok(old.fetched.includes('/275773da50ca0b46b42398717e6b2bc1afe652ca/app.html'));assert.equal(old.written,'<html>snapshot</html>');
+ const mismatch=await load('?v=v1.9.43&build=275773da50ca0b46b42398717e6b2bc1afe652ca','v1.9.59-configurable-rewards');assert.equal(mismatch.written,undefined);assert.match(mismatch.status,/Não foi possível carregar a prévia/);
 });

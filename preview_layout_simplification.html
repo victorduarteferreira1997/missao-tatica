@@ -1,32 +1,16 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Prévia — Missão Tática</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="refresh" content="0; url=preview_layout_verified.html">
+    <link rel="canonical" href="preview_layout_verified.html">
+    <title>Missão Tática</title>
+    <script>
+        window.location.replace('preview_layout_verified.html' + window.location.search + window.location.hash);
+    </script>
 </head>
-<body style="margin:0;background:#020617;color:#cbd5e1;font-family:system-ui;padding:24px">
-  <div id="status" role="status">Carregando prévia v1.9.59...</div>
-  <script>
-    const params = new URLSearchParams(location.search);
-    const requestedCommit = params.get('build');
-    const commit = requestedCommit && /^[a-f0-9]{40}$/.test(requestedCommit)
-      ? requestedCommit
-      : 'c3a974c4e82589e5a3fd35d739b3aac7ea565054';
-    const requestedVersion = params.get('v');
-    const version = requestedVersion && /^v\d+\.\d+\.\d+$/.test(requestedVersion)
-      ? requestedVersion
-      : 'v1.9.59';
-    document.getElementById('status').textContent = 'Carregando prévia ' + version + '...';
-    fetch('https://raw.githubusercontent.com/victorduarteferreira1997/missao-tatica/' + commit + '/app.html', { cache: 'no-store' })
-      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
-      .then(html => {
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-        const actualBuild = doc.querySelector('meta[name="app-build"]')?.content || '';
-        if (!actualBuild.startsWith(version + '-')) throw new Error('Versão recebida: ' + actualBuild + '. Esperada: ' + version);
-        document.open(); document.write(html); document.close();
-      })
-      .catch(err => { document.getElementById('status').textContent = 'Não foi possível carregar a prévia: ' + err.message; });
-  </script>
+<body>
+    <p>Abrindo o <a href="preview_layout_verified.html">Missão Tática</a>…</p>
 </body>
 </html>
