@@ -226,6 +226,33 @@ Uma avaliação pendente precisa ser salva/pulada antes do próximo ciclo. Teste
 cobrem a renderização sem missões, IDs exatos, atividade congelada, trocas,
 confirmações antigas, histórico e texto escapado.
 
+## Catálogo de recompensas · v1.9.58
+
+A aba **Recompensas** do QG abre com cinco opções pequenas (até 250 MT).
+Filtros separam pequenas, médias, grandes, personalizadas e todas. Cinco novas
+opções vão de 100 a 700 MT: música favorita, jogo em dupla, cinema em casa,
+passeio escolhido e livro escolhido. MT não representa dinheiro real; o resgate
+registra uma escolha que a pessoa realiza fora do aplicativo.
+
+Cadastro, gestão, catálogo anterior e histórico ficam recolhidos. Os IDs e
+preços oficiais anteriores continuam iguais; Pausa Total e Doce/Junk Food
+permanecem no catálogo anterior para preservar metas e registros existentes.
+Descanso e necessidades básicas não dependem de moedas. O saldo e a meta
+mantêm sua apresentação; Ver recompensas abre o filtro correspondente ao alvo.
+
+Resgatar exige confirmação e verifica novamente saldo, preço, disponibilidade
+e campanha. Mantém gasto semanal antes da reserva, limite semanal, bônus de
+bateria e regras de medalhas. Novos registros guardam a campanha de origem;
+registros antigos mantêm seus snapshots. Personalizadas arquivadas podem ser
+restauradas, sem apagar resgates; arquivar o alvo remove essa meta. Custos
+novos precisam ser inteiros de pelo menos 50 MT. IDs importados podem ser texto.
+
+O histórico possui todas as páginas (10 registros por página). Textos e IDs
+importados são escapados. Rascunhos, seções abertas, rolagem e posição de edição
+são preservados nas reconstruções do QG; limpeza de Recompensas também limpa
+seus rascunhos. Testes cobrem compatibilidade, filtros, alvos, resgates, saldo,
+confirmações antigas, arquivamento, paginação e edição.
+
 ## Segurança
 
 O token OAuth do Google fica somente na memória do navegador. Não adicione ao

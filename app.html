@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.57-independent-pomodoro">
+    <meta name="app-build" content="v1.9.58-rewards-catalog">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -273,13 +273,18 @@
         ];
 
         const REWARDS_SHOP = [
-            { id: 'r1', icon: 'tv', title: '1 Episódio de Série', cost: 180, desc: 'Descanso curto e consciente, sem culpa.' },
-            { id: 'r2', icon: 'gamepad-2', title: '30 min de Videogame', cost: 220, desc: 'Lazer controlado com tempo definido.' },
-            { id: 'r3', icon: 'coffee', title: 'Pausa Total (30 min)', cost: 120, desc: 'Pausa real para recuperar energia mental.' },
-            { id: 'r4', icon: 'cookie', title: 'Doce/Junk Food Controlado', cost: 100, desc: 'Recompensa pequena, sem virar fuga.' },
+            { id: 'r1', icon: 'tv', title: '1 Episódio de Série', cost: 180, desc: 'Escolha um episódio para a sua próxima sessão de lazer.' },
+            { id: 'r2', icon: 'gamepad-2', title: '30 min de Videogame', cost: 220, desc: 'Uma sessão de jogo escolhida por você.' },
+            { id: 'r3', legacy: true, icon: 'coffee', title: 'Pausa Total (30 min)', cost: 120, desc: 'Pausa real para recuperar energia mental.' },
+            { id: 'r4', legacy: true, icon: 'cookie', title: 'Doce/Junk Food Controlado', cost: 100, desc: 'Recompensa pequena, sem virar fuga.' },
             { id: 'r5', icon: 'ticket', title: 'Cinema / Passeio Especial', cost: 600, desc: 'Recompensa média para mirar durante a semana.' },
             { id: 'r6', icon: 'shopping-bag', title: 'Compra Pequena Planejada', cost: 900, desc: 'Algo útil ou simbólico, comprado com intenção.' },
-            { id: 'r7', icon: 'gem', title: 'Recompensa Grande', cost: 1200, desc: 'Meta de várias semanas usando a Reserva Tática e o saldo semanal.' }
+            { id: 'r7', icon: 'gem', title: 'Recompensa Grande', cost: 1200, desc: 'Meta de várias semanas usando a Reserva Tática e o saldo semanal.' },
+            { id: 'r8', icon: 'music', title: 'Sessão de música favorita', cost: 100, desc: 'Escolha um álbum ou uma playlist para aproveitar.' },
+            { id: 'r9', icon: 'users', title: 'Jogo em dupla', cost: 180, desc: 'Combine uma partida ou um jogo de mesa com alguém.' },
+            { id: 'r10', icon: 'clapperboard', title: 'Cinema em casa', cost: 250, desc: 'Escolha um filme e prepare sua sessão em casa.' },
+            { id: 'r11', icon: 'map', title: 'Passeio escolhido', cost: 500, desc: 'Visite um lugar que queira conhecer. Pode ser uma opção gratuita.' },
+            { id: 'r12', icon: 'book-open', title: 'Livro escolhido', cost: 700, desc: 'Separe um livro que já tenha ou planeje uma compra dentro do seu orçamento.' }
         ];
 
         const ECONOMY_DEFAULTS = {
@@ -1240,7 +1245,7 @@
 
         window.setRewardTarget = function(type, id) {
             const source = type === 'custom' ? (state.customRewards || []).find(r => String(r.id) === String(id) && r.active !== false) : REWARDS_SHOP.find(r => String(r.id) === String(id));
-            if (!source) { window.showAlertModal('Recompensa não encontrada.'); return; }
+            if (!source || !window.isValidRewardCost(source.cost)) { window.showAlertModal('Recompensa não encontrada ou custo inválido.'); return; }
             const economy = window.normalizeEconomy();
             economy.targetReward = { type, id: String(id), title: source.title, cost: parseInt(source.cost, 10) || 0, icon: source.icon || 'gift', updatedAt: new Date().toISOString() };
             window.showToast('Recompensa-alvo definida', `${source.title} virou o seu objetivo de moedas.`, 'target', 'text-yellow-400');
@@ -1974,6 +1979,7 @@
                     ['receitas','fixas','variaveis','diario'].forEach(tab=>window.clearWorkDraft?.('finance', tab));
                     uiState.financeSections = {}; uiState.financePages = {};
                 }
+                if (ids.includes('rewards')) { uiState.rewardDraft = {}; uiState.rewardSections = {}; uiState.rewardGroup = 'small'; uiState.rewardHistoryPage = 0; }
                 if (ids.includes('study')) window.clearWorkDraft?.('study', 'log');
                 if (ids.includes('focus')) { uiState.pomodoroDraft = {}; uiState.pomodoroDraftReset = true; uiState.pomodoroSections = {}; uiState.focusHistoryPage = 0; }
                 if (ids.includes('health')) {
@@ -2580,64 +2586,73 @@
             } catch(e) {}
         };
 
-        window.buyReward = function(rewardId) {
-            const r = REWARDS_SHOP.find(x => x.id === rewardId);
-            if (window.spendTacticalCoins(r.cost, 'recompensa-oficial')) {
-                window.changeEnergy(20); window.recordCampaignStat('rewardsBought'); state.stats.rewardsBought = (state.stats.rewardsBought || 0) + 1;
-                
-                state.rewardPurchases.push({
-                    id: Date.now(), rewardId: r.id, title: r.title, cost: r.cost, type: "default", date: new Date().toISOString()
-                });
-                
-                window.checkGameTriggers();
-                window.unlockBadge('shopaholic'); window.showToast('Recompensa Resgatada!', `Aproveite seu: ${r.title}`, 'gift', 'text-emerald-400'); window.saveState();
-            } else { window.showAlertModal(`Saldo insuficiente. Faltam ${r.cost - window.getTotalTacticalCoins()} MT.`); }
+        window.getRewardSource = function(type, id) {
+            if (type !== 'default' && type !== 'custom') return null;
+            const source = type === 'default' ? REWARDS_SHOP : (state.customRewards || []);
+            return source.find(r => String(r.id) === String(id) && (type === 'default' || r.active !== false)) || null;
         };
-        
+        window.isValidRewardCost = function(cost) { return ['number','string'].includes(typeof cost) && cost !== '' && Number.isSafeInteger(Number(cost)) && Number(cost) >= 50; };
+        window.redeemReward = function(type, id) {
+            const reward = window.getRewardSource(type, id);
+            if (!reward || !window.isValidRewardCost(reward.cost)) { window.showAlertModal('Recompensa não encontrada ou custo inválido.'); return; }
+            const cost = Number(reward.cost);
+            if (!window.spendTacticalCoins(cost, type === 'default' ? 'recompensa-oficial' : 'recompensa-personalizada')) {
+                window.showAlertModal(`Saldo insuficiente. Faltam ${Math.max(0, cost - window.getTotalTacticalCoins())} MT.`); return;
+            }
+            window.changeEnergy(20); window.recordCampaignStat('rewardsBought');
+            state.stats.rewardsBought = (state.stats.rewardsBought || 0) + 1;
+            state.rewardPurchases ||= [];
+            state.rewardPurchases.push({ id: `reward-${Date.now()}-${Math.random().toString(36).slice(2,9)}`, rewardId: reward.id, title: reward.title, cost, type, date: new Date().toISOString(), campaignId: window.normalizePrestige().campaign });
+            window.checkGameTriggers(); window.unlockBadge('shopaholic');
+            uiState.rewardHistoryPage = 0;
+            window.showToast('Recompensa resgatada', String(reward.title), 'gift', 'text-emerald-400'); window.saveState();
+        };
+        window.buyReward = function(id) { window.redeemReward('default', id); };
+        window.buyCustomReward = function(id) { window.redeemReward('custom', id); };
+        window.reviewRewardRedemption = function(type, id) {
+            const reward = window.getRewardSource(type, id);
+            if (!reward || !window.isValidRewardCost(reward.cost)) { window.showAlertModal('Recompensa não encontrada ou custo inválido.'); return; }
+            const cost = Number(reward.cost), title = reward.title, originalState = state, campaign = window.normalizePrestige().campaign;
+            if (window.getTotalTacticalCoins() < cost) { window.showAlertModal(`Saldo insuficiente. Faltam ${cost - window.getTotalTacticalCoins()} MT.`); return; }
+            let used = false;
+            window.showConfirmModal(`Resgatar “${title}” por ${cost} MT? O saldo disponível será reduzido. A recompensa é realizada por você, fora do aplicativo.`, () => {
+                if (used) return; used = true;
+                const current = window.getRewardSource(type, id);
+                if (state !== originalState || window.normalizePrestige().campaign !== campaign || current !== reward || current.title !== title || Number(current.cost) !== cost) {
+                    window.showAlertModal('A recompensa ou a campanha mudou. Confira o catálogo e tente novamente.'); return;
+                }
+                window.redeemReward(type, id);
+            });
+        };
         window.addCustomReward = function() {
             const title = document.getElementById('custom-reward-title')?.value.trim();
-            const cost = parseInt(document.getElementById('custom-reward-cost')?.value);
+            const cost = Number(document.getElementById('custom-reward-cost')?.value);
             const desc = document.getElementById('custom-reward-desc')?.value.trim() || '';
-            
-            if (!title) { window.showAlertModal("Título é obrigatório."); return; }
-            if (!cost || cost < 50) { window.showAlertModal("Use custo mínimo de 50 MT para evitar recompensas baratas demais."); return; }
-            
-            state.customRewards.push({
-                id: Date.now(), title, cost, desc, icon: "gift", createdAt: new Date().toISOString(), active: true
-            });
-            window.saveState();
-            window.showToast("Recompensa criada", "Nova opção adicionada ao Mercado Negro.", "gift", "text-emerald-400");
+            if (!title) { window.showAlertModal('Informe um título para a recompensa.'); return; }
+            if (!window.isValidRewardCost(cost)) { window.showAlertModal('Informe um custo inteiro de pelo menos 50 MT.'); return; }
+            state.customRewards ||= [];
+            state.customRewards.push({ id: `custom-${Date.now()}-${Math.random().toString(36).slice(2,9)}`, title, cost, desc, icon: 'gift', createdAt: new Date().toISOString(), active: true });
+            uiState.rewardDraft = {}; uiState.rewardGroup = 'custom';
+            uiState.rewardSections ||= {}; uiState.rewardSections.create = false;
+            window.saveState(); window.showToast('Recompensa criada', 'Sua opção já está no catálogo.', 'gift', 'text-emerald-400');
         };
-
         window.deleteCustomReward = function(id) {
-            window.showConfirmModal("Deseja remover esta recompensa personalizada?", () => {
-                const reward = state.customRewards.find(r => r.id === id);
-                if (reward) {
-                    reward.active = false;
-                    window.saveState();
-                    window.showToast("Recompensa removida", "Removida do mercado.", "trash-2", "text-slate-400");
-                }
+            const reward = (state.customRewards || []).find(r => String(r.id) === String(id));
+            if (!reward || reward.active === false) return;
+            const originalState = state;
+            window.showConfirmModal('Arquivar esta recompensa? Ela sai do catálogo; os resgates anteriores continuam no histórico. Se for seu alvo, ele será removido.', () => {
+                if (state !== originalState || !(state.customRewards || []).includes(reward) || reward.active === false) return;
+                reward.active = false;
+                const economy = window.normalizeEconomy();
+                if (economy.targetReward?.type === 'custom' && String(economy.targetReward.id) === String(id)) economy.targetReward = null;
+                window.saveState(); window.showToast('Recompensa arquivada', 'Você pode restaurá-la em Gerenciar personalizadas.', 'archive', 'text-slate-400');
             });
         };
-
-        window.buyCustomReward = function(id) {
-            const reward = state.customRewards.find(r => r.id === id && r.active);
-            if (!reward) { window.showAlertModal("Recompensa não encontrada ou inativa."); return; }
-            
-            if (window.spendTacticalCoins(reward.cost, 'recompensa-personalizada')) {
-                window.changeEnergy(20);
-                window.recordCampaignStat('rewardsBought'); state.stats.rewardsBought = (state.stats.rewardsBought || 0) + 1;
-                
-                state.rewardPurchases.push({
-                    id: Date.now(), rewardId: reward.id, title: reward.title, cost: reward.cost, type: "custom", date: new Date().toISOString()
-                });
-                
-                window.checkGameTriggers();
-                window.showToast("Recompensa resgatada", reward.title, "gift", "text-emerald-400");
-                window.saveState();
-            } else {
-                window.showAlertModal(`Saldo insuficiente. Faltam ${reward.cost - window.getTotalTacticalCoins()} MT.`);
-            }
+        window.restoreCustomReward = function(id) {
+            const reward = (state.customRewards || []).find(r => String(r.id) === String(id));
+            if (!reward || reward.active !== false) return;
+            reward.active = true; window.saveState();
+            window.showToast('Recompensa restaurada', 'Disponível em Suas recompensas.', 'gift', 'text-emerald-400');
         };
 
         window.endDay = function() {
@@ -5269,7 +5284,7 @@
                 ['Finalidade','Arquivo de consulta para análise. Para restaurar dados no Missão Tática, use o backup JSON completo.']
             ];
             const sheets = [{ name:'Resumo', widths:[44,110], rows:[['Informação','Valor / explicação'],
-                ['Exportado em',exportedAt.toLocaleString('pt-BR')],['Fuso da exportação',Intl.DateTimeFormat().resolvedOptions().timeZone],['Versão','v1.9.57'],
+                ['Exportado em',exportedAt.toLocaleString('pt-BR')],['Fuso da exportação',Intl.DateTimeFormat().resolvedOptions().timeZone],['Versão','v1.9.58'],
                 ['Receitas registradas (R$)',income],['Contas fixas cadastradas (R$)',fixed],['Gastos variáveis registrados (R$)',variable],
                 ['Resultado estimado (R$)',Math.round((income-fixed-variable)*100)/100],['Contas fixas pendentes (R$)',window.getFinanceSum(rows('fixedExpenses').filter(row=>!row.paid))],
                 ['Receitas: quantidade',rows('incomes').length],['Contas fixas: quantidade',rows('fixedExpenses').length],['Gastos: quantidade',rows('variableExpenses').length],['Diário: quantidade',rows('moneyJournal').length],
@@ -5976,6 +5991,7 @@
             const recoverySnapshots = window.captureRecoveryDialogs(appDiv);
             const workSnapshots = window.captureWorkDialogs(appDiv);
             window.capturePomodoroDraft(appDiv);
+            const qgSnapshot = window.captureQGDialog(appDiv);
             const previousEditDialog = appDiv.querySelector('#edit-task-dialog');
             if (uiState.showEditTaskModal && previousEditDialog) {
                 uiState.editTaskDraft = {
@@ -6212,7 +6228,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.57</span></div>
+                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.58</span></div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-2">
@@ -6510,14 +6526,14 @@
             // MODAL Q.G.
             if (uiState.showStatsModal) {
                 html += `
-                <div class="fixed inset-0 bg-black/90 flex flex-col items-center justify-start p-2 sm:p-6 z-[60] backdrop-blur-md overflow-y-auto pt-10 font-sans">
-                    <div role="dialog" aria-modal="true" aria-labelledby="qg-title" class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-4xl shadow-2xl modal-enter relative mb-10">
-                        <button aria-label="Fechar Quartel General" onclick="window.toggleStatsModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full p-1"><i data-lucide="x"></i></button>
+                <div id="qg-scroll" class="fixed inset-0 bg-black/90 flex flex-col items-center justify-start p-2 sm:p-6 z-[60] backdrop-blur-md overflow-y-auto pt-10 font-sans">
+                    <div id="qg-dialog" role="dialog" aria-modal="true" aria-labelledby="qg-title" class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-4xl shadow-2xl modal-enter relative mb-10">
+                        <button id="qg-close" aria-label="Fechar Quartel General" onclick="window.toggleStatsModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full p-1"><i data-lucide="x"></i></button>
                         <div class="p-5 sm:p-8">
                             <h2 id="qg-title" class="text-2xl font-black text-white flex items-center gap-3 mb-6 pr-8"><i data-lucide="building-2" class="text-yellow-500 w-8 h-8"></i> Quartel General</h2>
                             
                             <div class="flex flex-wrap gap-2 mb-6 bg-slate-950 p-1 rounded-lg">
-                                ${['roadmap:Progressão', 'badges:Coleção', 'performance:Desempenho', 'shop:Mercado Negro'].map(tab => {
+                                ${['roadmap:Progressão', 'badges:Coleção', 'performance:Desempenho', 'shop:Recompensas'].map(tab => {
                                     const [id, label] = tab.split(':');
                                     return `<button onclick="window.setStatsTab('${id}')" class="flex-1 min-w-[100px] py-2 text-xs sm:text-sm font-bold rounded-md transition-colors ${uiState.statsTab === id ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'}">${label}</button>`;
                                 }).join('')}
@@ -6562,6 +6578,7 @@
             window.bindRecoveryDialogs(appDiv, recoverySnapshots);
             window.bindWorkDialogs(appDiv, workSnapshots);
             window.restorePomodoroDraft(appDiv);
+            window.bindQGDialog(appDiv, qgSnapshot);
             if (typeof window.bindTaskNatureControls === 'function') window.bindTaskNatureControls(appDiv);
             window.bindCreateTaskDialog(appDiv);
             if (uiState.showOperationalDemandModal && uiState.operationalDemandDraft) {
@@ -6979,6 +6996,68 @@
             </div>`;
         };
 
+        window.captureQGDialog = function(root) {
+            const dialog = root.querySelector('#qg-dialog');
+            if (!dialog) return null;
+            const active = document.activeElement;
+            return { scrollTop:root.querySelector('#qg-scroll')?.scrollTop || 0, tab:uiState.statsTab,
+                focusId:dialog.contains(active) ? active.id : '', start:active?.selectionStart, end:active?.selectionEnd };
+        };
+        window.bindQGDialog = function(root, snapshot) {
+            if (!root.querySelector('#qg-dialog')) return;
+            const blocked = uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager);
+            const sameTab = snapshot?.tab === uiState.statsTab;
+            const scroller = root.querySelector('#qg-scroll');
+            if (scroller && sameTab) scroller.scrollTop = snapshot.scrollTop;
+            window.bindFormDialog(root, { id:'qg-dialog', initialFocus:sameTab && snapshot.focusId || 'qg-close', close:window.toggleStatsModal, blocked });
+            if (!blocked && sameTab && snapshot.focusId && snapshot.start != null) {
+                const field = document.getElementById(snapshot.focusId);
+                try { field?.setSelectionRange(snapshot.start,snapshot.end); } catch(e) {}
+            }
+        };
+        window.rewardArgument = function(id) { return window.escapeHtml(JSON.stringify(String(id))); };
+        window.setRewardGroup = function(group) {
+            if (!['small','medium','large','custom','all'].includes(group)) return;
+            uiState.rewardGroup = group; render();
+        };
+        window.openRewardCatalog = function() {
+            const target = state.economy?.targetReward;
+            uiState.rewardGroup = target?.type === 'custom' ? 'custom' : target?.cost > 900 ? 'large' : target?.cost > 250 ? 'medium' : 'small';
+            if (REWARDS_SHOP.find(r => String(r.id) === String(target?.id) && target?.type === 'default')?.legacy) {
+                uiState.rewardSections ||= {}; uiState.rewardSections.legacy = true;
+            }
+            render(); document.getElementById('qg-rewards')?.scrollIntoView({behavior:'smooth',block:'start'});
+        };
+        window.setRewardSection = function(section, open) { uiState.rewardSections ||= {}; uiState.rewardSections[section] = open; };
+        window.setRewardDraft = function(field, value) { uiState.rewardDraft ||= {}; uiState.rewardDraft[field] = value; };
+        window.setRewardHistoryPage = function(page) { uiState.rewardHistoryPage = Math.max(0, Number(page) || 0); render(); };
+        window.renderRewardCard = function(reward, type, total) {
+            const id = window.rewardArgument(reward.id), valid = window.isValidRewardCost(reward.cost), cost = Number(reward.cost);
+            const canAfford = valid && total >= cost;
+            const isTarget = state.economy?.targetReward?.type === type && String(state.economy.targetReward.id) === String(reward.id);
+            const icon = type === 'custom' ? 'gift' : reward.icon;
+            return `<article class="bg-slate-800/60 border ${isTarget ? 'border-yellow-500/70' : 'border-slate-700'} rounded-xl p-4 flex flex-col justify-between gap-4">
+                <div><div class="flex justify-between items-center gap-3 mb-2"><i data-lucide="${icon}" class="w-5 h-5 text-slate-300"></i><span class="text-sm font-bold text-yellow-300">${valid ? cost + ' MT' : 'Custo inválido'}</span></div><h4 class="text-sm font-bold text-white break-words">${window.escapeHtml(reward.title)}</h4><p class="text-xs text-slate-400 mt-1 leading-relaxed break-words">${window.escapeHtml(reward.desc || '')}</p>${isTarget ? '<p class="mt-2 text-xs font-semibold text-yellow-300">Alvo atual</p>' : ''}</div>
+                <div class="grid grid-cols-2 gap-2"><button type="button" onclick="window.setRewardTarget('${type}',${id})" ${valid ? '' : 'disabled'} class="py-2.5 px-2 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-700 text-slate-300 border border-slate-700 focus-visible:ring-2 focus-visible:ring-indigo-300 disabled:opacity-50">${isTarget ? 'Alvo atual' : 'Definir alvo'}</button><button type="button" onclick="window.reviewRewardRedemption('${type}',${id})" ${canAfford ? '' : 'disabled'} class="py-2.5 px-2 rounded-lg text-xs font-bold focus-visible:ring-2 focus-visible:ring-emerald-300 ${canAfford ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-slate-900 text-slate-400 cursor-not-allowed'}">${canAfford ? 'Resgatar' : valid ? `Faltam ${Math.max(0,cost-total)} MT` : 'Revise o custo'}</button></div>
+            </article>`;
+        };
+        window.renderRewardCatalog = function() {
+            const group = ['small','medium','large','custom','all'].includes(uiState.rewardGroup) ? uiState.rewardGroup : 'small';
+            const custom = state.customRewards || [], total = window.getTotalTacticalCoins();
+            const official = REWARDS_SHOP.filter(r => !r.legacy);
+            const rewards = group === 'custom' ? custom.filter(r => r.active !== false).map(r => ({reward:r,type:'custom'})) : group === 'all' ? [...official.map(r=>({reward:r,type:'default'})),...custom.filter(r=>r.active!==false).map(r=>({reward:r,type:'custom'}))] : official.filter(r=>group==='small' ? r.cost<=250 : group==='medium' ? r.cost>250&&r.cost<=900 : r.cost>900).map(r=>({reward:r,type:'default'}));
+            const section = (key,title,body) => `<details ${uiState.rewardSections?.[key] ? 'open' : ''} ontoggle="if(this.isConnected)window.setRewardSection('${key}',this.open)" class="rounded-xl border border-slate-800 px-4 py-3 mt-4"><summary class="cursor-pointer text-sm font-semibold text-slate-300">${title}</summary><div class="pt-4">${body}</div></details>`;
+            let html = `<section id="qg-rewards" class="scroll-mt-6"><h3 class="text-lg font-bold text-white">Escolha sua próxima recompensa</h3><p class="text-sm text-slate-400 mt-1 mb-4">MT são moedas do aplicativo. Resgatar registra sua escolha; você realiza a recompensa. Descanso e necessidades básicas continuam livres, sem gastar moedas.</p><div class="flex flex-wrap gap-2 mb-4" aria-label="Filtrar recompensas">${[['small','Pequenas · até 250 MT'],['medium','Médias · 251–900 MT'],['large','Grandes · acima de 900 MT'],['custom','Suas recompensas'],['all','Todas']].map(([id,label])=>`<button type="button" aria-pressed="${group===id}" onclick="window.setRewardGroup('${id}')" class="px-3 py-2 rounded-lg text-xs font-semibold border focus-visible:ring-2 focus-visible:ring-indigo-300 ${group===id ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-950 border-slate-700 text-slate-300 hover:bg-slate-800'}">${label}</button>`).join('')}</div><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${rewards.map(r=>window.renderRewardCard(r.reward,r.type,total)).join('') || '<p class="text-sm text-slate-400 sm:col-span-2">Você ainda não tem recompensas personalizadas. Crie uma abaixo.</p>'}</div>`;
+            const draft = uiState.rewardDraft || {}, field = (id,label,type,value,extra='') => `<label for="custom-reward-${id}" class="block text-xs font-semibold text-slate-400">${label}<input id="custom-reward-${id}" type="${type}" value="${window.escapeHtml(value || '')}" oninput="window.setRewardDraft('${id}',this.value)" ${extra} class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-indigo-400 outline-none"></label>`;
+            html += section('create','Criar recompensa personalizada',`<div class="space-y-3"><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${field('title','Título','text',draft.title)}${field('cost','Custo em MT (mínimo 50)','number',draft.cost,'min="50" step="1"')}</div>${field('desc','Descrição (opcional)','text',draft.desc)}<button type="button" onclick="window.addCustomReward()" class="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold">Criar recompensa</button></div>`);
+            if (custom.length) html += section('manage','Gerenciar personalizadas',`<p class="text-xs text-slate-400 mb-3">Arquivar retira a opção do catálogo e preserva seus resgates.</p><div class="space-y-2">${custom.map(r=>`<div class="flex flex-wrap items-center justify-between gap-3 border border-slate-800 rounded-lg p-3"><div class="min-w-0 flex-1"><p class="text-sm text-slate-200 break-words">${window.escapeHtml(r.title)}</p><p class="text-xs text-slate-400">${window.escapeHtml(r.cost)} MT · ${r.active===false ? 'Arquivada' : 'Ativa'}</p></div><button type="button" onclick="window.${r.active===false ? 'restoreCustomReward' : 'deleteCustomReward'}(${window.rewardArgument(r.id)})" class="text-xs font-semibold text-slate-300 border border-slate-700 rounded-lg px-3 py-2">${r.active===false ? 'Restaurar' : 'Arquivar'}</button></div>`).join('')}</div>`);
+            html += section('legacy','Catálogo anterior',`<p class="text-xs text-slate-400 mb-3">Opções mantidas para preservar alvos e resgates antigos. Você pode descansar e se alimentar independentemente de moedas.</p><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${REWARDS_SHOP.filter(r=>r.legacy).map(r=>window.renderRewardCard(r,'default',total)).join('')}</div>`);
+            const purchases = (state.rewardPurchases || []).slice().sort((a,b)=>(Date.parse(b.date)||0)-(Date.parse(a.date)||0));
+            const pages = Math.max(1,Math.ceil(purchases.length/10)), page = Math.min(pages-1,Math.max(0,Math.floor(Number(uiState.rewardHistoryPage)||0)));
+            html += section('history',`Histórico de resgates · ${purchases.length}`,purchases.length ? `<div class="space-y-2">${purchases.slice(page*10,page*10+10).map(r=>`<div class="border border-slate-800 rounded-lg p-3 flex items-start justify-between gap-3"><div class="min-w-0"><p class="text-xs text-slate-500">${window.escapeHtml(window.formatCampaignDate(r.date))} · ${r.type==='custom' ? 'Pessoal' : 'Oficial'}${r.campaignId != null ? ` · Campanha ${window.escapeHtml(r.campaignId)}` : ''}</p><p class="text-sm text-slate-200 mt-1 break-words">${window.escapeHtml(r.title)}</p></div><span class="text-xs text-yellow-300 shrink-0">${window.escapeHtml(r.cost)} MT</span></div>`).join('')}</div>${pages>1 ? `<div class="flex items-center justify-between gap-2 mt-3"><button type="button" onclick="window.setRewardHistoryPage(${page-1})" ${page===0 ? 'disabled' : ''} class="px-3 py-2 border border-slate-700 rounded-lg text-xs text-slate-300 disabled:opacity-30">Anterior</button><span class="text-xs text-slate-400">${page+1} de ${pages}</span><button type="button" onclick="window.setRewardHistoryPage(${page+1})" ${page===pages-1 ? 'disabled' : ''} class="px-3 py-2 border border-slate-700 rounded-lg text-xs text-slate-300 disabled:opacity-30">Próxima</button></div>` : ''}` : '<p class="text-sm text-slate-400">Nenhum resgate registrado ainda.</p>');
+            return html + '</section>';
+        };
+
         function renderQGContent() {
             if (uiState.statsTab === 'roadmap') {
                 if (uiState.campaignPicker) return window.renderCampaignPicker();
@@ -7040,8 +7119,8 @@
                             <p class="text-sm text-slate-400 mt-2">Saldo semanal: <span class="font-semibold text-slate-200">${state.coins} MT</span> <span class="text-slate-600 mx-1">+</span> Reserva: <span class="font-semibold text-slate-200">${economy.tacticalReserve} MT</span></p>
                         </div>
                     </div>
-                    ${target ? `<div class="bg-slate-950/60 border ${totalCoins >= target.cost ? 'border-emerald-700/60' : 'border-slate-700'} rounded-xl p-5"><div class="flex items-center justify-between gap-3 mb-3"><div><p class="text-xs text-slate-400 uppercase font-bold tracking-widest">Recompensa-alvo</p><h4 class="text-lg font-bold text-white mt-1">${window.escapeHtml(target.title)}</h4><p class="text-xs text-slate-400 mt-1">Meta de ${target.cost} MT</p></div><button aria-label="Remover recompensa-alvo" onclick="window.clearRewardTarget()" class="text-xs text-slate-400 hover:text-slate-200 rounded-lg border border-slate-700 px-3 py-2 shrink-0 transition-colors">Remover alvo</button></div><div class="flex items-center gap-3"><div role="progressbar" aria-label="Progresso da recompensa-alvo" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${targetPct}" class="flex-1 bg-slate-800 h-2 rounded-full overflow-hidden"><div class="${totalCoins >= target.cost ? 'bg-emerald-400' : 'bg-indigo-400'} h-2 rounded-full" style="width:${targetPct}%"></div></div><span class="text-sm font-bold ${totalCoins >= target.cost ? 'text-emerald-300' : 'text-indigo-300'}">${targetPct}%</span></div><p class="text-sm ${totalCoins >= target.cost ? 'text-emerald-300' : 'text-slate-300'} mt-3">${totalCoins >= target.cost ? 'Alvo alcançado. Você já pode resgatar esta recompensa.' : `Faltam ${Math.max(0, target.cost - totalCoins)} MT para seu alvo de ${target.cost} MT.`}</p><button type="button" onclick="document.getElementById('qg-rewards')?.scrollIntoView({behavior: 'smooth', block: 'start'})" class="inline-flex items-center justify-center mt-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:outline-none px-4 py-2.5 text-sm font-bold text-white transition-colors">Ver recompensas</button></div>` : `<div class="bg-slate-950/50 border border-slate-700 rounded-xl p-5"><p class="text-sm font-semibold text-slate-200">Qual será sua próxima recompensa?</p><p class="text-sm text-slate-400 mt-1">Use “Definir alvo” em uma das opções abaixo para acompanhar o progresso.</p><button type="button" onclick="document.getElementById('qg-rewards')?.scrollIntoView({behavior: 'smooth', block: 'start'})" class="inline-flex items-center justify-center mt-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:outline-none px-4 py-2.5 text-sm font-bold text-white transition-colors">Escolher recompensa</button></div>`}
-                    <details class="group rounded-lg border border-slate-800 px-4 py-3"><summary class="cursor-pointer text-sm text-slate-400 hover:text-slate-200">Detalhes das moedas</summary>
+                    ${target ? `<div class="bg-slate-950/60 border ${totalCoins >= target.cost ? 'border-emerald-700/60' : 'border-slate-700'} rounded-xl p-5"><div class="flex items-center justify-between gap-3 mb-3"><div><p class="text-xs text-slate-400 uppercase font-bold tracking-widest">Recompensa-alvo</p><h4 class="text-lg font-bold text-white mt-1">${window.escapeHtml(target.title)}</h4><p class="text-xs text-slate-400 mt-1">Meta de ${target.cost} MT</p></div><button aria-label="Remover recompensa-alvo" onclick="window.clearRewardTarget()" class="text-xs text-slate-400 hover:text-slate-200 rounded-lg border border-slate-700 px-3 py-2 shrink-0 transition-colors">Remover alvo</button></div><div class="flex items-center gap-3"><div role="progressbar" aria-label="Progresso da recompensa-alvo" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${targetPct}" class="flex-1 bg-slate-800 h-2 rounded-full overflow-hidden"><div class="${totalCoins >= target.cost ? 'bg-emerald-400' : 'bg-indigo-400'} h-2 rounded-full" style="width:${targetPct}%"></div></div><span class="text-sm font-bold ${totalCoins >= target.cost ? 'text-emerald-300' : 'text-indigo-300'}">${targetPct}%</span></div><p class="text-sm ${totalCoins >= target.cost ? 'text-emerald-300' : 'text-slate-300'} mt-3">${totalCoins >= target.cost ? 'Alvo alcançado. Você já pode resgatar esta recompensa.' : `Faltam ${Math.max(0, target.cost - totalCoins)} MT para seu alvo de ${target.cost} MT.`}</p><button type="button" onclick="window.openRewardCatalog()" class="inline-flex items-center justify-center mt-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:outline-none px-4 py-2.5 text-sm font-bold text-white transition-colors">Ver recompensas</button></div>` : `<div class="bg-slate-950/50 border border-slate-700 rounded-xl p-5"><p class="text-sm font-semibold text-slate-200">Qual será sua próxima recompensa?</p><p class="text-sm text-slate-400 mt-1">Use “Definir alvo” em uma das opções abaixo para acompanhar o progresso.</p><button type="button" onclick="window.openRewardCatalog()" class="inline-flex items-center justify-center mt-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:outline-none px-4 py-2.5 text-sm font-bold text-white transition-colors">Escolher recompensa</button></div>`}
+                    <details ${uiState.rewardSections?.coins ? 'open' : ''} ontoggle="if(this.isConnected)window.setRewardSection('coins',this.open)" class="group rounded-lg border border-slate-800 px-4 py-3"><summary class="cursor-pointer text-sm text-slate-400 hover:text-slate-200">Detalhes das moedas</summary>
                         <div class="pt-4 space-y-4 text-xs text-slate-400">
                             <div><div class="flex justify-between gap-3"><span>Ganhos da semana</span><span class="font-semibold text-cyan-300">${economy.weeklyCoinsEarned} de ${economy.weeklyCap} MT</span></div><div class="bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden"><div class="bg-cyan-400 h-full rounded-full" style="width:${weeklyPct}%"></div></div><p class="mt-2">Total recebido nesta semana, inclusive moedas já gastas. Resgates não liberam novamente o limite.</p></div>
                             <div><div class="flex justify-between gap-3"><span>Capacidade da reserva</span><span class="font-semibold text-slate-200">${economy.tacticalReserve} de ${economy.reserveCap} MT</span></div><p class="mt-2">A reserva também pode ser usada nos resgates.</p></div>
@@ -7051,78 +7130,8 @@
                     </details>
                 </div>
                 
-                <h3 id="qg-rewards" class="scroll-mt-6 text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 mt-6 flex items-center gap-2"><i data-lucide="star" class="w-4 h-4 text-yellow-500"></i> Recompensas oficiais</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">`;
-                
-                REWARDS_SHOP.forEach(r => {
-                    const canAfford = window.getTotalTacticalCoins() >= r.cost;
-                    const isTarget = state.economy?.targetReward?.type === 'default' && String(state.economy.targetReward.id) === String(r.id);
-                    html += `
-                    <div class="bg-slate-800 border ${isTarget ? 'border-yellow-500/70' : 'border-slate-700'} p-4 rounded-xl flex flex-col justify-between hover:border-slate-500 transition-colors">
-                        <div>
-                            <div class="flex justify-between items-start mb-2"><i data-lucide="${r.icon}" class="text-white w-6 h-6"></i><span class="bg-slate-950 text-yellow-400 text-xs font-bold px-2 py-1 rounded border border-yellow-900/50">${r.cost} MT</span></div>
-                            <h4 class="font-bold text-white text-sm">${r.title}</h4><p class="text-xs text-slate-400 mt-1 leading-tight">${r.desc}</p>
-                            ${isTarget ? `<span class="inline-flex items-center gap-1 mt-2 text-[10px] uppercase font-black text-yellow-300 bg-yellow-950/40 px-2 py-1 rounded border border-yellow-900/50"><i data-lucide="target" class="w-3 h-3"></i> Alvo atual</span>` : ''}
-                        </div>
-                        <div class="grid grid-cols-2 gap-2 mt-4">
-                            <button onclick="window.setRewardTarget('default','${r.id}')" class="py-2 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-700 text-slate-300 border border-slate-700">${isTarget ? 'Alvo atual' : 'Definir alvo'}</button>
-                            <button onclick="window.buyReward('${r.id}')" ${canAfford ? '' : 'disabled'} class="py-2 rounded-lg text-xs font-bold transition-colors ${canAfford ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-slate-900 text-slate-400 cursor-not-allowed'}">${canAfford ? 'Resgatar' : `Faltam ${Math.max(0, r.cost - totalCoins)} MT`}</button>
-                        </div>
-                    </div>`;
-                });
-                html += `</div>`;
-
-                html += `<h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-8 mb-3 flex items-center gap-2"><i data-lucide="package" class="w-4 h-4 text-indigo-400"></i> Personalizadas</h3>`;
-                html += `<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">`;
-                if (state.customRewards) {
-                    state.customRewards.filter(r => r.active !== false).forEach(r => {
-                        const canAfford = window.getTotalTacticalCoins() >= r.cost;
-                        const isTarget = state.economy?.targetReward?.type === 'custom' && String(state.economy.targetReward.id) === String(r.id);
-                        html += `
-                        <div class="bg-slate-800 border ${isTarget ? 'border-yellow-500/70' : 'border-slate-700'} p-4 rounded-xl flex flex-col justify-between hover:border-slate-500 transition-colors relative group">
-                            <button onclick="window.deleteCustomReward(${r.id})" class="absolute top-2 right-2 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="x" class="w-4 h-4"></i></button>
-                            <div>
-                                <div class="flex justify-between items-start mb-2"><i data-lucide="${r.icon}" class="text-white w-6 h-6"></i><span class="bg-slate-950 text-yellow-400 text-xs font-bold px-2 py-1 rounded border border-yellow-900/50">${r.cost} MT</span></div>
-                                <h4 class="font-bold text-white text-sm">${window.escapeHtml(r.title)}</h4><p class="text-xs text-slate-400 mt-1 leading-tight">${window.escapeHtml(r.desc || '')}</p>
-                                ${isTarget ? `<span class="inline-flex items-center gap-1 mt-2 text-[10px] uppercase font-black text-yellow-300 bg-yellow-950/40 px-2 py-1 rounded border border-yellow-900/50"><i data-lucide="target" class="w-3 h-3"></i> Alvo atual</span>` : ''}
-                            </div>
-                            <div class="grid grid-cols-2 gap-2 mt-4">
-                                <button onclick="window.setRewardTarget('custom','${r.id}')" class="py-2 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-700 text-slate-300 border border-slate-700">${isTarget ? 'Alvo atual' : 'Definir alvo'}</button>
-                                <button onclick="window.buyCustomReward(${r.id})" ${canAfford ? '' : 'disabled'} class="py-2 rounded-lg text-xs font-bold transition-colors ${canAfford ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-slate-900 text-slate-400 cursor-not-allowed'}">${canAfford ? 'Resgatar' : `Faltam ${Math.max(0, r.cost - totalCoins)} MT`}</button>
-                            </div>
-                        </div>`;
-                    });
-                }
-                html += `</div>`;
-
-                html += `
-                <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 mb-8">
-                    <h4 class="text-sm font-bold text-slate-300 mb-3">Criar Nova Recompensa</h4>
-                    <div class="grid grid-cols-2 gap-3 mb-3">
-                        <input type="text" id="custom-reward-title" placeholder="Título (ex: Pedir Pizza)" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none">
-                        <input type="number" id="custom-reward-cost" placeholder="Custo (ex: 300, 600, 1200)" min="50" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none">
-                    </div>
-                    <input type="text" id="custom-reward-desc" placeholder="Descrição opcional..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white mb-3 outline-none">
-                    <button onclick="window.addCustomReward()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2 rounded-lg border border-slate-600 text-xs transition-colors">Criar Recompensa</button>
-                </div>`;
-
-                html += `<h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><i data-lucide="history" class="w-4 h-4 text-emerald-500"></i> Histórico de Resgates</h3>`;
-                html += `<div class="space-y-2">`;
-                if (!state.rewardPurchases || state.rewardPurchases.length === 0) {
-                    html += `<p class="text-xs text-slate-500 italic">Nenhum resgate registrado ainda.</p>`;
-                } else {
-                    state.rewardPurchases.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 10).forEach(rp => {
-                        html += `
-                        <div class="bg-slate-950 border border-slate-800 p-3 rounded-lg flex justify-between items-center">
-                            <div class="flex flex-col">
-                                <span class="text-[9px] uppercase font-bold text-slate-500 mb-0.5">${new Date(rp.date).toLocaleDateString('pt-BR', {hour: '2-digit', minute:'2-digit'})} | ${rp.type === 'custom' ? 'Pessoal' : 'Oficial'}</span>
-                                <span class="text-sm font-bold text-white">${rp.title}</span>
-                            </div>
-                            <span class="text-xs text-yellow-400 font-bold bg-yellow-950/30 px-2 py-1 rounded border border-yellow-900/50">${rp.cost} MT</span>
-                        </div>`;
-                    });
-                }
-                html += `</div>`;
+                `;
+                html += window.renderRewardCatalog();
 
                 return html;
             }

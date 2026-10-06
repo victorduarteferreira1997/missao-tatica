@@ -40,6 +40,7 @@ function engine(overrides = {}) {
         sourceBetween('window.checkLevelUp = function()', 'window.showToast ='),
         sourceBetween('window.toggleQuickTask =', 'window.deleteQuickTask ='),
         sourceBetween('window.recalculateLevelFromXp =', 'window.archiveReview ='),
+        sourceBetween('window.getRewardSource =', 'window.endDay ='),
         sourceBetween('window.formatCampaignDate =', '// --- ESTUDOS ---'),
         'window.renderQGForTest = renderQGContent;',
         'window.rewardsForTest = REWARDS_SHOP;',
@@ -114,10 +115,11 @@ test('preço de alvo personalizado permanece intacto', () => {
 test('loja calcula o valor faltante com reserva e bloqueia só resgate insuficiente', () => {
     const context = engine({ coins: 100, economy: { tacticalReserve: 231 } });
     context.uiState.statsTab = 'shop';
+    context.uiState.rewardGroup = 'all';
     const html = context.window.renderQGForTest();
     assert.match(html, /Faltam 869 MT/);
-    assert.match(html, /buyReward\('r7'\)" disabled/);
-    assert.match(html, /buyReward\('r1'\)"\s+class=/);
+    assert.match(html, /reviewRewardRedemption\('default',&quot;r7&quot;\)" disabled/);
+    assert.match(html, /reviewRewardRedemption\('default',&quot;r1&quot;\)"\s+class=/);
     context.state.customRewards = [{ id: 22, title: 'Passeio', cost: 400 }];
     assert.match(context.window.renderQGForTest(), /Faltam 69 MT/);
 });
@@ -208,11 +210,13 @@ test('atalhos do catálogo rolam dentro do QG sem navegar para o endereço base'
         assert.ok(!html.includes('href="#qg-rewards"'));
         const action = match[1].match(/onclick="([^"]+)"/)[1];
         const calls = [];
-        runInNewContext(action, { document: { getElementById: id => {
+        ctx.document = { getElementById: id => {
             assert.equal(id, 'qg-rewards');
             return { scrollIntoView: options => calls.push(options) };
-        } } });
+        } };
+        runInNewContext(action, ctx);
         assert.equal(calls.length, 1);
+        assert.equal(ctx.uiState.rewardGroup, target ? 'medium' : 'small');
         assert.equal(calls[0].behavior, 'smooth');
         assert.equal(calls[0].block, 'start');
     }
