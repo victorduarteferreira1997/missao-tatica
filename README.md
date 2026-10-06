@@ -26,7 +26,7 @@ não quebrar favoritos existentes.
 Requer Node.js 18 ou mais recente:
 
 ```bash
-TZ=America/Sao_Paulo node --test app_integrity.test.mjs calendar_sync.test.mjs security.test.mjs gamification.test.mjs data_cleanup.test.mjs recovery_ui.test.mjs finance_study.test.mjs finance_export.test.mjs
+TZ=America/Sao_Paulo node --test app_integrity.test.mjs calendar_sync.test.mjs security.test.mjs gamification.test.mjs data_cleanup.test.mjs recovery_ui.test.mjs finance_study.test.mjs finance_export.test.mjs health_focus.test.mjs
 ```
 
 Antes de publicar uma mudança:
@@ -183,6 +183,29 @@ Este XLSX serve para consulta. A importação no aplicativo continua usando o
 backup JSON completo. Descrições iniciadas por símbolos de fórmula são células
 de texto. Os testes abrem o pacote ZIP/XLSX com leitor independente (`openpyxl`
 em Python) e verificam registros, tipos, datas, textos longos e recursos de download.
+
+## Corpo e Pomodoro · v1.9.56
+
+Corpo começa com resumo dos registros, últimos sete dias locais (incluindo hoje)
+e último treino com data válida. Datas futuras/inválidas não entram no período;
+continuam acessíveis no histórico. Não há alerta fictício de 999 dias sem treinar
+nem avaliação de condição física baseada no HP do jogo.
+
+Treinos, medidas e check-ins possuem formulários recolhidos e histórico completo
+com dez registros por página. O check-in não preenche sono/água automaticamente;
+campos opcionais ficam sem informação. Valores inválidos não são registrados.
+As regras existentes de XP/HP são preservadas; novos treinos guardam o efeito
+real na bateria, inclusive quando há limite de HP. Rascunhos e rolagem são
+preservados entre abas/reconstruções e limpos após salvar ou limpar o módulo.
+
+Pomodoro mostra Foco/Pausa, ciclo e ações Iniciar, Retomar, Pausar e Reiniciar.
+Ajustes e histórico continuam recolhidos. O botão **Salvar e reiniciar ciclo**
+explica o efeito já existente de salvar os tempos. Os campos digitados e seções
+abertas sobrevivem às reconstruções da tela. O histórico oferece todos os
+ciclos avaliados com paginação, notas e duração, além do gráfico por tarefa.
+A pontuação é identificada como autoavaliação, mantendo a fórmula e os bônus.
+Missão travada, tempo restante, pausas, recompensas e a saída para missões
+continuam seguindo o comportamento anterior.
 
 ## Segurança
 

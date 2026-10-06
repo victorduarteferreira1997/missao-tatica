@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.55-finance-export">
+    <meta name="app-build" content="v1.9.56-health-focus">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Favicon / Ícone da aba do navegador -->
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEXElEQVR4nO2WbWiVZRjHf9fzPOc5z3POcWebbm6iTDdXUOlMU5KaoiPwrZSS6IMRhRXIRIvamkovWBhRY5VQq3zDL6Ufwg9hgkqyLIJAxQSdlU5TKhE3z07nPOd5ufowBQM33Kb1IX9fbrjv+7r+/+vi4uaG2/zfkWHExsB8CVAI3wP8m+TpWq7rLwYsYvzU8zLvGZX5y5Xq6WeABVfObiTHoIkBNSCvUD3tIk3tyhFVaWzLSWNbjiOqNH+qVE+7CNLSd/d6ZgZjTwwTu+hFisvqZVztbO6tL9IH50PtJKTrRF63vQP7djkoSMPivD7dDFV3Opw8Cgd3w6GOXro6D9B9oYPC5XfRKBxk0eLK3GXKt5dV9mdVdpzw5OWPPeoaPEgquIqVbsVKt4KrkFSmPORJU7vHzk5P9meVgxmVhicVxO1PxerfgCrpsgLnfzf0+Qbo6baJsgVI2MQTXeCvJ8h3AhB3jiOxdRz+bpwe3lvASNmaLo5o3xeRHhWBan8qxsBNEJvujMWlcxZOMiBZYRO31lC4WIufO4DIWJCxBLn9BN01OPZrJCttnGTApXMG3RkLEXsgiQE6ACggJki8AGLj9b5JkHmbWNFGLGcFUZhHBMRwyP3xIcGlVdhhHCu5BokXENOm39pvpAMKBBqhClF4ljDzOlZRK5a7Ao16MUyHKHII/F556o2VlNe2Urj8KlF0FtUrscMxECkEBGDYREEHhl2DFV+Nl83jeylCHwpZWLsppcua8jip1Rj2RPC/AcMmICAajoGQiChmg7+LKP8ZRuwOvO6TsqLNYeXGiCgP63bAjHkRy+sdzhw7iWlPJMhvhsJXhKZNOLCFgWYg0MvdfxFLpbDcKggnAFkMu0SP/xDxQrvBlFmQHAWNcwy6fopIlJTgZUYgUoHlVomdgsylAjDYN6APqZr+PVszSsVkxUjuxLBc3AoFckxfGrLll5CJ9SHYIcnKLE6ZYsRSGKkvGX2PyrYelaoZPw5Fum8x4o20nQpZ1NIDpmK5aUxnJokxilGkuJWKmVYSFYozWjHdeiy3FExlYXMP758KMeKr/5FzkIyU+c1K+4Us8RIfe+QhxLQwnTqc8tNY6T3ER+4hPupnTGcKhmljlx7DLvH55M+sLGxRoGxIyiAggsRSH9F2RnluWxZQ3IrTmPHxiJXGdGdjOrMQqxjTqSFR+RugPLslywdnVWIjNiMy5Oqv4krV/Tk+DzwWtHiAkhijOOWdmIklmO5inPJfSYxRQJnf7PFF4En1Az6QHJbyNUxi6uPKjkKWx97ywcwRK1Wc0UdxRh8hVqpg5uTR9T47C1m57wkFpt0s8avMYfIjyvacT9Nun/T4EGIKMaV4QkjT1z7bc57ULVH6Pie3hKlU1ikbDitbMznmrvRpWOWztTfHhkMqlXUKzLxV4lcpRdy9LFqrbMqHbPZCHl6rSKKDoU/8IBFDgMWU3eVTfncILL2y96+T5CZO+m1u85/wN3lWrBAmt2/JAAAAAElFTkSuQmCC">
@@ -1974,6 +1974,11 @@
                     uiState.financeSections = {}; uiState.financePages = {};
                 }
                 if (ids.includes('study')) window.clearWorkDraft?.('study', 'log');
+                if (ids.includes('focus')) { uiState.pomodoroDraft = {}; uiState.pomodoroDraftReset = true; uiState.pomodoroSections = {}; uiState.focusHistoryPage = 0; }
+                if (ids.includes('health')) {
+                    ['treinos','metricas','habitos'].forEach(tab=>window.clearWorkDraft?.('health',tab));
+                    uiState.healthSections = {}; uiState.healthPages = {};
+                }
                 if (all) uiState.mainView = 'day';
                 window.saveState(false, all ? 'data-reset-all' : 'data-cleanup-modules');
                 window.showToast(all ? 'Missão Tática reiniciado' : 'Limpeza concluída', all ? 'Dados apagados. Configure seu perfil para recomeçar.' : `${selected.map(m => m.name).join(', ')}: dados apagados.`, 'check-circle', 'text-emerald-300');
@@ -3129,7 +3134,8 @@
                 pomodoro.currentFocusTaskCategory = null;
             pomodoro.focusLock = null;
             pomodoro.timeLeft = focus * 60;
-            window.showToast('Pomodoro atualizado', 'Novos tempos aplicados ao próximo ciclo.', 'settings', 'text-yellow-400');
+            uiState.pomodoroDraft = {}; uiState.pomodoroDraftReset = true;
+            window.showToast('Pomodoro atualizado', 'Tempos salvos. O ciclo atual foi reiniciado.', 'settings', 'text-yellow-400');
             window.saveState();
         };
 
@@ -3155,13 +3161,17 @@
                 notes,
                 efficiency
             });
+            ['pomo-eval-focus','pomo-eval-distractions','pomo-eval-notes'].forEach(id=>{if(uiState.pomodoroDraft)delete uiState.pomodoroDraft[id];});
+            uiState.pomodoroDraftReset = true;
             uiState.pomodoroEvaluationData = null;
             uiState.customPrompt = { show: false, type: '', reviewId: null };
-            window.showToast('Eficiência registrada', `${efficiency}% de foco no ciclo.`, 'bar-chart-3', efficiency >= 75 ? 'text-emerald-400' : (efficiency >= 50 ? 'text-yellow-400' : 'text-orange-400'));
+            window.showToast('Eficiência registrada', `${efficiency}/100 na autoavaliação.`, 'bar-chart-3', efficiency >= 75 ? 'text-emerald-400' : (efficiency >= 50 ? 'text-yellow-400' : 'text-orange-400'));
             window.saveState();
         };
 
         window.skipPomodoroEvaluation = function() {
+            ['pomo-eval-focus','pomo-eval-distractions','pomo-eval-notes'].forEach(id=>{if(uiState.pomodoroDraft)delete uiState.pomodoroDraft[id];});
+            uiState.pomodoroDraftReset = true;
             uiState.pomodoroEvaluationData = null;
             uiState.customPrompt = { show: false, type: '', reviewId: null };
             window.saveState();
@@ -3183,6 +3193,30 @@
                 .slice(0, 8);
         };
 
+        window.setPomodoroSection = function(section,open) { if(!['settings','history','cycles','calculation'].includes(section))return;uiState.pomodoroSections ||= {};uiState.pomodoroSections[section]=Boolean(open); };
+        window.renderPomodoroTimer = function() {
+            const label={focus:'Foco',shortBreak:'Pausa curta',longBreak:'Pausa longa'}[pomodoro.mode] || 'Foco';
+            const color={focus:'text-yellow-200',shortBreak:'text-emerald-300',longBreak:'text-blue-300'}[pomodoro.mode] || 'text-yellow-200';
+            const started=pomodoro.currentFocusStartedAt || pomodoro.timeLeft<(state.pomodoroSettings[pomodoro.mode] || 25)*60;
+            const action=pomodoro.isRunning?'Pausar':started?'Retomar':`Iniciar ${pomodoro.mode==='focus'?'foco':'pausa'}`;
+            return `<section id="pomodoro-timer" class="rounded-xl border border-slate-800 bg-slate-950 px-5 py-5 mb-3 text-center font-sans"><p class="text-sm text-slate-400">${label} · ciclo ${pomodoro.cycle} de ${state.pomodoroSettings.cycles}</p><div id="pomodoro-display" role="timer" aria-label="Tempo restante" class="text-5xl font-semibold tabular-nums ${color} my-4">${window.formatTime(pomodoro.timeLeft)}</div><div class="flex justify-center gap-3"><button type="button" onclick="window.togglePomodoro()" aria-label="${pomodoro.isRunning?'Pausar Pomodoro':started?'Retomar Pomodoro':'Iniciar Pomodoro'}" class="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 px-5 py-2.5 text-sm font-medium text-white"><i data-lucide="${pomodoro.isRunning?'pause':'play'}" class="w-4 h-4"></i>${action}</button><button type="button" onclick="window.resetPomodoro()" aria-label="Reiniciar Pomodoro" class="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-700 hover:bg-slate-800 px-4 py-2.5 text-sm text-slate-300"><i data-lucide="rotate-ccw" class="w-4 h-4"></i>Reiniciar</button></div>${started&&!pomodoro.isRunning?'<p class="text-xs text-slate-500 mt-3">Ciclo pausado. Retomar mantém o tempo restante.</p>':''}</section>`;
+        };
+        window.capturePomodoroDraft = function(root) {
+            if(uiState.pomodoroDraftReset)return;
+            const ids=['pomo-focus-min','pomo-short-min','pomo-long-min','pomo-cycles-long','pomo-eval-focus','pomo-eval-distractions','pomo-eval-notes'];
+            uiState.pomodoroDraft ||= {};
+            ids.forEach(id=>{const field=root.querySelector(`#${id}`);if(field)uiState.pomodoroDraft[id]=field.value;});
+        };
+        window.restorePomodoroDraft = function(root) {
+            if(uiState.pomodoroDraftReset)uiState.pomodoroDraftReset=false;
+            Object.entries(uiState.pomodoroDraft || {}).forEach(([id,value])=>{const field=root.querySelector(`#${id}`);if(field)field.value=value;});
+        };
+        window.setFocusHistoryPage = function(page) {if(!Number.isInteger(page))return;uiState.focusHistoryPage=Math.max(0,Math.min(Math.max(0,Math.ceil((state.focusData?.cycles?.length || 0)/10)-1),page));render();};
+        window.renderFocusHistory = function() {
+            const rows=(state.focusData?.cycles || []).slice().sort((a,b)=>(Date.parse(b.date)||0)-(Date.parse(a.date)||0)),pages=Math.max(1,Math.ceil(rows.length/10)),page=Math.min(pages-1,Math.max(0,Number(uiState.focusHistoryPage)||0));
+            return `<details ${uiState.pomodoroSections?.cycles?'open':''} ontoggle="window.setPomodoroSection('cycles',this.open)" class="rounded-lg border border-slate-800 p-3 mt-3"><summary class="cursor-pointer text-sm text-slate-400">Ciclos registrados · ${rows.length}</summary><div class="divide-y divide-slate-800 mt-3">${rows.slice(page*10,page*10+10).map(row=>`<article class="py-3"><p class="text-xs text-slate-500">${window.formatFinanceDate(row.date)}${Number.isFinite(Number(row.focusMinutes ?? row.durationMinutes))?` · ${Number(row.focusMinutes ?? row.durationMinutes)} min`:''}</p><p class="text-sm text-slate-200 break-words mt-1">${window.escapeHtml(row.taskText || 'Ciclo sem tarefa')}</p><p class="text-xs text-slate-400 mt-2">Autoavaliação: ${Math.max(0,Math.min(100,Number(row.efficiency)||0))}/100 · ${Math.max(0,Number(row.distractions)||0)} distrações</p>${row.notes?`<p class="text-sm text-slate-400 whitespace-pre-line break-words mt-2">${window.escapeHtml(row.notes)}</p>`:''}</article>`).join('')||'<p class="text-sm text-slate-500 py-3">Nenhum ciclo avaliado ainda.</p>'}</div>${pages>1?`<div class="flex justify-between items-center border-t border-slate-800 pt-3"><button type="button" onclick="window.setFocusHistoryPage(${page-1})" ${page?'':'disabled'} class="text-xs text-slate-300 disabled:opacity-30 px-3 py-2 border border-slate-700 rounded-lg">Anterior</button><span class="text-xs text-slate-500">${page+1} de ${pages}</span><button type="button" onclick="window.setFocusHistoryPage(${page+1})" ${page<pages-1?'':'disabled'} class="text-xs text-slate-300 disabled:opacity-30 px-3 py-2 border border-slate-700 rounded-lg">Próxima</button></div>`:''}</details>`;
+        };
+
         window.renderFocusEfficiencyChart = function() {
             const rows = window.getFocusEfficiencyByTask();
             const cycles = (state.focusData && Array.isArray(state.focusData.cycles)) ? state.focusData.cycles : [];
@@ -3194,12 +3228,12 @@
                 <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 mb-6">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                         <div>
-                            <h4 class="text-xs font-black text-yellow-400 uppercase tracking-widest flex items-center gap-2"><i data-lucide="bar-chart-3" class="w-4 h-4"></i> Eficiência do Foco por Tarefa</h4>
-                            <p class="text-[11px] text-slate-500 mt-1">Média baseada nas avaliações dos ciclos de Pomodoro.</p>
+                            <h4 class="text-xs font-black text-yellow-400 uppercase tracking-widest flex items-center gap-2"><i data-lucide="bar-chart-3" class="w-4 h-4"></i> Autoavaliação por tarefa</h4>
+                            <p class="text-[11px] text-slate-500 mt-1">Pontuação baseada na qualidade do foco e nas distrações informadas.</p>
                         </div>
                         <div class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-right">
-                            <div class="text-[10px] text-slate-500 uppercase font-bold">Média geral</div>
-                            <div class="text-lg font-black ${overall >= 75 ? 'text-emerald-400' : (overall >= 50 ? 'text-yellow-400' : 'text-orange-400')}">${overall}%</div>
+                            <div class="text-[10px] text-slate-500 uppercase font-bold">Média das avaliações</div>
+                            <div class="text-lg font-black ${overall >= 75 ? 'text-emerald-400' : (overall >= 50 ? 'text-yellow-400' : 'text-orange-400')}">${overall}/100</div>
                         </div>
                     </div>
                     <div class="space-y-3">
@@ -3207,7 +3241,7 @@
                             <div>
                                 <div class="flex justify-between gap-3 text-[11px] mb-1">
                                     <span class="text-slate-300 font-bold truncate">${window.escapeHtml(row.taskText)}</span>
-                                    <span class="text-slate-500 shrink-0">${row.avg}% · ${row.count} ciclo${row.count > 1 ? 's' : ''}</span>
+                                    <span class="text-slate-500 shrink-0">${row.avg}/100 · ${row.count} ciclo${row.count > 1 ? 's' : ''}</span>
                                 </div>
                                 <div class="w-full bg-slate-900 rounded-full h-2.5 border border-slate-800 overflow-hidden">
                                     <div class="h-full rounded-full ${row.avg >= 75 ? 'bg-emerald-500' : (row.avg >= 50 ? 'bg-yellow-500' : 'bg-orange-500')}" style="width:${row.avg}%"></div>
@@ -5022,42 +5056,55 @@
         // ==========================================
         // MÓDULO 2: CENTRO FÍSICO (SAÚDE)
         // ==========================================
+        const HEALTH_TABS = [{id:'dashboard',label:'Resumo'},{id:'treinos',label:'Treinos'},{id:'metricas',label:'Medidas'},{id:'habitos',label:'Check-in'}];
         window.toggleHealthModal = function() { uiState.showHealthModal = !uiState.showHealthModal; render(); };
-        window.setHealthTab = function(tab) { uiState.healthTab = tab; render(); };
-
+        window.setHealthTab = function(tab) { if (!HEALTH_TABS.some(item=>item.id===tab)) return;uiState.healthTab=tab;render(); };
+        window.setHealthSection = function(tab,open) { uiState.healthSections ||= {};uiState.healthSections[tab]=Boolean(open); };
+        window.openHealthForm = function(tab) { if(!['treinos','metricas','habitos'].includes(tab))return;uiState.healthTab=tab;window.setHealthSection(tab,true);render();const input=document.getElementById({treinos:'wo-type',metricas:'metric-weight',habitos:'habit-sleep'}[tab]);input?.scrollIntoView({block:'nearest'});input?.focus({preventScroll:true}); };
+        window.finishHealthForm = function(tab) { window.clearWorkDraft('health',tab);window.setHealthSection(tab,false);uiState.healthPages ||= {};uiState.healthPages[tab]=0; };
+        window.getHealthRows = function(tab) { const key={treinos:'workouts',metricas:'bodyMetrics',habitos:'habits'}[tab];return (state.healthData?.[key] || []).slice().sort((a,b)=>(Date.parse(b.date)||0)-(Date.parse(a.date)||0)); };
+        window.setHealthPage = function(tab,page) { if(!['treinos','metricas','habitos'].includes(tab)||!Number.isInteger(page))return;uiState.healthPages ||= {};uiState.healthPages[tab]=Math.max(0,Math.min(Math.max(0,Math.ceil(window.getHealthRows(tab).length/10)-1),page));render(); };
+        window.getHealthSummary = function() {
+            const today=window.getLocalDateKey(), start=new Date();start.setDate(start.getDate()-6);const startKey=window.getLocalDateKey(start);
+            const workouts=window.getHealthRows('treinos');
+            const dated=workouts.filter(row=>{const key=window.getFinanceDateKey(row.date);return key && key<=today;});
+            const recent=dated.filter(row=>window.getFinanceDateKey(row.date)>=startKey);
+            const last=dated[0],lastKey=last?window.getFinanceDateKey(last.date):null;
+            const calendarTime=key=>Date.parse(key+'T00:00:00Z');
+            return {total:workouts.length,recent:recent.length,minutes:recent.reduce((sum,row)=>sum+(Number.isFinite(Number(row.duration))?Math.max(0,Number(row.duration)):0),0),lastKey,days:lastKey?Math.round((calendarTime(today)-calendarTime(lastKey))/86400000):null};
+        };
+        window.renderHealthDialog = function() {
+            const tab=uiState.healthTab || 'dashboard';
+            return `<div class="fixed inset-0 bg-slate-950/90 flex items-center justify-center p-3 sm:p-4 z-[60] backdrop-blur-sm font-sans"><section id="health-module-dialog" data-work-tab="${window.escapeHtml(tab)}" role="dialog" aria-modal="true" aria-labelledby="health-module-title" class="modal-enter w-full max-w-4xl max-h-[92dvh] rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col overflow-hidden"><header class="shrink-0 border-b border-slate-800 px-4 sm:px-6 py-4"><div class="flex items-start justify-between gap-4"><div><h2 id="health-module-title" class="text-xl font-semibold text-white">Corpo de Combate</h2><p class="text-sm text-slate-400 mt-1">Seus treinos, medidas e registros do dia.</p></div><button id="health-module-close" type="button" onclick="window.toggleHealthModal()" aria-label="Fechar Corpo de Combate" class="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="x" class="w-5 h-5"></i></button></div><nav aria-label="Áreas do Corpo" class="flex gap-1 overflow-x-auto mt-4">${HEALTH_TABS.map(item=>`<button type="button" onclick="window.setHealthTab('${item.id}')" aria-pressed="${tab===item.id}" class="rounded-lg px-3 py-2 text-sm whitespace-nowrap ${tab===item.id?'bg-rose-900/35 text-rose-200':'text-slate-400 hover:bg-slate-800 hover:text-white'}">${item.label}</button>`).join('')}</nav></header><div id="health-module-body" class="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6">${renderHealthContent()}</div></section></div>`;
+        };
         window.logWorkout = function() {
-            const type = document.getElementById('wo-type').value;
-            const duration = parseInt(document.getElementById('wo-duration').value) || 30;
-            const intensity = document.getElementById('wo-intensity').value;
-            const notes = document.getElementById('wo-notes').value.trim();
-            
-            const intData = WORKOUT_INTENSITIES[intensity];
-            const typeData = WORKOUT_TYPES[type];
-            const finalHpCost = Math.round(intData.hp * typeData.hpMod);
-            
-            state.healthData.workouts.push({ id: Date.now(), date: new Date().toISOString(), type, duration, intensity, notes, xpAwarded: intData.xp, xpCampaign: window.normalizePrestige().campaign });
-            state.xp += intData.xp; window.changeEnergy(-finalHpCost); window.checkLevelUp();
-            window.showToast('Treino Validado', `+${intData.xp} XP consolidados.`, 'dumbbell', 'text-rose-400');
-            if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
-            window.saveState();
+            const type=document.getElementById('wo-type').value,intensity=document.getElementById('wo-intensity').value;
+            const duration=Number(document.getElementById('wo-duration').value),notes=document.getElementById('wo-notes').value.trim();
+            const intData=WORKOUT_INTENSITIES[intensity],typeData=WORKOUT_TYPES[type];
+            if(!intData||!typeData||!Number.isFinite(duration)||duration<=0){window.showAlertModal('Escolha modalidade, intensidade e uma duração maior que zero.');return;}
+            const before=state.energy,finalHpCost=Math.round(intData.hp*typeData.hpMod);window.changeEnergy(-finalHpCost);
+            state.healthData.workouts.push({id:window.newFinanceRecordId().replace('fin-','health-'),date:new Date().toISOString(),type,duration,intensity,notes,xpAwarded:intData.xp,xpCampaign:window.normalizePrestige().campaign,energyDeltaApplied:state.energy-before});
+            window.finishHealthForm('treinos');state.xp+=intData.xp;window.checkLevelUp();window.checkGameTriggers?.();window.saveState();
+            window.showToast('Treino registrado',`+${intData.xp} XP. Efeito na bateria do jogo: ${state.energy-before} HP.`,'dumbbell','text-rose-300');
         };
-        window.deleteWorkout = function(id) { state.healthData.workouts = state.healthData.workouts.filter(w => w.id !== id); window.saveState(); };
-
+        window.deleteWorkout = function(id) { state.healthData.workouts=state.healthData.workouts.filter(w=>String(w.id)!==String(id));window.saveState(); };
+        window.readHealthOptionalNumber = function(id,label,max=Infinity) {
+            const raw=document.getElementById(id).value.trim();if(raw==='')return null;
+            const value=Number(raw);if(!Number.isFinite(value)||value<0||value>max){window.showAlertModal(`Informe um valor válido para ${label}.`);return undefined;}return value;
+        };
         window.logBodyMetric = function() {
-            const weight = parseFloat(document.getElementById('metric-weight').value);
-            const waist = parseFloat(document.getElementById('metric-waist').value);
-            if(!weight && !waist) return;
-            state.healthData.bodyMetrics.push({ id: Date.now(), date: new Date().toISOString(), weight, waist });
-            window.showToast('Métrica Salva', 'Sua evolução corporal foi atualizada.', 'scale', 'text-rose-400'); window.saveState();
+            const weight=window.readHealthOptionalNumber('metric-weight','peso'),waist=window.readHealthOptionalNumber('metric-waist','cintura');
+            if(weight===undefined||waist===undefined)return;
+            if((weight!==null&&weight<=0)||(waist!==null&&waist<=0)||weight===null&&waist===null){window.showAlertModal('Informe pelo menos uma medida maior que zero.');return;}
+            state.healthData.bodyMetrics.push({id:window.newFinanceRecordId().replace('fin-','health-'),date:new Date().toISOString(),weight,waist});window.finishHealthForm('metricas');window.saveState();window.showToast('Medidas registradas','Seu histórico foi atualizado.','scale','text-slate-300');
         };
-
         window.logHabit = function() {
-            const sleep = parseFloat(document.getElementById('habit-sleep').value);
-            const water = parseFloat(document.getElementById('habit-water').value);
-            const mood = document.getElementById('habit-mood').value;
-            const fatigue = document.getElementById('habit-fatigue').value;
-            state.healthData.habits.push({ id: Date.now(), date: new Date().toISOString(), sleep, water, mood, fatigue, xpAwarded: 20, xpCampaign: window.normalizePrestige().campaign });
-            state.xp += 20; window.checkLevelUp(); if (typeof window.checkGameTriggers === "function") window.checkGameTriggers(); window.showToast('Rotina Salva', '+20 XP', 'heart', 'text-emerald-400'); window.saveState();
+            const sleep=window.readHealthOptionalNumber('habit-sleep','sono',24),water=window.readHealthOptionalNumber('habit-water','água');
+            const mood=document.getElementById('habit-mood').value,fatigue=document.getElementById('habit-fatigue').value;
+            if(sleep===undefined||water===undefined)return;
+            if(sleep===null&&water===null&&!mood&&!fatigue){window.showAlertModal('Preencha pelo menos um item do check-in.');return;}
+            state.healthData.habits.push({id:window.newFinanceRecordId().replace('fin-','health-'),date:new Date().toISOString(),sleep,water,mood,fatigue,xpAwarded:20,xpCampaign:window.normalizePrestige().campaign});
+            window.finishHealthForm('habitos');state.xp+=20;window.checkLevelUp();window.checkGameTriggers?.();window.saveState();window.showToast('Check-in registrado','+20 XP.','heart','text-emerald-300');
         };
 
         // ==========================================
@@ -5078,13 +5125,13 @@
         window.captureWorkDialogs = function(root) {
             const snapshots = {};
             uiState.workDrafts ||= {};
-            for (const kind of ['finance','study']) {
+            for (const kind of ['finance','study','health']) {
                 const dialog = root.querySelector(`#${kind}-module-dialog`);
                 if (!dialog) continue;
                 const tab = dialog.dataset.workTab, key = `${kind}:${tab}`;
-                const body = dialog.querySelector(kind === 'finance' ? '#finance-module-body' : '#study-modal-scroll');
+                const body = dialog.querySelector(kind === 'finance' ? '#finance-module-body' : kind === 'health' ? '#health-module-body' : '#study-modal-scroll');
                 snapshots[kind] = { tab, scrollTop: body?.scrollTop || 0, focusId: dialog.contains(document.activeElement) ? document.activeElement.id : '' };
-                if ((kind === 'finance' || tab === 'log') && !uiState.workDraftReset?.[key]) {
+                if ((kind === 'finance' || kind === 'health' || tab === 'log') && !uiState.workDraftReset?.[key]) {
                     uiState.workDrafts[key] = {
                         fields: [...(body?.querySelectorAll('input[id], select[id], textarea[id], input[name="session-barriers"]') || [])].map(el=>({ id:el.id, name:el.name, value:el.value, checked:el.checked })),
                         sections: [...(body?.querySelectorAll('details[data-work-section]') || [])].map(el=>({ key:el.dataset.workSection, open:el.open }))
@@ -5094,11 +5141,11 @@
             return snapshots;
         };
         window.bindWorkDialogs = function(root, snapshots = {}) {
-            for (const kind of ['finance','study']) {
+            for (const kind of ['finance','study','health']) {
                 const dialog = root.querySelector(`#${kind}-module-dialog`);
                 if (!dialog) continue;
                 const tab = dialog.dataset.workTab, key = `${kind}:${tab}`;
-                const body = dialog.querySelector(kind === 'finance' ? '#finance-module-body' : '#study-modal-scroll');
+                const body = dialog.querySelector(kind === 'finance' ? '#finance-module-body' : kind === 'health' ? '#health-module-body' : '#study-modal-scroll');
                 if (uiState.workDraftReset?.[key]) delete uiState.workDraftReset[key];
                 else {
                     const draft = uiState.workDrafts?.[key];
@@ -5115,7 +5162,7 @@
                 const snapshot = snapshots[kind]?.tab === tab ? snapshots[kind] : null;
                 if (body && snapshot) body.scrollTop = snapshot.scrollTop;
                 window.bindFormDialog(root, { id:`${kind}-module-dialog`, initialFocus:snapshot?.focusId || `${kind}-module-close`,
-                    close:kind === 'finance' ? window.toggleFinanceModal : window.toggleStudyModal,
+                    close:kind === 'finance' ? window.toggleFinanceModal : kind === 'health' ? window.toggleHealthModal : window.toggleStudyModal,
                     blocked:uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) });
             }
         };
@@ -5183,7 +5230,7 @@
                 ['Finalidade','Arquivo de consulta para análise. Para restaurar dados no Missão Tática, use o backup JSON completo.']
             ];
             const sheets = [{ name:'Resumo', widths:[44,110], rows:[['Informação','Valor / explicação'],
-                ['Exportado em',exportedAt.toLocaleString('pt-BR')],['Fuso da exportação',Intl.DateTimeFormat().resolvedOptions().timeZone],['Versão','v1.9.55'],
+                ['Exportado em',exportedAt.toLocaleString('pt-BR')],['Fuso da exportação',Intl.DateTimeFormat().resolvedOptions().timeZone],['Versão','v1.9.56'],
                 ['Receitas registradas (R$)',income],['Contas fixas cadastradas (R$)',fixed],['Gastos variáveis registrados (R$)',variable],
                 ['Resultado estimado (R$)',Math.round((income-fixed-variable)*100)/100],['Contas fixas pendentes (R$)',window.getFinanceSum(rows('fixedExpenses').filter(row=>!row.paid))],
                 ['Receitas: quantidade',rows('incomes').length],['Contas fixas: quantidade',rows('fixedExpenses').length],['Gastos: quantidade',rows('variableExpenses').length],['Diário: quantidade',rows('moneyJournal').length],
@@ -5889,6 +5936,7 @@
             const appDiv = document.getElementById('app');
             const recoverySnapshots = window.captureRecoveryDialogs(appDiv);
             const workSnapshots = window.captureWorkDialogs(appDiv);
+            window.capturePomodoroDraft(appDiv);
             const previousEditDialog = appDiv.querySelector('#edit-task-dialog');
             if (uiState.showEditTaskModal && previousEditDialog) {
                 uiState.editTaskDraft = {
@@ -6037,12 +6085,12 @@
                 } else if(uiState.customPrompt.type === 'pomodoroEvaluation') {
                     const evalData = uiState.pomodoroEvaluationData || {};
                     html += `
-                    <div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[999] backdrop-blur-md font-mono">
+                    <div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[999] backdrop-blur-md font-sans">
                         <div class="bg-slate-900 border-2 border-yellow-600/50 rounded-2xl p-6 max-w-lg w-full shadow-[0_0_50px_rgba(234,179,8,0.12)] modal-enter">
                             <div class="flex items-start justify-between gap-4 mb-4">
                                 <div>
-                                    <h3 class="text-xl font-black text-white tracking-widest uppercase flex items-center gap-2"><i data-lucide="radar" class="text-yellow-400 w-5 h-5"></i> Avaliação do Ciclo</h3>
-                                    <p class="text-slate-400 text-xs mt-1 leading-relaxed">Registre a eficiência real deste Pomodoro. Isso alimenta o gráfico de foco por tarefa.</p>
+                                    <h3 class="text-xl font-black text-white tracking-widest uppercase flex items-center gap-2"><i data-lucide="radar" class="text-yellow-400 w-5 h-5"></i> Como foi o ciclo?</h3>
+                                    <p class="text-slate-400 text-xs mt-1 leading-relaxed">Uma autoavaliação breve ajuda a acompanhar seus ciclos.</p>
                                 </div>
                                 <button onclick="window.skipPomodoroEvaluation()" class="text-slate-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
                             </div>
@@ -6053,7 +6101,7 @@
                             </div>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                                 <div>
-                                    <label class="text-xs font-bold text-slate-400 uppercase">Qualidade do foco</label>
+                                    <label for="pomo-eval-focus" class="text-sm text-slate-400">Qualidade do foco</label>
                                     <select id="pomo-eval-focus" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">
                                         <option value="5">5 — Foco absoluto</option>
                                         <option value="4">4 — Muito bom</option>
@@ -6063,20 +6111,20 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="text-xs font-bold text-slate-400 uppercase">Distrações percebidas</label>
+                                    <label for="pomo-eval-distractions" class="text-sm text-slate-400">Distrações percebidas</label>
                                     <input id="pomo-eval-distractions" type="number" min="0" value="0" class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">
                                 </div>
                             </div>
                             <div class="mb-4">
-                                <label class="text-xs font-bold text-slate-400 uppercase">Observação rápida</label>
+                                <label for="pomo-eval-notes" class="text-sm text-slate-400">Observação (opcional)</label>
                                 <input id="pomo-eval-notes" type="text" placeholder="Ex: celular, interrupção, cansaço..." class="w-full mt-1 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none">
                             </div>
                             <div class="bg-yellow-950/20 border border-yellow-900/40 rounded-xl p-3 mb-4 text-[11px] text-yellow-100/80 leading-relaxed">
-                                A eficiência é calculada com base na qualidade do foco e na quantidade de distrações. Quanto menos interrupções e maior foco, maior o percentual do ciclo.
+                                A pontuação combina sua avaliação de foco e as distrações informadas.
                             </div>
                             <div class="flex gap-3">
                                 <button onclick="window.skipPomodoroEvaluation()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl text-sm font-bold transition-colors">Pular</button>
-                                <button onclick="window.savePomodoroEvaluation()" class="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white py-3 rounded-xl text-sm font-bold transition-colors">Salvar Avaliação</button>
+                                <button onclick="window.savePomodoroEvaluation()" class="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white py-3 rounded-xl text-sm font-bold transition-colors">Salvar avaliação</button>
                             </div>
                         </div>
                     </div>`;
@@ -6125,7 +6173,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.55</span></div>
+                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.56</span></div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-2">
@@ -6283,39 +6331,29 @@
                         </details>` : '')}
                     </div>`;
 
-                    const modeColors = { 'focus': 'text-yellow-400', 'shortBreak': 'text-emerald-400', 'longBreak': 'text-blue-400' };
-                    html += `
-                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 mb-3 flex flex-col items-center relative">
-                        ${pomodoro.isRunning ? `<div class="absolute inset-0 bg-indigo-500/5 ${pomodoro.mode==='focus'?'timer-pulse':''}"></div>` : ''}
-                        <h3 class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 relative z-10"><i data-lucide="clock" class="inline w-3 h-3"></i> Pomodoro Tático</h3>
-                        <div class="text-4xl font-black ${modeColors[pomodoro.mode]} mb-3 tabular-nums relative z-10" id="pomodoro-display">${window.formatTime(pomodoro.timeLeft)}</div>
-                        <div class="flex gap-2 relative z-10">
-                            <button onclick="window.togglePomodoro()" aria-label="${pomodoro.isRunning?'Pausar Pomodoro':'Iniciar Pomodoro'}" class="bg-indigo-600 px-6 py-2 rounded-lg font-bold text-white"><i data-lucide="${pomodoro.isRunning?'pause':'play'}" class="w-5 h-5"></i></button>
-                            <button onclick="window.resetPomodoro()" aria-label="Reiniciar Pomodoro" class="bg-slate-800 px-4 py-2 rounded-lg text-white"><i data-lucide="rotate-ccw" class="w-5 h-5"></i></button>
-                        </div>
-                    </div>`;
+                    html += window.renderPomodoroTimer();
 
                     html += `
-                    <details class="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-3">
-                        <summary class="cursor-pointer text-xs font-bold text-slate-300">Configurações do Pomodoro</summary>
+                    <details ${uiState.pomodoroSections?.settings?'open':''} ontoggle="window.setPomodoroSection('settings',this.open)" class="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-3 font-sans">
+                        <summary class="cursor-pointer text-sm text-slate-300">Ajustar tempos e ciclos</summary>
                         <div class="pt-3">
                         <div class="flex items-start justify-between gap-3 mb-3">
                             <div>
                                 <h4 class="text-xs font-black text-yellow-400 uppercase tracking-widest flex items-center gap-2"><i data-lucide="sliders-horizontal" class="w-4 h-4"></i> Configurações do Pomodoro</h4>
-                                <p class="text-[11px] text-slate-500 mt-1">Personalize tempos e ciclos. A alteração vale para o próximo ciclo reiniciado.</p>
+                                <p class="text-[11px] text-slate-500 mt-1">Salvar aplica os tempos e reinicia o ciclo atual. Pause o timer antes de alterar.</p>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-                            <div><label class="text-[10px] font-bold text-slate-500 uppercase">Foco (min)</label><input type="number" id="pomo-focus-min" min="1" max="180" value="${state.pomodoroSettings.focus}" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 uppercase">Pausa curta</label><input type="number" id="pomo-short-min" min="1" max="60" value="${state.pomodoroSettings.shortBreak}" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 uppercase">Ciclos p/ longa</label><input type="number" id="pomo-cycles-long" min="1" max="12" value="${state.pomodoroSettings.cycles}" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none"></div>
-                            <div><label class="text-[10px] font-bold text-slate-500 uppercase">Pausa longa</label><input type="number" id="pomo-long-min" min="1" max="120" value="${state.pomodoroSettings.longBreak}" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none"></div>
+                            <div><label for="pomo-focus-min" class="text-[10px] font-bold text-slate-500 uppercase">Foco (min)</label><input type="number" id="pomo-focus-min" min="1" max="180" value="${state.pomodoroSettings.focus}" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none"></div>
+                            <div><label for="pomo-short-min" class="text-[10px] font-bold text-slate-500 uppercase">Pausa curta</label><input type="number" id="pomo-short-min" min="1" max="60" value="${state.pomodoroSettings.shortBreak}" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none"></div>
+                            <div><label for="pomo-cycles-long" class="text-[10px] font-bold text-slate-500 uppercase">Ciclos p/ longa</label><input type="number" id="pomo-cycles-long" min="1" max="12" value="${state.pomodoroSettings.cycles}" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none"></div>
+                            <div><label for="pomo-long-min" class="text-[10px] font-bold text-slate-500 uppercase">Pausa longa</label><input type="number" id="pomo-long-min" min="1" max="120" value="${state.pomodoroSettings.longBreak}" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white outline-none"></div>
                         </div>
-                        <button onclick="window.savePomodoroSettings()" class="w-full bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg py-2 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2"><i data-lucide="save" class="w-4 h-4"></i> Salvar Pomodoro</button>
+                        <button onclick="window.savePomodoroSettings()" class="w-full bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg py-2 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2"><i data-lucide="save" class="w-4 h-4"></i> Salvar e reiniciar ciclo</button>
                         </div>
                     </details>`;
 
-                    html += `<details class="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-3"><summary class="cursor-pointer text-xs font-bold text-slate-300">Histórico e eficiência do foco</summary><div class="pt-3">${window.renderFocusEfficiencyChart()}</div></details>`;
+                    html += `<details ${uiState.pomodoroSections?.history?'open':''} ontoggle="window.setPomodoroSection('history',this.open)" class="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-3 font-sans"><summary class="cursor-pointer text-sm text-slate-300">Histórico e autoavaliação</summary><div class="pt-3">${window.renderFocusEfficiencyChart()}${window.renderFocusHistory()}</div></details>`;
 
                     if (pendingTask) {
                         const focusSubtasks = Array.isArray(pendingTask.subtasks) ? pendingTask.subtasks : [];
@@ -6448,29 +6486,7 @@
 
             if (uiState.showStudyModal) html += window.renderWorkDialog('study');
 
-            // MODAL CENTRO FÍSICO
-            if (uiState.showHealthModal) {
-                html += `
-                <div class="fixed inset-0 bg-slate-950/95 flex flex-col items-center justify-start p-2 sm:p-6 z-[60] backdrop-blur-lg overflow-y-auto pt-8 font-mono">
-                    <div class="bg-slate-900 border border-rose-900/50 rounded-2xl w-full max-w-4xl shadow-[0_0_50px_rgba(244,63,94,0.15)] modal-enter relative mb-10">
-                        <button onclick="window.toggleHealthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full p-2 hover:bg-red-500/20 hover:text-red-400 transition-colors z-10"><i data-lucide="x" class="w-5 h-5"></i></button>
-                        <div class="p-5 sm:p-8">
-                            <div class="flex items-center gap-4 mb-6 border-b border-slate-800 pb-4">
-                                <div class="bg-rose-950 p-3 rounded-xl border border-rose-800/50 shadow-inner"><i data-lucide="activity" class="text-rose-400 w-8 h-8"></i></div>
-                                <div><h2 class="text-2xl font-black text-white tracking-wide">Corpo de Combate</h2><p class="text-xs text-rose-500 font-bold uppercase tracking-widest mt-1">Engenharia Física</p></div>
-                            </div>
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
-                                ${[{id: 'dashboard', icon: 'line-chart', label: 'Dashboard'}, {id: 'treinos', icon: 'dumbbell', label: 'Treinos'}, {id: 'metricas', icon: 'scale', label: 'Métricas'}, {id: 'habitos', icon: 'heart', label: 'Hábitos'}].map(tab => `
-                                    <button onclick="window.setHealthTab('${tab.id}')" class="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs sm:text-sm font-bold rounded-lg transition-all whitespace-nowrap ${uiState.healthTab === tab.id ? 'bg-rose-900/40 text-rose-300 border border-rose-700/50 shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-transparent'}">
-                                        <i data-lucide="${tab.icon}" class="w-4 h-4"></i> ${tab.label}
-                                    </button>
-                                `).join('')}
-                            </div>
-                            <div class="min-h-[400px]">${renderHealthContent()}</div>
-                        </div>
-                    </div>
-                </div>`;
-            }
+            if (uiState.showHealthModal) html += window.renderHealthDialog();
 
             // MODAL CENTRO FINANCEIRO
             if (uiState.showFinanceModal) html += window.renderWorkDialog('finance');
@@ -6501,6 +6517,7 @@
             lucide.createIcons();
             window.bindRecoveryDialogs(appDiv, recoverySnapshots);
             window.bindWorkDialogs(appDiv, workSnapshots);
+            window.restorePomodoroDraft(appDiv);
             if (typeof window.bindTaskNatureControls === 'function') window.bindTaskNatureControls(appDiv);
             window.bindCreateTaskDialog(appDiv);
             if (uiState.showOperationalDemandModal && uiState.operationalDemandDraft) {
@@ -7721,87 +7738,35 @@
         }
 
         // --- SAÚDE/CORPO ---
+        window.renderHealthForm = function(tab) {
+            const field='w-full mt-1.5 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-rose-400';
+            const input=(id,label,attrs='')=>`<label class="block text-sm text-slate-300">${label}<input id="${id}" ${attrs} class="${field}"></label>`;
+            const select=(id,label,options,empty=false)=>`<label class="block text-sm text-slate-300">${label}<select id="${id}" class="${field}">${empty?'<option value="">Não informar</option>':''}${options.map(item=>`<option>${item}</option>`).join('')}</select></label>`;
+            const configs={
+                treinos:{title:'Registrar treino',handler:'logWorkout',body:`<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">${select('wo-type','Modalidade',Object.keys(WORKOUT_TYPES))}${select('wo-intensity','Intensidade',Object.keys(WORKOUT_INTENSITIES))}</div>${input('wo-duration','Duração (min)','type="number" min="1" value="45"')}<label class="block text-sm text-slate-300">Anotações <span class="text-xs text-slate-500">(opcional)</span><textarea id="wo-notes" rows="3" maxlength="2000" class="${field}"></textarea></label><p class="text-xs text-slate-500">XP e bateria seguem as regras do jogo. A bateria não é uma avaliação da sua condição física.</p>`},
+                metricas:{title:'Registrar medidas',handler:'logBodyMetric',body:`<p class="text-sm text-slate-400">Preencha as medidas que você acompanhou. As demais podem ficar em branco.</p><div class="grid grid-cols-1 sm:grid-cols-2 gap-4">${input('metric-weight','Peso (kg)','type="number" min="0.1" step="0.1" inputmode="decimal"')}${input('metric-waist','Cintura (cm)','type="number" min="0.1" step="0.1" inputmode="decimal"')}</div>`},
+                habitos:{title:'Registrar check-in',handler:'logHabit',body:`<p class="text-sm text-slate-400">Registre o que você sabe sobre o dia. Não precisa preencher tudo.</p><div class="grid grid-cols-1 sm:grid-cols-2 gap-4">${input('habit-sleep','Sono (horas)','type="number" min="0" max="24" step="0.5" inputmode="decimal"')}${input('habit-water','Água (litros)','type="number" min="0" step="0.1" inputmode="decimal"')}${select('habit-mood','Humor',['Muito ruim','Ruim','Neutro','Bom','Excelente'],true)}${select('habit-fatigue','Fadiga',['Nenhuma','Leve','Moderada','Alta'],true)}</div><p class="text-xs text-slate-500">Um registro concede 20 XP pelas regras atuais.</p>`}
+            };
+            const config=configs[tab];if(!config)return'';
+            return `<details ${uiState.healthSections?.[tab]?'open':''} ontoggle="window.setHealthSection('${tab}',this.open)" class="rounded-xl border border-slate-800 bg-slate-950/30 p-4"><summary class="cursor-pointer text-sm font-medium text-slate-300">${config.title}</summary><form novalidate onsubmit="event.preventDefault();window.${config.handler}()" class="space-y-4 mt-4">${config.body}<div class="flex justify-end"><button type="submit" class="rounded-lg border border-rose-800/60 bg-rose-900/30 px-4 py-2.5 text-sm text-rose-200 hover:bg-rose-900/60">${config.title}</button></div></form></details>`;
+        };
+        window.renderHealthRow = function(row,tab) {
+            const esc=window.escapeHtml;
+            const metric=(value,unit)=>value!==null&&value!==undefined&&String(value).trim()!==''&&Number.isFinite(Number(value))?`${Number(value)} ${unit}`:'Não informado';
+            const content=tab==='treinos'?`<h4 class="text-sm font-medium text-slate-200">${esc(row.type || 'Treino')}</h4><p class="text-xs text-slate-400 mt-1">${esc(row.intensity || 'Intensidade não informada')} · ${metric(row.duration,'min')}</p>${row.notes?`<p class="text-sm text-slate-400 mt-2 whitespace-pre-line break-words">${esc(row.notes)}</p>`:''}`:tab==='metricas'?`<p class="text-sm text-slate-200">Peso: ${metric(row.weight,'kg')} · Cintura: ${metric(row.waist,'cm')}</p>`:`<p class="text-sm text-slate-200">Sono: ${metric(row.sleep,'h')} · Água: ${metric(row.water,'L')}</p><p class="text-xs text-slate-400 mt-1">Humor: ${esc(row.mood || 'Não informado')} · Fadiga: ${esc(row.fatigue || 'Não informada')}</p>`;
+            return `<article class="py-4"><p class="text-xs text-slate-500 mb-2">${window.formatFinanceDate(row.date)}</p>${content}</article>`;
+        };
+        window.renderHealthHistory = function(tab) {
+            const rows=window.getHealthRows(tab),pages=Math.max(1,Math.ceil(rows.length/10)),page=Math.min(pages-1,Math.max(0,Number(uiState.healthPages?.[tab])||0));
+            return `<section class="rounded-xl border border-slate-800 px-4"><div class="flex justify-between items-center gap-3 pt-4"><h3 class="text-sm font-medium text-slate-300">Histórico</h3><span class="text-xs text-slate-500">${rows.length} registro${rows.length===1?'':'s'}</span></div><div class="divide-y divide-slate-800">${rows.slice(page*10,page*10+10).map(row=>window.renderHealthRow(row,tab)).join('') || '<p class="text-sm text-slate-500 py-4">Nenhum registro ainda.</p>'}</div>${pages>1?`<div class="flex justify-between items-center border-t border-slate-800 py-3"><button type="button" onclick="window.setHealthPage('${tab}',${page-1})" ${page?'':'disabled'} class="text-xs text-slate-300 disabled:opacity-30 px-3 py-2 border border-slate-700 rounded-lg">Anterior</button><span class="text-xs text-slate-500">${page+1} de ${pages}</span><button type="button" onclick="window.setHealthPage('${tab}',${page+1})" ${page<pages-1?'':'disabled'} class="text-xs text-slate-300 disabled:opacity-30 px-3 py-2 border border-slate-700 rounded-lg">Próxima</button></div>`:''}</section>`;
+        };
         function renderHealthContent() {
-            if(uiState.healthTab === 'dashboard') {
-                const w = state.healthData.workouts;
-                const totalW = w.length;
-                const now = new Date();
-                const thisWeekW = w.filter(w => (now - new Date(w.date)) / (1000*60*60*24) <= 7).length;
-                const lastW = w.length > 0 ? new Date(Math.max(...w.map(x => new Date(x.date)))) : null;
-                const daysSinceLast = lastW ? Math.floor((now - lastW) / (1000*60*60*24)) : 999;
-                
-                let recTitle = "Aguardando Dados", recDesc = "Registre treinos e hábitos para recomendações.", recColor = "text-slate-400";
-                if(daysSinceLast >= 3) { recTitle = "Alerta de Sedentarismo"; recDesc = `Faz ${daysSinceLast} dias sem treinar. Retome com algo leve hoje (Mobilidade ou Caminhada).`; recColor = "text-red-400"; }
-                else if(state.energy < 30) { recTitle = "Recuperação Ativa"; recDesc = `Sua bateria está em ${state.energy}%. Priorize Alongamento, Sono e Água.`; recColor = "text-blue-400"; }
-                else { recTitle = "Condição Ideal"; recDesc = "Corpo pronto para carga moderada/intensa."; recColor = "text-emerald-400"; }
-
-                let html = `
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
-                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center text-center"><i data-lucide="activity" class="text-rose-400 mb-2 w-6 h-6"></i><span class="text-2xl font-black text-white">${totalW}</span><span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Treinos Totais</span></div>
-                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center text-center"><i data-lucide="flame" class="text-orange-400 mb-2 w-6 h-6"></i><span class="text-2xl font-black text-white">${thisWeekW}</span><span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Treinos Semana</span></div>
-                    <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col items-center text-center sm:col-span-1 col-span-2"><i data-lucide="calendar" class="text-indigo-400 mb-2 w-6 h-6"></i><span class="text-2xl font-black text-white">${daysSinceLast > 30 ? '-' : daysSinceLast}</span><span class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Dias Desde o Último</span></div>
-                </div>
-                
-                <div class="bg-slate-900 border border-rose-900/30 p-5 rounded-xl mb-6">
-                    <h4 class="font-bold text-sm text-white mb-1 flex items-center gap-2"><i data-lucide="zap" class="${recColor} w-4 h-4"></i> ${recTitle}</h4>
-                    <p class="text-xs text-slate-400">${recDesc}</p>
-                </div>
-                
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Últimos Treinos</h3>
-                <div class="space-y-3">`;
-                if(w.length === 0) html += `<p class="text-xs italic text-slate-600">Nenhum treino registrado.</p>`;
-                w.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0,5).forEach(x => {
-                    html += `<div class="bg-slate-950 border border-slate-800 p-3 rounded-lg flex justify-between items-center"><div class="flex flex-col"><span class="text-[9px] uppercase font-bold text-slate-500 mb-1">${new Date(x.date).toLocaleDateString()}</span><span class="text-sm font-bold text-white">${x.type}</span></div><div class="text-right flex flex-col"><span class="text-xs text-rose-400 font-bold">${x.intensity}</span><span class="text-[10px] text-slate-500">${x.duration} min</span></div></div>`;
-                });
-                return html + `</div>`;
+            const tab=uiState.healthTab || 'dashboard';
+            if(tab==='dashboard'){
+                const summary=window.getHealthSummary();
+                return `<div class="space-y-5"><section class="rounded-xl border border-slate-800 p-5"><div class="flex flex-wrap justify-between items-start gap-4"><div><h3 class="text-sm font-medium text-slate-300">Seu movimento registrado</h3><p class="text-xs text-slate-500 mt-2">Acompanhe o histórico no seu ritmo.</p></div><button type="button" onclick="window.openHealthForm('treinos')" class="rounded-lg border border-rose-800/60 bg-rose-900/30 px-4 py-2.5 text-sm text-rose-200 hover:bg-rose-900/60">Registrar treino</button></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5 pt-4 border-t border-slate-800"><div><p class="text-xs text-slate-500">Últimos 7 dias, incluindo hoje</p><p class="text-xl font-medium text-slate-100 mt-1">${summary.recent} treino${summary.recent===1?'':'s'}</p><p class="text-xs text-slate-500 mt-1">${summary.minutes} min registrados</p></div><div><p class="text-xs text-slate-500">Todo o histórico</p><p class="text-xl font-medium text-slate-100 mt-1">${summary.total} treino${summary.total===1?'':'s'}</p></div><div><p class="text-xs text-slate-500">Último treino com data válida</p><p class="text-lg font-medium text-slate-100 mt-1">${summary.lastKey?window.formatFinanceDate(summary.lastKey):'Nenhum ainda'}</p>${summary.days!==null?`<p class="text-xs text-slate-500 mt-1">${summary.days===0?'Hoje':`Há ${summary.days} dia${summary.days===1?'':'s'}`}</p>`:''}</div></div></section><div class="flex flex-wrap gap-3"><button type="button" onclick="window.openHealthForm('habitos')" class="text-sm text-slate-300 border border-slate-700 rounded-lg px-3 py-2 hover:bg-slate-800">Check-in do dia</button><button type="button" onclick="window.openHealthForm('metricas')" class="text-sm text-slate-400 rounded-lg px-3 py-2 hover:bg-slate-800">Registrar medidas</button></div><section class="rounded-xl border border-slate-800 px-4"><div class="flex justify-between items-center gap-3 pt-4"><h3 class="text-sm font-medium text-slate-300">Treinos recentes</h3><button type="button" onclick="window.setHealthTab('treinos')" class="text-xs text-slate-400 hover:text-white">Ver histórico</button></div><div class="divide-y divide-slate-800">${window.getHealthRows('treinos').slice(0,3).map(row=>window.renderHealthRow(row,'treinos')).join('')||'<p class="text-sm text-slate-500 py-4">Nenhum treino registrado. Seu histórico aparece após o primeiro registro.</p>'}</div></section></div>`;
             }
-            else if(uiState.healthTab === 'treinos') {
-                let html = `
-                <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl mb-6 space-y-4">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Modalidade</label><select id="wo-type" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none">${Object.keys(WORKOUT_TYPES).map(k=>`<option value="${k}">${k}</option>`).join('')}</select></div>
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Intensidade</label><select id="wo-intensity" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none">${Object.keys(WORKOUT_INTENSITIES).map(k=>`<option value="${k}">${k}</option>`).join('')}</select></div>
-                    </div>
-                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Duração (Min)</label><input type="number" id="wo-duration" value="45" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"></div>
-                    <div><label class="text-[10px] font-bold text-slate-500 uppercase">Anotações / Ficha</label><input type="text" id="wo-notes" placeholder="Ex: Peito e Tríceps..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none"></div>
-                    <button onclick="window.logWorkout()" class="w-full bg-rose-900/50 hover:bg-rose-800 text-rose-300 font-bold py-2.5 rounded-lg border border-rose-700/50 text-xs transition-colors">Registrar Treino & HP</button>
-                </div>`;
-                return html;
-            }
-            else if(uiState.healthTab === 'metricas') {
-                const bm = state.healthData.bodyMetrics.slice().sort((a,b) => new Date(b.date) - new Date(a.date));
-                let html = `
-                <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl mb-6">
-                    <h3 class="text-sm font-bold text-slate-300 mb-3"><i data-lucide="scale" class="inline w-4 h-4 text-cyan-400 mr-2"></i>Registrar Corpo</h3>
-                    <div class="grid grid-cols-2 gap-3 mb-3">
-                        <input type="number" step="0.1" id="metric-weight" placeholder="Peso (kg)" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
-                        <input type="number" step="0.1" id="metric-waist" placeholder="Cintura (cm)" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
-                    </div>
-                    <button onclick="window.logBodyMetric()" class="w-full bg-cyan-900/50 hover:bg-cyan-800 text-cyan-300 font-bold py-2 rounded-lg border border-cyan-700/50 text-xs">Salvar Evolução</button>
-                </div>
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Histórico</h3><div class="space-y-2">`;
-                if(bm.length===0) html += `<p class="text-xs text-slate-500">Sem métricas.</p>`;
-                bm.forEach(m => {
-                    html += `<div class="bg-slate-950 border border-slate-800 p-3 rounded-lg flex justify-between text-xs text-white"><span class="text-slate-400">${new Date(m.date).toLocaleDateString()}</span><span>${m.weight? m.weight+'kg':'-'} | ${m.waist? m.waist+'cm':'-'}</span></div>`;
-                });
-                return html + `</div>`;
-            }
-            else if(uiState.healthTab === 'habitos') {
-                let html = `
-                <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl">
-                    <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Sono (Horas)</label><input type="number" step="0.5" id="habit-sleep" value="7" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white"></div>
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Água (Litros)</label><input type="number" step="0.1" id="habit-water" value="2" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white"></div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Humor</label><select id="habit-mood" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white"><option>Muito ruim</option><option>Ruim</option><option selected>Neutro</option><option>Bom</option><option>Excelente</option></select></div>
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">Fadiga</label><select id="habit-fatigue" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white"><option>Nenhuma</option><option selected>Leve</option><option>Moderada</option><option>Alta</option></select></div>
-                    </div>
-                    <button onclick="window.logHabit()" class="w-full bg-emerald-900/50 hover:bg-emerald-800 text-emerald-300 font-bold py-2.5 rounded-lg border border-emerald-700/50 text-xs">Salvar Check-in Diário (+20 XP)</button>
-                </div>`;
-                return html;
-            }
-            return '';
+            return `<div class="space-y-5"><div class="flex justify-end"><button type="button" onclick="window.openHealthForm('${tab}')" class="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800">${tab==='treinos'?'Registrar treino':tab==='metricas'?'Registrar medidas':'Registrar check-in'}</button></div>${window.renderHealthForm(tab)}${window.renderHealthHistory(tab)}</div>`;
         }
 
         // --- FINANÇAS ---
