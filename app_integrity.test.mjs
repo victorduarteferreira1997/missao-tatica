@@ -503,4 +503,54 @@ assert.equal(opDraftFields[0].value, 'Rascunho em andamento');
 assert.equal(opDraftFields[1].value, 'waiting');
 assert.equal(opDraftSections[0].open, true);
 
+// Edição: valores existentes, recorrência e recompensas já recebidas.
+const editRendererStart = app.indexOf('        window.renderEditTaskModal = function(');
+const editRendererEnd = app.indexOf('        window.bindEditTaskDialog = function(', editRendererStart);
+const editable = { id: 91, text: '<Missão recorrente>', day: 'mon', category: 'work', priority: 'alta', complexity: 3, time: '60 min', missionNature: 'normal', startTime: '09:30', endTime: '10:30', recurrenceDays: ['mon', 'tue'], recurrenceGroupId: 'group-91', completed: true, subtasks: [{ id: 1, text: 'Preservar', completed: true }], customField: 'preservar', xp: 100, energyCost: 20 };
+const editWindow = { escapeHtml: radarWindow.escapeHtml, getTaskNature: task => task.missionNature, getTaskCategories: () => [{ id: 'work', label: 'Trabalho' }] };
+runInNewContext(app.slice(editRendererStart, editRendererEnd), { window: editWindow, daysOfWeek: [{ id: 'mon', label: 'Segunda' }, { id: 'tue', label: 'Terça' }] });
+const editMarkup = editWindow.renderEditTaskModal(editable);
+assert.match(editMarkup, /&lt;Missão recorrente&gt;/);
+assert.match(editMarkup, /role="dialog" aria-modal="true"/);
+assert.match(editMarkup, /data-edit-section="schedule" open/);
+assert.match(editMarkup, /data-edit-section="recurrence" open/);
+assert.match(editMarkup, /id="et-start-time" type="time" value="09:30"/);
+assert.match(editMarkup, /Editar não recalcula as recompensas/);
+const editValues = { 'et-text': 'Título ajustado', 'et-day': 'mon', 'et-category': 'work', 'et-priority': 'alta', 'et-complexity': '3', 'et-time': '60', 'et-impact-type': 'drain', 'et-nature': 'normal' };
+const editElements = Object.fromEntries(Object.entries(editValues).map(([id, value]) => [id, { value, setAttribute(name, value) { this[name] = value; }, focus() { this.focused = true; } }]));
+editElements['et-repeat-mon'] = { checked: false }; editElements['et-repeat-tue'] = { checked: true };
+const editState = { tasks: [editable], activeTab: 'mon', xp: 500, coins: 200 };
+const editUi = { editingTaskId: 91, editTaskDraft: { fields: [] }, showEditTaskModal: true };
+let recurringUpdate = null, editSaves = 0;
+Object.assign(editWindow, {
+    calculateTaskCost: () => ({ xp: 104, hp: 20 }), readCalendarTimeFields: () => ({ startTime: '09:30', endTime: '10:30' }),
+    upsertRecurringTaskOccurrences: (task, days, options) => { recurringUpdate = { days: [...days], removeUnselected: options.removeUnselected }; },
+    reindexTaskOrderForDay() {}, getRecurringDaysLabel: () => 'Terça', showToast() {}, saveState: () => { editSaves++; }, showAlertModal() { throw new Error('Alerta inesperado'); }
+});
+const saveEditStart = app.indexOf('        window.saveEditedTask = function(');
+const saveEditEnd = app.indexOf('        window.calculateTaskCost = function(', saveEditStart);
+runInNewContext(app.slice(saveEditStart, saveEditEnd), { window: editWindow, state: editState, uiState: editUi, daysOfWeek: [{ id: 'mon' }, { id: 'tue' }], document: { getElementById: id => id === 'et-title-error' ? localError : editElements[id] } });
+editWindow.saveEditedTask();
+assert.deepEqual(recurringUpdate, { days: ['tue'], removeUnselected: true });
+assert.equal(editable.day, 'tue'); assert.equal(editable.text, 'Título ajustado');
+assert.equal(editable.completed, true); assert.equal(editable.subtasks[0].completed, true); assert.equal(editable.customField, 'preservar');
+assert.equal(editState.xp, 500); assert.equal(editState.coins, 200); assert.equal(editSaves, 1);
+assert.equal(editUi.editTaskDraft, null);
+editUi.editingTaskId = 91; editElements['et-text'].value = ' ';
+editWindow.saveEditedTask();
+assert.equal(editElements['et-text']['aria-invalid'], 'true'); assert.equal(editElements['et-text'].focused, true); assert.equal(editSaves, 1);
+
+const editDraftUi = { showEditTaskModal: true };
+const editDraftFields = [{ id: 'et-text', value: 'Edição em andamento' }, { id: 'et-repeat-tue', type: 'checkbox', value: 'on', checked: true }];
+const editDraftSections = [{ dataset: { editSection: 'recurrence' }, open: true }];
+const editDraftApp = { querySelector: () => ({ querySelectorAll: selector => selector.startsWith('input') ? editDraftFields : editDraftSections }), querySelectorAll: () => editDraftSections };
+const editCaptureStart = app.indexOf('const previousEditDialog =');
+const editCaptureEnd = app.indexOf('const previousDemandDialog =', editCaptureStart);
+runInNewContext(app.slice(editCaptureStart, editCaptureEnd), { appDiv: editDraftApp, uiState: editDraftUi });
+editDraftFields[0].value = ''; editDraftFields[1].checked = false; editDraftSections[0].open = false;
+const editRestoreStart = app.indexOf('if (uiState.showEditTaskModal && uiState.editTaskDraft)');
+const editRestoreEnd = app.indexOf('window.bindEditTaskDialog(appDiv);', editRestoreStart);
+runInNewContext(app.slice(editRestoreStart, editRestoreEnd), { appDiv: editDraftApp, uiState: editDraftUi, document: { getElementById: id => editDraftFields.find(field => field.id === id) } });
+assert.equal(editDraftFields[0].value, 'Edição em andamento'); assert.equal(editDraftFields[1].checked, true); assert.equal(editDraftSections[0].open, true);
+
 console.log(`Integridade da interface: módulo, ${uniqueHandlers.length} handlers, Pomodoro, missões, semana e Radar conferidos.`);
