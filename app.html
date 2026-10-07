@@ -109,6 +109,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
+        const APP_VERSION = 'v1.9.60';
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
             authDomain: "missao-tatica.firebaseapp.com",
@@ -5432,7 +5433,7 @@
                 ['Finalidade','Arquivo de consulta para análise. Para restaurar dados no Missão Tática, use o backup JSON completo.']
             ];
             const sheets = [{ name:'Resumo', widths:[44,110], rows:[['Informação','Valor / explicação'],
-                ['Exportado em',exportedAt.toLocaleString('pt-BR')],['Fuso da exportação',Intl.DateTimeFormat().resolvedOptions().timeZone],['Versão','v1.9.59'],
+                ['Exportado em',exportedAt.toLocaleString('pt-BR')],['Fuso da exportação',Intl.DateTimeFormat().resolvedOptions().timeZone],['Versão',APP_VERSION],
                 ['Receitas registradas (R$)',income],['Contas fixas cadastradas (R$)',fixed],['Gastos variáveis registrados (R$)',variable],
                 ['Resultado estimado (R$)',Math.round((income-fixed-variable)*100)/100],['Contas fixas pendentes (R$)',window.getFinanceSum(rows('fixedExpenses').filter(row=>!row.paid))],
                 ['Receitas: quantidade',rows('incomes').length],['Contas fixas: quantidade',rows('fixedExpenses').length],['Gastos: quantidade',rows('variableExpenses').length],['Diário: quantidade',rows('moneyJournal').length],
@@ -6376,7 +6377,7 @@
                             ${state.combo > 1 ? `<div class="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow border-2 border-slate-900 animate-pulse">x${state.combo}</div>` : ''}
                         </div>
                         <div>
-                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">v1.9.59</span></div>
+                            <div class="font-bold tracking-wide text-sm text-slate-100 whitespace-nowrap">MISSÃO TÁTICA <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 align-middle font-bold">${APP_VERSION}</span></div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-2">

@@ -62,3 +62,12 @@ test('carregador único mantém snapshots antigos e rejeita uma versão recebida
  const old=await load('?v=v1.9.43&build=275773da50ca0b46b42398717e6b2bc1afe652ca','v1.9.43-planning');assert.ok(old.fetched.includes('/275773da50ca0b46b42398717e6b2bc1afe652ca/app.html'));assert.equal(old.written,'<html>snapshot</html>');
  const mismatch=await load('?v=v1.9.43&build=275773da50ca0b46b42398717e6b2bc1afe652ca','v1.9.59-configurable-rewards');assert.equal(mismatch.written,undefined);assert.match(mismatch.status,/Não foi possível carregar a prévia/);
 });
+
+test('versão exibida no cabeçalho coincide com a versão publicada e usada na exportação',()=>{
+ const version=app.match(/meta name="app-build" content="(v\d+\.\d+\.\d+)-/)[1];
+ assert.equal(app.match(/const APP_VERSION = '([^']+)'/)[1],version);
+ const b=boot();b.render();
+ assert.ok(b.elements.app.innerHTML.includes('>'+version+'</span>'));
+ assert.ok(!b.elements.app.innerHTML.includes('>v1.9.59</span>'));
+ assert.match(app,/\['Versão',APP_VERSION\]/);
+});
