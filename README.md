@@ -59,3 +59,9 @@ consulta e recuperação. Não apague branches com commits ainda não incorporad
 O token OAuth do Google fica somente na memória do navegador. Não adicione ao
 repositório tokens, credenciais privadas, backups pessoais ou arquivos contendo
 dados reais.
+
+## Integração privada com IA (em preparação)
+
+A ponte de GPT Actions, contexto selecionado e caixa de entrada estão em
+[ai/README.md](ai/README.md). A integração fica desligada por padrão até a
+validação do banco isolado e da prévia; não está publicada nem conectada.

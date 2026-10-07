@@ -9,7 +9,8 @@ import { installPlanningViews } from './ui/planning_views.v1.js';
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
 const taskForms = await readFile(new URL('./ui/task_forms.v1.js', import.meta.url), 'utf8');
 const planningViews = await readFile(new URL('./ui/planning_views.v1.js', import.meta.url), 'utf8');
-const interfaceSource = app + taskForms + planningViews;
+const aiInbox = await readFile(new URL('./ui/ai_inbox.v1.js', import.meta.url), 'utf8');
+const interfaceSource = app + taskForms + planningViews + aiInbox;
 const installPlanner = (target, options = {}) => installPlanningViews(target, {
     document: { addEventListener() {} }, daysOfWeek: [], ICONS: { default: 'target' },
     getState: () => ({}), getUiState: () => ({}), extractMinutesFromTask: () => 30,

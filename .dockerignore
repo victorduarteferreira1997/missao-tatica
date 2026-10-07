@@ -1,0 +1,7 @@
+**
+!ai/
+!ai/contract.v1.js
+!ai/server/
+!ai/server/server.mjs
+!ai/server/firestore.mjs
+!ai/server/Dockerfile
