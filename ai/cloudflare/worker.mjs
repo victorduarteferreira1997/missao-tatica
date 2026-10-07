@@ -1,5 +1,5 @@
 import { ContractError,validateWeek,validateContext,validateProposal } from '../contract.v1.js';
-import { AuthError,createFirebaseVerifier } from './firebase_auth.mjs';
+import { AuthError,KeyServiceError,createFirebaseVerifier } from './firebase_auth.mjs';
 import { CapacityError,createD1Store } from './d1.mjs';
 
 export const APP_ORIGIN = 'https://victorduarteferreira1997.github.io';
@@ -48,6 +48,8 @@ export function createWorker({verifyOwner=createFirebaseVerifier(),storeFactory=
             const appRoute = url.pathname.startsWith('/v1/app/');
             const origin = request.headers.get('Origin');
             const cors = appRoute && origin === APP_ORIGIN ? {'Access-Control-Allow-Origin':APP_ORIGIN,'Vary':'Origin'} : {};
+            let failureStage = 'authentication';
+            function database() { failureStage = 'database'; return storeFactory(env.DB); }
             function send(status,data,extra={}) {
                 return new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',
                     'X-Content-Type-Options':'nosniff',...cors,...extra}});
@@ -65,6 +67,7 @@ export function createWorker({verifyOwner=createFirebaseVerifier(),storeFactory=
                         'Access-Control-Allow-Headers':'Authorization, Content-Type, X-Firebase-AppCheck','Access-Control-Max-Age':'600'}});
                 }
                 if (appRoute) await verifyOwner(request); else await actionAuth(request,env.ACTION_SECRET);
+                failureStage = 'request';
                 const slot=Math.floor(now()/60000); if (slot!==minute) { minute=slot;requests=0; }
                 if (++requests>requestsPerMinute) return send(429,{error:'rate_limited'},{'Retry-After':'60'});
                 // Validate routes/parameters before constructing a store or issuing SQL.
@@ -72,26 +75,26 @@ export function createWorker({verifyOwner=createFirebaseVerifier(),storeFactory=
                     if (!appMethods.includes(method)) return send(404,{error:'not_found'});
                     if (url.pathname==='/v1/app/context') {
                         const week=oneWeek(url);
-                        if (method==='DELETE') { await storeFactory(env.DB).revoke(week); return send(200,{removed:true}); }
+                        if (method==='DELETE') { await database().revoke(week); return send(200,{removed:true}); }
                         const context=validateContext(await readJson(request,64000),now());
                         if (context.weekStart!==week) throw new ContractError();
-                        await storeFactory(env.DB).publish(context,now()); return send(200,{published:true});
+                        await database().publish(context,now()); return send(200,{published:true});
                     }
                     if (url.search) throw new ContractError();
-                    if (method==='GET') return send(200,{items:await storeFactory(env.DB).pending()});
+                    if (method==='GET') return send(200,{items:await database().pending()});
                     const body=await readJson(request,256);
                     if (!body || Array.isArray(body) || Object.keys(body).length!==1 || !['accepted','rejected'].includes(body.status)) throw new ContractError();
-                    const reviewed=await storeFactory(env.DB).review(reviewId,body.status,now());
+                    const reviewed=await database().review(reviewId,body.status,now());
                     return reviewed ? send(200,{status:body.status}) : send(409,{error:'review_conflict'});
                 }
                 if (method==='GET' && url.pathname==='/v1/week') {
-                    const week=oneWeek(url),context=await storeFactory(env.DB).context(week);
+                    const week=oneWeek(url),context=await database().context(week);
                     if (!context) return send(404,{error:'context_not_published'});
                     const valid=validateContext(context,now()); if(valid.weekStart!==week)throw new ContractError();
                     return send(200,valid);
                 }
                 if (method!=='POST' || url.pathname!=='/v1/proposals' || url.search) return send(404,{error:'not_found'});
-                const p=validateProposal(await readJson(request,12000)),key=await sha256(p.idempotencyKey),store=storeFactory(env.DB);
+                const p=validateProposal(await readJson(request,12000)),key=await sha256(p.idempotencyKey),store=database();
                 function replay(existing) {
                     if (JSON.stringify(validateProposal(existing.payload))!==JSON.stringify(p)) return send(409,{error:'idempotency_conflict'});
                     if (!['pending','accepted','rejected'].includes(existing.status)) throw new Error('Invalid inbox.');
@@ -111,6 +114,8 @@ export function createWorker({verifyOwner=createFirebaseVerifier(),storeFactory=
                 if(error instanceof ContractError)return send(422,{error:'invalid_or_expired_data'});
                 if(error instanceof CapacityError)return send(409,{error:'context_storage_full'});
                 if(error instanceof HttpError)return send(error.status,{error:error.code});
+                if(appRoute && error instanceof KeyServiceError)return send(503,{error:'firebase_keys_unavailable'});
+                if(appRoute)return send(503,{error:failureStage==='database'?'database_unavailable':failureStage==='authentication'?'verification_unavailable':'service_unavailable'});
                 return send(503,{error:'service_unavailable'});
             }
         }

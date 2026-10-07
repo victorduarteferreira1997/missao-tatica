@@ -132,6 +132,17 @@ Free, as chamadas podem falhar; não fazer upgrade automático.
 
 ## Validação local
 
+### Diagnóstico do piloto
+
+O modal mantém o status visível fora da lista rolável. Falhas HTTP exibem
+o número e, quando disponível, um código fixo aprovado no adaptador.
+O Worker atualizado distingue `firebase_keys_unavailable` (obtenção/importação
+das chaves públicas), `verification_unavailable` (falha interna na verificação)
+e `database_unavailable` (acesso ao D1 após autenticação). Não devolve mensagens
+internas, tokens, SQL ou corpos das missões. Esses códigos exigem republicar
+`cloudflare/worker-dashboard.js` no Worker; publicar o GitHub Pages não atualiza
+o Worker. `service_unavailable` continua aceito para a versão anterior.
+
 Suite completa, incluindo assinatura RSA real e SQL real em SQLite local:
 
 ```bash

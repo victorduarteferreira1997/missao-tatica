@@ -88,6 +88,18 @@ test('Worker não acessa D1 sem autenticação e separa credencial GPT das rotas
     assert.equal((await a.call('/v1/app/inbox','GET',undefined,true,{Origin:''})).status,403);
     assert.equal(a.calls.length,0);
 });
+test('diagnóstico do proprietário separa chaves públicas e D1 sem devolver detalhes internos',async t=>{
+    const keys=api(t,{verifyOwner:async()=>{throw new KeyServiceError('PRIVATE_TOKEN_AND_KEYS');}});
+    const keyError=await keys.call('/v1/app/inbox','GET',undefined,true);
+    assert.equal(keyError.status,503);assert.deepEqual(await keyError.json(),{error:'firebase_keys_unavailable'});
+    assert.equal(keys.calls.length,0);
+    const db=api(t,{storeFactory:()=>{throw new Error('PRIVATE_SQL_AND_CONNECTION');}});
+    const dbError=await db.call('/v1/app/context?weekStart=2026-10-05','PUT',context(),true);
+    assert.equal(dbError.status,503);assert.deepEqual(await dbError.json(),{error:'database_unavailable'});
+    const badAuth=api(t,{verifyOwner:async()=>{throw new AuthError('PRIVATE_CREDENTIAL');}});
+    assert.deepEqual(await (await badAuth.call('/v1/app/inbox','GET',undefined,true)).json(),{error:'unauthorized'});
+    assert.equal(badAuth.calls.length,0);
+});
 test('CORS permite só origem oficial, rotas/métodos/headers explícitos e nunca credenciais automáticas',async t=>{
     const a=api(t),headers={Origin:APP_ORIGIN,'Access-Control-Request-Method':'PUT','Access-Control-Request-Headers':'authorization, content-type, x-firebase-appcheck'};
     const r=await a.call('/v1/app/context?weekStart=2026-10-05','OPTIONS',undefined,false,headers);
@@ -180,6 +192,21 @@ test('adaptador recusa mudança de sessão durante obtenção do token ou respos
     s=createAiBrowserStore({getUser:()=>user,getAppCheckToken:async()=>'app',fetchImpl:async()=>{user=null;return {ok:true,json:async()=>({items:[]})};}});await assert.rejects(()=>s.pending(),/sessão mudou/);
     user={uid:AI_OWNER_UID,getIdToken:async()=>'token'};
     s=createAiBrowserStore({getUser:()=>user,getAppCheckToken:async()=>'app',fetchImpl:async()=>({ok:true,json:async()=>({items:[{id:'../state/main',status:'pending',proposal:proposal()}]})})});await assert.rejects(()=>s.pending(),/Entrada inválida/);
+});
+test('adaptador exibe HTTP e códigos conhecidos; descarta detalhes de resposta desconhecidos ou HTML',async()=>{
+    const user={uid:AI_OWNER_UID,getIdToken:async()=>'token'};
+    for(const [body,expected] of [
+        [JSON.stringify({error:'firebase_keys_unavailable',detail:'PRIVATE_TOKEN'}),' · firebase_keys_unavailable'],
+        [JSON.stringify({error:'database_unavailable'}),' · database_unavailable'],
+        [JSON.stringify({error:'PRIVATE_TOKEN'}),''],
+        ['<html>PRIVATE_TOKEN</html>','']
+    ]) {
+        const s=createAiBrowserStore({getUser:()=>user,getAppCheckToken:async()=>'app',fetchImpl:async()=>new Response(body,{status:503})});
+        await assert.rejects(()=>s.pending(),error=>{
+            assert.equal(error.message,'Não foi possível acessar a integração. (HTTP 503'+expected+')');
+            assert.doesNotMatch(error.message,/PRIVATE_|<html>/);return true;
+        });
+    }
 });
 test('arquivo do editor é reproduzível e executa a mesma ponte sem imports ou dependências; OpenAPI não expõe rotas do proprietário',async()=>{
     const source=await dashboardSource();assert.equal(await readFile(new URL('./cloudflare/worker-dashboard.js',import.meta.url),'utf8'),source);assert.doesNotMatch(source,/^import /m);

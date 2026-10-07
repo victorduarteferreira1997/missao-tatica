@@ -1,6 +1,10 @@
 import { AI_OWNER_UID,validateWeek,validateContext,validateProposal } from './contract.v1.js';
 
 const BRIDGE_URL = 'https://missao-tatica-ai-bridge.victorduarteferreira1997.workers.dev';
+const ERROR_CODES = new Set(['unauthorized','origin_not_allowed','preflight_not_allowed','rate_limited',
+    'invalid_or_expired_data','service_unavailable','firebase_keys_unavailable','verification_unavailable',
+    'database_unavailable','context_storage_full','json_required','body_too_large','not_found',
+    'review_conflict','context_changed_or_inbox_full']);
 export function createAiBrowserStore({getUser,getAppCheckToken,fetchImpl=(...args)=>fetch(...args)}) {
     async function request(path,method,body) {
         const user=getUser();
@@ -10,9 +14,15 @@ export function createAiBrowserStore({getUser,getAppCheckToken,fetchImpl=(...arg
         const response=await fetchImpl(BRIDGE_URL+path,{method,credentials:'omit',redirect:'error',
             headers:{Authorization:'Bearer '+idToken,'X-Firebase-AppCheck':appCheckToken,'Content-Type':'application/json'},
             ...(body!==undefined?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(15000)});
-        if(!response.ok)throw new Error(response.status===401?'Sua sessão ou verificação do app expirou. Entre novamente.':
-            response.status===409?'O contexto ou a proposta mudou, ou a caixa atingiu seu limite. Atualize e revise.':
-            'Não foi possível acessar a integração. Confira a conexão e a configuração da ponte.');
+        if(!response.ok) {
+            let code = '';
+            try { const body = await response.json(); if(ERROR_CODES.has(body?.error))code = body.error; } catch {}
+            const message = response.status===401?'Sua sessão ou verificação do app expirou. Entre novamente.':
+                response.status===409?'O contexto ou a proposta mudou, ou a caixa atingiu seu limite. Atualize e revise.':
+                'Não foi possível acessar a integração.';
+            // Show fixed diagnostic codes only: never server text, HTML, credentials or database details.
+            throw new Error(message+' (HTTP '+response.status+(code?' · '+code:'')+')');
+        }
         const result=await response.json(); if(getUser()!==user)throw new Error('A sessão mudou.'); return result;
     }
     return {
