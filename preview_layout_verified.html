@@ -6,17 +6,17 @@
   <title>Prévia — Missão Tática</title>
 </head>
 <body style="margin:0;background:#020617;color:#cbd5e1;font-family:system-ui;padding:24px">
-  <div id="status" role="status">Carregando prévia v1.9.60...</div>
+  <div id="status" role="status">Carregando prévia v1.9.61...</div>
   <script>
     const params = new URLSearchParams(location.search);
     const requestedCommit = params.get('build');
     const commit = requestedCommit && /^[a-f0-9]{40}$/.test(requestedCommit)
       ? requestedCommit
-      : '9428b690eafa0591fe1c5b370e963e8fcbc1cbf9';
+      : '5f5f20f177ff3df192529f6c6ab6cad3b7f79601';
     const requestedVersion = params.get('v');
     const version = requestedVersion && /^v\d+\.\d+\.\d+$/.test(requestedVersion)
       ? requestedVersion
-      : 'v1.9.60';
+      : 'v1.9.61';
     document.getElementById('status').textContent = 'Carregando prévia ' + version + '...';
     fetch('https://raw.githubusercontent.com/victorduarteferreira1997/missao-tatica/' + commit + '/app.html', { cache: 'no-store' })
       .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })

@@ -58,7 +58,7 @@ test('carregador único mantém snapshots antigos e rejeita uma versão recebida
   runInNewContext(source,{URLSearchParams,location:{search},document,DOMParser,fetch:async url=>{fetched=url;return {ok:true,text:async()=>'<html>snapshot</html>'};}});
   await new Promise(resolve=>setImmediate(resolve));return {fetched,written,status:status.textContent};
  }
- const current=await load('','v1.9.60-task-meeting');assert.ok(current.fetched.includes('/9428b690eafa0591fe1c5b370e963e8fcbc1cbf9/app.html'));assert.equal(current.written,'<html>snapshot</html>');
+ const current=await load('','v1.9.61-calendar-inbox');assert.ok(current.fetched.includes('/5f5f20f177ff3df192529f6c6ab6cad3b7f79601/app.html'));assert.equal(current.written,'<html>snapshot</html>');
  const old=await load('?v=v1.9.43&build=275773da50ca0b46b42398717e6b2bc1afe652ca','v1.9.43-planning');assert.ok(old.fetched.includes('/275773da50ca0b46b42398717e6b2bc1afe652ca/app.html'));assert.equal(old.written,'<html>snapshot</html>');
  const mismatch=await load('?v=v1.9.43&build=275773da50ca0b46b42398717e6b2bc1afe652ca','v1.9.59-configurable-rewards');assert.equal(mismatch.written,undefined);assert.match(mismatch.status,/Não foi possível carregar a prévia/);
 });

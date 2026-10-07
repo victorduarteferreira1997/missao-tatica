@@ -44,10 +44,10 @@ gravação e sincronização reais precisam de validação manual em uma semana 
 `main` contém a aplicação oficial publicada pelo GitHub Pages. Antes de atualizar
 essa branch, execute os testes e revise as mudanças na prévia.
 
-O carregador verificado aceita `?v=v1.9.60&build=<SHA completo do commit>`.
+O carregador verificado aceita `?v=v1.9.61&build=<SHA completo do commit>`.
 Ele busca `app.html` desse commit e confere a versão declarada antes de exibi-la.
-Sem parâmetros, abre a prévia validada v1.9.60 do commit
-`9428b690eafa0591fe1c5b370e963e8fcbc1cbf9`. Seus módulos de `ui/` são carregados
+Sem parâmetros, abre a prévia validada v1.9.61 do commit
+`5f5f20f177ff3df192529f6c6ab6cad3b7f79601`. Seus módulos de `ui/` são carregados
 pelo endereço oficial; mudanças nesses módulos precisam manter compatibilidade
 com as prévias que se pretende continuar usando.
 
