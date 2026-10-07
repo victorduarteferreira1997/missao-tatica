@@ -182,6 +182,10 @@ assert.doesNotMatch(JSON.stringify(inboundState.calendarInboxItems.find(e=>e.id=
 await inboundSync.refreshInbox();await inboundSync.refreshInbox();
 assert.equal(inboundState.calendarInboxItems.filter(e=>e.id==='coaktion-meeting').length,1);
 assert.equal(inboundState.tasks.filter(t=>t.googleCalendarEventId==='coaktion-meeting').length,1);
+primaryEvents[0]={...primaryEvents[0],summary:'SEGREDO alterado',organizer:{email:'private@example.com'},htmlLink:'https://private.example.com'};
+await inboundSync.refreshInbox();
+assert.equal(meeting.text,'Reunião · Coaktion');
+assert.doesNotMatch(JSON.stringify(inboundState.calendarInboxItems.find(e=>e.id==='coaktion-meeting')),/SEGREDO|private/,'Uma origem conhecida permanece sanitizada após mudar o título.');
 primaryEvents[0]={...primaryEvents[0],start:{dateTime:'2026-10-06T15:00:00-03:00'},end:{dateTime:'2026-10-06T16:30:00-03:00'}};
 await inboundSync.refreshInbox();
 assert.equal(meeting.googleCalendarWeekStart,'2026-10-05');assert.equal(meeting.day,'tuesday');assert.equal(meeting.startTime,'15:00');assert.equal(meeting.time,'90 min');assert.equal(meeting.googleCalendarSourceMissing,false);

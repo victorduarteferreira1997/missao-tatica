@@ -149,6 +149,16 @@ function zonedParts(value, timeZone) {
     return Object.fromEntries(parts.map(part => [part.type, part.value]));
 }
 
+function sanitizeKnownCoaktion(item, force = false) {
+    const title = String(item.summary || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
+    if (!force && item.sanitizedOrigin !== 'coaktion' && title !== 'reuniao · coaktion') return item;
+    const safe = {};
+    for (const key of ['id', 'status', 'source', 'sourceCalendar', 'weekStart', 'eventDate', 'day', 'startTime', 'endTime', 'duration', 'allDay', 'googleUpdatedAt', 'sourceMissing', 'sourceStatus', 'linkedTaskId']) {
+        if (Object.hasOwn(item, key)) safe[key] = item[key];
+    }
+    return { ...safe, summary: 'Reunião · Coaktion', activityType: 'meeting', sanitizedOrigin: 'coaktion', originType: 'Coaktion', organizer: '', htmlLink: '' };
+}
+
 export function normalizePrimaryEvent(event, week, timeZone, allowOutsideWeek = false) {
     if (!event?.id || event.status === 'cancelled') return null;
     if ((event.attendees || []).some(attendee => attendee.self && attendee.responseStatus === 'declined')) return null;
@@ -348,7 +358,7 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
         // Resolve each missing linked ID independently: leaving the week is not cancellation.
         const normalized = items.map(event => normalizePrimaryEvent(event, week, timeZone)).filter(Boolean);
         const before = JSON.stringify(state.calendarInboxItems || []);
-        const oldItems = Array.isArray(state.calendarInboxItems) ? state.calendarInboxItems : [];
+        const oldItems = (Array.isArray(state.calendarInboxItems) ? state.calendarInboxItems : []).map(item => sanitizeKnownCoaktion(item));
         const oldById = new Map(oldItems.map(item => [item.id, item]));
         const fetchedIds = new Set(normalized.map(item => item.id));
         const sourceUpdates = new Map();
@@ -378,7 +388,8 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
             const previous = oldById.get(incoming.id);
             const exists = previous?.linkedTaskId && (state.tasks || []).some(task => String(task.id) === String(previous.linkedTaskId));
             // Clearing a linked task makes its live event available again; no dangling conversion.
-            const merged = { ...incoming, status: previous?.status === 'converted' && !exists ? 'pending' : previous?.status || 'pending', linkedTaskId: exists ? previous.linkedTaskId : null };
+            const safeIncoming = sanitizeKnownCoaktion(incoming, previous?.sanitizedOrigin === 'coaktion');
+            const merged = { ...safeIncoming, status: previous?.status === 'converted' && !exists ? 'pending' : previous?.status || 'pending', linkedTaskId: exists ? previous.linkedTaskId : null };
             const index = retained.findIndex(item => item.id === incoming.id);
             if (index >= 0) retained[index] = merged;
             else retained.push(merged);
