@@ -4,18 +4,18 @@ import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 import { installFormDialogs as installDialogModule } from './ui/form_dialogs.v1.js';
 import { installTaskForms } from './ui/task_forms.v2.js';
-import { installPlanningViews } from './ui/planning_views.v2.js';
+import { installPlanningViews } from './ui/planning_views.v3.js';
 
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
 const taskForms = await readFile(new URL('./ui/task_forms.v2.js', import.meta.url), 'utf8');
-const planningViews = await readFile(new URL('./ui/planning_views.v2.js', import.meta.url), 'utf8');
+const planningViews = await readFile(new URL('./ui/planning_views.v3.js', import.meta.url), 'utf8');
 const interfaceSource = app + taskForms + planningViews;
 const installPlanner = (target, options = {}) => installPlanningViews(target, {
     document: { addEventListener() {} }, daysOfWeek: [], ICONS: { default: 'target' },
     getState: () => ({}), getUiState: () => ({}), extractMinutesFromTask: () => 30,
     ...options
 });
-assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v2\.js'/);
+assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v3\.js'/);
 assert.match(app, /html \+= window\.renderWeeklyPlanningOverview\(\)/);
 assert.ok(!app.includes('window.renderDailyMissionBoard ='), 'As visões devem existir apenas no módulo do planejamento.');
 assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v2\.js'/);
@@ -372,7 +372,9 @@ const weeklyMarkup = weeklyContext.renderWeek();
 assert.ok(weeklyMarkup.indexOf('Estudo cedo') < weeklyMarkup.indexOf('Missão tarde'));
 assert.ok(weeklyMarkup.indexOf('Missão tarde') < weeklyMarkup.indexOf('&lt;Missão livre&gt;'));
 assert.doesNotMatch(weeklyMarkup, /Cancelado/);
-assert.match(weeklyMarkup, /1 compromisso para revisar/);
+assert.ok(weeklyMarkup.indexOf('id="sync-stub"') < weeklyMarkup.indexOf('id="inbox-stub"'));
+assert.ok(weeklyMarkup.indexOf('id="inbox-stub"') < weeklyMarkup.indexOf('Semana Geral'));
+assert.doesNotMatch(weeklyMarkup, /data-week-section="[^"\n]*:google"/);
 assert.match(weeklyMarkup, /data-week-day="mon" data-week-section="2026-10-05:mon"  class=/);
 assert.match(weeklyMarkup, /data-week-day="tue" data-week-section="2026-10-05:tue" open /);
 for (const action of ['setPlanningCalendarWeek', 'exportVisibleWeekToIcs', 'prepareNextWeekPlanning', 'setMainView']) {

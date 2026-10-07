@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.60-task-meeting">
+    <meta name="app-build" content="v1.9.61-calendar-inbox">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -100,7 +100,7 @@
         import { createCalendarSync } from './calendar_sync.v2.js';
         import { installFormDialogs } from './ui/form_dialogs.v1.js';
         import { installTaskForms } from './ui/task_forms.v2.js';
-        import { installPlanningViews } from './ui/planning_views.v2.js';
+        import { installPlanningViews } from './ui/planning_views.v3.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
         import { getAuth, signInWithPopup, signInWithRedirect, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -109,7 +109,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.60';
+        const APP_VERSION = 'v1.9.61';
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
             authDomain: "missao-tatica.firebaseapp.com",
@@ -6870,22 +6870,25 @@
             const lastSync = connection.lastSyncedAt
                 ? `Última sincronização: ${new Date(connection.lastSyncedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}.`
                 : 'Nenhuma sincronização concluída nesta sessão.';
-            return `<section id="calendar-sync-panel" class="rounded-2xl border border-emerald-900/60 bg-emerald-950/15 p-4 sm:p-5">
+            return `<section id="calendar-sync-panel" aria-labelledby="calendar-sync-title" class="rounded-xl border border-slate-800 bg-slate-900/70 p-3 sm:p-4">
                 <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                     <div>
-                        <h3 class="text-sm font-black text-emerald-200 flex items-center gap-2"><i data-lucide="calendar-sync" class="w-4 h-4"></i> Google Agenda</h3>
-                        <p class="text-[11px] text-slate-400 mt-1 leading-relaxed max-w-2xl">Envia missões e estudos para a agenda separada e lê compromissos da sua agenda principal. Ao classificar, a cor do evento original acompanha a categoria escolhida, sem criar duplicata.</p>
-                        <p class="text-[11px] mt-2 font-bold ${statusColor}">${window.escapeHtml(label)} <span class="text-slate-500 font-normal">· ${window.escapeHtml(lastSync)}</span></p>
+                        <h3 id="calendar-sync-title" class="text-sm font-semibold text-emerald-200 flex items-center gap-2"><i data-lucide="calendar-sync" class="w-4 h-4"></i> Google Agenda</h3>
+                        <p class="text-xs mt-1 font-medium ${statusColor}">${window.escapeHtml(label)} <span class="text-slate-400 font-normal">· ${window.escapeHtml(lastSync)}</span></p>
                         ${connection.error ? `<p class="text-[11px] text-rose-300 mt-1">${window.escapeHtml(connection.error)}</p>` : ''}
                     </div>
                     <div class="flex flex-wrap gap-2 shrink-0">
                         ${!connection.connected
-                            ? `<button type="button" onclick="window.calendarSync.connect()" class="rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-2 text-[11px] font-black">${connection.enabled ? 'Reconectar' : 'Conectar Google Agenda'}</button>`
-                            : `<button type="button" onclick="window.calendarSync.syncNow({force:true})" ${connection.busy ? 'disabled' : ''} class="rounded-xl bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white px-3 py-2 text-[11px] font-black">Sincronizar tudo</button>`}
-                        ${connection.enabled ? `<button type="button" onclick="window.calendarSync.pause()" class="rounded-xl border border-slate-700 bg-slate-900 text-slate-300 px-3 py-2 text-[11px] font-black">Pausar</button>` : ''}
+                            ? `<button type="button" onclick="window.calendarSync.connect()" class="min-h-9 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-2 text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">${connection.enabled ? 'Reconectar' : 'Conectar Google Agenda'}</button>`
+                            : `<button type="button" onclick="window.calendarSync.syncNow({force:true})" ${connection.busy ? 'disabled' : ''} class="min-h-9 rounded-lg bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white px-3 py-2 text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Sincronizar tudo</button>`}
+                        ${connection.enabled ? `<button type="button" onclick="window.calendarSync.pause()" class="min-h-9 rounded-lg border border-slate-700 bg-slate-950/50 text-slate-300 px-3 py-2 text-xs font-medium hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Pausar</button>` : ''}
                     </div>
                 </div>
-                <p class="text-[10px] text-slate-500 mt-3">Pausar mantém os eventos já enviados. A leitura inclui apenas a agenda principal; agendas compartilhadas e a agenda secundária do Missão Tática não entram na caixa.</p>
+                <details class="mt-2 text-xs text-slate-400">
+                    <summary class="min-h-8 inline-flex items-center cursor-pointer rounded hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Como funciona a sincronização</summary>
+                    <p class="mt-1 leading-relaxed max-w-2xl">Envia missões e estudos para a agenda separada e lê compromissos da sua agenda principal. Ao classificar, a cor do evento original acompanha a categoria escolhida, sem criar duplicata.</p>
+                    <p class="mt-1 leading-relaxed max-w-2xl">Pausar mantém os eventos já enviados. A leitura inclui apenas a agenda principal; agendas compartilhadas e a agenda secundária do Missão Tática não entram na caixa.</p>
+                </details>
             </section>`;
         };
 
@@ -6896,38 +6899,38 @@
                 const [year, month, day] = String(value || '').split('-');
                 return year && month && day ? `${day}/${month}` : value;
             };
-            return `<section id="calendar-inbox-panel" class="rounded-2xl border border-sky-900/60 bg-sky-950/15 p-4 sm:p-5">
+            return `<section id="calendar-inbox-panel" aria-labelledby="calendar-inbox-title" class="rounded-xl border border-slate-800 bg-slate-900/70 p-3 sm:p-4">
                 <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                     <div>
                         <div class="flex flex-wrap items-center gap-2">
-                            <h3 class="text-sm font-black text-sky-200 flex items-center gap-2"><i data-lucide="inbox" class="w-4 h-4"></i> Entrada da Agenda</h3>
-                            <span class="rounded-full border border-sky-800/60 bg-sky-950/50 px-2 py-0.5 text-[10px] font-black text-sky-200">${items.length} pendente${items.length === 1 ? '' : 's'}</span>
+                            <h3 id="calendar-inbox-title" class="text-sm font-semibold text-sky-200 flex items-center gap-2"><i data-lucide="inbox" class="w-4 h-4"></i> Entrada da Agenda</h3>
+                            <span class="rounded-full border border-sky-800/60 bg-sky-950/50 px-2 py-0.5 text-xs font-medium text-sky-200">${items.length} pendente${items.length === 1 ? '' : 's'}</span>
                         </div>
                         <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">Nada vira missão automaticamente. Revise cada compromisso e escolha categoria, prioridade, tipo, XP e carga.</p>
                     </div>
-                    ${connection.connected ? `<button type="button" onclick="window.calendarSync.refreshInbox()" ${connection.busy ? 'disabled' : ''} class="rounded-xl border border-sky-800/60 bg-sky-950/40 hover:bg-sky-900/50 disabled:opacity-50 text-sky-200 px-3 py-2 text-[10px] font-black uppercase tracking-widest shrink-0"><i data-lucide="refresh-cw" class="inline w-3.5 h-3.5 mr-1"></i> Atualizar</button>` : ''}
+                    ${connection.connected ? `<button type="button" onclick="window.calendarSync.refreshInbox()" ${connection.busy ? 'disabled' : ''} class="min-h-9 rounded-lg border border-slate-700 bg-slate-950/50 hover:bg-slate-800 disabled:opacity-50 text-sky-200 px-3 py-2 text-xs font-medium shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300"><i data-lucide="refresh-cw" class="inline w-3.5 h-3.5 mr-1"></i> Atualizar</button>` : ''}
                 </div>
-                <div class="mt-4 space-y-2.5">
+                <div class="mt-3 space-y-2">
                     ${!connection.connected
-                        ? `<div class="rounded-xl border border-dashed border-slate-800 bg-slate-950/45 p-4 text-[11px] text-slate-500">Conecte ou reconecte o Google Agenda acima para carregar os compromissos desta semana.</div>`
+                        ? `<div class="rounded-lg border border-dashed border-slate-700 bg-slate-950/45 p-3 text-xs text-slate-400">Conecte ou reconecte o Google Agenda acima para carregar os compromissos desta semana.</div>`
                         : !items.length
-                            ? `<div class="rounded-xl border border-dashed border-slate-800 bg-slate-950/45 p-4 text-[11px] text-slate-500">Nenhum compromisso novo aguardando classificação nesta semana.</div>`
+                            ? `<div class="rounded-lg border border-dashed border-slate-700 bg-slate-950/45 p-3 text-xs text-slate-400">Nenhum compromisso novo aguardando classificação nesta semana.</div>`
                             : items.map(item => {
                                 const encodedId = encodeURIComponent(item.id);
                                 const time = item.allDay ? 'Dia inteiro' : (item.startTime ? `${item.startTime}${item.endTime ? `–${item.endTime}` : ''}` : 'Sem horário');
-                                return `<article class="rounded-2xl border border-sky-900/40 bg-slate-950/75 p-3 sm:p-4">
+                                return `<article class="rounded-lg border border-slate-800 bg-slate-950/75 p-3">
                                     <div class="flex flex-col lg:flex-row lg:items-center gap-3">
                                         <div class="min-w-0 flex-1">
                                             <div class="text-sm font-bold text-white break-words">${window.escapeHtml(item.summary)}</div>
-                                            <div class="flex flex-wrap gap-2 mt-2 text-[10px] font-bold uppercase tracking-wider">
+                                            <div class="flex flex-wrap gap-2 mt-1.5 text-xs">
                                                 <span class="text-sky-300 inline-flex items-center gap-1"><i data-lucide="calendar-clock" class="w-3 h-3"></i>${window.escapeHtml(formatDate(item.eventDate))} · ${window.escapeHtml(time)}</span>
                                                 <span class="text-slate-400 inline-flex items-center gap-1"><i data-lucide="${item.originType === 'Convite recebido' ? 'mail-plus' : 'user-round'}" class="w-3 h-3"></i>${window.escapeHtml(item.originType)}</span>
-                                                <span class="text-slate-600">Google Agenda</span>
+                                                <span class="text-slate-400">Google Agenda</span>
                                             </div>
                                         </div>
                                         <div class="flex flex-wrap gap-2 shrink-0">
-                                            <button type="button" onclick="window.openCalendarInboxItem(decodeURIComponent('${encodedId}'))" class="rounded-xl bg-sky-700 hover:bg-sky-600 text-white px-3 py-2 text-[10px] font-black uppercase tracking-widest">Classificar</button>
-                                            <button type="button" onclick="window.calendarSync.ignoreInboxEvent(decodeURIComponent('${encodedId}'))" class="rounded-xl border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-400 px-3 py-2 text-[10px] font-black uppercase tracking-widest">Ignorar</button>
+                                            <button type="button" onclick="window.openCalendarInboxItem(decodeURIComponent('${encodedId}'))" class="min-h-9 rounded-lg bg-sky-700 hover:bg-sky-600 text-white px-3 py-2 text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">Classificar</button>
+                                            <button type="button" onclick="window.calendarSync.ignoreInboxEvent(decodeURIComponent('${encodedId}'))" class="min-h-9 rounded-lg border border-slate-700 bg-slate-950/50 hover:bg-slate-800 text-slate-300 px-3 py-2 text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">Ignorar</button>
                                         </div>
                                     </div>
                                 </article>`;

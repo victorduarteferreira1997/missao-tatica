@@ -9,7 +9,7 @@ bidirecional com o Google Agenda, recompensas configuráveis e backups JSON.
 - [Aplicação oficial](https://victorduarteferreira1997.github.io/missao-tatica/)
 - [Endereço direto](https://victorduarteferreira1997.github.io/missao-tatica/app.html)
 
-A versão atual é **v1.9.60**. A raiz, `teste_novos_modulos.html` e as prévias
+A versão atual é **v1.9.61**. A raiz, `teste_novos_modulos.html` e as prévias
 estáticas v1.9.11/v1.9.13 encaminham para a aplicação oficial. Parâmetros e
 fragmentos dos favoritos são preservados.
 
@@ -59,6 +59,14 @@ consulta e recuperação. Não apague branches com commits ainda não incorporad
 O token OAuth do Google fica somente na memória do navegador. Não adicione ao
 repositório tokens, credenciais privadas, backups pessoais ou arquivos contendo
 dados reais.
+
+## Entrada da Agenda · v1.9.61
+
+Na aba **Semana**, os painéis Google Agenda e Entrada da Agenda ficam sempre
+visíveis no topo, antes da **Semana Geral**. Os compromissos pendentes mantêm
+as ações Classificar e Ignorar. Os estados de conexão, erros, atualização e
+semana vazia continuam disponíveis; a lógica de sincronização não foi alterada.
+A visão atual usa `ui/planning_views.v3.js`; v1/v2 permanecem para prévias antigas.
 
 ## Tarefas e reuniões · v1.9.60
 

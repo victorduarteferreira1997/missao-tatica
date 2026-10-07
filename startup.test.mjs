@@ -5,7 +5,7 @@ import test from 'node:test';
 import {createCalendarSync} from './calendar_sync.v2.js';
 import {installFormDialogs} from './ui/form_dialogs.v1.js';
 import {installTaskForms} from './ui/task_forms.v2.js';
-import {installPlanningViews} from './ui/planning_views.v2.js';
+import {installPlanningViews} from './ui/planning_views.v3.js';
 const app=await readFile(new URL('./app.html',import.meta.url),'utf8');
 const moduleSource=app.match(/<script\s+type="module">([\s\S]*?)<\/script>/)[1].replace(/^\s*import .+;\s*$/gm,'');
 const plain=v=>JSON.parse(JSON.stringify(v));
@@ -17,7 +17,7 @@ function boot(saved=null){
  const document={activeElement:null,getElementById:id=>elements[id]||null,querySelector(){return null;},querySelectorAll(){return [];},addEventListener(){}};
  const window={lucide:{createIcons(){}},location:{origin:'https://victorduarteferreira1997.github.io',pathname:'/missao-tatica/app.html'},addEventListener(){}};
  const c={window,document,Date:FixedDate,console,TextEncoder,Uint8Array,Uint32Array,DataView,URL,Blob,Intl,localStorage:{getItem:key=>stored.get(key)||null,setItem:(key,value)=>{stored.set(key,value);writes.push(key);}},
- setTimeout:()=>1,clearTimeout(){},setInterval:()=>1,clearInterval(){},lucide:window.lucide,initializeApp:()=>({}),initializeAppCheck(){},ReCaptchaEnterpriseProvider:class{},getAuth:()=>({}),getFirestore:()=>({}),GoogleAuthProvider:class{},signInWithPopup(){},signInWithRedirect(){},signOut:async()=>{},onAuthStateChanged:(auth,callback)=>c.authCallback=callback,doc(){},getDoc(){throw Error('A inicialização não deve ler a nuvem sem login.');},setDoc(){throw Error('O teste não deve gravar na nuvem.');},createCalendarSync,installFormDialogs,installTaskForms,installPlanningViews};
+ setTimeout:()=>1,clearTimeout(){},setInterval:()=>1,clearInterval(){},lucide:window.lucide,initializeApp:()=>({}),initializeAppCheck(){},ReCaptchaEnterpriseProvider:class{},getAuth:()=>({}),getFirestore:()=>({}),GoogleAuthProvider:class{},signInWithPopup(){},signInWithRedirect(){},signOut:async()=>{},onAuthStateChanged:(auth,callback)=>c.authCallback=callback,doc(){},getDoc(){throw Error('A inicialização não deve ler a nuvem sem login.');},setDoc(){throw Error('O teste não deve gravar na nuvem.');},createCalendarSync:options=>{c.calendarOnChange=options.onChange;return createCalendarSync(options);},installFormDialogs,installTaskForms,installPlanningViews};
  runInNewContext(moduleSource+'\nwindow.startupForTest = {getState:()=>state,getUI:()=>uiState,getTimer:()=>pomodoro,render};',c,{timeout:3000});
  return {c,window,elements,stored,writes,state:window.startupForTest.getState(),ui:window.startupForTest.getUI(),render:window.startupForTest.render};
 }
@@ -70,4 +70,61 @@ test('versão exibida no cabeçalho coincide com a versão publicada e usada na 
  assert.ok(b.elements.app.innerHTML.includes('>'+version+'</span>'));
  assert.ok(!b.elements.app.innerHTML.includes('>v1.9.59</span>'));
  assert.match(app,/\['Versão',APP_VERSION\]/);
+});
+
+function assertVisibleCalendarPanels(markup){
+ const details=[];const seen=[];
+ for(const [tag] of markup.matchAll(/<details\b[^>]*>|<\/details>|<section\b[^>]*>/g)){
+  if(tag.startsWith('<details'))details.push(/\sopen(?:\s|>)/.test(tag));
+  else if(tag==='</details>')details.pop();
+  else if(/id="calendar-(?:sync|inbox)-panel"/.test(tag)){
+   assert.ok(details.every(Boolean),'Os painéis da Agenda não podem ficar escondidos em um grupo fechado.');
+   seen.push(tag.match(/id="([^"]+)"/)[1]);
+  }
+ }
+ assert.deepEqual(seen,['calendar-sync-panel','calendar-inbox-panel']);
+ assert.ok(markup.indexOf('id="calendar-inbox-panel"')<markup.indexOf('id="weekly-planning-title"'));
+ assert.ok(markup.indexOf('id="weekly-planning-title"')<markup.indexOf('aria-label="Planejamento por dia"'));
+}
+
+test('Semana mantém Agenda e Entrada visíveis com semana vazia e grupo antigo fechado',()=>{
+ const b=boot();b.ui.mainView='week';b.ui.weeklyExpandedSections[`${b.state.currentPlanningWeekStart}:google`]=false;
+ b.render();const html=b.elements.app.innerHTML;assertVisibleCalendarPanels(html);
+ assert.match(html,/Conectar Google Agenda/);assert.match(html,/Conecte ou reconecte/);
+ assert.match(html,/Nenhum item planejado nesta semana/);assert.match(html,/Semana Geral/);
+ assert.match(html,/window.setPlanningCalendarWeek\('prev'\)/);
+ assert.equal(b.writes.length,0);
+});
+
+test('Entrada mostra só pendências da semana, mantém ações e abre classificação sem criar missão',()=>{
+ const b=boot();b.ui.mainView='week';const week=b.state.currentPlanningWeekStart;
+ b.window.calendarSync.view=()=>({connected:true,enabled:true,status:'Sincronizado',busy:false});
+ b.state.calendarInboxItems=[
+  {id:'pending-1',weekStart:week,status:'pending',summary:'<Reunião de teste>',eventDate:'2026-10-07',day:'wednesday',startTime:'10:00',endTime:'11:00',duration:60,originType:'Criado por você',activityType:'meeting'},
+  {id:'ignored-1',weekStart:week,status:'ignored',summary:'Já ignorado'},
+  {id:'other-week',weekStart:'2026-10-12',status:'pending',summary:'Compromisso de outra semana'}
+ ];
+ b.render();const html=b.elements.app.innerHTML;assertVisibleCalendarPanels(html);
+ assert.match(html,/1 pendente/);assert.match(html,/&lt;Reunião de teste&gt;/);assert.match(html,/07\/10 · 10:00–11:00/);
+ assert.doesNotMatch(html,/Já ignorado|Compromisso de outra semana/);
+ for(const action of ['window.calendarSync.syncNow({force:true})','window.calendarSync.refreshInbox()','window.calendarSync.pause()',"window.openCalendarInboxItem(decodeURIComponent('pending-1'))","window.calendarSync.ignoreInboxEvent(decodeURIComponent('pending-1'))"]){assert.ok(html.includes(action),action);}
+ const before=plain(b.state);b.window.openCalendarInboxItem('pending-1');
+ assert.equal(b.ui.showCreateTaskModal,true);assert.equal(b.ui.calendarInboxEventId,'pending-1');
+ assert.deepEqual(plain(b.state),before);assert.equal(b.writes.length,0);
+});
+
+test('painéis atualizam estados de sincronização, erro e entrada vazia preservando seus IDs',()=>{
+ const b=boot();b.ui.mainView='week';b.render();
+ b.elements['calendar-sync-panel']={outerHTML:''};b.elements['calendar-inbox-panel']={outerHTML:''};
+ b.window.calendarSync.view=()=>({connected:true,enabled:true,busy:true,status:'Sincronizando',error:'<Aviso de teste>'});
+ b.c.calendarOnChange();
+ const sync=b.elements['calendar-sync-panel'].outerHTML,inbox=b.elements['calendar-inbox-panel'].outerHTML;
+ assert.match(sync,/id="calendar-sync-panel"/);assert.match(inbox,/id="calendar-inbox-panel"/);
+ assert.match(sync,/Sincronizando\.\.\./);assert.match(sync,/&lt;Aviso de teste&gt;/);
+ assert.match(sync,/syncNow\(\{force:true\}\)" disabled/);assert.match(inbox,/refreshInbox\(\)" disabled/);
+ assert.match(inbox,/Nenhum compromisso novo aguardando classificação/);
+ b.window.calendarSync.view=()=>({connected:false,enabled:true,busy:false,status:'Reconectar'});
+ b.c.calendarOnChange();assert.match(b.elements['calendar-sync-panel'].outerHTML,/>Reconectar<\/button>/);
+ assert.match(b.elements['calendar-inbox-panel'].outerHTML,/Conecte ou reconecte/);
+ assert.equal(b.writes.length,0);
 });

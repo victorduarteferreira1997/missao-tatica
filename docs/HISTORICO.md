@@ -2,6 +2,18 @@
 
 [Voltar ao README](../README.md)
 
+## Entrada da Agenda · v1.9.61 · 2026-10-07
+
+- Google Agenda e Entrada da Agenda voltam a ficar visíveis antes da Semana Geral,
+  sem depender da expansão de um grupo no final da página.
+- Painéis, itens e botões acompanham as bordas, tipografia e espaçamentos compactos.
+- Estados conectado, desconectado, sincronizando, erro e sem pendências mantêm
+  suas ações; IDs usados na atualização dos painéis permanecem iguais.
+- `calendar_sync.v2.js`, OAuth, persistência, vínculos e classificação não mudam.
+- A visão v3 preserva os módulos v1/v2 usados por prévias anteriores.
+- Testes cobrem a montagem completa, visibilidade, ordem, ações e atualização
+  dos painéis com compromissos simulados; não executam operações nas contas Google.
+
 ## Tarefas e reuniões · v1.9.60 · 2026-10-07
 
 - Cadastro e edição permitem distinguir atividade de seu impacto de gamificação.

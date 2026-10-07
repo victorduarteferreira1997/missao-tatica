@@ -3,7 +3,7 @@ import test from 'node:test';
 import {readFile} from 'node:fs/promises';
 import {runInNewContext} from 'node:vm';
 import {normalizePrimaryEvent, buildWeekEvents} from './calendar_sync.v2.js';
-import {installPlanningViews} from './ui/planning_views.v2.js';
+import {installPlanningViews} from './ui/planning_views.v3.js';
 import {installTaskForms} from './ui/task_forms.v2.js';
 import {installFormDialogs} from './ui/form_dialogs.v1.js';
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
