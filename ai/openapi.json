@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://REPLACE_WITH_CLOUD_RUN_URL"
+      "url": "https://missao-tatica-ai-bridge.victorduarteferreira1997.workers.dev"
     }
   ],
   "security": [

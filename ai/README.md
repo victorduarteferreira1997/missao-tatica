@@ -1,130 +1,163 @@
-# Integração privada com ChatGPT — em preparação
+# Integração privada com ChatGPT — Cloudflare Workers + D1
 
 Base: `main` em `ccd0f26d58c1d57ff3796c5a12eab81469489448`, app v1.9.59.
-Não está publicada nem conectada ao Google Cloud. `config.v1.js` mantém a
-integração desligada; o layout e o fluxo normais permanecem disponíveis.
+A integração continua **desligada** em `config.v1.js`. Esta branch não altera
+os dados, o layout publicado, a persistência ou a sincronização da aplicação.
 
-## Fluxo implementado
+## Estado do piloto
 
-1. O proprietário abre **Integração com IA** no rodapé, seleciona missões da
-   semana visível e revisa a prévia exata antes de compartilhar. Nada é
-   selecionado por padrão. Pode compartilhar um contexto vazio.
-2. O navegador grava só a seleção no banco **`missao-tatica-ai`**, usando
-   Firebase Auth e App Check. O banco `(default)` e seu documento
-   `users/{uid}/state/main` continuam na persistência existente.
-3. Uma Action privada consulta o contexto e envia uma proposta. Ela nunca
-   registra uma missão, reorganiza registros ou atribui XP/moedas.
-4. **Atualizar** busca até 50 propostas pendentes. **Revisar no formulário**
-   abre o formulário atual. Categoria, prioridade, natureza e dificuldade
-   continuam sob controle do usuário. **Criar missão** usa o cálculo e a
-   gravação existentes. A IA não fornece XP, HP, moedas ou IDs de tarefas.
+- Firebase voltou ao plano Spark, com o banco original `(default)`.
+- D1 `missao-tatica-ai` criado, ID `102fd5fd-7781-4f4b-a4b3-fb835b26bad8`.
+- Worker `missao-tatica-ai-bridge` criado com o exemplo Hello World.
+- Binding de produção `DB → missao-tatica-ai` confirmado no painel.
+- Código da ponte, schema SQL e adaptador do navegador preparados nesta branch.
+- **Ainda falta** aplicar schema, publicar o código, configurar segredo,
+  testar Auth/App Check reais, preparar prévia isolada e conectar/testar GPT.
 
-O contexto contém exclusivamente títulos, dias, durações, horários e status
-das missões selecionadas. Não inclui subtarefas, categorias, Radar, estudos,
-Agenda externa, finanças, saúde ou gamificação. Não é uma agenda completa:
-o GPT deve tratar horários livres como hipóteses, nunca como disponibilidade
-confirmada. Texto das missões é dado não confiável, nunca instrução ao GPT.
+Não foram criados o banco Firestore adicional, Cloud Run ou Secret Manager.
+O antigo vínculo IAM do Firestore Reader foi removido. Não restaurar esse
+vínculo e não conceder acesso ao banco padrão. Os arquivos do servidor Google,
+adaptador REST e Rules anteriores permanecem preservados para consulta; seu
+[roteiro anterior](google-cloud-legacy.md) foi substituído pelo piloto abaixo.
 
-Cada publicação expira em até 24 horas e tem uma revisão diferente. A Action
-recusa contexto ausente/expirado e propostas baseadas em outra revisão.
-Atualizações da rotina não são publicadas automaticamente. **Remover contexto
-desta semana** interrompe novas consultas/propostas dessa semana; outras
-semanas e propostas recebidas precisam ser revisadas separadamente. Remover
-o documento não apaga dados já recebidos pelo ChatGPT.
+## Fluxo e dados
 
-## Limites de acesso
+1. No app, o proprietário seleciona missões da semana visível e confere uma
+   prévia exata. Nada vem selecionado. Pode publicar um contexto vazio.
+2. O navegador envia apenas o contexto selecionado à ponte, usando Firebase
+   ID token e App Check. A ponte verifica assinatura RS256, emissor, projeto,
+   validade, UID fixo e App ID fixo. Guarda a seleção no D1.
+3. GPT Actions consultam somente o contexto publicado e criam propostas
+   pendentes, usando outro Bearer: o segredo privado `ACTION_SECRET`.
+4. O proprietário busca até 50 propostas pendentes e revisa no formulário
+   existente. Categoria, prioridade, natureza, dificuldade, XP e HP continuam
+   sob controle/cálculo do app. A ponte nunca grava uma missão no Firebase.
 
-| Identidade | Acesso necessário |
+O contexto inclui apenas títulos, dias, durações, horários e status das missões
+selecionadas, com referências opacas. Não inclui IDs internos, subtarefas,
+categorias, Radar, estudos, Agenda externa, finanças, saúde ou gamificação.
+Não representa disponibilidade completa. Os títulos são dados não confiáveis,
+nunca instruções ao GPT. Cada contexto expira em até 24 horas; atualizações
+exigem nova publicação. Remover contexto impede novas consultas/propostas,
+mas não remove o que o ChatGPT já recebeu nem propostas já existentes.
+
+## Escopo de acesso
+
+| Identidade | Acesso |
 | --- | --- |
-| Navegador do proprietário | Publicar/remover contexto e revisar inbox, pelas Rules do banco isolado |
-| Serviço Cloud Run | `datastore.entities.get` e `datastore.entities.create`, somente no banco isolado |
-| ChatGPT | HTTPS da ponte, com segredo Bearer de uma Action privada |
+| Proprietário + App Check | Publicar/remover contexto; listar propostas pendentes; alterar apenas status pendente para aceito/recusado |
+| GPT com segredo privado | Consultar uma semana publicada; criar proposta validada/idempotente |
+| Worker | Binding do D1; chaves **públicas** rotativas de Auth/App Check |
+| Anônimo | Somente `/healthz`; não lê D1 |
 
-Use uma **nova** conta de serviço, por exemplo `missao-tatica-ai-bridge`, e
-papel próprio, por exemplo **Missão Tática AI Bridge**, com somente as duas
-permissões acima. Não altere nem reutilize silenciosamente o antigo papel
-**Missão Tática Firestore Reader**. A vinculação antiga foi removida; sua
-conta e papel podem continuar sem acesso.
+As rotas `/v1/app/*` exigem também a origem exata
+`https://victorduarteferreira1997.github.io`. CORS permite apenas os métodos e
+headers declarados. Não há cookies, SQL recebido do cliente, IDs de usuário
+variáveis, rotas de leitura do estado completo ou operações administrativas.
+O OpenAPI da Action não expõe rotas do proprietário. Não configurar tokens
+Firebase como autenticação da Action.
 
-Condição IAM da nova vinculação:
+O Worker não tem identidade Google, chave JSON, token administrativo ou
+permissão de Firestore. Verificar tokens assinados não exige acesso ao banco.
+As chaves públicas Google são buscadas somente em dois endereços fixos e
+cacheadas até seu vencimento (máximo 6 horas), com proteção contra repetidas
+consultas por IDs desconhecidos. Falha na verificação fecha o acesso.
+Não há consulta administrativa de revogação: um Firebase ID token já emitido
+pode continuar válido até expirar. App Check é verificado sem consumo/replay
+protection. Não registrar tokens/corpos no console ou em prints.
 
-```text
-resource.name == "projects/missao-tatica/databases/missao-tatica-ai"
-```
+## Implantação manual, na ordem
 
-IAM não restringe coleções/documentos dentro desse banco. A conta de serviço
-ignora Security Rules; por isso o banco deve conter **apenas** dados
-deliberadamente compartilhados e propostas. O servidor fixa projeto,
-banco e proprietário no código e recusa configurações diferentes.
-Não copie backups ou `state/main` para esse banco.
+1. **D1:** Storage & databases → D1 → `missao-tatica-ai` → Console.
+   Executar somente [`cloudflare/schema.sql`](cloudflare/schema.sql).
+   Os `CREATE ... IF NOT EXISTS` podem ser repetidos sem apagar dados.
+2. **Segredo:** Worker → Settings → Variables and secrets → Add variable,
+   tipo **Secret**, nome `ACTION_SECRET`. Usar segredo aleatório de 32–256
+   caracteres sem espaços, guardado no gerenciador de senhas. Não enviar
+   seu valor ao chat, ao GitHub ou em prints. Não é chave da OpenAI.
+3. **Código:** Worker → Edit code. Substituir Hello World pelo conteúdo de
+   [`cloudflare/worker-dashboard.js`](cloudflare/worker-dashboard.js), gerado
+   e testado a partir dos módulos. Publicar e manter binding `DB`.
+   O aviso amarelo de Wrangler está atendido por
+   [`cloudflare/wrangler.jsonc`](cloudflare/wrangler.jsonc). Não conectar um
+   build de GitHub com configuração diferente, que possa remover o binding.
+4. **Logs:** desativar Workers Logs no piloto para reduzir retenção de URLs.
+   A ponte não usa `console.log`, não devolve detalhes internos e não inclui
+   credenciais/seleção em URLs. O Wrangler deixa observability desligada.
+5. **Conferir:** `/healthz` deve devolver `ok: true` e o nome da ponte;
+   `/v1/week?weekStart=2026-10-05`, aberto sem credencial, deve devolver 401.
+   Health confirma o código em execução; não confirma tabelas/login.
+6. **Prévia:** preparar uma prévia com **todos** os módulos desta branch e
+   `enabled: true` somente nessa prévia. O carregador histórico usa módulos
+   da main e **não serve** para a integração. Não ativar a aplicação oficial
+   antes de validar Owner/Auth/App Check reais, origem e D1 com dados fictícios.
+7. **GPT Somente eu:** importar [`openapi.json`](openapi.json), que já contém
+   a URL real do Worker. Autenticação **API Key / Bearer** com `ACTION_SECRET`.
+   Copiar [`gpt-instructions.md`](gpt-instructions.md). Manter o GPT privado.
+   POST exige confirmação (`x-openai-isConsequential: true`) e revisão no app.
+8. **Teste real:** compartilhar seleção fictícia, consultar, propor, repetir,
+   cancelar revisão sem efeito, criar uma missão, recusar outra e revogar
+   contexto. Conferir cálculos, reload, sincronização e layout. Só então
+   revisar/incorporar a branch na main para disponibilizar a integração.
 
-## Próximas etapas, na ordem
+A ponte não chama APIs de modelos nem precisa de saldo de API OpenAI. O
+piloto usa o plano Free existente de Workers/D1, sem habilitar upgrade ou
+faturamento. Validar o limite de CPU de 10 ms também na execução real:
+os testes Node/SQLite não medem o runtime Cloudflare. Se exceder limites
+Free, as chamadas podem falhar; não fazer upgrade automático.
 
-1. Criar banco **Standard / Native mode**, ID `missao-tatica-ai`, localização
-   `southamerica-east1`, com regras iniciais em **modo de produção**.
-   Não recrie nem altere o banco `(default)`. Se aparecer exigência de
-   faturamento, revisar essa tela antes de habilitar serviços.
-2. Publicar `ai/firestore.rules` **somente no banco isolado**. O próprio
-   arquivo nega acesso se aplicado a outro ID, mas nunca deve substituir as
-   Rules de produção do `(default)`. Testar proprietário, anônimo e outro UID,
-   publicação, recusa de gravação arbitrária e atualização só do status.
-   Testes unitários da ponte não substituem validação das Rules no emulador.
-3. Criar a nova conta e papel, conferir a condição, só então vincular o papel.
-   Nenhuma chave JSON é necessária. A identidade de execução do Cloud Run
-   usa o servidor de metadados para obter um token OAuth de curta duração.
-4. Criar um segredo forte de no mínimo 32 caracteres para `ACTION_SECRET`,
-   guardado no Secret Manager. Conceder ao serviço acesso **só a esse segredo**.
-   Não salvar o valor em arquivo versionado, frontend, print ou comando com
-   histórico. Não é uma chave de API da OpenAI.
-5. Construir a imagem a partir da **raiz do repositório**, com
-   `docker build -f ai/server/Dockerfile -t missao-tatica-ai .`.
-   Publicar no Cloud Run usando a nova conta; configurar `ACTION_SECRET`
-   por referência ao segredo, `GOOGLE_CLOUD_PROJECT=missao-tatica`,
-   `AI_DATABASE=missao-tatica-ai`, mínimo de instâncias 0 e máximo 1 no piloto.
-   Requisições HTTPS precisam chegar ao serviço sem login IAM interativo;
-   a API exige seu Bearer. `/healthz` só informa que o processo responde.
-   Cloud Run/Firestore/Secret Manager podem ter cobrança; revisar limites
-   e orçamento antes de publicar. A ponte não chama APIs de modelos.
-6. Validar acesso negado ao `(default)` com a identidade real e o acesso
-   permitido ao contexto/inbox isolados. Validar Auth/App Check reais no
-   navegador. Só então ativar `enabled: true` em uma prévia desta branch.
-7. Em um GPT **Somente eu**, importar `openapi.json`, substituir
-   `https://REPLACE_WITH_CLOUD_RUN_URL` pela URL HTTPS real e configurar
-   autenticação **API Key / Bearer** com o segredo. Não publicar esse GPT.
-   O POST usa `x-openai-isConsequential: true`, além da revisão no app.
-   Copiar `gpt-instructions.md` para as instruções do GPT.
-8. Testar com missões fictícias: consultar, confirmar proposta, revisar,
-   cancelar sem efeito, criar uma missão e repetir o pedido sem duplicação.
-   Conferir XP/HP calculados, Agenda, persistência, layout e reload. Só depois
-   revisar e incorporar a branch na `main` para disponibilizar no app oficial.
+## Limites e concorrência
+
+- No máximo 52 contextos, 100 propostas pendentes e 1000 propostas totais.
+  A consulta traz as primeiras 50; revisar/atualizar libera a próxima página.
+  O limite total interrompe novas propostas preservando todos os IDs de
+  idempotência. Revisar uma manutenção explícita antes de atingir esse limite.
+- Insert de proposta confere, no mesmo SQL, o contexto exato, revisão e
+  validade. Revogação/republicação concorrente impede a gravação baseada no
+  contexto antigo. Chave repetida mantém ID/status mesmo após a revogação;
+  reutilizar chave com outros campos causa conflito.
+- Revisão é condicional: uma decisão não pode substituir outra já tomada.
+- O limite de 60 chamadas autenticadas/minuto é por isolate, não global;
+  reinicia com o runtime. As quotas Free da plataforma continuam aplicáveis.
+- Aceitar no app e atualizar D1 não formam uma transação com Firebase.
+  `aiProposalId` impede duplicação no estado carregado; no piloto, revisar em
+  uma única aba/dispositivo. Excluir uma missão após falha no status exige
+  recusar a proposta pendente antes de tentar incorporá-la novamente.
+- Contextos expirados não são removidos fisicamente automaticamente. Remover
+  pelo app ou substituir uma semana é permitido. D1/ChatGPT podem manter
+  histórico conforme seus próprios mecanismos de retenção.
 
 ## Validação local
 
-Requer Node.js 22+ para o servidor; sem dependências npm de produção.
+Suite completa, incluindo assinatura RSA real e SQL real em SQLite local:
 
 ```bash
 TZ=America/Sao_Paulo node --test *.test.mjs ai/*.test.mjs
 ```
 
-Os testes da API usam um Firestore simulado, não dados reais. O adaptador REST
-é testado por URLs, identidade e operações efetivamente emitidas. Não há
-validação de IAM/Rules, rede Google, GPT ou publicação real nos testes locais.
-O limite de 60 requisições/minuto é por processo, reinicia com a instância e
-não é uma quota global. A API não registra corpo, tokens ou credenciais.
+Os novos testes requerem Node.js 22.13+ (`node:sqlite`). Não há dependências de
+produção. O teste verifica acesso negado antes de SQL, separar credenciais,
+JWT/App Check/rotação/falhas, CORS, projeção, fluxo completo, idempotência,
+revisão condicional, contexto concorrente/expirado/contaminado, limites e
+sessão do navegador. Testes do Google anterior permanecem preservados.
 
-Pedidos repetidos com a mesma chave retornam o mesmo ID. Reutilizar a chave
-com dados diferentes resulta em conflito. Missões incorporadas guardam
-`aiProposalId`, impedindo nova incorporação mesmo se atualizar a inbox falhar.
-É uma proteção do estado carregado no app, não uma transação entre dois
-bancos: evitar revisão simultânea em múltiplas abas/dispositivos no piloto.
-Se uma missão já incorporada for excluída e a atualização remota da inbox
-tiver falhado, recusar a proposta pendente antes de tentar incorporá-la de novo.
+Regerar arquivo para o editor e verificar sintaxe:
+
+```bash
+node ai/cloudflare/build-dashboard.mjs
+node --check ai/cloudflare/worker-dashboard.js
+```
+
+Não há validação de Cloudflare, login Google, App Check ou GPT reais nestes
+checks. Não há chamada a dados reais nos testes nem reset de dados.
 
 ## Referências oficiais
 
-- [Autenticação das GPT Actions](https://developers.openai.com/api/docs/actions/authentication)
-- [Actions em produção e confirmação](https://developers.openai.com/api/docs/actions/production)
-- [REST Firestore: Firebase ID token versus IAM](https://firebase.google.com/docs/firestore/use-rest-api)
-- [IAM e condições por banco](https://docs.cloud.google.com/firestore/native/docs/security/iam)
-- [Identidade do Cloud Run](https://docs.cloud.google.com/run/docs/securing/service-identity)
-- [Rules: campos permitidos e alterações](https://firebase.google.com/docs/firestore/security/rules-fields)
+- [Workers Free e limites](https://developers.cloudflare.com/workers/platform/limits/)
+- [D1, preços e quotas](https://developers.cloudflare.com/d1/platform/pricing/)
+- [D1 Worker API](https://developers.cloudflare.com/d1/worker-api/d1-database/)
+- [Web Crypto](https://developers.cloudflare.com/workers/runtime-apis/web-crypto/)
+- [Validar Firebase ID tokens](https://firebase.google.com/docs/auth/admin/verify-id-tokens)
+- [Validar App Check em backend próprio](https://firebase.google.com/docs/app-check/custom-resource-backend)
+- [GPT Actions, autenticação](https://developers.openai.com/api/docs/actions/authentication)
+- [GPT Actions, confirmação](https://developers.openai.com/api/docs/actions/production)
