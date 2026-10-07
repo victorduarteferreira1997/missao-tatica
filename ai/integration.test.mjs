@@ -132,6 +132,7 @@ test('prévia ativa a IA sem ativar o aplicativo oficial',async()=>{
     assert.match(loader,/config\.v1\.js/);
     assert.match(loader,/config\.preview\.js/);
     assert.match(loader,/PRÉVIA PRIVADA/);
+    assert.match(loader,/replace\(\/<body\(\[\^>\]\*\)>\//);
 });
 test('UI da IA omite agenda externa e vínculos de outra semana',async()=>{
     const b=ui();
