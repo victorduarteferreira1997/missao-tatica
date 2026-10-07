@@ -1,6 +1,6 @@
 # Integração privada com ChatGPT — Cloudflare Workers + D1
 
-Base: `main` em `ccd0f26d58c1d57ff3796c5a12eab81469489448`, app v1.9.59.
+Base incorporada: app v1.9.61, incluindo reuniões e Entrada da Agenda.
 A integração continua **desligada** em `config.v1.js`. Esta branch não altera
 os dados, o layout publicado, a persistência ou a sincronização da aplicação.
 
@@ -8,11 +8,14 @@ os dados, o layout publicado, a persistência ou a sincronização da aplicaçã
 
 - Firebase voltou ao plano Spark, com o banco original `(default)`.
 - D1 `missao-tatica-ai` criado, ID `102fd5fd-7781-4f4b-a4b3-fb835b26bad8`.
-- Worker `missao-tatica-ai-bridge` criado com o exemplo Hello World.
+- Worker `missao-tatica-ai-bridge` publicado com a ponte D1.
 - Binding de produção `DB → missao-tatica-ai` confirmado no painel.
-- Código da ponte, schema SQL e adaptador do navegador preparados nesta branch.
-- **Ainda falta** aplicar schema, publicar o código, configurar segredo,
-  testar Auth/App Check reais, preparar prévia isolada e conectar/testar GPT.
+- Schema aplicado e tabelas `ai_context` e `ai_proposals` criadas.
+- `ACTION_SECRET` configurado no Worker; `/healthz` respondeu com sucesso e
+  uma consulta sem credencial foi recusada com `401`.
+- Código da ponte, adaptador do navegador e prévia isolada preparados nesta branch.
+- **Ainda falta** publicar a prévia no GitHub Pages, testar Auth/App Check reais,
+  conectar o GPT privado e validar o fluxo completo.
 
 Não foram criados o banco Firestore adicional, Cloud Run ou Secret Manager.
 O antigo vínculo IAM do Firestore Reader foi removido. Não restaurar esse
@@ -87,10 +90,10 @@ protection. Não registrar tokens/corpos no console ou em prints.
 5. **Conferir:** `/healthz` deve devolver `ok: true` e o nome da ponte;
    `/v1/week?weekStart=2026-10-05`, aberto sem credencial, deve devolver 401.
    Health confirma o código em execução; não confirma tabelas/login.
-6. **Prévia:** preparar uma prévia com **todos** os módulos desta branch e
-   `enabled: true` somente nessa prévia. O carregador histórico usa módulos
-   da main e **não serve** para a integração. Não ativar a aplicação oficial
-   antes de validar Owner/Auth/App Check reais, origem e D1 com dados fictícios.
+6. **Prévia:** publicar esta branch e abrir `preview_ai.html`. Ela carrega a
+   mesma v1.9.61 do aplicativo e troca somente `config.v1.js` por
+   `config.preview.js`. O aplicativo oficial permanece com `enabled: false`.
+   Validar Owner/Auth/App Check reais, origem e D1 com dados fictícios.
 7. **GPT Somente eu:** importar [`openapi.json`](openapi.json), que já contém
    a URL real do Worker. Autenticação **API Key / Bearer** com `ACTION_SECRET`.
    Copiar [`gpt-instructions.md`](gpt-instructions.md). Manter o GPT privado.

@@ -3,12 +3,12 @@ import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 import { installFormDialogs as installDialogModule } from './ui/form_dialogs.v1.js';
-import { installTaskForms } from './ui/task_forms.v1.js';
-import { installPlanningViews } from './ui/planning_views.v1.js';
+import { installTaskForms } from './ui/task_forms.v2.js';
+import { installPlanningViews } from './ui/planning_views.v3.js';
 
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
-const taskForms = await readFile(new URL('./ui/task_forms.v1.js', import.meta.url), 'utf8');
-const planningViews = await readFile(new URL('./ui/planning_views.v1.js', import.meta.url), 'utf8');
+const taskForms = await readFile(new URL('./ui/task_forms.v2.js', import.meta.url), 'utf8');
+const planningViews = await readFile(new URL('./ui/planning_views.v3.js', import.meta.url), 'utf8');
 const aiInbox = await readFile(new URL('./ui/ai_inbox.v1.js', import.meta.url), 'utf8');
 const interfaceSource = app + taskForms + planningViews + aiInbox;
 const installPlanner = (target, options = {}) => installPlanningViews(target, {
@@ -16,10 +16,10 @@ const installPlanner = (target, options = {}) => installPlanningViews(target, {
     getState: () => ({}), getUiState: () => ({}), extractMinutesFromTask: () => 30,
     ...options
 });
-assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v1\.js'/);
+assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v3\.js'/);
 assert.match(app, /html \+= window\.renderWeeklyPlanningOverview\(\)/);
 assert.ok(!app.includes('window.renderDailyMissionBoard ='), 'As visões devem existir apenas no módulo do planejamento.');
-assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v1\.js'/);
+assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v2\.js'/);
 assert.match(app, /installTaskForms\(window, \{ daysOfWeek, getState: \(\) => state, getUiState: \(\) => uiState \}\)/);
 const installFormDialogs = target => installDialogModule(target, {});
 assert.match(app, /import \{ installFormDialogs \} from '\.\/ui\/form_dialogs\.v1\.js'/);
@@ -139,7 +139,7 @@ runInNewContext(app.slice(costStart, costEnd) + saveNewSource, {
     window: createWindow, state: creationState, uiState: creationUi, daysOfWeek: createDays,
     TASK_NATURES: { normal: {}, neutral: {}, recharge: {} },
     document: { getElementById: id => createFields[id] },
-    calendarSync: { getInbox: () => [{ id: 'event-1' }], markInboxConverted(id) { convertedEvent = id; } }
+    calendarSync: { getInbox: () => [{ id: 'event-1', status: 'pending', startTime: '10:00', endTime: '10:30' }], markInboxConverted(id) { convertedEvent = id; } }
 });
 createFields['ct-text'].value = '  ';
 createWindow.saveNewTask();
@@ -373,7 +373,9 @@ const weeklyMarkup = weeklyContext.renderWeek();
 assert.ok(weeklyMarkup.indexOf('Estudo cedo') < weeklyMarkup.indexOf('Missão tarde'));
 assert.ok(weeklyMarkup.indexOf('Missão tarde') < weeklyMarkup.indexOf('&lt;Missão livre&gt;'));
 assert.doesNotMatch(weeklyMarkup, /Cancelado/);
-assert.match(weeklyMarkup, /1 compromisso para revisar/);
+assert.ok(weeklyMarkup.indexOf('id="sync-stub"') < weeklyMarkup.indexOf('id="inbox-stub"'));
+assert.ok(weeklyMarkup.indexOf('id="inbox-stub"') < weeklyMarkup.indexOf('Semana Geral'));
+assert.doesNotMatch(weeklyMarkup, /data-week-section="[^"\n]*:google"/);
 assert.match(weeklyMarkup, /data-week-day="mon" data-week-section="2026-10-05:mon"  class=/);
 assert.match(weeklyMarkup, /data-week-day="tue" data-week-section="2026-10-05:tue" open /);
 for (const action of ['setPlanningCalendarWeek', 'exportVisibleWeekToIcs', 'prepareNextWeekPlanning', 'setMainView']) {
@@ -547,7 +549,7 @@ assert.match(editMarkup, /&lt;Missão recorrente&gt;/);
 assert.match(editMarkup, /role="dialog" aria-modal="true"/);
 assert.match(editMarkup, /data-edit-section="schedule" open/);
 assert.match(editMarkup, /data-edit-section="recurrence" open/);
-assert.match(editMarkup, /id="et-start-time" type="time" value="09:30"/);
+assert.match(editMarkup, /id="et-start-time" type="time"\s+value="09:30"/);
 assert.match(editMarkup, /Editar não recalcula as recompensas/);
 const editValues = { 'et-text': 'Título ajustado', 'et-day': 'mon', 'et-category': 'work', 'et-priority': 'alta', 'et-complexity': '3', 'et-time': '60', 'et-impact-type': 'drain', 'et-nature': 'normal' };
 const editElements = Object.fromEntries(Object.entries(editValues).map(([id, value]) => [id, { value, setAttribute(name, value) { this[name] = value; }, focus() { this.focused = true; } }]));
@@ -591,6 +593,7 @@ let liveTaskState = { activeTab: 'mon' };
 let liveDialogState = { editingOperationalDemandId: null, showCategoryModal: false, alert: { show: false }, confirm: { show: false } };
 let lastBinding = null, liveCloses = 0, prepared = [];
 const liveFormsWindow = {
+    handleActivityTypeChange() {},
     escapeHtml: radarWindow.escapeHtml, getTaskCategories: createWindow.getTaskCategories,
     getOperationalDemand: id => ({ id, title: 'Demanda atual', workflowStatus: 'waiting' }),
     bindFormDialog: (root, options) => { lastBinding = options; },

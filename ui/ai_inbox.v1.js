@@ -1,4 +1,4 @@
-import { buildContext,validateProposal,proposalFormFields,DAYS,AI_OWNER_UID } from '../ai/contract.v1.js';
+import { buildContext,validateProposal,proposalFormFields,isShareableMission,DAYS,AI_OWNER_UID } from '../ai/contract.v1.js';
 
 // Opt-in UI: state/main is never sent to the bridge. Accepting opens the existing form.
 export function installAiInbox(window,{document,config,getState,getUser,getWeek,store,render,now = Date.now,newRevision = () => crypto.randomUUID()}) {
@@ -8,7 +8,7 @@ export function installAiInbox(window,{document,config,getState,getUser,getWeek,
     const owner = () => enabled() && getUser()?.uid === AI_OWNER_UID;
     const tasks = () => Array.isArray(getState()?.tasks) ? getState().tasks : [];
     const duplicate = id => tasks().some(t => t.aiProposalId === id);
-    const candidates = () => tasks().filter(t => DAYS.includes(t.day));
+    const candidates = () => tasks().filter(t => isShareableMission(t,getWeek()));
     const e = value => window.escapeHtml(value);
     function requireOwner() { if (!owner()) throw new Error('Entre com a conta autorizada.'); }
     function alert(error) { window.showAlertModal(error.message || 'Não foi possível concluir a ação.'); }

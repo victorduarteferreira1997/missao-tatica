@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const source = await readFile(new URL('./calendar_sync.js', import.meta.url), 'utf8');
+const source = await readFile(new URL('./calendar_sync.v2.js', import.meta.url), 'utf8');
 const { buildWeekEvents, createCalendarSync } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 
 const state = {
@@ -38,6 +38,10 @@ globalThis.fetch = async (url, options = {}) => {
     if (path.pathname === '/calendar/v3/calendars/calendar-1' && method === 'PATCH') return response({ id: 'calendar-1', ...JSON.parse(options.body) });
     if (path.pathname === '/calendar/v3/calendars/calendar-1') return response(calendarExists ? { id: 'calendar-1', summary: 'Missão Tática (Teste)' } : { error: { message: 'missing' } }, calendarExists ? 200 : 404);
     if (path.pathname === '/calendar/v3/calendars/primary/events' && method === 'GET') return response({ items: primaryEvents });
+    if (path.pathname.startsWith('/calendar/v3/calendars/primary/events/') && method === 'GET') {
+        const event = primaryEvents.find(item => item.id === decodeURIComponent(path.pathname.split('/').at(-1)));
+        return response(event || { error: { message: 'missing' } }, event ? 200 : 404);
+    }
     if (path.pathname.startsWith('/calendar/v3/calendars/primary/events/') && method === 'PATCH') {
         const eventId = decodeURIComponent(path.pathname.split('/').at(-1));
         const event = primaryEvents.find(item => item.id === eventId);
@@ -161,3 +165,40 @@ await inboundSync.refreshInbox();
 assert.equal(inboundState.tasks[0].googleCalendarSourceMissing, true);
 
 console.log('Calendar sync: envio, entrada manual, cores, convites, vínculo, atualização e remoção conferidos.');
+
+// Meeting integration: filter-based week fetches still resolve originals by ID.
+primaryEvents = [{ id:'coaktion-meeting',summary:'Reunião · Coaktion',status:'confirmed',
+ start:{dateTime:'2026-09-30T10:00:00-03:00'},end:{dateTime:'2026-09-30T11:00:00-03:00'},
+ organizer:{email:'private@example.com'},description:'SEGREDO',htmlLink:'https://private.example.com' }];
+await inboundSync.refreshInbox();
+assert.equal(inboundSync.getInbox().length,1);
+const meeting={id:'meeting-task',activityType:'meeting',category:'work',completed:false,xp:99,rewardedCoins:0};
+inboundState.tasks.push(meeting);
+const requestsBefore=requests.length;
+await inboundSync.markInboxConverted('coaktion-meeting','meeting-task');
+assert.equal(meeting.sanitizedOrigin,'coaktion');
+assert.equal(requests.slice(requestsBefore).some(r=>r.startsWith('PATCH /calendar/v3/calendars/primary')),false,'Espelho da Coaktion não recebe alterações de cor.');
+assert.doesNotMatch(JSON.stringify(inboundState.calendarInboxItems.find(e=>e.id==='coaktion-meeting')),/SEGREDO|private/);
+await inboundSync.refreshInbox();await inboundSync.refreshInbox();
+assert.equal(inboundState.calendarInboxItems.filter(e=>e.id==='coaktion-meeting').length,1);
+assert.equal(inboundState.tasks.filter(t=>t.googleCalendarEventId==='coaktion-meeting').length,1);
+primaryEvents[0]={...primaryEvents[0],summary:'SEGREDO alterado',organizer:{email:'private@example.com'},htmlLink:'https://private.example.com'};
+await inboundSync.refreshInbox();
+assert.equal(meeting.text,'Reunião · Coaktion');
+assert.doesNotMatch(JSON.stringify(inboundState.calendarInboxItems.find(e=>e.id==='coaktion-meeting')),/SEGREDO|private/,'Uma origem conhecida permanece sanitizada após mudar o título.');
+primaryEvents[0]={...primaryEvents[0],start:{dateTime:'2026-10-06T15:00:00-03:00'},end:{dateTime:'2026-10-06T16:30:00-03:00'}};
+await inboundSync.refreshInbox();
+assert.equal(meeting.googleCalendarWeekStart,'2026-10-05');assert.equal(meeting.day,'tuesday');assert.equal(meeting.startTime,'15:00');assert.equal(meeting.time,'90 min');assert.equal(meeting.googleCalendarSourceMissing,false);
+assert.equal(inboundSync.getInbox({includeHandled:true}).some(e=>e.id==='coaktion-meeting'),false);
+inboundState.currentPlanningWeekStart='2026-10-05';await inboundSync.refreshInbox();
+assert.equal(inboundSync.getInbox({includeHandled:true}).filter(e=>e.id==='coaktion-meeting').length,1);
+primaryEvents[0]={id:'coaktion-meeting',status:'cancelled'};await inboundSync.refreshInbox();
+assert.equal(meeting.googleCalendarSourceStatus,'cancelled');assert.equal(meeting.completed,false);assert.equal(meeting.xp,99);assert.equal(meeting.rewardedCoins,0);
+primaryEvents[0]={id:'coaktion-meeting',summary:'Reunião · Coaktion',status:'confirmed',start:{dateTime:'2026-10-07T09:00:00-03:00'},end:{dateTime:'2026-10-07T10:00:00-03:00'}};
+await inboundSync.refreshInbox();assert.equal(meeting.googleCalendarSourceStatus,'active');assert.equal(meeting.googleCalendarSourceMissing,false);assert.equal(meeting.day,'wednesday');
+meeting.completed=true;meeting.rewardedXp=99;primaryEvents[0]={id:'coaktion-meeting',status:'cancelled'};
+await inboundSync.refreshInbox();assert.equal(meeting.completed,true);assert.equal(meeting.rewardedXp,99,'Cancelamento posterior não reverte realização registrada.');
+primaryEvents[0]={id:'coaktion-meeting',summary:'Reunião · Coaktion',status:'confirmed',start:{dateTime:'2026-10-07T09:00:00-03:00'},end:{dateTime:'2026-10-07T10:00:00-03:00'}};
+inboundState.tasks=inboundState.tasks.filter(t=>t.id!=='meeting-task');await inboundSync.refreshInbox();
+assert.equal(inboundSync.getInbox().find(e=>e.id==='coaktion-meeting').status,'pending','Limpar missões não deixa vínculo pendente impedindo nova conversão.');
+console.log('Reuniões: privacidade, identidade, remarcação entre semanas, cancelamento, restauração e histórico verificados.');

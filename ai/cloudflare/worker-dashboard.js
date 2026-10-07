@@ -24,6 +24,10 @@ function validateWeek(value) {
     requireValue(Number.isFinite(date.getTime()) && date.toISOString().slice(0,10) === value && date.getUTCDay() === 1,'Use a data da segunda-feira.');
     return value;
 }
+function isShareableMission(task, weekStart) {
+    return Boolean(task && DAYS.includes(task.day) && task.googleCalendarSource !== 'primary' &&
+        (!task.googleCalendarWeekStart || task.googleCalendarWeekStart === weekStart));
+}
 function clock(value) { requireValue(value === '' || (typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value)), 'Horário inválido.'); return value; }
 function range(start, end) { clock(start); clock(end); requireValue(!end || (start && end > start),'Fim deve ser posterior ao início.'); }
 function timestamp(value) { string(value,24,24); requireValue(Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value,'Data inválida.'); return value; }
@@ -47,8 +51,10 @@ function validateContext(value, now = Date.now(), fresh = true) {
 // No spreading or serializing state. Only individually selected tasks are projected.
 function buildContext(state, selectedIds, {weekStart,revision,now = Date.now()}) {
     requireValue(Array.isArray(selectedIds),'Seleção inválida.');
+    validateWeek(weekStart);
     const selected = new Set(selectedIds.map(String));
-    const tasks = (Array.isArray(state?.tasks) ? state.tasks : []).filter(t => selected.has(String(t.id)));
+    const tasks = (Array.isArray(state?.tasks) ? state.tasks : [])
+        .filter(t => selected.has(String(t.id)) && isShareableMission(t,weekStart));
     requireValue(tasks.length === selected.size,'Uma missão selecionada mudou; revise a seleção.');
     return validateContext({schemaVersion:1,weekStart,timezone:'America/Sao_Paulo',revision,
         publishedAt:new Date(now).toISOString(),expiresAt:new Date(now+MAX_CONTEXT_AGE_MS).toISOString(),partial:true,

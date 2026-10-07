@@ -20,6 +20,12 @@ test('publicação projeta somente missões escolhidas e não altera o estado',(
     assert.doesNotMatch(JSON.stringify(c),/PRIVATE_|"xp"|"coins"|"ownerUid"|123/);
     assert.equal(buildContext(s,[],{weekStart:'2026-10-05',revision:'r2',now}).missions.length,0);
     assert.throws(()=>buildContext(s,['missing'],{weekStart:'2026-10-05',revision:'r3',now}));
+    s.tasks.push(
+        {id:'agenda',text:'Compromisso externo',day:'tuesday',time:'30 min',googleCalendarSource:'primary',googleCalendarWeekStart:'2026-10-05'},
+        {id:'other-week',text:'Outra semana',day:'tuesday',time:'30 min',googleCalendarWeekStart:'2026-10-12'}
+    );
+    assert.throws(()=>buildContext(s,['agenda'],{weekStart:'2026-10-05',revision:'r4',now}));
+    assert.throws(()=>buildContext(s,['other-week'],{weekStart:'2026-10-05',revision:'r5',now}));
 });
 test('contrato rejeita estado completo, campos arbitrários, semanas/datas/horários inválidos e expiração',() => {
     for(const w of ['2026-02-30','2026-10-06','../state/main','2026-10-05/extra'])assert.throws(()=>validateWeek(w));
@@ -114,6 +120,29 @@ test('UI desligada não consulta nuvem; publicação requer prévia explícita e
     await b.window.publishAiContext();assert.equal(b.events.length,0);
     b.window.selectAiMission(0,true);b.window.previewAiContext();assert.equal(b.events.length,0);await b.window.publishAiContext();
     assert.equal(b.events[0][0],'publish');assert.equal(b.events[0][1].missions.length,1);assert.doesNotMatch(JSON.stringify(b.events[0]),/PRIVATE_/);
+});
+test('prévia ativa a IA sem ativar o aplicativo oficial',async()=>{
+    const [official,previewConfig,loader]=await Promise.all([
+        readFile(new URL('./config.v1.js',import.meta.url),'utf8'),
+        readFile(new URL('./config.preview.js',import.meta.url),'utf8'),
+        readFile(new URL('../preview_ai.html',import.meta.url),'utf8')
+    ]);
+    assert.match(official,/enabled:\s*false/);
+    assert.match(previewConfig,/enabled:\s*true/);
+    assert.match(loader,/config\.v1\.js/);
+    assert.match(loader,/config\.preview\.js/);
+    assert.match(loader,/PRÉVIA PRIVADA/);
+});
+test('UI da IA omite agenda externa e vínculos de outra semana',async()=>{
+    const b=ui();
+    b.s.tasks.push(
+        {id:'agenda',text:'Título externo privado',day:'monday',time:'30 min',googleCalendarSource:'primary',googleCalendarWeekStart:'2026-10-05'},
+        {id:'other-week',text:'Título de outra semana',day:'monday',time:'30 min',googleCalendarWeekStart:'2026-10-12'}
+    );
+    await b.window.openAiInbox();
+    const html=b.window.renderAiInbox();
+    assert.doesNotMatch(html,/Título externo privado|Título de outra semana/);
+    assert.match(html,/Revisar relatório/);
 });
 test('revisar só preenche formulário; cancelar não cria/revisa, semana errada e proposta retirada são bloqueadas',async()=>{
     const b=ui(),before=JSON.stringify(b.s);await b.window.openAiInbox();await b.window.reviewAiProposal(0);

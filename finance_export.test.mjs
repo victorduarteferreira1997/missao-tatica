@@ -8,7 +8,7 @@ const section=(start,end)=>{const a=app.indexOf(start),b=app.indexOf(end,a+start
 const plain=value=>JSON.parse(JSON.stringify(value));
 class FixedDate extends Date{constructor(...args){super(...(args.length?args:['2026-10-06T22:00:00Z']));}static now(){return Date.parse('2026-10-06T22:00:00Z');}}
 function engine(financeData={}){
- const c={state:{financeData,xp:333,coins:77,profile:{name:'NÃO EXPORTAR PERFIL'},tasks:[{text:'NÃO EXPORTAR MISSÃO'}]},uiState:{financePeriod:'current'},Date:FixedDate,TextEncoder,Uint32Array,Uint8Array,DataView,Blob,
+ const c={APP_VERSION:app.match(/const APP_VERSION = '([^']+)'/)[1],state:{financeData,xp:333,coins:77,profile:{name:'NÃO EXPORTAR PERFIL'},tasks:[{text:'NÃO EXPORTAR MISSÃO'}]},uiState:{financePeriod:'current'},Date:FixedDate,TextEncoder,Uint32Array,Uint8Array,DataView,Blob,
   setTimeout(callback,delay){c.cleanup=callback;c.delay=delay;},URL:{createObjectURL(blob){c.blob=blob;return'blob:finance-test';},revokeObjectURL(url){c.revoked=url;}},
   document:{body:{appendChild(link){c.appended=link;}},createElement(){return{click(){c.clicked=true;},remove(){c.removed=true;}};}},
   window:{showToast(title,message){c.toast=[title,message];},showAlertModal(message){c.alert=message;}}};
@@ -50,7 +50,7 @@ test('XLSX abre com leitor independente, valores numéricos, filtros, cabeçalho
  assert.equal(data.Gastos.rows[1][1],'9007199254740993001');assert.equal(data.Gastos.rows[2][3],'=HYPERLINK("https://example.com")');assert.equal(data.Gastos.types[2][3],'s');
  assert.equal(data['Diário'].rows[1][6],'Quero pensar melhor.\nSegunda linha.');assert.equal(data['Contas fixas'].rows[1][4],'Não');
  assert.equal(data['Por mês'].freeze,'A2');assert.equal(data['Por mês'].filter,'A1:F3');assert.equal(data['Por mês'].rows[1][0],'2026-09');assert.equal(data['Por mês'].rows[1][1],0.1);assert.equal(data['Por mês'].rows[1][2],20.2);
- assert.equal(data.Resumo.rows[3][1],'v1.9.59');assert.equal(data['Dados adicionais'].rows[1][1],'{"currency":"BRL","custom":[1,2]}');
+ assert.equal(data.Resumo.rows[3][1],'v1.9.61');assert.equal(data['Dados adicionais'].rows[1][1],'{"currency":"BRL","custom":[1,2]}');
 });
 test('planilha vazia é válida e não inventa dados, vencimentos ou saldos bancários',()=>{
  const c=engine();const data=readXlsx(c.window.buildFinanceXlsx(c.window.buildFinanceExportSheets()));

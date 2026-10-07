@@ -2,6 +2,35 @@
 
 [Voltar ao README](../README.md)
 
+## Entrada da Agenda · v1.9.61 · 2026-10-07
+
+- Google Agenda e Entrada da Agenda voltam a ficar visíveis antes da Semana Geral,
+  sem depender da expansão de um grupo no final da página.
+- Painéis, itens e botões acompanham as bordas, tipografia e espaçamentos compactos.
+- Estados conectado, desconectado, sincronizando, erro e sem pendências mantêm
+  suas ações; IDs usados na atualização dos painéis permanecem iguais.
+- `calendar_sync.v2.js`, OAuth, persistência, vínculos e classificação não mudam.
+- A visão v3 preserva os módulos v1/v2 usados por prévias anteriores.
+- Testes cobrem a montagem completa, visibilidade, ordem, ações e atualização
+  dos painéis com compromissos simulados; não executam operações nas contas Google.
+
+## Tarefas e reuniões · v1.9.60 · 2026-10-07
+
+- Cadastro e edição permitem distinguir atividade de seu impacto de gamificação.
+- Reuniões têm identificação discreta em Missões e Semana, estados Agendada,
+  Realizada e Não ocorreu, e não entram no seletor do Pomodoro.
+- Reuniões não realizadas não contam como pendência da semana nem são exportadas
+  para a agenda secundária. Realização registrada é uma ação manual.
+- Entrada do Google reconhece `Reunião · Coaktion` e remove metadados pessoais
+  e confidenciais antes da persistência. Esses espelhos não recebem patches de cor.
+- Vínculos seguem o ID original, incluindo remarcação para outra semana, cancelamento
+  confirmado e restauração. Evento ausente é consultado individualmente; 404 resulta
+  em aviso de indisponibilidade, sem afirmar cancelamento.
+- Preparar próxima semana preserva os vínculos da agenda, sem repetir os eventos.
+- Novas revisões de calendário e UI preservam os módulos das prévias anteriores.
+- Testes de integração e montagem usam dados simulados; a ponte entre a conta
+  Workspace e a conta pessoal ainda precisa ser configurada e validada nas contas reais.
+
 ## Manutenção do repositório · 2026-10-06
 
 - Prévias estáticas v1.9.11 e v1.9.13 passam a abrir a aplicação oficial.

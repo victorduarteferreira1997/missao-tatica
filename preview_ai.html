@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Prévia IA — Missão Tática</title>
+</head>
+<body style="margin:0;background:#020617;color:#cbd5e1;font-family:system-ui;padding:24px">
+  <div id="status" role="status">Carregando a prévia privada da IA…</div>
+  <script>
+    const officialConfig = "import { AI_CONFIG } from './ai/config.v1.js';";
+    const previewConfig = "import { AI_CONFIG } from './ai/config.preview.js';";
+    fetch('./app.html', { cache: 'no-store' })
+      .then(response => { if (!response.ok) throw new Error('HTTP ' + response.status); return response.text(); })
+      .then(html => {
+        if ((html.split(officialConfig).length - 1) !== 1) throw new Error('Entrada da IA não encontrada na versão atual.');
+        if (!/meta name="app-build" content="v1\.9\.61-/.test(html)) throw new Error('A base da prévia não é a v1.9.61.');
+        const banner = '<div role="status" style="position:sticky;top:0;z-index:100;background:#312e81;color:#e0e7ff;text-align:center;padding:7px 12px;font:700 11px system-ui;letter-spacing:.08em">PRÉVIA PRIVADA · INTEGRAÇÃO COM IA</div>';
+        html = html.replace(officialConfig, previewConfig).replace('<body>', '<body>' + banner);
+        document.open(); document.write(html); document.close();
+      })
+      .catch(error => { document.getElementById('status').textContent = 'Não foi possível carregar a prévia: ' + error.message; });
+  </script>
+</body>
+</html>
