@@ -101,8 +101,11 @@
         import { installFormDialogs } from './ui/form_dialogs.v1.js';
         import { installTaskForms } from './ui/task_forms.v2.js';
         import { installPlanningViews } from './ui/planning_views.v3.js';
+        import { installAiInbox } from './ui/ai_inbox.v1.js';
+        import { AI_CONFIG } from './ai/config.v1.js';
+        import { createAiBrowserStore } from './ai/bridge_rest.v1.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
+        import { initializeAppCheck, ReCaptchaEnterpriseProvider, getToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
         import { getAuth, signInWithPopup, signInWithRedirect, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -120,7 +123,7 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        initializeAppCheck(app, {
+        const appCheck = initializeAppCheck(app, {
             provider: new ReCaptchaEnterpriseProvider('6Lf1edctAAAAAESE5LJWvWMvJ5p2082iAUDQ0-yN'),
             isTokenAutoRefreshEnabled: true
         });
@@ -1788,6 +1791,7 @@
         };
 
         onAuthStateChanged(auth, async (user) => {
+            window.resetAiInbox?.();
             const overlay = document.getElementById('auth-overlay');
             const wrapper = document.getElementById('app-wrapper');
             if (user) {
@@ -3568,6 +3572,7 @@
         };
 
         window.toggleCreateTaskModal = function() {
+            window.clearAiDraft?.();
             uiState.showCreateTaskModal = !uiState.showCreateTaskModal;
             uiState.createTaskDraft = null;
             if (!uiState.showCreateTaskModal) uiState.calendarInboxEventId = null;
@@ -3576,6 +3581,7 @@
         };
 
         window.openCalendarInboxItem = function(eventId) {
+            window.clearAiDraft?.();
             const item = calendarSync.getInbox({ includeHandled: true }).find(candidate => candidate.id === eventId);
             if (!item) { window.showAlertModal('Esse compromisso não está mais na entrada da agenda.'); return; }
             uiState.calendarInboxEventId = eventId;
@@ -3605,6 +3611,18 @@
         // Ponte temporária para os handlers existentes durante a modularização.
         installFormDialogs(window, document);
         installTaskForms(window, { daysOfWeek, getState: () => state, getUiState: () => uiState });
+        window.__aiCloseCreate = () => { uiState.showCreateTaskModal = false; uiState.createTaskDraft = null; };
+        window.__aiOpenCreate = fields => {
+            uiState.calendarInboxEventId = null;
+            uiState.showCreateTaskModal = true;
+            uiState.createTaskDraft = { fields: Object.entries(fields).map(([id, value]) => ({ id, value })), sections: [{key:'schedule',open:true},{key:'subtasks',open:true}] };
+            render();
+        };
+        installAiInbox(window, {
+            document, config: AI_CONFIG, getState: () => state, getUser: () => currentUser,
+            getWeek: () => dateKeyFromDate(window.getActivePlanningWeekStartDate()), render,
+            store: createAiBrowserStore({getUser: () => currentUser, getAppCheckToken: async () => (await getToken(appCheck, false)).token})
+        });
 
         window.openEditTaskModal = function(taskId, event) {
             if (event) { event.stopPropagation(); event.preventDefault(); }
@@ -3818,6 +3836,7 @@
         };
 
         window.saveNewTask = function() {
+            if (window.aiDraftBeforeSave?.() === false) return;
             const titleInput = document.getElementById('ct-text');
             const text = titleInput.value.trim();
             if (!text) {
@@ -3861,6 +3880,7 @@
                 if (firstCreatedTaskId === null) firstCreatedTaskId = taskId;
                 state.tasks.push({
                     id: taskId,
+                    ...(window.aiDraftMetadata?.() || {}),
                     day: targetDay,
                     category: selectedCategory,
                     text: sourceInboxItem?.sanitizedOrigin === 'coaktion' ? 'Reunião · Coaktion' : text,
@@ -3908,6 +3928,7 @@
             const recurrenceMsg = isRecurring ? ` Missão recorrente: ${window.getRecurringDaysLabel(recurrenceDays)}.` : '';
             window.showToast('Missão Alistada!', `${daysToCreate.length} missão(ões) adicionada(s).${baseSubtasks.length ? ` ${baseSubtasks.length} subtarefa(s).` : ''}${recurrenceMsg}`, 'crosshair', 'text-emerald-400');
             window.saveState();
+            window.aiDraftAfterSave?.();
         };
 
         window.setCategoryFilter = function(filterId) { state.currentFilter = filterId; window.saveState(); };
@@ -6704,9 +6725,12 @@
             if (uiState.showRitualModal) html += window.renderRecoveryDialog('ritual');
             if (uiState.showRechargeModal) html += window.renderRecoveryDialog('recharge');
 
+            html += window.renderAiInbox?.() || '';
+
             // RODAPÉ: BACKUP E REINICIAR
             html += `
             <div class="flex flex-wrap justify-center gap-4 pb-8 pt-4 border-t border-slate-800/50 mt-8 relative">
+                ${window.renderAiInboxButton?.() || ''}
                 <button onclick="window.exportData()" class="text-xs text-slate-500 hover:text-emerald-400 font-bold uppercase tracking-widest transition-colors font-mono flex items-center gap-1"><i data-lucide="download" class="w-3 h-3"></i> Exportar backup JSON</button>
                 <button onclick="window.triggerImport()" class="text-xs text-slate-500 hover:text-blue-400 font-bold uppercase tracking-widest transition-colors font-mono flex items-center gap-1"><i data-lucide="upload" class="w-3 h-3"></i> Importar backup JSON</button>
                 <details class="w-full max-w-md mx-auto rounded-xl border border-slate-800/70 bg-slate-950/30 text-center"><summary class="cursor-pointer text-xs text-slate-500 hover:text-slate-300 py-3">Dados e reinício</summary><div class="px-4 pb-4"><p class="text-xs text-slate-500 leading-relaxed mb-3">Limpeza por módulo ou reinício completo, com revisão antes de confirmar.</p><button id="open-data-manager" type="button" onclick="window.openDataManager()" class="text-sm text-slate-300 hover:text-white rounded-lg border border-slate-700 px-4 py-2">Gerenciar dados</button></div></details>
@@ -6725,6 +6749,7 @@
                 });
             }
             lucide.createIcons();
+            window.bindAiInbox?.(appDiv);
             window.bindRecoveryDialogs(appDiv, recoverySnapshots);
             window.bindWorkDialogs(appDiv, workSnapshots);
             window.restorePomodoroDraft(appDiv);

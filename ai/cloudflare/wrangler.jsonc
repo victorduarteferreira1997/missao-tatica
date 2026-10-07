@@ -1,0 +1,12 @@
+{
+  "name": "missao-tatica-ai-bridge",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-07",
+  "workers_dev": true,
+  "observability": { "enabled": false },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "missao-tatica-ai",
+    "database_id": "102fd5fd-7781-4f4b-a4b3-fb835b26bad8"
+  }]
+}

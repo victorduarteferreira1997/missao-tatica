@@ -1,0 +1,315 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Missão Tática — ponte privada",
+    "version": "1.0.0",
+    "description": "Consultar contexto parcial e enviar propostas pendentes para revisão no app. Nunca altera o estado principal."
+  },
+  "servers": [
+    {
+      "url": "https://missao-tatica-ai-bridge.victorduarteferreira1997.workers.dev"
+    }
+  ],
+  "security": [
+    {
+      "actionBearer": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "actionBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "paths": {
+    "/v1/week": {
+      "get": {
+        "operationId": "getSharedWeek",
+        "summary": "Consultar apenas o contexto selecionado e publicado no app",
+        "x-openai-isConsequential": false,
+        "parameters": [
+          {
+            "name": "weekStart",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Data da segunda-feira, YYYY-MM-DD."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contexto parcial. Campos ausentes não indicam disponibilidade.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "schemaVersion": {
+                      "type": "integer",
+                      "enum": [
+                        1
+                      ]
+                    },
+                    "weekStart": {
+                      "type": "string",
+                      "format": "date",
+                      "description": "Data da segunda-feira, YYYY-MM-DD."
+                    },
+                    "timezone": {
+                      "type": "string",
+                      "enum": [
+                        "America/Sao_Paulo"
+                      ]
+                    },
+                    "revision": {
+                      "type": "string"
+                    },
+                    "publishedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "partial": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "missions": {
+                      "type": "array",
+                      "maxItems": 60,
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "ref": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "day": {
+                            "type": "string",
+                            "enum": [
+                              "monday",
+                              "tuesday",
+                              "wednesday",
+                              "thursday",
+                              "friday",
+                              "saturday",
+                              "sunday"
+                            ]
+                          },
+                          "durationMinutes": {
+                            "type": "integer",
+                            "minimum": 5,
+                            "maximum": 240
+                          },
+                          "startTime": {
+                            "type": "string",
+                            "pattern": "^$|^([01][0-9]|2[0-3]):[0-5][0-9]$",
+                            "description": "Horário local America/Sao_Paulo, HH:mm, ou vazio. Fim exige início e deve ser posterior."
+                          },
+                          "endTime": {
+                            "type": "string",
+                            "pattern": "^$|^([01][0-9]|2[0-3]):[0-5][0-9]$",
+                            "description": "Horário local America/Sao_Paulo, HH:mm, ou vazio. Fim exige início e deve ser posterior."
+                          },
+                          "completed": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Requisição recusada ou serviço indisponível. Nunca inventar dados.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/proposals": {
+      "post": {
+        "operationId": "submitProposal",
+        "summary": "Enviar uma proposta pendente após confirmação explícita",
+        "x-openai-isConsequential": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "idempotencyKey",
+                  "weekStart",
+                  "contextRevision",
+                  "title",
+                  "day",
+                  "durationMinutes",
+                  "startTime",
+                  "endTime",
+                  "subtasks"
+                ],
+                "properties": {
+                  "idempotencyKey": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 80,
+                    "pattern": "^[A-Za-z0-9_-]+$"
+                  },
+                  "weekStart": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Data da segunda-feira, YYYY-MM-DD."
+                  },
+                  "contextRevision": {
+                    "type": "string",
+                    "maxLength": 80,
+                    "description": "Revisão retornada por getSharedWeek."
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "day": {
+                    "type": "string",
+                    "enum": [
+                      "monday",
+                      "tuesday",
+                      "wednesday",
+                      "thursday",
+                      "friday",
+                      "saturday",
+                      "sunday"
+                    ]
+                  },
+                  "durationMinutes": {
+                    "type": "integer",
+                    "minimum": 5,
+                    "maximum": 240
+                  },
+                  "startTime": {
+                    "type": "string",
+                    "pattern": "^$|^([01][0-9]|2[0-3]):[0-5][0-9]$",
+                    "description": "Horário local America/Sao_Paulo, HH:mm, ou vazio. Fim exige início e deve ser posterior."
+                  },
+                  "endTime": {
+                    "type": "string",
+                    "pattern": "^$|^([01][0-9]|2[0-3]):[0-5][0-9]$",
+                    "description": "Horário local America/Sao_Paulo, HH:mm, ou vazio. Fim exige início e deve ser posterior."
+                  },
+                  "subtasks": {
+                    "type": "array",
+                    "maxItems": 12,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Proposta criada ou repetição recuperada; revisar no app.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "proposalId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "accepted",
+                        "rejected"
+                      ]
+                    },
+                    "replayed": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Proposta criada ou repetição recuperada; revisar no app.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "proposalId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "accepted",
+                        "rejected"
+                      ]
+                    },
+                    "replayed": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Requisição recusada ou serviço indisponível. Nunca inventar dados.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

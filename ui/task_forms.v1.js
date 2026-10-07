@@ -116,6 +116,7 @@ export function installTaskForms(window, { daysOfWeek, getState, getUiState }) {
                 description: calendarInboxSource ? 'Organize este compromisso do Google Agenda.' : 'Defina a próxima ação. Os detalhes podem ficar para depois.',
                 closeLabel: 'Fechar criação de missão', closeHandler: 'toggleCreateTaskModal', submitHandler: 'saveNewTask',
                 body: `
+                            ${window.renderAiDraftNotice?.() || ''}
                             ${calendarInboxSource ? '<p class="rounded-lg border border-sky-800/60 bg-sky-950/30 p-3 text-xs leading-relaxed text-sky-200">Vinculada ao evento original. A conversão cria uma única missão e não duplica o compromisso no Google Agenda.</p>' : ''}
                             <div>
                                 <label for="ct-text" class="${labelClass}">O que você vai fazer? <span class="ml-2 text-xs font-normal text-slate-400">Obrigatório</span></label>

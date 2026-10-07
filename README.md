@@ -92,3 +92,11 @@ configurada nas contas Google. Esta versão prepara o recebimento das cópias
 sanitizadas, mas não cria acesso à agenda corporativa nem instala automações.
 O teste real deve usar um evento genérico de teste: criar, converter uma vez,
 mudar dia/horário, mudar de semana, cancelar e sincronizar novamente.
+
+## Integração privada com IA (em preparação)
+
+A ponte de GPT Actions, contexto selecionado e caixa de entrada estão em
+[ai/README.md](ai/README.md). A integração fica desligada por padrão até a
+validação da ponte Cloudflare Workers + D1 e da prévia; não está publicada
+nem conectada. O Firebase original permanece no plano Spark e sem acesso
+administrativo concedido à ponte.
