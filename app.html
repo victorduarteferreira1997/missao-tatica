@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.59-configurable-rewards">
+    <meta name="app-build" content="v1.9.60-task-meeting">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -97,10 +97,10 @@
 
     <!-- Script Principal com Firebase em Módulo -->
     <script type="module">
-        import { createCalendarSync } from './calendar_sync.js';
+        import { createCalendarSync } from './calendar_sync.v2.js';
         import { installFormDialogs } from './ui/form_dialogs.v1.js';
-        import { installTaskForms } from './ui/task_forms.v1.js';
-        import { installPlanningViews } from './ui/planning_views.v1.js';
+        import { installTaskForms } from './ui/task_forms.v2.js';
+        import { installPlanningViews } from './ui/planning_views.v2.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
         import { getAuth, signInWithPopup, signInWithRedirect, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -1306,10 +1306,10 @@
 
         window.prepareNextWeekPlanning = function() {
             const nextMondayKey = window.getNextCalendarWeekStartKey();
-            window.showConfirmModal('Preparar a próxima semana agora? Isso vai limpar as missões comuns da semana atual, preservar missões recorrentes, zerar o status dos estudos planejados e abrir o calendário da próxima semana. Ideal para usar no domingo, depois de revisar/fechar a semana atual.', () => {
+            window.showConfirmModal('Preparar a próxima semana agora? Isso vai limpar as missões comuns da semana atual, preservar missões recorrentes e compromissos vinculados ao Google Agenda, zerar o status dos estudos planejados e abrir o calendário da próxima semana. Ideal para usar no domingo, depois de revisar/fechar a semana atual.', () => {
                 window.normalizeRecurringTaskSchedules();
                 const recurringTasks = state.tasks
-                    .filter(t => t.isRecurring || (Array.isArray(t.recurrenceDays) && t.recurrenceDays.length > 0))
+                    .filter(t => t.googleCalendarSource !== 'primary' && (t.isRecurring || (Array.isArray(t.recurrenceDays) && t.recurrenceDays.length > 0)))
                     .map(t => {
                         const cleanTask = {
                             ...t,
@@ -1335,7 +1335,7 @@
                     });
                 }
 
-                state.tasks = recurringTasks;
+                state.tasks = [...recurringTasks, ...state.tasks.filter(t => t.googleCalendarSource === 'primary' && t.googleCalendarEventId)];
                 state.quickTasks = [];
                 state.combo = 0;
                 window.rollOverEconomyWeekIfNeeded();
@@ -1345,7 +1345,7 @@
                 state.currentPlanningWeekStart = nextMondayKey;
                 uiState.mainView = 'week';
                 window.saveState();
-                window.showToast('Próxima semana preparada', `${recurringTasks.length} missão(ões) recorrente(s) preservada(s). Estudos voltaram para planejado.`, 'calendar-plus', 'text-cyan-300');
+                window.showToast('Próxima semana preparada', `${recurringTasks.length} missão(ões) recorrente(s) e vínculos da agenda preservados. Estudos voltaram para planejado.`, 'calendar-plus', 'text-cyan-300');
             });
         };
 
@@ -1425,7 +1425,7 @@
                 }
                 t.startTime = normalizeClockTime(t.startTime);
                 t.endTime = t.startTime ? normalizeClockTime(t.endTime) : '';
-                if (t.startTime && t.endTime && !isValidClockRange(t.startTime, t.endTime)) t.endTime = '';
+                if (t.googleCalendarSource !== 'primary' && t.startTime && t.endTime && !isValidClockRange(t.startTime, t.endTime)) t.endTime = '';
                 // Não depender de window.getTaskCategory aqui: validateState roda antes de alguns helpers visuais.
                 const categoryExistsForTask = state.taskCategories.some(c => c.id === t.category);
                 if (!categoryExistsForTask) t.category = state.taskCategories.find(c => c.active !== false)?.id || 'geral';
@@ -2118,7 +2118,7 @@
         window.exportVisibleWeekToIcs = function() {
             if (typeof window.normalizeRecurringTaskSchedules === 'function') window.normalizeRecurringTaskSchedules();
 
-            const tasks = Array.isArray(state.tasks) ? state.tasks : [];
+            const tasks = (Array.isArray(state.tasks) ? state.tasks : []).filter(t => (!t.googleCalendarWeekStart || t.googleCalendarWeekStart === state.currentPlanningWeekStart) && !(t.activityType === 'meeting' && (t.meetingOutcome === 'not_held' || t.googleCalendarSourceStatus === 'cancelled')));
             const studyBlocks = (state.studyData?.studyPlan?.weeklyBlocks || []).filter(b => b.status !== 'cancelled');
             const subjects = state.studyData?.subjects || [];
             const weekStart = window.getActivePlanningWeekStartDate();
@@ -2154,7 +2154,7 @@
                     endTime: task.endTime,
                     sortTime: normalizeClockTime(task.startTime) || '99:99',
                     summary: `Missão Tática — ${task.text || 'Missão'}`,
-                    description: `Origem: Missão Tática\nTipo: Missão do board\nDia: ${getDayLabel(task.day)}\nCategoria: ${cat.label || 'Geral'}\nPrioridade: ${task.priority || 'média'}\nStatus: ${task.completed ? 'Concluída' : 'Pendente'}\nDuração estimada: ${duration} min${recurrenceDescription}${subtasks}`,
+                    description: `Origem: Missão Tática\nTipo: ${task.activityType === 'meeting' ? 'Reunião' : 'Tarefa'}\nDia: ${getDayLabel(task.day)}\nCategoria: ${cat.label || 'Geral'}\nPrioridade: ${task.priority || 'média'}\nStatus: ${task.completed ? 'Concluída' : 'Pendente'}\nDuração estimada: ${duration} min${recurrenceDescription}${subtasks}`,
                     durationMinutes: duration,
                     recurrenceRule: options.recurrenceRule || '',
                     recurrenceDayIds: options.recurrenceDayIds || null,
@@ -2503,6 +2503,35 @@
             state.energy = Math.min(100, Math.max(0, state.energy + amount));
         }
 
+        window.getMeetingStatus = function(task) {
+            if (task?.completed) return 'completed';
+            if (task?.googleCalendarSourceStatus === 'cancelled' || task?.meetingOutcome === 'not_held') return 'not_held';
+            return 'planned';
+        };
+        window.setMeetingStatus = function(taskId, nextStatus, event) {
+            event?.stopPropagation();
+            const task = state.tasks.find(t => String(t.id) === String(taskId));
+            if (!task || task.activityType !== 'meeting' || !['planned', 'completed', 'not_held'].includes(nextStatus)) return;
+            if (nextStatus === window.getMeetingStatus(task)) return;
+            if (nextStatus === 'completed') {
+                if (task.googleCalendarSourceStatus === 'cancelled') { window.showAlertModal('Este evento foi cancelado no Google Agenda. Atualize a agenda antes de registrar a realização.'); return; }
+                delete task.meetingOutcome;
+                window.toggleTask(taskId, event); return;
+            }
+            if (task.completed) window.toggleTask(taskId, event);
+            task.meetingOutcome = nextStatus === 'not_held' ? 'not_held' : 'planned';
+            window.saveState();
+        };
+        window.handleActivityTypeChange = function(prefix) {
+            const meeting = document.getElementById(`${prefix}-activity-type`)?.value === 'meeting';
+            const schedule = document.querySelector(`[data-${prefix === 'ct' ? 'create' : 'edit'}-section="schedule"]`);
+            if (meeting && schedule) schedule.open = true;
+            for (const key of ['start-time', 'end-time']) {
+                const field = document.getElementById(`${prefix}-${key}`);
+                if (field) field.required = meeting && document.getElementById(`${prefix}-activity-type`)?.dataset.allDay !== 'true';
+            }
+        };
+
         window.getMissionStatus = function(task) {
             if (task?.completed) return 'completed';
             if (['planned', 'in_progress', 'paused'].includes(task?.workflowStatus)) return task.workflowStatus;
@@ -2525,6 +2554,7 @@
             const task = state.tasks.find(t => t.id == taskId);
             if (!task) return;
 
+            if (task.activityType === 'meeting' && !task.completed && (task.meetingOutcome === 'not_held' || task.googleCalendarSourceStatus === 'cancelled')) return;
             const nature = window.getTaskNature(task);
 
             if (task.completed) {
@@ -2765,6 +2795,7 @@
             if (event) { if (typeof event.stopPropagation === 'function') event.stopPropagation(); if (typeof event.preventDefault === 'function') event.preventDefault(); }
             const targetDay = selectEl.value; if (!targetDay) return;
             const task = state.tasks.find(t => t.id == taskId);
+            if (task?.googleCalendarSource === 'primary') { selectEl.value = ''; window.showAlertModal('Altere o dia no Google Agenda e sincronize novamente.'); return; }
             if (task) { task.day = targetDay; task.order = window.getNextTaskOrder(targetDay); window.changeEnergy(10); window.recordCampaignStat('tasksMoved'); state.stats.tasksMoved = (state.stats.tasksMoved || 0) + 1; window.unlockBadge('estrategista'); window.spawnFloatingText(event, `+10 HP`, 'text-emerald-400'); window.breakCombo(); window.saveState(); }
             selectEl.value = "";
         };
@@ -2943,7 +2974,7 @@
         };
 
         window.getNextTaskOrder = function(dayId) {
-            const orders = state.tasks.filter(t => t.day === dayId).map(t => typeof t.order === 'number' ? t.order : 0);
+            const orders = state.tasks.filter(t => t.day === dayId && (!t.googleCalendarWeekStart || t.googleCalendarWeekStart === state.currentPlanningWeekStart)).map(t => typeof t.order === 'number' ? t.order : 0);
             return orders.length ? Math.max(...orders) + 1 : 1;
         };
 
@@ -2960,11 +2991,11 @@
         };
 
         window.sortTasksForDay = function(dayId) {
-            return window.sortTasksByManualOrder(state.tasks.filter(t => t.day === dayId));
+            return window.sortTasksByManualOrder(state.tasks.filter(t => t.day === dayId && (!t.googleCalendarWeekStart || t.googleCalendarWeekStart === state.currentPlanningWeekStart)));
         };
 
         window.reindexTaskOrderForDay = function(dayId) {
-            window.sortTasksBySchedule(state.tasks.filter(t => t.day === dayId)).forEach((t, index) => { t.order = index + 1; });
+            window.sortTasksBySchedule(state.tasks.filter(t => t.day === dayId && (!t.googleCalendarWeekStart || t.googleCalendarWeekStart === state.currentPlanningWeekStart))).forEach((t, index) => { t.order = index + 1; });
         };
 
         window.handleTaskDragStart = function(taskId, event) {
@@ -3084,9 +3115,9 @@
         };
 
         window.getCurrentFocusTargetTask = function() {
-            const dayTasks = state.tasks.filter(t => t.day === state.activeTab);
+            const dayTasks = state.tasks.filter(t => t.day === state.activeTab && t.activityType !== 'meeting' && (!t.googleCalendarWeekStart || t.googleCalendarWeekStart === state.currentPlanningWeekStart));
             const targetTasks = state.currentFilter === 'all' ? dayTasks : dayTasks.filter(t => t.category === state.currentFilter);
-            return (window.findTaskByExactId(state.focusedTaskId) && !window.findTaskByExactId(state.focusedTaskId).completed && window.findTaskByExactId(state.focusedTaskId).day === state.activeTab)
+            return (window.findTaskByExactId(state.focusedTaskId) && !window.findTaskByExactId(state.focusedTaskId).completed && window.findTaskByExactId(state.focusedTaskId).day === state.activeTab && dayTasks.includes(window.findTaskByExactId(state.focusedTaskId)))
                 ? window.findTaskByExactId(state.focusedTaskId)
                 : (targetTasks.find(t => !t.completed) || null);
         };
@@ -3109,7 +3140,7 @@
             const apply=()=>{
                 if(pomodoro!==expectedTimer || pomodoro.currentFocusStartedAt!==expectedStarted || window.isIndependentPomodoro()!==expectedContext || uiState.pomodoroEvaluationData)return;
                 const task=independent?null:window.findTaskByExactId(taskId);
-                if(!independent && (!task || task.completed))return;
+                if(!independent && (!task || task.completed || task.activityType === 'meeting'))return;
                 if(!sameContext && started){
                     clearInterval(pomodoro.intervalId);pomodoro.isRunning=false;pomodoro.mode='focus';pomodoro.cycle=1;pomodoro.timeLeft=state.pomodoroSettings.focus*60;
                     pomodoro.currentFocusStartedAt=null;pomodoro.currentFocusTaskId=null;pomodoro.currentFocusTaskText=null;pomodoro.currentFocusTaskDay=null;pomodoro.currentFocusTaskCategory=null;pomodoro.focusLock=null;
@@ -3141,7 +3172,7 @@
 
             // Último fallback: regra antiga do alvo atual.
             if (!lockedTask && window.getCurrentFocusTargetTask) lockedTask = window.getCurrentFocusTargetTask();
-            return lockedTask || null;
+            return lockedTask?.activityType === 'meeting' ? null : lockedTask || null;
         };
 
         window.togglePomodoro = function(taskIdFromButton = null) {
@@ -3553,6 +3584,7 @@
             setTimeout(() => {
                 const values = {
                     'ct-text': item.summary,
+                    'ct-activity-type': item.activityType || 'task',
                     'ct-day': item.day,
                     'ct-time': item.duration || 30,
                     'ct-start-time': item.startTime || '',
@@ -3561,6 +3593,7 @@
                 Object.entries(values).forEach(([id, value]) => { const field = document.getElementById(id); if (field) field.value = value; });
                 window.updateTaskNatureButtons?.('ct');
                 window.updatePreviewCalc?.();
+                window.handleActivityTypeChange('ct');
             }, 50);
         };
 
@@ -3646,21 +3679,26 @@
             const timeVal = parseInt(document.getElementById('et-time')?.value, 10) || 30;
             const impactType = document.getElementById('et-impact-type')?.value || 'drain';
             const missionNature = document.getElementById('et-nature')?.value || window.getTaskNature(task);
-            const cost = window.calculateTaskCost(priority, complexity, timeVal, impactType, missionNature);
-            const calendarTime = window.readCalendarTimeFields('et', timeVal);
+            let cost = window.calculateTaskCost(priority, complexity, timeVal, impactType, missionNature);
+            const activityType = task.sanitizedOrigin === 'coaktion' ? 'meeting' : (document.getElementById('et-activity-type')?.value || task.activityType || 'task');
+            const calendarTime = task.googleCalendarSource === 'primary' ? { startTime: task.startTime || '', endTime: task.endTime || '' } : window.readCalendarTimeFields('et', timeVal);
             if (!calendarTime) return;
-            const recurrenceDays = daysOfWeek
+            if (activityType === 'meeting' && !task.googleCalendarAllDay && (!calendarTime.startTime || !calendarTime.endTime)) { window.showAlertModal('Informe início e fim da reunião.'); return; }
+            const recurrenceDays = task.googleCalendarSource === 'primary' ? [] : daysOfWeek
                 .filter(d => document.getElementById(`et-repeat-${d.id}`)?.checked)
                 .map(d => d.id);
             const isRecurring = recurrenceDays.length > 0;
 
+            const duration = activityType === 'meeting' && calendarTime.startTime && calendarTime.endTime ? (task.googleCalendarSource === 'primary' ? extractMinutesFromTask(task) : minutesFromClock(calendarTime.endTime) - minutesFromClock(calendarTime.startTime)) : timeVal;
+            cost = window.calculateTaskCost(priority, complexity, duration, impactType, missionNature);
             const applyValues = (target, targetDay) => {
-                target.text = text;
+                target.text = task.sanitizedOrigin === 'coaktion' ? 'Reunião · Coaktion' : text;
+                target.activityType = activityType;
                 target.day = targetDay;
                 target.category = selectedCategory;
                 target.priority = priority;
                 target.complexity = complexity;
-                target.time = `${timeVal} min`;
+                target.time = `${duration} min`;
                 target.impactType = impactType;
                 target.missionNature = missionNature;
                 target.startTime = calendarTime.startTime;
@@ -3790,8 +3828,10 @@
             const sourceInboxItem = uiState.calendarInboxEventId
                 ? calendarSync.getInbox({ includeHandled: true }).find(item => item.id === uiState.calendarInboxEventId)
                 : null;
+            if (uiState.calendarInboxEventId && (!sourceInboxItem || sourceInboxItem.status !== 'pending' || sourceInboxItem.sourceMissing)) { window.showAlertModal('Este evento já foi convertido ou mudou. Atualize a entrada da agenda.'); return; }
+            const activityType = sourceInboxItem?.sanitizedOrigin === 'coaktion' ? 'meeting' : (document.getElementById('ct-activity-type')?.value || sourceInboxItem?.activityType || 'task');
             const missionNature = document.getElementById('ct-nature')?.value || 'normal';
-            const cost = window.calculateTaskCost(document.getElementById('ct-priority').value, document.getElementById('ct-complexity').value, document.getElementById('ct-time').value, document.getElementById('ct-impact-type').value, missionNature);
+            let cost = window.calculateTaskCost(document.getElementById('ct-priority').value, document.getElementById('ct-complexity').value, document.getElementById('ct-time').value, document.getElementById('ct-impact-type').value, missionNature);
             const rawSubtasks = document.getElementById('ct-subtasks')?.value || '';
             const baseSubtasks = rawSubtasks.split('\n').map(t => t.trim()).filter(Boolean).map((subText, index) => ({
                 id: Date.now() + index + Math.random(),
@@ -3802,8 +3842,11 @@
             const activeCategories = window.getTaskCategories();
             const selectedCategory = document.getElementById('ct-category').value || activeCategories[0]?.id || 'life';
             const selectedDay = document.getElementById('ct-day').value;
-            const calendarTime = window.readCalendarTimeFields('ct', parseInt(document.getElementById('ct-time')?.value, 10) || 30);
+            const calendarTime = sourceInboxItem ? { startTime: sourceInboxItem.startTime || '', endTime: sourceInboxItem.endTime || '' } : window.readCalendarTimeFields('ct', parseInt(document.getElementById('ct-time')?.value, 10) || 30);
             if (!calendarTime) return;
+            if (activityType === 'meeting' && !sourceInboxItem?.allDay && (!calendarTime.startTime || !calendarTime.endTime)) { window.showAlertModal('Informe início e fim da reunião.'); return; }
+            const duration = activityType === 'meeting' && calendarTime.startTime && calendarTime.endTime ? (sourceInboxItem ? sourceInboxItem.duration : minutesFromClock(calendarTime.endTime) - minutesFromClock(calendarTime.startTime)) : (parseInt(document.getElementById('ct-time')?.value, 10) || 30);
+            cost = window.calculateTaskCost(document.getElementById('ct-priority').value, document.getElementById('ct-complexity').value, duration, document.getElementById('ct-impact-type').value, missionNature);
             const recurrenceDays = sourceInboxItem ? [] : daysOfWeek
                 .filter(d => document.getElementById(`ct-repeat-${d.id}`)?.checked)
                 .map(d => d.id);
@@ -3819,12 +3862,13 @@
                     id: taskId,
                     day: targetDay,
                     category: selectedCategory,
-                    text: text,
+                    text: sourceInboxItem?.sanitizedOrigin === 'coaktion' ? 'Reunião · Coaktion' : text,
+                    activityType,
                     xp: cost.xp,
                     energyCost: cost.hp,
                     completed: false,
                     priority: document.getElementById('ct-priority').value,
-                    time: document.getElementById('ct-time').value + ' min',
+                    time: duration + ' min',
                     complexity: parseInt(document.getElementById('ct-complexity').value) || 1,
                     impactType: document.getElementById('ct-impact-type').value,
                     missionNature,
@@ -3840,7 +3884,12 @@
                         googleCalendarEventId: sourceInboxItem.id,
                         googleCalendarOrigin: sourceInboxItem.originType,
                         googleCalendarUpdatedAt: sourceInboxItem.googleUpdatedAt,
-                        googleCalendarSourceMissing: false
+                        googleCalendarSourceMissing: false,
+                        googleCalendarSourceStatus: 'active',
+                        googleCalendarEventDate: sourceInboxItem.eventDate,
+                        googleCalendarAllDay: Boolean(sourceInboxItem.allDay),
+                        googleCalendarWeekStart: sourceInboxItem.weekStart,
+                        sanitizedOrigin: sourceInboxItem.sanitizedOrigin || ''
                     } : {})
                 });
             });
@@ -3862,6 +3911,7 @@
 
         window.setCategoryFilter = function(filterId) { state.currentFilter = filterId; window.saveState(); };
         window.changeFocusedTask = function(taskId) {
+            if (state.tasks.find(t => String(t.id) === String(taskId))?.activityType === 'meeting') return;
             if(window.isIndependentPomodoro()){window.switchPomodoroContext(false,taskId);return;}
             // Guardar o ID exato como string. Alguns IDs de tarefas têm casas decimais;
             // parseInt truncava o valor e podia selecionar outra tarefa no Pomodoro.
@@ -3888,7 +3938,7 @@
         window.openTaskFocus = function(taskId, event) {
             if (event) { event.stopPropagation(); event.preventDefault(); }
             const task = window.findTaskByExactId(taskId);
-            if (!task || task.completed) return;
+            if (!task || task.completed || task.activityType === 'meeting') return;
             if(window.isIndependentPomodoro()){window.switchPomodoroContext(false,taskId);return;}
             state.focusContext = 'mission';
             state.focusedTaskId = String(task.id);
@@ -6440,7 +6490,7 @@
             html += `</div>`;
 
             const selectedDayLabel = daysOfWeek.find(d => d.id === state.activeTab)?.label || 'Hoje';
-            const pendingDailyCount = filteredTasks.filter(t => !t.completed).length;
+            const pendingDailyCount = filteredTasks.filter(t => !t.completed && !(t.activityType === 'meeting' && window.getMeetingStatus(t) === 'not_held')).length;
             const completedDailyCount = filteredTasks.filter(t => t.completed).length;
             if (!state.focusMode || !window.isIndependentPomodoro()) {
             html += `<section class="mb-3 px-1 py-1 font-sans">
@@ -6456,12 +6506,13 @@
             }
 
             if (state.focusMode) {
-                const targetTasks = state.currentFilter === 'all' ? dailyTasks : dailyTasks.filter(t => t.category === state.currentFilter);
+                const focusTasks = dailyTasks.filter(t => t.activityType !== 'meeting');
+                const targetTasks = state.currentFilter === 'all' ? focusTasks : focusTasks.filter(t => t.category === state.currentFilter);
                 const lockedFocusTask = (pomodoro.mode === 'focus' && pomodoro.currentFocusStartedAt && pomodoro.focusLock?.id) ? window.findTaskByExactId(pomodoro.focusLock.id) : null;
                 const stateFocusedTask = window.findTaskByExactId(state.focusedTaskId);
-                const pendingTask = window.isIndependentPomodoro() ? null : (lockedFocusTask && !lockedFocusTask.completed && lockedFocusTask.day === state.activeTab)
+                const pendingTask = window.isIndependentPomodoro() ? null : (lockedFocusTask && lockedFocusTask.activityType !== 'meeting' && !lockedFocusTask.completed && lockedFocusTask.day === state.activeTab)
                     ? lockedFocusTask
-                    : ((stateFocusedTask && !stateFocusedTask.completed && stateFocusedTask.day === state.activeTab) ? stateFocusedTask : targetTasks.find(t => !t.completed));
+                    : ((stateFocusedTask && stateFocusedTask.activityType !== 'meeting' && !stateFocusedTask.completed && stateFocusedTask.day === state.activeTab) ? stateFocusedTask : targetTasks.find(t => !t.completed));
                 const allPending = targetTasks.filter(t => !t.completed);
                 const isPomodoroTargetLocked = !!(pomodoro.mode === 'focus' && pomodoro.currentFocusStartedAt && pomodoro.focusLock?.id);
 
