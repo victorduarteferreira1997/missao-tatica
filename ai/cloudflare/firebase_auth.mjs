@@ -5,7 +5,9 @@ export const FIREBASE_APP_ID = '1:651538676501:web:ca3dc3356a1b1769f9471c';
 export const AUTH_JWKS = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
 export const APP_CHECK_JWKS = 'https://firebaseappcheck.googleapis.com/v1/jwks';
 export class AuthError extends Error {}
-export class KeyServiceError extends Error {}
+export class KeyServiceError extends Error {
+    constructor(diagnostic) { super('Public key service unavailable.'); this.diagnostic = diagnostic; }
+}
 const algorithm = { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' };
 const encoder = new TextEncoder();
 
@@ -40,31 +42,43 @@ export function createFirebaseVerifier({fetchImpl = (...args) => fetch(...args),
     const caches = new Map();
     async function key(url,kid) {
         let cache = caches.get(url);
-        if (!cache) { cache = {until:0,attempt:0,keys:new Map(),pending:null}; caches.set(url,cache); }
-        if (cache.until > now() && cache.keys.has(kid)) return cache.keys.get(kid);
+        if (!cache) { cache = {until:0,attempt:0,keys:new Map(),pending:null,failure:null}; caches.set(url,cache); }
+        if (cache.until > now() && (kid === undefined || cache.keys.has(kid))) return kid === undefined ? cache : cache.keys.get(kid);
         if (!cache.pending) {
             if (cache.attempt > now()) {
                 if (cache.until > now()) throw new AuthError();
-                throw new KeyServiceError();
+                throw new KeyServiceError(cache.failure);
             }
             cache.attempt = now()+30000;
             cache.pending = (async () => {
+                let phase = 'fetch', upstreamStatus;
                 try {
                     const response = await fetchImpl(url,{signal:AbortSignal.timeout(5000),redirect:'error'});
+                    phase = 'http'; upstreamStatus = response.status;
                     if (!response.ok) throw new KeyServiceError();
+                    phase = 'json';
                     const body = await response.json();
+                    phase = 'key_set';
                     if (!Array.isArray(body.keys) || !body.keys.length || body.keys.length > 32) throw new KeyServiceError();
                     const keys = new Map();
                     for (const jwk of body.keys) {
+                        phase = 'key_format';
                         if (jwk.kty !== 'RSA' || jwk.alg !== 'RS256' || jwk.use !== 'sig' || typeof jwk.kid !== 'string' || jwk.d) throw new KeyServiceError();
+                        phase = 'import';
                         keys.set(jwk.kid,await crypto.subtle.importKey('jwk',jwk,algorithm,false,['verify']));
                     }
+                    phase = 'cache';
                     const maxAge = Number((response.headers.get('Cache-Control') || '').match(/max-age=(\d+)/)?.[1] || 3600);
-                    cache.keys = keys; cache.until = now()+Math.min(maxAge,21600)*1000;
-                } catch { throw new KeyServiceError(); }
+                    cache.keys = keys; cache.until = now()+Math.min(maxAge,21600)*1000; cache.failure = null;
+                } catch(error) {
+                    cache.failure = {phase,...(Number.isInteger(upstreamStatus)?{upstreamStatus}:{}),
+                        ...(['TypeError','DataError','NotSupportedError','OperationError','AbortError','TimeoutError','SyntaxError'].includes(error?.name)?{runtimeError:error.name}:{})};
+                    throw new KeyServiceError(cache.failure);
+                }
             })().finally(() => { cache.pending = null; });
         }
         await cache.pending;
+        if (kid === undefined) return cache;
         if (!cache.keys.has(kid)) throw new AuthError();
         return cache.keys.get(kid);
     }
@@ -72,7 +86,7 @@ export function createFirebaseVerifier({fetchImpl = (...args) => fetch(...args),
         const publicKey = await key(url,parsed.header.kid);
         if (!await crypto.subtle.verify(algorithm,publicKey,parsed.signature,parsed.data)) throw new AuthError();
     }
-    return async function verifyOwner(request) {
+    async function verifyOwner(request) {
         const bearer = request.headers.get('Authorization') || '';
         if (!bearer.startsWith('Bearer ')) throw new AuthError();
         const id = parse(bearer.slice(7)), app = parse(request.headers.get('X-Firebase-AppCheck'));
@@ -84,5 +98,18 @@ export function createFirebaseVerifier({fetchImpl = (...args) => fetch(...args),
             !Array.isArray(app.claims.aud) || !app.claims.aud.includes('projects/'+FIREBASE_PROJECT_NUMBER) ||
             app.claims.sub !== FIREBASE_APP_ID) throw new AuthError();
         await Promise.all([verify(id,AUTH_JWKS),verify(app,APP_CHECK_JWKS)]);
+    }
+    // Fixed public endpoints only. Reuse key caches/cooldowns; no tokens or database access.
+    verifyOwner.inspectPublicKeys = async function() {
+        const result = {};
+        for(const [name,url] of [['auth',AUTH_JWKS],['appCheck',APP_CHECK_JWKS]]) {
+            try { const cache=await key(url); result[name]={ok:true,keyCount:cache.keys.size}; }
+            catch(error) {
+                const cache = caches.get(url);
+                result[name] = {ok:false,...(cache?.failure || {phase:'unavailable'})};
+            }
+        }
+        return result;
     };
+    return verifyOwner;
 }

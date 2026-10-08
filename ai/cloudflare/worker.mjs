@@ -56,6 +56,10 @@ export function createWorker({verifyOwner=createFirebaseVerifier(),storeFactory=
             }
             try {
                 if (method==='GET' && url.pathname==='/healthz' && !url.search) return send(200,{ok:true,service:'missao-tatica-ai-bridge',schemaVersion:1});
+                if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=keys') {
+                    if(typeof verifyOwner.inspectPublicKeys!=='function')return send(503,{error:'service_unavailable'});
+                    return send(200,{service:'missao-tatica-ai-bridge',diagnosticVersion:1,publicKeys:await verifyOwner.inspectPublicKeys()});
+                }
                 if (appRoute && origin!==APP_ORIGIN) return send(403,{error:'origin_not_allowed'});
                 const reviewId = url.pathname.match(/^\/v1\/app\/inbox\/([a-f0-9]{64})$/)?.[1];
                 const appMethods = url.pathname==='/v1/app/context' ? ['PUT','DELETE'] : url.pathname==='/v1/app/inbox' ? ['GET'] : reviewId ? ['PATCH'] : [];

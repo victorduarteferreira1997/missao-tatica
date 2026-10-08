@@ -78,6 +78,35 @@ test('rotação, expiração e falhas de JWKS fecham o acesso sem usar chaves ve
     clock+=31000;await verify(r);assert.equal(count,4);fail=true;clock+=31000;
     await assert.rejects(()=>verify(r),KeyServiceError);
 });
+test('health de chaves usa somente endpoints fixos, cacheia resultados e nunca acessa D1 ou credenciais',async()=>{
+    const v=verifier();let stores=0;
+    const worker=createWorker({verifyOwner:v.verify,storeFactory:()=>{stores++;throw Error('PRIVATE_DB');}});
+    const request=()=>new Request('https://bridge.example/healthz?check=keys');
+    const result=await worker.fetch(request(),{});
+    assert.equal(result.status,200);
+    assert.deepEqual(await result.json(),{service:'missao-tatica-ai-bridge',diagnosticVersion:1,publicKeys:{auth:{ok:true,keyCount:1},appCheck:{ok:true,keyCount:1}}});
+    await worker.fetch(request(),{});assert.equal(v.calls.length,2);assert.equal(stores,0);
+    assert.equal((await worker.fetch(new Request('https://bridge.example/healthz?check=keys&url=https://attacker.example'),{ACTION_SECRET:secret})).status,401);
+});
+test('health de chaves identifica fetch, HTTP, JSON, formato e importação sem mensagens externas; cooldown limita tentativas',async()=>{
+    for(const [fetchImpl,expected] of [
+        [async()=>{throw new TypeError('PRIVATE_NETWORK');},{phase:'fetch',runtimeError:'TypeError'}],
+        [async()=>new Response('PRIVATE_BODY',{status:503}),{phase:'http',upstreamStatus:503}],
+        [async()=>new Response('PRIVATE_NOT_JSON'),{phase:'json',upstreamStatus:200,runtimeError:'SyntaxError'}],
+        [async()=>Response.json({keys:[]}),{phase:'key_set',upstreamStatus:200}],
+        [async()=>Response.json({keys:[{...jwk,use:'enc'}]}),{phase:'key_format',upstreamStatus:200}],
+        [async()=>Response.json({keys:[{...jwk,key_ops:['sign']}]}),{phase:'import',upstreamStatus:200,runtimeError:'DataError'}]
+    ]) {
+        let calls=0;
+        const verify=createFirebaseVerifier({now:()=>now,fetchImpl:async(url,...args)=>{calls++;assert.ok([AUTH_JWKS,APP_CHECK_JWKS].includes(url));return fetchImpl(url,...args);}});
+        const result=await verify.inspectPublicKeys();
+        assert.deepEqual(result,{auth:{ok:false,...expected},appCheck:{ok:false,...expected}});
+        assert.doesNotMatch(JSON.stringify(result),/PRIVATE_/);
+        assert.deepEqual(await verify.inspectPublicKeys(),result);assert.equal(calls,2);
+        await assert.rejects(()=>verify(new Request('https://bridge.example',{headers:ownerHeaders})),KeyServiceError);
+        assert.equal(calls,2);
+    }
+});
 test('Worker não acessa D1 sem autenticação e separa credencial GPT das rotas do proprietário',async t=>{
     const a=api(t);
     assert.equal((await a.call('/healthz','GET',undefined,false,{Authorization:''})).status,200);

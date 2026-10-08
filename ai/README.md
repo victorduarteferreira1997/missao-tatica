@@ -143,6 +143,13 @@ internas, tokens, SQL ou corpos das missões. Esses códigos exigem republicar
 `cloudflare/worker-dashboard.js` no Worker; publicar o GitHub Pages não atualiza
 o Worker. `service_unavailable` continua aceito para a versão anterior.
 
+`GET /healthz?check=keys` diagnostica somente os dois conjuntos públicos fixos
+do Google, reutilizando caches e o cooldown de 30 segundos. Retorna contagem
+em sucesso ou etapa (`fetch`, `http`, `json`, `key_set`, `key_format`, `import`,
+`cache`), status HTTP e classe de erro conhecida em falha. Não recebe URLs,
+tokens ou credenciais, não lê D1 e não devolve corpos/chaves/mensagens externas.
+Esse health público não confirma login, assinatura de um token ou acesso ao banco.
+
 Suite completa, incluindo assinatura RSA real e SQL real em SQLite local:
 
 ```bash
