@@ -1,10 +1,11 @@
 # Integração privada com ChatGPT — Cloudflare Workers + D1
 
 Base incorporada: app v1.9.61, incluindo reuniões e Entrada da Agenda.
-A integração continua **desligada** em `config.v1.js`. Esta branch não altera
-os dados, o layout publicado, a persistência ou a sincronização da aplicação.
+A integração está **ativada** em `config.v1.js` após validação real no navegador
+e no celular. O app mantém publicação explícita de uma seleção parcial e
+revisão de propostas no formulário existente; a ativação não migra dados.
 
-## Estado do piloto
+## Estado da integração
 
 - Firebase voltou ao plano Spark, com o banco original `(default)`.
 - D1 `missao-tatica-ai` criado, ID `102fd5fd-7781-4f4b-a4b3-fb835b26bad8`.
@@ -19,8 +20,17 @@ os dados, o layout publicado, a persistência ou a sincronização da aplicaçã
 - ACTION_SECRET foi rotacionado pelo proprietário no Bitwarden (48 caracteres).
 - A conexão passa a ser um plugin privado com MCP/OAuth, pois GPTs personalizados
   estão em descontinuação e suas Actions não migram automaticamente.
-- **Ainda falta:** aplicar oauth-schema.sql, implantar o Worker com MCP, conectar
-  o plugin privado e validar consulta, proposta e revisão no fluxo real.
+- Schema OAuth aplicado e Worker com MCP implantado em 08/10/2026.
+- Pacotes importados com MCP direto ficaram restritos ao desktop. O caminho
+  validado usa o Site privado **Missão Tática — Conexão**, que mantém o Worker.
+- Site: https://missao-tatica-conexao.victorduarteferreira.chatgpt.site
+- Plugin: https://chatgpt.com/plugins/plugin_asdk_app_sites_d89d350d86f88191a6cbf291ab36e93d
+- Consulta real da seleção confirmada no chat pelo navegador e pelo Android.
+- Proposta fictícia enviada, revisada no formulário e criada na quinta-feira
+  pelo proprietário; imagens confirmaram o resultado em 08/10/2026.
+- A ativação no app oficial libera a mesma interface já validada na prévia.
+- Recusa, cancelamento, repetição e revogação têm cobertura local; não foram
+  todos repetidos contra os dados reais nesta validação.
 
 Não foram criados o banco Firestore adicional, Cloud Run ou Secret Manager.
 O antigo vínculo IAM do Firestore Reader foi removido. Não restaurar esse
@@ -35,8 +45,12 @@ adaptador REST e Rules anteriores permanecem preservados para consulta; seu
 2. O navegador envia apenas o contexto selecionado à ponte, usando Firebase
    ID token e App Check. A ponte verifica assinatura RS256, emissor, projeto,
    validade, UID fixo e App ID fixo. Guarda a seleção no D1.
-3. O plugin consulta somente o contexto publicado e cria propostas pendentes
-   usando um token OAuth de escopo limitado, após autorização no navegador.
+3. O plugin do Site usa a autenticação gerenciada pelo ChatGPT Sites. A ponte
+   privada exige a identidade autenticada e usa o segredo configurado pelo
+   proprietário para consultar `/v1/week` e enviar a `/v1/proposals` no Worker.
+   O segredo fica criptografado com AES-GCM e AAD da identidade no D1 do Site;
+   a chave de criptografia é um secret do runtime, ausente do código/pacote.
+   A conexão é por usuário e a desconexão remove sua credencial criptografada.
 4. O proprietário busca até 50 propostas pendentes e revisa no formulário
    existente. Categoria, prioridade, natureza, dificuldade, XP e HP continuam
    sob controle/cálculo do app. A ponte nunca grava uma missão no Firebase.
@@ -54,14 +68,15 @@ mas não remove o que o ChatGPT já recebeu nem propostas já existentes.
 | Identidade | Acesso |
 | --- | --- |
 | Proprietário + App Check | Publicar/remover contexto; listar propostas pendentes; alterar apenas status pendente para aceito/recusado |
-| Plugin com token OAuth | Consultar uma semana publicada; criar proposta validada/idempotente |
+| Plugin do Site privado | Consultar uma semana publicada; criar proposta validada/idempotente via ponte autenticada |
+| MCP direto do Worker com OAuth | Mesmo acesso limitado; caminho alternativo preservado, não usado na validação pelo celular |
 | Worker | Binding do D1; chaves **públicas** rotativas de Auth/App Check |
-| Anônimo | Somente `/healthz`; não lê D1 |
+| Anônimo | Health e descoberta pública OAuth/MCP; não lê a seleção nem propostas |
 
 As rotas `/v1/app/*` exigem também a origem exata
 `https://victorduarteferreira1997.github.io`. CORS permite apenas os métodos e
-headers declarados. Não há cookies, SQL recebido do cliente, IDs de usuário
-variáveis, rotas de leitura do estado completo ou operações administrativas.
+headers declarados. Essas rotas não usam cookies ou SQL recebido do cliente,
+IDs de usuário variáveis, leitura do estado completo ou operações administrativas.
 O OpenAPI da Action não expõe rotas do proprietário. Não configurar tokens
 Firebase como autenticação da Action.
 
@@ -95,23 +110,25 @@ protection. Não registrar tokens/corpos no console ou em prints.
 5. **Conferir:** `/healthz` deve devolver `ok: true` e o nome da ponte;
    `/v1/week?weekStart=2026-10-05`, aberto sem credencial, deve devolver 401.
    Health confirma o código em execução; não confirma tabelas/login.
-6. **Prévia:** publicar esta branch e abrir `preview_ai.html`. Ela carrega a
-   mesma v1.9.61 do aplicativo e troca somente `config.v1.js` por
-   `config.preview.js`. O aplicativo oficial permanece com `enabled: false`.
-   Validar Owner/Auth/App Check reais, origem e D1 com dados fictícios.
-7. **Plugin privado:** no mesmo D1, executar [`cloudflare/oauth-schema.sql`](cloudflare/oauth-schema.sql).
-   Isso cria somente uma tabela de códigos OAuth e um índice, sem alterar dados
-   existentes. Implantar novamente o bundle Worker; preservar DB e ACTION_SECRET.
-   O servidor Streamable HTTP está em `/mcp`; a descoberta pública está em
-   `/.well-known/oauth-protected-resource/mcp` e `/.well-known/oauth-authorization-server`.
-   Empacotar [`plugin/missao-tatica`](plugin/missao-tatica) e salvar como plugin
-   privado após a implantação; instalar/conectar pela interface do host.
-   A autorização abre o domínio do Worker. Colar ali o segredo do Bitwarden,
-   confirmar os escopos e autorizar. Não enviar o segredo em chat ou ao Plugin Creator.
-8. **Teste real:** compartilhar seleção fictícia, consultar, propor, repetir,
-   cancelar revisão sem efeito, criar uma missão, recusar outra e revogar
-   contexto. Conferir cálculos, reload, sincronização e layout. Só então
-   revisar/incorporar a branch na main para disponibilizar a integração.
+6. **Aplicativo:** `app.html` usa `config.v1.js` com `enabled: true`. A prévia
+   `preview_ai.html` permanece disponível com banner de isolamento. A integração
+   só consulta a caixa ao abrir; publicar exige seleção, prévia e confirmação.
+7. **Conexão pelo navegador/celular:** abrir o Site privado acima, informar o
+   ACTION_SECRET salvo no gerenciador, salvar e testar a seleção. O Site exige
+   login do proprietário, verifica o segredo contra o Worker e guarda somente
+   sua cópia criptografada. Nunca enviar o valor em chat, arquivos ou prints.
+   A rotação no Cloudflare exige salvar o mesmo novo valor no Site.
+8. **Uso:** mencionar **Missão Tática — Conexão** no ChatGPT. Consultar a seleção
+   antes de propor; confirmar título, dia, duração, horários e subtarefas antes
+   de enviar. No app: Integração com IA → Atualizar → Revisar; criar pelo formulário.
+   Mudanças no app não republicam a seleção automaticamente. Contexto parcial,
+   válido por até 24 horas; compartilhar novamente após selecionar atualizações.
+
+O pacote em `plugin/missao-tatica` e o OAuth direto do Worker permanecem como
+implementação alternativa. Não reinstalar esse pacote como solução para celular;
+o plugin provisionado pelo Site é o caminho validado. O Site tem repositório de
+fonte próprio, com seis testes locais de criptografia, isolamento, erros e fluxo.
+Seu endpoint MCP usa os contratos versionados desta pasta e não grava Firebase.
 
 A ponte não chama APIs de modelos nem precisa de saldo de API OpenAI. O
 piloto usa o plano Free existente de Workers/D1, sem habilitar upgrade ou

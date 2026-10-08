@@ -121,13 +121,13 @@ test('UI desligada não consulta nuvem; publicação requer prévia explícita e
     b.window.selectAiMission(0,true);b.window.previewAiContext();assert.equal(b.events.length,0);await b.window.publishAiContext();
     assert.equal(b.events[0][0],'publish');assert.equal(b.events[0][1].missions.length,1);assert.doesNotMatch(JSON.stringify(b.events[0]),/PRIVATE_/);
 });
-test('prévia ativa a IA sem ativar o aplicativo oficial',async()=>{
+test('integração validada está ativa no oficial e a prévia continua isolada',async()=>{
     const [official,previewConfig,loader]=await Promise.all([
         readFile(new URL('./config.v1.js',import.meta.url),'utf8'),
         readFile(new URL('./config.preview.js',import.meta.url),'utf8'),
         readFile(new URL('../preview_ai.html',import.meta.url),'utf8')
     ]);
-    assert.match(official,/enabled:\s*false/);
+    assert.match(official,/enabled:\s*true/);
     assert.match(previewConfig,/enabled:\s*true/);
     assert.match(loader,/config\.v1\.js/);
     assert.match(loader,/config\.preview\.js/);
