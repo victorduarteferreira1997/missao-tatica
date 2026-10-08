@@ -14,8 +14,13 @@ os dados, o layout publicado, a persistência ou a sincronização da aplicaçã
 - `ACTION_SECRET` configurado no Worker; `/healthz` respondeu com sucesso e
   uma consulta sem credencial foi recusada com `401`.
 - Código da ponte, adaptador do navegador e prévia isolada preparados nesta branch.
-- **Ainda falta** publicar a prévia no GitHub Pages, testar Auth/App Check reais,
-  conectar o GPT privado e validar o fluxo completo.
+- Prévia no GitHub Pages publicada. Auth/App Check e publicação no D1 foram
+  confirmados no Worker real pelo proprietário em 07/10/2026.
+- ACTION_SECRET foi rotacionado pelo proprietário no Bitwarden (48 caracteres).
+- A conexão passa a ser um plugin privado com MCP/OAuth, pois GPTs personalizados
+  estão em descontinuação e suas Actions não migram automaticamente.
+- **Ainda falta:** aplicar oauth-schema.sql, implantar o Worker com MCP, conectar
+  o plugin privado e validar consulta, proposta e revisão no fluxo real.
 
 Não foram criados o banco Firestore adicional, Cloud Run ou Secret Manager.
 O antigo vínculo IAM do Firestore Reader foi removido. Não restaurar esse
@@ -30,8 +35,8 @@ adaptador REST e Rules anteriores permanecem preservados para consulta; seu
 2. O navegador envia apenas o contexto selecionado à ponte, usando Firebase
    ID token e App Check. A ponte verifica assinatura RS256, emissor, projeto,
    validade, UID fixo e App ID fixo. Guarda a seleção no D1.
-3. GPT Actions consultam somente o contexto publicado e criam propostas
-   pendentes, usando outro Bearer: o segredo privado `ACTION_SECRET`.
+3. O plugin consulta somente o contexto publicado e cria propostas pendentes
+   usando um token OAuth de escopo limitado, após autorização no navegador.
 4. O proprietário busca até 50 propostas pendentes e revisa no formulário
    existente. Categoria, prioridade, natureza, dificuldade, XP e HP continuam
    sob controle/cálculo do app. A ponte nunca grava uma missão no Firebase.
@@ -49,7 +54,7 @@ mas não remove o que o ChatGPT já recebeu nem propostas já existentes.
 | Identidade | Acesso |
 | --- | --- |
 | Proprietário + App Check | Publicar/remover contexto; listar propostas pendentes; alterar apenas status pendente para aceito/recusado |
-| GPT com segredo privado | Consultar uma semana publicada; criar proposta validada/idempotente |
+| Plugin com token OAuth | Consultar uma semana publicada; criar proposta validada/idempotente |
 | Worker | Binding do D1; chaves **públicas** rotativas de Auth/App Check |
 | Anônimo | Somente `/healthz`; não lê D1 |
 
@@ -94,10 +99,15 @@ protection. Não registrar tokens/corpos no console ou em prints.
    mesma v1.9.61 do aplicativo e troca somente `config.v1.js` por
    `config.preview.js`. O aplicativo oficial permanece com `enabled: false`.
    Validar Owner/Auth/App Check reais, origem e D1 com dados fictícios.
-7. **GPT Somente eu:** importar [`openapi.json`](openapi.json), que já contém
-   a URL real do Worker. Autenticação **API Key / Bearer** com `ACTION_SECRET`.
-   Copiar [`gpt-instructions.md`](gpt-instructions.md). Manter o GPT privado.
-   POST exige confirmação (`x-openai-isConsequential: true`) e revisão no app.
+7. **Plugin privado:** no mesmo D1, executar [`cloudflare/oauth-schema.sql`](cloudflare/oauth-schema.sql).
+   Isso cria somente uma tabela de códigos OAuth e um índice, sem alterar dados
+   existentes. Implantar novamente o bundle Worker; preservar DB e ACTION_SECRET.
+   O servidor Streamable HTTP está em `/mcp`; a descoberta pública está em
+   `/.well-known/oauth-protected-resource/mcp` e `/.well-known/oauth-authorization-server`.
+   Empacotar [`plugin/missao-tatica`](plugin/missao-tatica) e salvar como plugin
+   privado após a implantação; instalar/conectar pela interface do host.
+   A autorização abre o domínio do Worker. Colar ali o segredo do Bitwarden,
+   confirmar os escopos e autorizar. Não enviar o segredo em chat ou ao Plugin Creator.
 8. **Teste real:** compartilhar seleção fictícia, consultar, propor, repetir,
    cancelar revisão sem efeito, criar uma missão, recusar outra e revogar
    contexto. Conferir cálculos, reload, sincronização e layout. Só então
@@ -108,6 +118,36 @@ piloto usa o plano Free existente de Workers/D1, sem habilitar upgrade ou
 faturamento. Validar o limite de CPU de 10 ms também na execução real:
 os testes Node/SQLite não medem o runtime Cloudflare. Se exceder limites
 Free, as chamadas podem falhar; não fazer upgrade automático.
+
+## MCP e OAuth do piloto privado
+
+- Duas ferramentas: `getSharedWeek` (leitura) e `submitProposal` (proposta
+  idempotente pendente). Usam as mesmas validações, limites e operações do D1
+  das rotas REST; não expõem publicação, revogação, revisão ou Firebase.
+- Somente o CIMD fixo `https://chatgpt.com/oauth/client.json` e callback fixo
+  `https://chatgpt.com/connector_platform_oauth_redirect` são aceitos. A metadata
+  pública é conferida sem headers/credenciais, timeout de 5 s e sem redirects.
+  Este piloto não oferece clientes genéricos, DCR ou callbacks de desktop.
+- OAuth authorization code + PKCE S256, resource exato `/mcp`, consentimento
+  assinado de 10 minutos, cookie Secure/HttpOnly/SameSite=Strict e checagem de
+  Origin. Código aleatório de 256 bits, hash no D1, validade de 5 minutos,
+  consumo atômico único e limite de 128 registros ativos. Origem, escopos,
+  client_id, redirect_uri e PKCE são verificados; segredo não passa para o host.
+- Tokens HMAC usam domínio de assinatura separado do consentimento, emissor,
+  destinatário e proprietário fixos, escopos restritos e validade de 24 horas.
+  Não há refresh token; após expiração, conectar novamente. Rotacionar
+  ACTION_SECRET invalida tokens, consentimentos e códigos pendentes. Remover
+  contexto bloqueia novas leituras/propostas; não apaga dados já recebidos.
+- Segredo e tokens não entram no pacote. As rotas REST legadas continuam
+  preservadas para compatibilidade, mas não criar um GPT novo com elas.
+- Transporte MCP sem sessões/SSE, respostas JSON e notificações 202. GET
+  autenticado retorna 405. Annotations/securitySchemes não substituem
+  autorização e confirmação explícita dos campos na conversa.
+- Testes de Node/SQLite usam segredos fictícios e criptografia real. Não provam
+  instalação, OAuth da conta, metadata ChatGPT ou limites de CPU do Worker real.
+  Ainda é obrigatório testar o fluxo depois da implantação manual.
+
+Referência: [autenticação de plugins](https://developers.openai.com/plugins/build/auth).
 
 ## Limites e concorrência
 

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "missao-tatica": {
+      "type": "streamable-http",
+      "url": "https://missao-tatica-ai-bridge.victorduarteferreira1997.workers.dev/mcp"
+    }
+  }
+}

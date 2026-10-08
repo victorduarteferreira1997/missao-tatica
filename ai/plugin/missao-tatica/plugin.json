@@ -1,0 +1,15 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "missao-tatica",
+  "version": "0.1.0",
+  "description": "Planeja missões com contexto selecionado e envia propostas para revisão no aplicativo.",
+  "author": {"name": "Victor Duarte"},
+  "extensions": {"com.openai": {"interface": {
+    "displayName": "Missão Tática",
+    "shortDescription": "Planeje e revise suas missões",
+    "longDescription": "Consulta somente a seleção publicada no Missão Tática. Conversa sobre as restrições, pede confirmação dos campos e envia propostas pendentes para revisão e criação pelo proprietário no aplicativo.",
+    "developerName": "Victor Duarte",
+    "category": "Productivity",
+    "defaultPrompt": "Ajude-me a planejar uma missão usando a semana que compartilhei."
+  }}}
+}

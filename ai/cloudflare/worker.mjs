@@ -1,6 +1,7 @@
 import { ContractError,validateWeek,validateContext,validateProposal } from '../contract.v1.js';
 import { AuthError,KeyServiceError,createFirebaseVerifier } from './firebase_auth.mjs';
 import { CapacityError,createD1Store } from './d1.mjs';
+import { createPluginGateway } from './plugin.mjs';
 
 export const APP_ORIGIN = 'https://victorduarteferreira1997.github.io';
 const actionEncoder = new TextEncoder();
@@ -40,10 +41,11 @@ async function readJson(request,limit) {
     } finally { reader.releaseLock(); }
 }
 
-export function createWorker({verifyOwner=createFirebaseVerifier(),storeFactory=createD1Store,now=Date.now,requestsPerMinute=60} = {}) {
+export function createWorker({verifyOwner=createFirebaseVerifier(),storeFactory=createD1Store,now=Date.now,requestsPerMinute=60,pluginFetch=fetch} = {}) {
     let minute=-1,requests=0;
-    return {
+    const worker = {
         async fetch(request,env) {
+            const pluginResponse=await plugin(request,env);if(pluginResponse)return pluginResponse;
             const url = new URL(request.url), method=request.method;
             const appRoute = url.pathname.startsWith('/v1/app/');
             const origin = request.headers.get('Origin');
@@ -124,5 +126,7 @@ export function createWorker({verifyOwner=createFirebaseVerifier(),storeFactory=
             }
         }
     };
+    const plugin=createPluginGateway({now,fetchImpl:pluginFetch,readBody:readJson,callBridge:(request,env)=>worker.fetch(request,env)});
+    return worker;
 }
 export default createWorker();
