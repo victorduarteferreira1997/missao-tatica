@@ -150,6 +150,14 @@ em sucesso ou etapa (`fetch`, `http`, `json`, `key_set`, `key_format`, `import`,
 tokens ou credenciais, não lê D1 e não devolve corpos/chaves/mensagens externas.
 Esse health público não confirma login, assinatura de um token ou acesso ao banco.
 
+As buscas JWKS do Worker usam `redirect: 'manual'` e aceitam somente respostas
+HTTP bem-sucedidas. Isso recusa redirecionamentos sem segui-los. Não usar
+`redirect: 'error'` no Worker: workerd rejeita essa opção com TypeError antes
+da consulta, conforme o código de
+[Request no runtime](https://github.com/cloudflare/workerd/blob/main/src/workerd/api/http.c%2B%2B).
+O adaptador no navegador usa a implementação Fetch do navegador e mantém sua
+própria política de redirecionamento. Testes Node não substituem o teste real do Worker.
+
 Suite completa, incluindo assinatura RSA real e SQL real em SQLite local:
 
 ```bash

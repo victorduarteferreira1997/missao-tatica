@@ -131,7 +131,9 @@ function createFirebaseVerifier({fetchImpl = (...args) => fetch(...args), now = 
             cache.pending = (async () => {
                 let phase = 'fetch', upstreamStatus;
                 try {
-                    const response = await fetchImpl(url,{signal:AbortSignal.timeout(5000),redirect:'error'});
+                    // workerd rejects redirect:'error' at construction. Manual never follows redirects;
+                    // the response.ok check below rejects 3xx as well as other unsuccessful statuses.
+                    const response = await fetchImpl(url,{signal:AbortSignal.timeout(5000),redirect:'manual'});
                     phase = 'http'; upstreamStatus = response.status;
                     if (!response.ok) throw new KeyServiceError();
                     phase = 'json';

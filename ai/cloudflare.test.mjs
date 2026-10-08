@@ -78,6 +78,26 @@ test('rotação, expiração e falhas de JWKS fecham o acesso sem usar chaves ve
     clock+=31000;await verify(r);assert.equal(count,4);fail=true;clock+=31000;
     await assert.rejects(()=>verify(r),KeyServiceError);
 });
+test('consultas JWKS são compatíveis com workerd e recusam 3xx sem seguir Location ou acessar D1',async()=>{
+    for(const redirected of [false,true]) {
+        const calls=[];let stores=0;
+        const verify=createFirebaseVerifier({now:()=>now,fetchImpl:async(url,options)=>{
+            // Match the Request construction behavior documented in cloudflare/workerd's http.c++.
+            if(options.redirect==='error')throw new TypeError('Invalid redirect value');
+            assert.equal(options.redirect,'manual');assert.equal(options.headers,undefined);
+            calls.push(url);assert.ok([AUTH_JWKS,APP_CHECK_JWKS].includes(url));
+            return redirected?new Response(null,{status:302,headers:{Location:'https://attacker.example/keys'}}):Response.json({keys:[jwk]});
+        }});
+        const worker=createWorker({verifyOwner:verify,now:()=>now,storeFactory:()=>{stores++;return {pending:async()=>[]};}});
+        const response=await worker.fetch(new Request('https://bridge.example/v1/app/inbox',{headers:ownerHeaders}),{});
+        assert.equal(response.status,redirected?503:200);
+        assert.equal(stores,redirected?0:1);assert.equal(calls.length,2);
+        if(redirected){assert.deepEqual(await response.json(),{error:'firebase_keys_unavailable'});
+            assert.deepEqual(await verify.inspectPublicKeys(),{auth:{ok:false,phase:'http',upstreamStatus:302},appCheck:{ok:false,phase:'http',upstreamStatus:302}});
+            assert.equal(calls.length,2);
+        }
+    }
+});
 test('health de chaves usa somente endpoints fixos, cacheia resultados e nunca acessa D1 ou credenciais',async()=>{
     const v=verifier();let stores=0;
     const worker=createWorker({verifyOwner:v.verify,storeFactory:()=>{stores++;throw Error('PRIVATE_DB');}});
