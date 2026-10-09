@@ -202,3 +202,24 @@ primaryEvents[0]={id:'coaktion-meeting',summary:'Reunião · Coaktion',status:'c
 inboundState.tasks=inboundState.tasks.filter(t=>t.id!=='meeting-task');await inboundSync.refreshInbox();
 assert.equal(inboundSync.getInbox().find(e=>e.id==='coaktion-meeting').status,'pending','Limpar missões não deixa vínculo pendente impedindo nova conversão.');
 console.log('Reuniões: privacidade, identidade, remarcação entre semanas, cancelamento, restauração e histórico verificados.');
+
+ // Explicit title policy preserves context without importing other corporate fields.
+ primaryEvents=[{id:'original-title',summary:'Alinhamento de segurança',status:'confirmed',
+ extendedProperties:{private:{mtOrigin:'coaktion',mtActivityType:'meeting',mtTitlePolicy:'original'}},
+ organizer:{email:'PRIVATE_ORGANIZER'},description:'PRIVATE_DESCRIPTION',location:'PRIVATE_LOCATION',htmlLink:'PRIVATE_LINK',
+ start:{dateTime:'2026-10-07T09:00:00-03:00'},end:{dateTime:'2026-10-07T10:00:00-03:00'}}];
+ await inboundSync.refreshInbox();
+ assert.equal(inboundSync.getInbox().find(e=>e.id==='original-title').summary,'Alinhamento de segurança');
+ assert.doesNotMatch(JSON.stringify(inboundSync.getInbox().find(e=>e.id==='original-title')),/PRIVATE_/);
+ const originalTask={id:'original-task',category:'work',completed:false};
+ inboundState.tasks.push(originalTask);
+ await inboundSync.markInboxConverted('original-title','original-task');
+ assert.equal(originalTask.text,'Alinhamento de segurança');
+ assert.equal(originalTask.activityType,'meeting');
+ primaryEvents[0].summary='Revisão de segurança';
+ await inboundSync.refreshInbox();
+ assert.equal(originalTask.text,'Revisão de segurança');
+ delete primaryEvents[0].extendedProperties.private.mtTitlePolicy;
+ await inboundSync.refreshInbox();
+ assert.equal(originalTask.text,'Reunião · Coaktion','Revoking original-title policy restores generic title.');
+ console.log('Original titles: explicit opt-in, linked updates, field allowlist and revocation verified.');

@@ -156,7 +156,7 @@ function sanitizeKnownCoaktion(item, force = false) {
     for (const key of ['id', 'status', 'source', 'sourceCalendar', 'weekStart', 'eventDate', 'day', 'startTime', 'endTime', 'duration', 'allDay', 'googleUpdatedAt', 'sourceMissing', 'sourceStatus', 'linkedTaskId']) {
         if (Object.hasOwn(item, key)) safe[key] = item[key];
     }
-    return { ...safe, summary: 'Reunião · Coaktion', activityType: 'meeting', sanitizedOrigin: 'coaktion', originType: 'Coaktion', organizer: '', htmlLink: '' };
+    return { ...safe, coaktionTitlePolicy: item.coaktionTitlePolicy === 'original' ? 'original' : 'generic', summary: item.coaktionTitlePolicy === 'original' ? String(item.summary || 'Reunião · Coaktion') : 'Reunião · Coaktion', activityType: 'meeting', sanitizedOrigin: 'coaktion', originType: 'Coaktion', organizer: '', htmlLink: '' };
 }
 
 export function normalizePrimaryEvent(event, week, timeZone, allowOutsideWeek = false) {
@@ -194,7 +194,8 @@ export function normalizePrimaryEvent(event, week, timeZone, allowOutsideWeek = 
         source: 'Google Agenda',
         sourceCalendar: 'primary',
         weekStart: actualWeek,
-        summary: coaktion ? 'Reunião · Coaktion' : title,
+        summary: coaktion && properties.mtTitlePolicy !== 'original' ? 'Reunião · Coaktion' : title,
+        coaktionTitlePolicy: coaktion && properties.mtTitlePolicy === 'original' ? 'original' : 'generic',
         activityType,
         sanitizedOrigin: coaktion ? 'coaktion' : '',
         eventDate,
