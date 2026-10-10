@@ -1,6 +1,10 @@
 # Integração privada com ChatGPT — Cloudflare Workers + D1
 
-Base incorporada: app v1.9.61, incluindo reuniões e Entrada da Agenda.
+Base desta branch: app v1.9.62 em validação; publicação oficial ainda v1.9.61.
+Inclui reuniões e Entrada da Agenda. A revisão usa `ui/ai_inbox.v2.js` e
+`ui/task_forms.v3.js`: categoria obrigatória nas propostas, retorno à caixa
+após salvar/cancelar, contexto separado e concluídas ocultas por padrão.
+Não muda o contrato, o Worker, o D1, os tokens ou a sincronização da Agenda.
 A integração está **ativada** em `config.v1.js` após validação real no navegador
 e no celular. O app mantém publicação explícita de uma seleção parcial e
 revisão de propostas no formulário existente; a ativação não migra dados.

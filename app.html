@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.61-calendar-inbox">
+    <meta name="app-build" content="v1.9.62-ai-review">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -99,9 +99,9 @@
     <script type="module">
         import { createCalendarSync } from './calendar_sync.v2.js';
         import { installFormDialogs } from './ui/form_dialogs.v1.js';
-        import { installTaskForms } from './ui/task_forms.v2.js';
+        import { installTaskForms } from './ui/task_forms.v3.js';
         import { installPlanningViews } from './ui/planning_views.v3.js';
-        import { installAiInbox } from './ui/ai_inbox.v1.js';
+        import { installAiInbox } from './ui/ai_inbox.v2.js';
         import { AI_CONFIG } from './ai/config.v1.js';
         import { createAiBrowserStore } from './ai/bridge_rest.v1.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -112,7 +112,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.61';
+        const APP_VERSION = 'v1.9.62';
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
             authDomain: "missao-tatica.firebaseapp.com",
@@ -3572,7 +3572,7 @@
         };
 
         window.toggleCreateTaskModal = function() {
-            window.clearAiDraft?.();
+            window.clearAiDraft?.({ returnToInbox: uiState.showCreateTaskModal });
             uiState.showCreateTaskModal = !uiState.showCreateTaskModal;
             uiState.createTaskDraft = null;
             if (!uiState.showCreateTaskModal) uiState.calendarInboxEventId = null;

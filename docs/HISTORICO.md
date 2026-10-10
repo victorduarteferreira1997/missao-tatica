@@ -2,6 +2,16 @@
 
 [Voltar ao README](../README.md)
 
+## Revisão da IA · v1.9.62 · 2026-10-10 · em validação
+
+- Propostas pendentes no topo; seleção para compartilhar contexto separada,
+  opcional e recolhida. Concluídas ocultas por padrão, sem excluir histórico.
+- Categoria em branco apenas ao revisar propostas, exigindo escolha válida.
+- Após salvar/cancelar, retorno à caixa; falha de confirmação permite retentar
+  sem criar novamente. Respostas tardias após logout continuam bloqueadas.
+- Preservados módulos anteriores, contratos, infraestrutura e Google Agenda.
+- Testes locais simulados não substituem validação visual pelo proprietário.
+
 ## Entrada da Agenda · v1.9.61 · 2026-10-07
 
 - Google Agenda e Entrada da Agenda voltam a ficar visíveis antes da Semana Geral,

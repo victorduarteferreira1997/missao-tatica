@@ -9,7 +9,8 @@ bidirecional com o Google Agenda, recompensas configuráveis e backups JSON.
 - [Aplicação oficial](https://victorduarteferreira1997.github.io/missao-tatica/)
 - [Endereço direto](https://victorduarteferreira1997.github.io/missao-tatica/app.html)
 
-A versão atual é **v1.9.61**. A raiz, `teste_novos_modulos.html` e as prévias
+A versão desta branch é **v1.9.62**, aguardando validação visual; a aplicação
+oficial permanece na **v1.9.61** até aprovação da prévia. A raiz, `teste_novos_modulos.html` e as prévias
 estáticas v1.9.11/v1.9.13 encaminham para a aplicação oficial. Parâmetros e
 fragmentos dos favoritos são preservados.
 
@@ -59,6 +60,24 @@ consulta e recuperação. Não apague branches com commits ainda não incorporad
 O token OAuth do Google fica somente na memória do navegador. Não adicione ao
 repositório tokens, credenciais privadas, backups pessoais ou arquivos contendo
 dados reais.
+
+## Revisão de propostas da IA · v1.9.62
+
+- A janela abre nas propostas pendentes; compartilhar contexto fica em uma
+  seção opcional, recolhida por padrão. As caixas de seleção só escolhem dados
+  para compartilhar: não cadastram missões nem sincronizam automaticamente.
+- Missões concluídas ficam ocultas nessa seleção, com opção explícita de mostrá-las.
+  Nenhuma missão ou histórico é apagado. Ocultar novamente remove essas seleções.
+- Propostas abrem o formulário sem categoria pré-selecionada e exigem escolha
+  válida antes do cadastro. A criação manual e o Google Agenda não mudam.
+- Salvar ou cancelar retorna à caixa de propostas. Salvar confirma o recebimento;
+  cancelar mantém a proposta pendente. Se a confirmação falhar, a interface
+  oferece retentativa sem criar uma segunda missão.
+- Módulos novos `ui/task_forms.v3.js` e `ui/ai_inbox.v2.js` preservam os anteriores.
+
+Validação: `TZ=America/Sao_Paulo node --test *.test.mjs ai/*.test.mjs`.
+Os testes usam dados simulados. A prévia no mesmo domínio usa a conta e os
+dados reais do app: não crie duplicatas nem apague registros para testá-la.
 
 ## Entrada da Agenda · v1.9.61
 

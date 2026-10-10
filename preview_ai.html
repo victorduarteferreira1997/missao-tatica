@@ -14,7 +14,7 @@
       .then(response => { if (!response.ok) throw new Error('HTTP ' + response.status); return response.text(); })
       .then(html => {
         if ((html.split(officialConfig).length - 1) !== 1) throw new Error('Entrada da IA não encontrada na versão atual.');
-        if (!/meta name="app-build" content="v1\.9\.61-/.test(html)) throw new Error('A base da prévia não é a v1.9.61.');
+        if (!/meta name="app-build" content="v1\.9\.62-/.test(html)) throw new Error('A base da prévia não é a v1.9.62.');
         const banner = '<div role="status" style="position:sticky;top:0;z-index:100;background:#312e81;color:#e0e7ff;text-align:center;padding:7px 12px;font:700 11px system-ui;letter-spacing:.08em">PRÉVIA PRIVADA · INTEGRAÇÃO COM IA</div>';
         html = html.replace(officialConfig, previewConfig)
           .replace(/<body([^>]*)>/, '<body$1>' + banner);

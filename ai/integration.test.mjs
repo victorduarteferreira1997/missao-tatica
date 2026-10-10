@@ -7,7 +7,9 @@ import {buildContext,validateContext,validateProposal,validateWeek,AI_OWNER_UID}
 import {createActionServer} from './server/server.mjs';
 import {createFirestoreStore} from './server/firestore.mjs';
 import {createAiBrowserStore} from './firestore_rest.v1.js';
-import {installAiInbox} from '../ui/ai_inbox.v1.js';
+import {installAiInbox} from '../ui/ai_inbox.v2.js';
+import {installTaskForms} from '../ui/task_forms.v3.js';
+import {installFormDialogs} from '../ui/form_dialogs.v1.js';
 const now = Date.parse('2026-10-07T00:00:00Z');
 const state = () => ({tasks:[{id:123,text:'Revisar relatório',day:'tuesday',time:'30 min',startTime:'09:00',endTime:'09:30',completed:false,subtasks:[{text:'PRIVATE_SUBTASK'}],notes:'PRIVATE_NOTES',xp:900},
     {id:456,text:'PRIVATE_UNSELECTED',day:'wednesday',time:'60 min'}],financeData:{secret:'PRIVATE_FINANCE'},healthData:{secret:'PRIVATE_HEALTH'},coins:500,ownerUid:'PRIVATE_OWNER'});
@@ -108,9 +110,10 @@ test('navegador usa Firebase ID + App Check, não contém segredo da Action e ex
     const bad=createAiBrowserStore({getUser:()=>({uid:'other'}),getAppCheckToken:async()=>'',fetchImpl:()=>{throw Error('must not fetch');}});await assert.rejects(()=>bad.pending());
 });
 function ui({enabled=true}={}) {
-    const s=state(),events=[],fields={};let user={uid:AI_OWNER_UID},week='2026-10-05',items=[{id:hash(proposal()),status:'pending',proposal:proposal()}],failReview=false;
+    const s=state(),events=[],fields={'ct-category':{value:'work'}};let user={uid:AI_OWNER_UID},week='2026-10-05',items=[{id:hash(proposal()),status:'pending',proposal:proposal()}],failReview=false;
     const window={escapeHtml:value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),showAlertModal:m=>events.push(['alert',m]),bindFormDialog(){},__aiOpenCreate:f=>events.push(['form',f]),__aiCloseCreate:()=>events.push(['close'])};
-    const store={pending:async()=>items,publish:async c=>events.push(['publish',c]),revoke:async()=>{},review:async(id,status)=>{if(failReview)throw Error('offline');events.push(['review',id,status]);}};
+    window.getTaskCategories=()=>[{id:'work',label:'Trabalho'},{id:'life',label:'Pessoal'}];
+    const store={pending:async()=>items,publish:async c=>events.push(['publish',c]),revoke:async()=>{},review:async(id,status)=>{if(failReview)throw Error('offline');events.push(['review',id,status]);items=items.filter(item=>item.id!==id);}};
     installAiInbox(window,{document:{getElementById:id=>fields[id]},config:{enabled},getState:()=>s,getUser:()=>user,getWeek:()=>week,store,render(){},now:()=>now,newRevision:()=> 'revision-preview'});
     return {window,s,events,fields,setUser:u=>user=u,setWeek:w=>week=w,setItems:v=>items=v,setFailReview:v=>failReview=v};
 }
@@ -141,6 +144,7 @@ test('UI da IA omite agenda externa e vínculos de outra semana',async()=>{
         {id:'other-week',text:'Título de outra semana',day:'monday',time:'30 min',googleCalendarWeekStart:'2026-10-12'}
     );
     await b.window.openAiInbox();
+    b.window.toggleAiContext();
     const html=b.window.renderAiInbox();
     assert.doesNotMatch(html,/Título externo privado|Título de outra semana/);
     assert.match(html,/Revisar relatório/);
@@ -186,4 +190,89 @@ test('schema da Action exige confirmação e não aceita campos que controlem o 
     const schema=spec.paths['/v1/proposals'].post.requestBody.content['application/json'].schema;
     assert.equal(schema.additionalProperties,false);assert.deepEqual(Object.keys(schema.properties),Object.keys(proposal()));
     assert.equal(spec.paths['/v1/week'].get.operationId,'getSharedWeek');
+});
+
+test('propostas vêm primeiro; contexto inicia recolhido e concluídas só aparecem por opção',async()=>{
+    const b=ui(),before=JSON.stringify(b.s);
+    b.s.tasks[0].completed=true;
+    await b.window.openAiInbox();
+    let html=b.window.renderAiInbox();
+    assert.match(html,/Propostas pendentes · 1/);
+    assert.ok(html.indexOf('Propostas pendentes')<html.indexOf('Compartilhar missões com a IA'));
+    assert.doesNotMatch(html,/Revisar relatório|PRIVATE_UNSELECTED|type="checkbox"/);
+    b.window.toggleAiContext();html=b.window.renderAiInbox();
+    assert.doesNotMatch(html,/Revisar relatório/);assert.match(html,/Mostrar missões concluídas \(1\)/);
+    // Full candidate indices are retained even when the first mission is hidden.
+    assert.match(html,/selectAiMission\(1,this.checked\)/);
+    b.window.selectAiMission(1,true);b.window.previewAiContext();await b.window.publishAiContext();
+    assert.equal(b.events.at(-1)[1].missions[0].title,'PRIVATE_UNSELECTED');
+    b.window.setAiShowCompleted(true);html=b.window.renderAiInbox();
+    assert.match(html,/Revisar relatório/);assert.match(html,/Concluída/);
+    b.window.selectAiMission(0,true);b.window.setAiShowCompleted(false);
+    b.window.previewAiContext();await b.window.publishAiContext();
+    assert.equal(b.events.at(-1)[1].missions.length,1);
+    assert.equal(b.events.at(-1)[1].missions[0].completed,false);
+    assert.equal(JSON.stringify({...b.s,tasks:b.s.tasks.map((t,i)=>i===0?{...t,completed:false}:t)}),before);
+});
+test('uma missão concluída enquanto o contexto está aberto não é compartilhada oculta',async()=>{
+    const b=ui();await b.window.openAiInbox();b.window.toggleAiContext();b.window.selectAiMission(0,true);
+    b.s.tasks[0].completed=true;b.window.previewAiContext();await b.window.publishAiContext();
+    assert.equal(b.events.at(-1)[1].missions.length,0);
+});
+test('IA inicia sem categoria; escolha válida é obrigatória e não altera criação manual',async()=>{
+    const b=ui();installFormDialogs(b.window);
+    installTaskForms(b.window,{daysOfWeek:[{id:'wednesday',label:'Quarta'}],getState:()=>b.s,getUiState:()=>({})});
+    assert.doesNotMatch(b.window.renderCreateTaskModal(),/Selecione a categoria/);
+    await b.window.openAiInbox();await b.window.reviewAiProposal(0);
+    assert.equal(b.events.at(-1)[1]['ct-category'],'');
+    assert.match(b.window.renderCreateTaskModal(),/<select id="ct-category" required/);
+    assert.match(b.window.renderCreateTaskModal(),/<option value="" selected>Selecione a categoria/);
+    b.fields['ct-category'].value='';assert.equal(b.window.aiDraftBeforeSave(),false);
+    b.fields['ct-category'].value='deleted';assert.equal(b.window.aiDraftBeforeSave(),false);
+    b.fields['ct-category'].value='life';assert.equal(b.window.aiDraftBeforeSave(),true);
+    b.window.clearAiDraft();assert.doesNotMatch(b.window.renderCreateTaskModal(),/Selecione a categoria/);
+});
+test('salvar volta à caixa com a próxima proposta, sem criar nem publicar automaticamente',async()=>{
+    const b=ui(),p2={...proposal(),idempotencyKey:'request-002',title:'Próxima proposta'};
+    b.setItems([{id:hash(proposal()),proposal:proposal()},{id:hash(p2),proposal:p2}]);
+    await b.window.openAiInbox();await b.window.reviewAiProposal(0);
+    assert.equal(b.window.renderAiInbox(),'');
+    const id=b.window.aiDraftMetadata().aiProposalId;b.s.tasks.push({id:789,aiProposalId:id});
+    await b.window.aiDraftAfterSave();
+    assert.match(b.window.renderAiInbox(),/Propostas pendentes · 1/);
+    assert.match(b.window.renderAiInbox(),/Próxima proposta/);assert.doesNotMatch(b.window.renderAiInbox(),/Preparar report/);
+    assert.deepEqual(b.window.aiDraftMetadata(),{});
+    assert.deepEqual(b.events.map(e=>e[0]),['form','review']);
+    await b.window.reviewAiProposal(0);assert.equal(b.events.at(-1)[1]['ct-text'],'Próxima proposta');
+});
+test('cancelar pelo handler real volta à caixa e mantém a proposta pendente',async()=>{
+    const b=ui();await b.window.openAiInbox();await b.window.reviewAiProposal(0);
+    const app=await readFile(new URL('../app.html',import.meta.url),'utf8');
+    const start=app.indexOf('window.toggleCreateTaskModal = function()'),end=app.indexOf('window.openCalendarInboxItem',start);
+    const uiState={showCreateTaskModal:true,createTaskDraft:{},calendarInboxEventId:null};
+    runInNewContext(app.slice(start,end),{window:b.window,uiState,render(){},setTimeout(){}});
+    b.window.toggleCreateTaskModal();
+    assert.equal(uiState.showCreateTaskModal,false);assert.match(b.window.renderAiInbox(),/Propostas pendentes · 1/);
+    assert.deepEqual(b.events.map(e=>e[0]),['form']);assert.deepEqual(b.window.aiDraftMetadata(),{});
+});
+test('confirmação falha identifica missão já cadastrada e retenta sem duplicar ou recusar',async()=>{
+    const b=ui();await b.window.openAiInbox();await b.window.reviewAiProposal(0);
+    const id=b.window.aiDraftMetadata().aiProposalId;b.s.tasks.push({id:789,aiProposalId:id,completed:true});
+    b.setFailReview(true);await b.window.aiDraftAfterSave();
+    const html=b.window.renderAiInbox();
+    assert.match(html,/Já cadastrada no aplicativo/);assert.match(html,/Atualizar confirmação/);
+    assert.doesNotMatch(html,/onclick="window.reviewAiProposal\(0\)"|onclick="window.rejectAiProposal\(0\)"/);
+    b.setFailReview(false);const before=JSON.stringify(b.s);
+    await b.window.retryAiProposalConfirmation(0);
+    assert.equal(JSON.stringify(b.s),before);assert.match(b.window.renderAiInbox(),/Nenhuma proposta pendente/);
+    assert.deepEqual(b.events.map(e=>e[0]),['form','review']);
+});
+test('confirmação tardia após logout não reabre caixa nem contamina nova sessão',async()=>{
+    let resolve,user={uid:AI_OWNER_UID},renders=0;
+    const window={escapeHtml:String,showAlertModal(){},bindFormDialog(){},__aiOpenCreate(){},__aiCloseCreate(){}};
+    installAiInbox(window,{document:{},config:{enabled:true},getState:state,getUser:()=>user,getWeek:()=> '2026-10-05',
+        store:{pending:async()=>[{id:hash(proposal()),proposal:proposal()}],review:()=>new Promise(r=>resolve=r)},render:()=>renders++});
+    await window.openAiInbox();await window.reviewAiProposal(0);
+    const saving=window.aiDraftAfterSave();user=null;window.resetAiInbox();const before=renders;
+    resolve();await saving;assert.equal(renders,before);assert.equal(window.renderAiInbox(),'');
 });
