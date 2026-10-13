@@ -2,6 +2,17 @@
 
 [Voltar ao README](../README.md)
 
+## IA 2.0 — instalação e ativação do painel de consentimento · 2026-10-13
+
+- Criação da tabela aditiva confirmada pelo Console D1. Worker publicado com
+  a fundação v2; variável ativa e binding de produção confirmados no painel.
+- Healthcheck público retornou `foundationVersion:1, enabled:true`.
+- Flag do frontend habilitada para abrir o painel e revisar o compartilhamento;
+  módulos e inclusão de registros futuros continuam exigindo consentimento no app.
+- Wrangler registra a variável ativa para preservar a configuração em deploys futuros.
+- Autorização, sincronização e revogação reais no app ainda aguardam verificação.
+  Ferramentas MCP v2 e criação de planos de estudos continuam para a próxima entrega.
+
 ## IA 2.0 — fundação 1A preparada · 2026-10-13
 
 - Consentimento de 30 dias, missões/RADAR/estudos por módulo, prévia e novos

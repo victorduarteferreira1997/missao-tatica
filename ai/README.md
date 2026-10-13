@@ -30,14 +30,20 @@ exigem contexto publicado e válido; propostas já recebidas podem ser revisadas
 sem selecionar contexto novamente. Esta mudança não ativa os módulos isolados
 `ai_inbox.v2.js`/`task_forms.v3.js` nem a arquitetura IA 2.0.
 
-## Fundação IA v2 — entrega 1A preparada, ainda desligada
+## Fundação IA v2 — entrega 1A habilitada para consentimento
 
 Contrato: [`docs/CONTRATO_IA_V2_PROPOSTA.md`](../docs/CONTRATO_IA_V2_PROPOSTA.md).
 Inclui missões de todas as categorias, RADAR e estudos do módulo Inteligência.
 `ui/ai_access.v2.js` oferece módulos desmarcados, prévia, confirmação por 30 dias,
 registros futuros opt-in, sincronização e revogação. A flag pública
-`ai/config.v2.js` continua `enabled:false`; não existe transmissão v2 antes da
-ativação e da confirmação explícita no app.
+`ai/config.v2.js` está `enabled:true` após instalar a tabela aditiva e publicar
+o Worker. Não existe transmissão de dados v2 antes da confirmação explícita
+no app. A variável `AI_V2_ENABLED=true` também está registrada no Wrangler.
+
+Em 13/10/2026, o Console D1 confirmou a criação de `ai_v2_access`, o painel
+confirmou `DB → missao-tatica-ai` e o healthcheck público retornou
+`foundationVersion:1, enabled:true`. O teste real de autorização, sincronização
+e revogação na conta do proprietário continua pendente; o healthcheck não o substitui.
 
 A fundação expõe somente `/v2/app/grant` (GET/PUT/DELETE) e `/v2/app/snapshot`
 (PUT), com proprietário + Auth + App Check e versões esperadas. Não expõe novas
