@@ -13,6 +13,11 @@ As caixas de cada missão selecionam dados para compartilhar; não concluem
 atividades nem criam novos registros. O filtro “Mostrar missões concluídas”
 altera somente a visualização.
 
+Depois de cadastrar uma proposta no formulário, a integração volta automaticamente
+à mesma lista, preservando a seleção e os filtros de contexto. A proposta sai da
+lista quando a confirmação de revisão termina. Se essa confirmação falhar, a
+janela continua aberta com um aviso e o ID da missão impede um segundo cadastro.
+
 Missões sem semana registrada ficam em um grupo separado, também oculto por
 padrão. O quadro antigo não tem data/semana por missão; IDs e datas de criação
 não são usados para inventar esse vínculo. Se houver `planningWeekStart` ou

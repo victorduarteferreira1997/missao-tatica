@@ -108,9 +108,19 @@ export function installAiInbox(window,{document,config,getState,getUser,getWeek,
     window.aiDraftAfterSave = async function() {
         const item = draft; draft = null;
         if (!item) return;
-        const current = generation;
-        try { await store.review(item.id,'accepted'); if (current === generation) inbox = inbox.filter(i => i.id !== item.id); }
-        catch { if (current === generation) window.showAlertModal('A missão foi salva no app. A revisão na caixa de entrada falhou; atualizar não criará uma segunda missão.'); }
+        // Return to the same inbox after the create form closes, without resetting context.
+        open = true;
+        await action(async current => {
+            try {
+                await store.review(item.id,'accepted');
+                if (current === generation) {
+                    inbox = inbox.filter(i => i.id !== item.id);
+                    message = inbox.length ? 'Missão cadastrada. Você pode revisar a próxima proposta.' : 'Missão cadastrada. Nenhuma proposta pendente.';
+                }
+            } catch {
+                if (current === generation) message = 'A missão foi cadastrada no app, mas a atualização da caixa de entrada falhou. Atualize a lista; essa proposta não criará uma segunda missão.';
+            }
+        });
     };
     window.renderAiInboxButton = function() {
         return enabled() ? '<button type="button" onclick="window.openAiInbox()" class="text-xs text-slate-500 hover:text-indigo-300 font-bold uppercase tracking-widest transition-colors font-mono flex items-center gap-1">Integração com IA</button>' : '';

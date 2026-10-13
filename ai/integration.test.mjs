@@ -208,6 +208,44 @@ test('revisão evita duplicação local, bloqueia recorrência e semana/sessão 
     assert.equal(b.events.filter(e=>e[0]==='form').length,1);assert.equal(b.s.tasks.length,3);
     b.setUser(null);b.window.resetAiInbox();assert.equal(b.window.renderAiInbox(),'');assert.deepEqual(b.window.aiDraftMetadata(),{});
 });
+test('cadastro retorna à mesma caixa de entrada e permite revisar a próxima proposta',async()=>{
+    const b=ui(),second={...proposal(),idempotencyKey:'next-proposal',title:'Segunda proposta'};
+    b.setItems([{id:hash(proposal()),proposal:proposal()},{id:hash(second),proposal:second}]);
+    await b.window.openAiInbox();b.window.toggleAiContext();b.window.selectAiMission(0,true);
+    await b.window.reviewAiProposal(0);assert.equal(b.window.renderAiInbox(),'');
+    b.s.tasks.push({id:'saved',aiProposalId:hash(proposal())});
+    await b.window.aiDraftAfterSave();
+    const html=b.window.renderAiInbox();
+    assert.match(html,/Propostas para cadastrar · 1/);assert.match(html,/Segunda proposta/);
+    assert.match(html,/Você pode revisar a próxima proposta/);assert.match(html,/aria-expanded="true"/);
+    assert.match(html,/type="checkbox"[^>]* checked/);assert.deepEqual(b.window.aiDraftMetadata(),{});
+    b.setItems([{id:hash(second),proposal:second}]);await b.window.reviewAiProposal(0);
+    assert.equal(b.events.filter(e=>e[0]==='form').length,2);
+    b.s.tasks.push({id:'saved-next',aiProposalId:hash(second)});await b.window.aiDraftAfterSave();
+    assert.match(b.window.renderAiInbox(),/Propostas para cadastrar · 0/);
+    assert.match(b.window.renderAiInbox(),/Nenhuma proposta pendente/);
+    b.window.closeAiInbox();await b.window.aiDraftAfterSave();assert.equal(b.window.renderAiInbox(),'');
+});
+test('falha ao confirmar revisão mantém integração aberta e bloqueia um segundo cadastro',async()=>{
+    const b=ui();await b.window.openAiInbox();await b.window.reviewAiProposal(0);
+    b.s.tasks.push({id:'saved',aiProposalId:hash(proposal())});b.setFailReview(true);
+    await b.window.aiDraftAfterSave();
+    assert.match(b.window.renderAiInbox(),/atualização da caixa de entrada falhou/);
+    assert.match(b.window.renderAiInbox(),/Já incorporada/);
+    await b.window.reviewAiProposal(0);assert.equal(b.events.filter(e=>e[0]==='form').length,1);
+});
+test('confirmação atrasada não reabre integração fechada nem restaura outra sessão',async()=>{
+    let resolve;
+    const window={escapeHtml:String,showAlertModal(){},bindFormDialog(){},__aiOpenCreate(){}};
+    const store={pending:async()=>[{id:hash(proposal()),proposal:proposal()}],review:()=>new Promise(r=>resolve=r)};
+    installAiInbox(window,{document:{},config:{enabled:true},getState:state,getUser:()=>({uid:AI_OWNER_UID}),getWeek:()=> '2026-10-05',store,render(){}});
+    await window.openAiInbox();await window.reviewAiProposal(0);const saving=window.aiDraftAfterSave();
+    assert.match(window.renderAiInbox(),/Aguarde/);
+    window.closeAiInbox();resolve();await saving;assert.equal(window.renderAiInbox(),'');
+    await window.openAiInbox();await window.reviewAiProposal(0);const staleSave=window.aiDraftAfterSave();
+    window.resetAiInbox();resolve();await staleSave;
+    assert.equal(window.renderAiInbox(),'');assert.deepEqual(window.aiDraftMetadata(),{});
+});
 test('resposta tardia de outra sessão é descartada e HTML da IA é escapado',async()=>{
     const b=ui();b.setItems([{id:hash(proposal()),proposal:{...proposal(),title:'<img src=x onerror=evil()>',subtasks:['<script>evil()</script>']}}]);await b.window.openAiInbox();
     const html=b.window.renderAiInbox();assert.doesNotMatch(html,/<img|<script>/);assert.match(html,/&lt;img/);
@@ -227,6 +265,7 @@ test('o formulário existente calcula a missão e só após salvar marca a propo
     const created=b.s.tasks.at(-1);assert.equal(created.text,'Título revisado');assert.equal(created.xp,82);assert.equal(created.energyCost,6);assert.equal(created.aiProposalId,hash(proposal()));assert.equal(created.completed,false);
     assert.equal(b.s.xp,200);assert.equal(b.s.energy,80);assert.equal(JSON.stringify(b.s.financeData),existing);
     assert.deepEqual(b.events.filter(e=>['save','review'].includes(e[0])).map(e=>e[0]),['save','review']);
+    assert.match(b.window.renderAiInbox(),/Propostas para cadastrar · 0/);
 });
 test('schema da Action exige confirmação e não aceita campos que controlem o estado principal',async()=>{
     const spec=JSON.parse(await readFile(new URL('./openapi.json',import.meta.url),'utf8'));

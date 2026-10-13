@@ -2,6 +2,17 @@
 
 [Voltar ao README](../README.md)
 
+## Retorno à integração após cadastrar proposta IA · 2026-10-13
+
+- Cadastrar uma proposta retorna automaticamente à caixa de entrada, permitindo
+  revisar a próxima sem procurar o botão no rodapé.
+- A lista remove a proposta após confirmar a revisão e mantém filtros e seleção
+  de contexto. Ao terminar, permanece aberta com a indicação de nenhuma pendência.
+- Falhas de confirmação aparecem na própria integração; o vínculo já gravado
+  na missão continua impedindo cadastro duplicado.
+- Testes cobrem cadastros consecutivos, lista vazia, erro, fechamento manual,
+  troca de sessão e o formulário real. Persistência e contratos continuam v1.
+
 ## Caixa de entrada IA com propostas primeiro · 2026-10-13
 
 - `ui/ai_inbox.v3.js` coloca propostas para cadastro no topo e recolhe a seleção
