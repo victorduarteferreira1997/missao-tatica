@@ -2,6 +2,20 @@
 
 [Voltar ao README](../README.md)
 
+## IA 2.0 — consultas de missões, RADAR e estudos preparadas · 2026-10-13
+
+- Quatro ferramentas de consulta da projeção autorizada: resumo, missões, RADAR
+  e estudos. Dados atuais/antigos/ausentes ficam identificados; disponibilidade
+  permanece não verificada. Nenhuma consulta cria ou modifica registros.
+- Listas paginadas com filtros explícitos e cursores assinados por grant/projeção.
+- Tokens de leitura vinculados à autorização ativa, verificada antes de devolver
+  dados. Revogação, expiração, substituição e alterações concorrentes são recusadas.
+- Conexão no Site preserva credenciais criptografadas anteriores e exige ativação
+  explícita das novas consultas. Não atualiza o grant salvo silenciosamente.
+- OAuth direto ganha scope de leitura separado; tokens v1 não ampliam acesso.
+- Testes do Worker e Site, bundle reproduzível e instruções do plugin atualizados.
+  Instalação do Worker, ativação da nova flag e consultas reais ainda pendentes.
+
 ## IA 2.0 — instalação e ativação do painel de consentimento · 2026-10-13
 
 - Criação da tabela aditiva confirmada pelo Console D1. Worker publicado com

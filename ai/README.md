@@ -83,6 +83,44 @@ confiança, logs de erros, finanças, saúde e credenciais não são compartilha
 Não há custo/upgrade habilitado por esta entrega. Workers Logs continua um ponto
 operacional a revisar no painel; a fundação não registra payloads ou tokens.
 
+## Consultas IA v2 — entrega 1B de leitura preparada
+
+Ferramentas novas: `getPlanningOverview`, `listMissions`, `listRadarDemands` e
+`listStudies`. Lêem somente a cópia aprovada no app. Respostas informam grant,
+versão da projeção, `coverage`, `sourceSavedAt`, `syncedAt`, `freshUntil` e
+`freshness` (`fresh`, `stale`, `unavailable`). Não inferem disponibilidade nem
+semana para missões antigas. Cópia ausente retorna contagens desconhecidas,
+sem fingir planejamento vazio. Listas: 25 registros por padrão, máximo 50,
+filtros por allowlist e cursor assinado vinculado à consulta, grant e projeção.
+
+O Site privado mantém a identidade/credencial existente e requer clicar em
+**Ativar consultas autorizadas**. Guarda grant ID/versão junto à credencial
+criptografada, sem copiar as missões nem persistir tokens de leitura. Renova
+tokens de cinco minutos para aquele mesmo grant; trocar ou revogar o grant
+obriga reativação explícita. Respostas são validadas pela allowlist antes de
+chegar ao ChatGPT. Credenciais antigas continuam legíveis; não há migração D1
+adicional no Site nem no Worker nesta entrega.
+
+OAuth direto também mantém o caminho v1. Novo scope `planning:read` exige
+consentimento vinculado ao grant, token de até uma hora e checagem do grant
+em cada consulta. Tokens antigos não recebem o novo acesso automaticamente.
+
+Instalação no Worker (ainda pendente de conferência real):
+
+1. Substituir o código no editor pelo novo `cloudflare/worker-dashboard.js`.
+2. Publicar e adicionar variável de texto `AI_V2_READ_ENABLED=true`, preservando
+   `AI_V2_ENABLED=true`, binding `DB` e segredo existente.
+3. Conferir `/healthz?check=reads`: `readsVersion:1, enabled:true`.
+4. Abrir o Site privado, ativar consultas e verificar resumo/listas no plugin.
+   O healthcheck confirma somente código/flag, não uma consulta real autorizada.
+
+O Wrangler mantém a nova flag desligada até essa conferência. O bundle foi
+regenerado; testes cobrem SQLite, OAuth, tokens, módulos, dados antigos/ausentes,
+paginação, mudanças concorrentes, revogação e DTOs contaminados. A conexão Site
+tem testes próprios, compilação e validação do artefato; visualização no
+navegador/celular e consultas reais aguardam instalação. Propostas v2, aplicação
+definitiva e criação/edição de planos de estudos continuam para próximas entregas.
+
 ## Estado da integração
 
 - Firebase voltou ao plano Spark, com o banco original `(default)`.

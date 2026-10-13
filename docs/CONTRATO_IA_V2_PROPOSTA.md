@@ -1,7 +1,8 @@
 # Missão Tática — contrato mínimo da IA 2.0
 
 Contrato aprovado com ampliação de escopo em 13/10/2026, America/Sao_Paulo.
-Fundação implementada com ativação desligada; rotas de consulta/propostas ainda pendentes.
+Fundação instalada e validada; consultas implementadas, aguardando instalação
+do novo Worker. Propostas v2 ainda pendentes.
 Base oficial conferida: `b747ff73aa911ebc579f77409b8be9ef82faad12`.
 
 ## 1. Primeira entrega e resultado esperado
@@ -211,3 +212,27 @@ Verificação automatizada: SQLite real, versões/revogação/expiração, valid
 RSA reutilizada, omissões, consentimento, UTF-8, sessões, falhas de persistência,
 montagem da aplicação, v1 preservada e igualdade do bundle gerado. Validação
 visual e salvamento real nas contas ficam pendentes até a instalação.
+
+## 12. Atualização operacional e consultas 1B em 13/10/2026
+
+Fundação 1A instalada, frontend habilitado e fluxo real de autorização,
+sincronização, revogação e nova autorização confirmado por capturas no app.
+O escritor já retorna o resultado booleano descrito na seção 5.
+
+Parte de leitura implementada: getPlanningOverview, listMissions,
+listRadarDemands e listStudies. Scope `planning:read` vincula a conexão ao grant
+ID/versão; módulos continuam limitados pelas escolhas do app. Resumo/listas
+carregam timestamps e cobertura. Cópia ausente é `unavailable`, com contagens
+desconhecidas; antiga é `stale`, sem prometer disponibilidade. Cursores assinados
+expiram em até dez minutos e dependem do filtro, grant e projectionVersion.
+
+Site usa tokens de leitura de cinco minutos, renovados para o mesmo grant salvo
+criptografado com a credencial existente. Ativar uma autorização substituta exige
+ação explícita na página privada. OAuth direto exige novo consentimento para o
+scope e usa token de até uma hora. Ambas as formas verificam o grant no servidor
+a cada leitura; não basta um token ainda não vencido se o grant foi revogado.
+
+Nova flag `AI_V2_READ_ENABLED` separa a instalação das consultas da fundação.
+Nenhuma migração D1 adicional é necessária nesta parte. Leitura real no host
+aguarda publicação do novo Worker e ativação da conexão Site. Ferramentas de
+propostas independentes e aplicação definitiva v2 ainda não estão implementadas.

@@ -1,10 +1,11 @@
 // Private, single-owner OAuth + stateless MCP transport. No secret in the plugin package.
 import { DAYS,ContractError } from '../contract.v1.js';
+import {PLANNING_SCOPE,PLANNING_TOOLS,PlanningError} from './planning.v2.mjs';
 export const BRIDGE_BASE='https://missao-tatica-ai-bridge.victorduarteferreira1997.workers.dev';
 export const MCP_RESOURCE=BRIDGE_BASE+'/mcp';
 const CHATGPT_CLIENT='https://chatgpt.com/oauth/client.json';
 const CHATGPT_CALLBACK='https://chatgpt.com/connector_platform_oauth_redirect';
-const PLUGIN_SCOPES=['context:read','proposals:write'];
+const PLUGIN_SCOPES=['context:read','proposals:write',PLANNING_SCOPE];
 const PROTOCOLS=['2025-11-25','2025-06-18','2025-03-26'];
 const pluginEncoder=new TextEncoder();
 const clockSchema={type:'string',pattern:'^$|^([01][0-9]|2[0-3]):[0-5][0-9]$'};
@@ -46,7 +47,7 @@ function pluginParams(params,allowed,required){
 }
 function pluginHtml(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
-export function createPluginGateway({now=Date.now,fetchImpl=fetch,readBody,callBridge}) {
+export function createPluginGateway({now=Date.now,fetchImpl=fetch,readBody,callBridge,planning}) {
     let clientUntil=0,clientAttempt=-Infinity,clientPending=null,keySecret='',keyPromise=null,rateMinute=-1;
     const rates=new Map();
     async function signingKey(secret){
@@ -114,24 +115,29 @@ export function createPluginGateway({now=Date.now,fetchImpl=fetch,readBody,callB
         const url=new URL(request.url),path=url.pathname,method=request.method;
         if(!['/mcp','/oauth/authorize','/oauth/token','/.well-known/oauth-protected-resource','/.well-known/oauth-protected-resource/mcp','/.well-known/oauth-authorization-server'].includes(path))return null;
         try{
+            const readsEnabled=env.AI_V2_ENABLED==='true'&&env.AI_V2_READ_ENABLED==='true';
+            const scopes=readsEnabled?PLUGIN_SCOPES:PLUGIN_SCOPES.filter(s=>s!==PLANNING_SCOPE);
+            const tools=readsEnabled?[...PLUGIN_TOOLS,...PLANNING_TOOLS]:PLUGIN_TOOLS;
             if(url.origin!==BRIDGE_BASE||url.username||url.password)pluginFail(400,'invalid_request');
             const origin=request.headers.get('Origin');
             if(origin&&!['https://chatgpt.com',BRIDGE_BASE].includes(origin))pluginFail(403,'origin_not_allowed');
             rate(request,path+(path==='/oauth/authorize'?':'+method:''));
             if(method==='GET'&&!url.search&&path.startsWith('/.well-known/')){
-                if(path.startsWith('/.well-known/oauth-protected-resource'))return json(200,{resource:MCP_RESOURCE,authorization_servers:[BRIDGE_BASE],scopes_supported:PLUGIN_SCOPES,bearer_methods_supported:['header'],resource_name:'Missão Tática'});
+                if(path.startsWith('/.well-known/oauth-protected-resource'))return json(200,{resource:MCP_RESOURCE,authorization_servers:[BRIDGE_BASE],scopes_supported:scopes,bearer_methods_supported:['header'],resource_name:'Missão Tática'});
                 return json(200,{issuer:BRIDGE_BASE,authorization_endpoint:BRIDGE_BASE+'/oauth/authorize',token_endpoint:BRIDGE_BASE+'/oauth/token',
                     authorization_response_iss_parameter_supported:true,client_id_metadata_document_supported:true,response_types_supported:['code'],grant_types_supported:['authorization_code'],
-                    token_endpoint_auth_methods_supported:['none'],code_challenge_methods_supported:['S256'],scopes_supported:PLUGIN_SCOPES});
+                    token_endpoint_auth_methods_supported:['none'],code_challenge_methods_supported:['S256'],scopes_supported:scopes});
             }
             if(path==='/oauth/authorize'&&method==='GET'){
                 const q=url.searchParams;
                 pluginParams(q,['response_type','client_id','redirect_uri','resource','scope','state','code_challenge','code_challenge_method'],['response_type','client_id','redirect_uri','resource','state','code_challenge','code_challenge_method']);
                 if(q.get('response_type')!=='code'||q.get('client_id')!==CHATGPT_CLIENT||q.get('redirect_uri')!==CHATGPT_CALLBACK||q.get('resource')!==MCP_RESOURCE||q.get('code_challenge_method')!=='S256'||!/^[A-Za-z0-9_-]{43}$/.test(q.get('code_challenge'))||!q.get('state')||q.get('state').length>1024)pluginFail(400,'invalid_request');
-                const scope=pluginScopes(q.get('scope')||PLUGIN_SCOPES.join(' '));
+                const scope=pluginScopes(q.get('scope')||scopes.join(' '));
+                if(scope.split(' ').some(s=>!scopes.includes(s)))pluginFail(400,'invalid_scope');
                 await verifyClient();const nonce=pluginRandom(),iat=Math.floor(now()/1000);
-                const ticket=await seal('consent',{...Object.fromEntries(q),scope,nonce,iat,exp:iat+600},env.ACTION_SECRET);
-                const html=`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Conectar Missão Tática</title><body><main><h1>Conectar Missão Tática ao ChatGPT</h1><p>Permissões solicitadas: ${pluginHtml(q.get('scope')||PLUGIN_SCOPES.join(' '))}.</p><p>O ChatGPT poderá consultar a seleção publicada e, quando autorizado, enviar propostas para revisão. As missões serão criadas por você no aplicativo.</p><form method="post" action="/oauth/authorize"><input type="hidden" name="ticket" value="${pluginHtml(ticket)}"><label>Segredo da integração <input type="password" name="secret" required minlength="32" maxlength="256" autocomplete="current-password"></label><p>Use o ACTION_SECRET guardado no Bitwarden. Ele será verificado neste Worker e não será enviado ao ChatGPT.</p><button name="decision" value="allow">Autorizar conexão</button><button name="decision" value="deny" formnovalidate>Cancelar</button></form></main></body></html>`;
+                const binding=scope.split(' ').includes(PLANNING_SCOPE)?await planning.oauthGrant(env):{};
+                const ticket=await seal('consent',{...Object.fromEntries(q),...binding,scope,nonce,iat,exp:iat+600},env.ACTION_SECRET);
+                const html=`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Conectar Missão Tática</title><body><main><h1>Conectar Missão Tática ao ChatGPT</h1><p>Permissões solicitadas: ${pluginHtml(scope)}.</p><p>O ChatGPT poderá consultar a seleção publicada e, com planning:read, os módulos autorizados por 30 dias no aplicativo. Essa conexão fica vinculada à autorização atual; revogar ou substituir a autorização bloqueia novas consultas. Quando autorizado, poderá enviar propostas v1 para revisão. As missões serão criadas por você no aplicativo.</p><form method="post" action="/oauth/authorize"><input type="hidden" name="ticket" value="${pluginHtml(ticket)}"><label>Segredo da integração <input type="password" name="secret" required minlength="32" maxlength="256" autocomplete="current-password"></label><p>Use o ACTION_SECRET guardado no Bitwarden. Ele será verificado neste Worker e não será enviado ao ChatGPT.</p><button name="decision" value="allow">Autorizar conexão</button><button name="decision" value="deny" formnovalidate>Cancelar</button></form></main></body></html>`;
                 return new Response(html,{headers:{...headers,'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':"default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",'Set-Cookie':`mt_oauth=${nonce}; Secure; HttpOnly; SameSite=Strict; Path=/oauth/authorize; Max-Age=600`}});
             }
             if(path==='/oauth/authorize'&&method==='POST'&&!url.search){
@@ -144,6 +150,7 @@ export function createPluginGateway({now=Date.now,fetchImpl=fetch,readBody,callB
                 if(f.get('decision')==='deny')redirect.searchParams.set('error','access_denied');
                 else{
                     if(f.get('decision')!=='allow'||!await pluginEqual(f.get('secret')||'',env.ACTION_SECRET))pluginFail(401,'invalid_credentials');
+                    if(p.scope.split(' ').includes(PLANNING_SCOPE)){const g=await planning.oauthGrant(env);if(g.grantId!==p.grantId||g.grantVersion!==p.grantVersion)pluginFail(401,'grant_changed');}
                     const code=pluginRandom(),hash=await pluginHash(code),expiry=now()+300000;
                     await env.DB.prepare('DELETE FROM ai_oauth_codes WHERE expires_at <= ?').bind(now()).run();
                     const row=await env.DB.prepare('INSERT INTO ai_oauth_codes (code_hash,payload,expires_at) SELECT ?,?,? WHERE (SELECT COUNT(*) FROM ai_oauth_codes)<128 RETURNING code_hash').bind(hash,f.get('ticket'),expiry).first();
@@ -160,12 +167,14 @@ export function createPluginGateway({now=Date.now,fetchImpl=fetch,readBody,callB
                 if(!row)pluginFail(400,'invalid_grant');let p;
                 try{p=await unseal('consent',row.payload,env.ACTION_SECRET);}catch(e){if(e instanceof PluginError&&e.status===503)throw e;pluginFail(400,'invalid_grant');}
                 if(p.resource!==MCP_RESOURCE||p.client_id!==f.get('client_id')||p.redirect_uri!==f.get('redirect_uri')||p.code_challenge!==await pluginHash(f.get('code_verifier')))pluginFail(400,'invalid_grant');
+                if(p.scope.split(' ').includes(PLANNING_SCOPE)){const g=await planning.oauthGrant(env);if(g.grantId!==p.grantId||g.grantVersion!==p.grantVersion)pluginFail(400,'invalid_grant');}
                 // The original signed consent binds unused codes to the signing secret.
                 const used=await env.DB.prepare('DELETE FROM ai_oauth_codes WHERE code_hash=? AND expires_at>? RETURNING code_hash').bind(hash,now()).first();
                 if(!used)pluginFail(400,'invalid_grant');
                 const iat=Math.floor(now()/1000),scope=pluginScopes(p.scope);
-                const access_token=await seal('access',{iss:BRIDGE_BASE,aud:MCP_RESOURCE,sub:'owner',client_id:CHATGPT_CLIENT,scope,iat,exp:iat+86400},env.ACTION_SECRET);
-                return json(200,{access_token,token_type:'Bearer',expires_in:86400,scope});
+                const expires=scope.split(' ').includes(PLANNING_SCOPE)?3600:86400;
+                const access_token=await seal('access',{iss:BRIDGE_BASE,aud:MCP_RESOURCE,sub:'owner',client_id:CHATGPT_CLIENT,scope,...(scope.split(' ').includes(PLANNING_SCOPE)?{grantId:p.grantId,grantVersion:p.grantVersion}:{}),iat,exp:iat+expires},env.ACTION_SECRET);
+                return json(200,{access_token,token_type:'Bearer',expires_in:expires,scope});
             }
             if(path!=='/mcp'||url.search)pluginFail(404,'not_found');
             const owner=await access(request,env.ACTION_SECRET);
@@ -186,20 +195,24 @@ export function createPluginGateway({now=Date.now,fetchImpl=fetch,readBody,callB
             const result=value=>json(200,{jsonrpc:'2.0',id,result:value});
             if(rpc.method==='initialize')return result({protocolVersion:PROTOCOLS.includes(rpc.params?.protocolVersion)?rpc.params.protocolVersion:PROTOCOLS[0],capabilities:{tools:{listChanged:false}},serverInfo:{name:'missao-tatica',version:'1.0.0'},instructions:'Contexto parcial. Confirmar os campos antes de enviar proposta; criar a missão somente no aplicativo.'});
             if(rpc.method==='ping')return result({});
-            if(rpc.method==='tools/list')return result({tools:PLUGIN_TOOLS.map(t=>({...t,_meta:{securitySchemes:t.securitySchemes}}))});
+            if(rpc.method==='tools/list')return result({tools:tools.map(t=>({...t,_meta:{securitySchemes:t.securitySchemes}}))});
             if(rpc.method!=='tools/call')return rpcError(-32601,'Method not found');
             const params=rpc.params;
             if(!params||typeof params!=='object'||Array.isArray(params)||Object.keys(params).some(k=>!['name','arguments','_meta'].includes(k)))return rpcError(-32602,'Invalid params');
-            const tool=PLUGIN_TOOLS.find(t=>t.name===params.name);if(!tool)return rpcError(-32602,'Unknown tool');
+            const tool=tools.find(t=>t.name===params.name);if(!tool)return rpcError(-32602,'Unknown tool');
             if(!tool.securitySchemes[0].scopes.every(s=>owner.scope.split(' ').includes(s)))return json(403,{error:'insufficient_scope'},authChallenge());
             const args=params.arguments;
             if(!args||typeof args!=='object'||Array.isArray(args)||tool.inputSchema.required.some(k=>!Object.hasOwn(args,k))||Object.keys(args).some(k=>!Object.hasOwn(tool.inputSchema.properties,k)))return rpcError(-32602,'Invalid arguments');
+            if(PLANNING_TOOLS.some(t=>t.name===params.name)){
+                try{const data=await planning.read(params.name,args,owner,env);return result({content:[{type:'text',text:JSON.stringify(data)}],structuredContent:data});}
+                catch(e){if(e instanceof PlanningError&&e.status===400)return rpcError(-32602,'Invalid arguments');if(e instanceof PlanningError&&[401,403].includes(e.status))throw e;return result({isError:true,content:[{type:'text',text:JSON.stringify({error:e instanceof PlanningError?e.code:'invalid_shared_data'})}]});}
+            }
             const read=params.name==='getSharedWeek';
             const internal=new Request(BRIDGE_BASE+(read?'/v1/week?weekStart='+encodeURIComponent(args.weekStart):'/v1/proposals'),{method:read?'GET':'POST',headers:{Authorization:'Bearer '+env.ACTION_SECRET,'Content-Type':'application/json'},...(!read?{body:JSON.stringify(args)}:{})});
             const response=await callBridge(internal,env),data=await response.json();
             return result({content:[{type:'text',text:JSON.stringify(data)}],...(response.ok?{structuredContent:data}:{isError:true})});
         }catch(e){
-            const status=e instanceof PluginError?e.status:e instanceof ContractError?400:503,code=e instanceof PluginError?e.code:e instanceof ContractError?'invalid_request':'service_unavailable';
+            const status=e instanceof PluginError||e instanceof PlanningError?e.status:e instanceof ContractError?400:503,code=e instanceof PluginError||e instanceof PlanningError?e.code:e instanceof ContractError?'invalid_request':'service_unavailable';
             return json(status,{error:code},status===401?authChallenge():status===429?{'Retry-After':'60'}:{});
         }
     };
