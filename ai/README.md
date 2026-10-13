@@ -83,7 +83,7 @@ confiança, logs de erros, finanças, saúde e credenciais não são compartilha
 Não há custo/upgrade habilitado por esta entrega. Workers Logs continua um ponto
 operacional a revisar no painel; a fundação não registra payloads ou tokens.
 
-## Consultas IA v2 — entrega 1B de leitura preparada
+## Consultas IA v2 — entrega 1B de leitura instalada e validada
 
 Ferramentas novas: `getPlanningOverview`, `listMissions`, `listRadarDemands` e
 `listStudies`. Lêem somente a cópia aprovada no app. Respostas informam grant,
@@ -105,7 +105,7 @@ OAuth direto também mantém o caminho v1. Novo scope `planning:read` exige
 consentimento vinculado ao grant, token de até uma hora e checagem do grant
 em cada consulta. Tokens antigos não recebem o novo acesso automaticamente.
 
-Instalação no Worker (ainda pendente de conferência real):
+Instalação no Worker (concluída em 13/10/2026):
 
 1. Substituir o código no editor pelo novo `cloudflare/worker-dashboard.js`.
 2. Publicar e adicionar variável de texto `AI_V2_READ_ENABLED=true`, preservando
@@ -114,11 +114,16 @@ Instalação no Worker (ainda pendente de conferência real):
 4. Abrir o Site privado, ativar consultas e verificar resumo/listas no plugin.
    O healthcheck confirma somente código/flag, não uma consulta real autorizada.
 
-O Wrangler mantém a nova flag desligada até essa conferência. O bundle foi
+O Wrangler registra a nova flag ativa após essa conferência. O bundle foi
 regenerado; testes cobrem SQLite, OAuth, tokens, módulos, dados antigos/ausentes,
 paginação, mudanças concorrentes, revogação e DTOs contaminados. A conexão Site
-tem testes próprios, compilação e validação do artefato; visualização no
-navegador/celular e consultas reais aguardam instalação. Propostas v2, aplicação
+tem testes próprios, compilação e validação do artefato. Capturas confirmaram o
+Worker ativo, healthcheck habilitado e ativação/teste da conexão no navegador.
+As quatro ferramentas também foram chamadas com sucesso no ChatGPT: resumo,
+missões, RADAR e estudos, com cópia fresca e paginação encerrada. O RADAR da
+cópia estava vazio; leitura de um RADAR real preenchido e aparência no celular
+nesta versão não foram conferidas. OAuth direto foi testado de forma sintética;
+a conferência real utilizou o Site. Propostas v2, aplicação
 definitiva e criação/edição de planos de estudos continuam para próximas entregas.
 
 ## Estado da integração

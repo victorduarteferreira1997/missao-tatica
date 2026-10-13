@@ -2,6 +2,18 @@
 
 [Voltar ao README](../README.md)
 
+## IA 2.0 — consultas instaladas e conferidas no ChatGPT · 2026-10-13
+
+- Capturas confirmaram a publicação do novo Worker e healthcheck de leituras
+  habilitado. A conexão privada foi ativada e testada no navegador.
+- Resumo, missões, RADAR e estudos foram consultados com sucesso pelas quatro
+  ferramentas do plugin no ChatGPT. Cópia fresca, totais coerentes e sem próxima
+  página. RADAR real preenchido, OAuth direto real e esta versão no celular
+  continuam sem conferência específica.
+- Wrangler registra a flag ativa; painel do app informa consultas disponíveis
+  e inclui link para a conexão privada. Propostas v2 e criação de planos ainda
+  pertencem às próximas entregas.
+
 ## IA 2.0 — consultas de missões, RADAR e estudos preparadas · 2026-10-13
 
 - Quatro ferramentas de consulta da projeção autorizada: resumo, missões, RADAR

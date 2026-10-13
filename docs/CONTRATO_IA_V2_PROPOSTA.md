@@ -1,8 +1,8 @@
 # Missão Tática — contrato mínimo da IA 2.0
 
 Contrato aprovado com ampliação de escopo em 13/10/2026, America/Sao_Paulo.
-Fundação instalada e validada; consultas implementadas, aguardando instalação
-do novo Worker. Propostas v2 ainda pendentes.
+Fundação e consultas instaladas e validadas no app/conexão privada e no ChatGPT.
+Propostas v2 ainda pendentes.
 Base oficial conferida: `b747ff73aa911ebc579f77409b8be9ef82faad12`.
 
 ## 1. Primeira entrega e resultado esperado
@@ -233,6 +233,9 @@ scope e usa token de até uma hora. Ambas as formas verificam o grant no servido
 a cada leitura; não basta um token ainda não vencido se o grant foi revogado.
 
 Nova flag `AI_V2_READ_ENABLED` separa a instalação das consultas da fundação.
-Nenhuma migração D1 adicional é necessária nesta parte. Leitura real no host
-aguarda publicação do novo Worker e ativação da conexão Site. Ferramentas de
+Nenhuma migração D1 adicional é necessária nesta parte. Worker instalado,
+flag ativa, conexão Site ativada/testada no navegador e quatro consultas reais
+no ChatGPT confirmadas em 13/10/2026, com metadados frescos e listas completas.
+RADAR real preenchido, OAuth direto real e esta versão no celular ainda não
+receberam conferência específica. Ferramentas de
 propostas independentes e aplicação definitiva v2 ainda não estão implementadas.
