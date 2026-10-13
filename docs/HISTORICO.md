@@ -2,6 +2,21 @@
 
 [Voltar ao README](../README.md)
 
+## Caixa de entrada IA com propostas primeiro · 2026-10-13
+
+- `ui/ai_inbox.v3.js` coloca propostas para cadastro no topo e recolhe a seleção
+  de contexto, preservando o fluxo de revisão no formulário existente.
+- Concluídas ficam ocultas; caixas de compartilhamento recebem rótulo explícito
+  e não são controles de conclusão.
+- Missões antigas sem semana identificada ficam separadas e ocultas por padrão;
+  nenhuma data é deduzida, nenhum registro é apagado ou migrado.
+- Filtros preservam índices de seleção, retiram itens escondidos da seleção e
+  invalidam a prévia. Vínculos explícitos de outra semana não são oferecidos.
+- Contratos v1, Firebase, calendário, recompensas e confirmação D1 permanecem
+  nos mesmos fluxos. A limitação de persistência/concorrência da IA v1 continua.
+- Testes verificam ordenação, estado recolhido, filtros, índices, mudança de
+  semana, consentimento e ausência de mutações nas missões.
+
 ## Entrada da Agenda · v1.9.61 · 2026-10-07
 
 - Google Agenda e Entrada da Agenda voltam a ficar visíveis antes da Semana Geral,

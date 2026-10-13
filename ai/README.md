@@ -5,6 +5,26 @@ A integração está **ativada** em `config.v1.js` após validação real no nav
 e no celular. O app mantém publicação explícita de uma seleção parcial e
 revisão de propostas no formulário existente; a ativação não migra dados.
 
+### Organização da caixa de entrada em 13/10/2026
+
+O app carrega `ui/ai_inbox.v3.js`: propostas aparecem primeiro e a seção de
+compartilhamento começa recolhida. Concluídas ficam ocultas por padrão.
+As caixas de cada missão selecionam dados para compartilhar; não concluem
+atividades nem criam novos registros. O filtro “Mostrar missões concluídas”
+altera somente a visualização.
+
+Missões sem semana registrada ficam em um grupo separado, também oculto por
+padrão. O quadro antigo não tem data/semana por missão; IDs e datas de criação
+não são usados para inventar esse vínculo. Se houver `planningWeekStart` ou
+`googleCalendarWeekStart`, a seleção considera apenas a semana correspondente.
+Mudar filtros remove seleções escondidas e invalida a prévia. Registros antigos
+permanecem intactos; nenhum campo de semana é atribuído automaticamente.
+
+O contrato e a confirmação de revisão continuam v1. Novas propostas ainda
+exigem contexto publicado e válido; propostas já recebidas podem ser revisadas
+sem selecionar contexto novamente. Esta mudança não ativa os módulos isolados
+`ai_inbox.v2.js`/`task_forms.v3.js` nem a arquitetura IA 2.0.
+
 ## Estado da integração
 
 - Firebase voltou ao plano Spark, com o banco original `(default)`.

@@ -6,7 +6,7 @@ import {createCalendarSync} from './calendar_sync.v2.js';
 import {installFormDialogs} from './ui/form_dialogs.v1.js';
 import {installTaskForms} from './ui/task_forms.v2.js';
 import {installPlanningViews} from './ui/planning_views.v3.js';
-import {installAiInbox} from './ui/ai_inbox.v1.js';
+import {installAiInbox} from './ui/ai_inbox.v3.js';
 import {AI_CONFIG} from './ai/config.v1.js';
 import {createAiBrowserStore} from './ai/bridge_rest.v1.js';
 const app=await readFile(new URL('./app.html',import.meta.url),'utf8');

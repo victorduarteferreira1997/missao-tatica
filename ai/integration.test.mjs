@@ -7,9 +7,9 @@ import {buildContext,validateContext,validateProposal,validateWeek,AI_OWNER_UID}
 import {createActionServer} from './server/server.mjs';
 import {createFirestoreStore} from './server/firestore.mjs';
 import {createAiBrowserStore} from './firestore_rest.v1.js';
-import {installAiInbox} from '../ui/ai_inbox.v1.js';
+import {installAiInbox} from '../ui/ai_inbox.v3.js';
 const now = Date.parse('2026-10-07T00:00:00Z');
-const state = () => ({tasks:[{id:123,text:'Revisar relatório',day:'tuesday',time:'30 min',startTime:'09:00',endTime:'09:30',completed:false,subtasks:[{text:'PRIVATE_SUBTASK'}],notes:'PRIVATE_NOTES',xp:900},
+const state = () => ({tasks:[{id:123,planningWeekStart:'2026-10-05',text:'Revisar relatório',day:'tuesday',time:'30 min',startTime:'09:00',endTime:'09:30',completed:false,subtasks:[{text:'PRIVATE_SUBTASK'}],notes:'PRIVATE_NOTES',xp:900},
     {id:456,text:'PRIVATE_UNSELECTED',day:'wednesday',time:'60 min'}],financeData:{secret:'PRIVATE_FINANCE'},healthData:{secret:'PRIVATE_HEALTH'},coins:500,ownerUid:'PRIVATE_OWNER'});
 const context = () => buildContext(state(),['123'],{weekStart:'2026-10-05',revision:'revision-1',now});
 const proposal = () => ({idempotencyKey:'request-001',weekStart:'2026-10-05',contextRevision:'revision-1',title:'Preparar report',day:'wednesday',durationMinutes:30,startTime:'10:00',endTime:'10:30',subtasks:['Revisar evidências','Enviar']});
@@ -140,10 +140,58 @@ test('UI da IA omite agenda externa e vínculos de outra semana',async()=>{
         {id:'agenda',text:'Título externo privado',day:'monday',time:'30 min',googleCalendarSource:'primary',googleCalendarWeekStart:'2026-10-05'},
         {id:'other-week',text:'Título de outra semana',day:'monday',time:'30 min',googleCalendarWeekStart:'2026-10-12'}
     );
-    await b.window.openAiInbox();
+    await b.window.openAiInbox();b.window.toggleAiContext();
     const html=b.window.renderAiInbox();
     assert.doesNotMatch(html,/Título externo privado|Título de outra semana/);
     assert.match(html,/Revisar relatório/);
+});
+test('inbox abre com propostas no topo e contexto recolhido, sem selecionar ou alterar missões',async()=>{
+    const b=ui(),before=JSON.stringify(b.s);
+    await b.window.openAiInbox();
+    const html=b.window.renderAiInbox();
+    assert.ok(html.indexOf('Propostas para cadastrar') < html.indexOf('Compartilhar missões existentes'));
+    assert.match(html,/id="ai-context-panel" hidden/);
+    assert.doesNotMatch(html,/Revisar relatório|PRIVATE_UNSELECTED|1\. Escolher/);
+    b.window.toggleAiContext();
+    assert.match(b.window.renderAiInbox(),/não marcam conclusão/);
+    assert.equal(JSON.stringify(b.s),before);
+    assert.equal(b.events.length,0);
+});
+test('filtros ocultam concluídas e registros sem semana, preservam índices e removem seleção invisível da prévia',async()=>{
+    const b=ui();
+    b.s.tasks.push({id:789,text:'Missão concluída',day:'monday',completed:true,planningWeekStart:'2026-10-05'},
+        {id:790,text:'Missão da semana anterior',day:'monday',planningWeekStart:'2026-09-28'});
+    const before=JSON.stringify(b.s);
+    await b.window.openAiInbox();b.window.toggleAiContext();
+    assert.doesNotMatch(b.window.renderAiInbox(),/Missão concluída|PRIVATE_UNSELECTED|Missão da semana anterior/);
+    b.window.selectAiMission(1,true);b.window.selectAiMission(2,true); // Both hidden; ignored.
+    b.window.previewAiContext();await b.window.publishAiContext();
+    assert.equal(b.events.at(-1)[1].missions.length,0);
+    b.window.setAiShowCompleted(true);
+    assert.match(b.window.renderAiInbox(),/Missão concluída/);
+    assert.doesNotMatch(b.window.renderAiInbox(),/PRIVATE_UNSELECTED/);
+    b.window.selectAiMission(2,true);b.window.setAiShowUnassigned(true);b.window.selectAiMission(1,true);
+    b.window.previewAiContext();await b.window.publishAiContext();
+    assert.deepEqual(b.events.at(-1)[1].missions.map(m=>m.title),['PRIVATE_UNSELECTED','Missão concluída']);
+    b.window.setAiShowCompleted(false);b.window.selectAiMission(0,true);
+    b.window.previewAiContext();await b.window.publishAiContext();
+    assert.deepEqual(b.events.at(-1)[1].missions.map(m=>m.title),['Revisar relatório','PRIVATE_UNSELECTED']);
+    b.window.setAiShowUnassigned(false);
+    const count=b.events.filter(e=>e[0]==='publish').length;
+    await b.window.publishAiContext(); // Filter invalidates the old preview.
+    assert.equal(b.events.filter(e=>e[0]==='publish').length,count);
+    b.window.previewAiContext();await b.window.publishAiContext();
+    assert.deepEqual(b.events.at(-1)[1].missions.map(m=>m.title),['Revisar relatório']);
+    assert.equal(JSON.stringify(b.s),before);
+    await b.window.openAiInbox();b.window.toggleAiContext();
+    assert.doesNotMatch(b.window.renderAiInbox(),/Missão concluída|PRIVATE_UNSELECTED/);
+});
+test('semana alterada remove seleção anterior antes da prévia e seleção não marca conclusão',async()=>{
+    const b=ui();await b.window.openAiInbox();b.window.selectAiMission(0,true);
+    assert.equal(b.s.tasks[0].completed,false);
+    b.setWeek('2026-10-12');b.window.previewAiContext();await b.window.publishAiContext();
+    assert.equal(b.events.at(-1)[1].weekStart,'2026-10-12');
+    assert.equal(b.events.at(-1)[1].missions.length,0);
 });
 test('revisar só preenche formulário; cancelar não cria/revisa, semana errada e proposta retirada são bloqueadas',async()=>{
     const b=ui(),before=JSON.stringify(b.s);await b.window.openAiInbox();await b.window.reviewAiProposal(0);
