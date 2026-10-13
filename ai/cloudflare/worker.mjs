@@ -1,3 +1,4 @@
+import {createV2Foundation} from './foundation.v2.mjs';
 import { ContractError,validateWeek,validateContext,validateProposal } from '../contract.v1.js';
 import { AuthError,KeyServiceError,createFirebaseVerifier } from './firebase_auth.mjs';
 import { CapacityError,createD1Store } from './d1.mjs';
@@ -43,8 +44,10 @@ async function readJson(request,limit) {
 
 export function createWorker({verifyOwner=createFirebaseVerifier(),storeFactory=createD1Store,now=Date.now,requestsPerMinute=60,pluginFetch=fetch} = {}) {
     let minute=-1,requests=0;
+    const foundation=createV2Foundation({verifyOwner,now});
     const worker = {
         async fetch(request,env) {
+            if(new URL(request.url).pathname.startsWith('/v2/'))return foundation.fetch(request,env);
             const pluginResponse=await plugin(request,env);if(pluginResponse)return pluginResponse;
             const url = new URL(request.url), method=request.method;
             const appRoute = url.pathname.startsWith('/v1/app/');
@@ -58,6 +61,7 @@ export function createWorker({verifyOwner=createFirebaseVerifier(),storeFactory=
             }
             try {
                 if (method==='GET' && url.pathname==='/healthz' && !url.search) return send(200,{ok:true,service:'missao-tatica-ai-bridge',schemaVersion:1});
+                if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=v2') return send(200,{service:'missao-tatica-ai-bridge',foundationVersion:1,enabled:env.AI_V2_ENABLED==='true'});
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=keys') {
                     if(typeof verifyOwner.inspectPublicKeys!=='function')return send(503,{error:'service_unavailable'});
                     return send(200,{service:'missao-tatica-ai-bridge',diagnosticVersion:1,publicKeys:await verifyOwner.inspectPublicKeys()});

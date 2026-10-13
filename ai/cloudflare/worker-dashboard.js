@@ -456,6 +456,157 @@ function createPluginGateway({now=Date.now,fetchImpl=fetch,readBody,callBridge})
     };
 }
 
+// ../v2/contract.js
+const V2_MODULES = Object.freeze(['missions','radar','studies']);
+const V2_GRANT_MS = 30 * 86400000;
+const V2_FRESH_MS = 86400000;
+class V2ValidationError extends Error {}
+function v2Assert(ok) { if (!ok) throw new V2ValidationError('Dados de compartilhamento inválidos.'); }
+function v2Exact(value,keys) { v2Assert(value && typeof value==='object' && !Array.isArray(value) && Object.keys(value).length===keys.length && keys.every(k=>Object.hasOwn(value,k))); }
+function v2Text(value,max=200) { v2Assert(typeof value==='string' && value.length<=max && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value)); return value; }
+function v2Integer(value,max=Number.MAX_SAFE_INTEGER) { v2Assert(Number.isSafeInteger(value) && value>=0 && value<=max); return value; }
+function v2Ref(value) { v2Assert(typeof value==='string' && /^[a-f0-9]{64}$/.test(value)); return value; }
+function v2GrantId(value) { v2Assert(typeof value==='string' && /^[a-zA-Z0-9_-]{16,80}$/.test(value)); return value; }
+function v2Date(value) { v2Text(value,40); v2Assert(value==='' || (Number.isFinite(Date.parse(value)) && /^20\d\d-\d\d-\d\d(?:T.*)?$/.test(value))); }
+async function v2Hash(value) { const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)); return [...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join(''); }
+function v2ValidateChoices(value) {
+    v2Exact(value,['modules','includeFuture']); v2Exact(value.modules,V2_MODULES);
+    v2Assert(V2_MODULES.every(k=>typeof value.modules[k]==='boolean') && V2_MODULES.some(k=>value.modules[k]) && typeof value.includeFuture==='boolean'); return value;
+}
+function v2ValidateGrantRequest(value) {
+    v2Exact(value,['grantId','expectedVersion','choices','frozenRefs']); v2GrantId(value.grantId); v2Integer(value.expectedVersion); v2ValidateChoices(value.choices);
+    v2Assert(Array.isArray(value.frozenRefs) && value.frozenRefs.length<=200 && new Set(value.frozenRefs).size===value.frozenRefs.length); value.frozenRefs.forEach(v2Ref);
+    v2Assert(!value.choices.includeFuture || value.frozenRefs.length===0); return value;
+}
+const v2Fields = {
+    mission:['title','category','activityType','status','day','weekStart','durationMinutes','startTime','endTime','subtasks'],
+    radar:['title','area','project','status','nextAction','dueDate','nextReviewAt','attentionLevel','waitingFor','waitingSince','followUpAt'],
+    'study.track':['name','weeklyGoalMinutes','priority','active'],
+    'study.subject':['name','trackRef','progress'],
+    'study.block':['title','trackRef','subjectRef','day','status','studyType','plannedMinutes','startTime','endTime'],
+    'study.review':['subjectRef','dueDate','status','intervalDays'],
+    'study.cycle':['name','subjectRefs','weeklyGoalMinutes','active']
+};
+function v2Module(kind) { return kind==='mission'?'missions':kind==='radar'?'radar':kind.startsWith('study.')?'studies':''; }
+function v2ValidateEntity(row) {
+    v2Exact(row,['ref','kind','entityVersion','fields']); v2Ref(row.ref); v2Ref(row.entityVersion); v2Assert(Object.hasOwn(v2Fields,row.kind));
+    const f=row.fields; v2Exact(f,v2Fields[row.kind]);
+    for (const [key,val] of Object.entries(f)) {
+        if(key==='subtasks') { v2Assert(Array.isArray(val) && val.length<=100); for(const s of val){v2Exact(s,['title','completed']);v2Text(s.title);v2Assert(typeof s.completed==='boolean');} }
+        else if(key==='progress') { v2Exact(val,['minutes','sessions','questions','correct']); Object.values(val).forEach(n=>v2Integer(n));v2Assert(val.correct<=val.questions); }
+        else if(key==='subjectRefs') { v2Assert(Array.isArray(val) && val.length<=200);val.forEach(v2Ref); }
+        else if(['trackRef','subjectRef'].includes(key)) { if(val!==null)v2Ref(val); }
+        else if(['active'].includes(key))v2Assert(typeof val==='boolean');
+        else if(['durationMinutes','plannedMinutes','weeklyGoalMinutes','intervalDays'].includes(key)) { if(val!==null)v2Integer(val); }
+        else { v2Text(val,key==='nextAction'?1000:200); if(['dueDate','nextReviewAt','waitingSince','followUpAt','weekStart'].includes(key))v2Date(val); }
+    }
+    if(row.kind==='mission')v2Assert(['task','meeting'].includes(f.activityType) && ['planned','in_progress','paused','completed','not_held'].includes(f.status));
+    if(row.kind==='radar')v2Assert(['active','waiting','backlog','closed'].includes(f.status) && ['controlled','attention','immediate'].includes(f.attentionLevel));
+    if(Object.hasOwn(f,'day'))v2Assert(DAYS.includes(f.day));
+    for(const key of ['startTime','endTime'])if(Object.hasOwn(f,key))v2Assert(f[key]==='' || /^([01]\d|2[0-3]):[0-5]\d$/.test(f[key]));
+    return row;
+}
+function v2ValidateSnapshot(value,grant,now=Date.now()) {
+    v2Exact(value,['schemaVersion','grantId','grantVersion','expectedProjectionVersion','sourceSavedAt','coverage','omissions','entities']);
+    v2Assert(value.schemaVersion===2 && value.grantId===grant.grantId && value.grantVersion===grant.version); v2Integer(value.expectedProjectionVersion);
+    v2Date(value.sourceSavedAt);const savedAt=Date.parse(value.sourceSavedAt);v2Assert(Number.isFinite(savedAt) && savedAt<=now+60000);
+    v2Exact(value.coverage,V2_MODULES);v2Assert(V2_MODULES.every(k=>value.coverage[k]===grant.choices.modules[k]));
+    v2Assert(Array.isArray(value.omissions) && value.omissions.length<=10);value.omissions.forEach(s=>v2Text(s));
+    v2Assert(Array.isArray(value.entities) && value.entities.length<=200 && new Set(value.entities.map(e=>e.ref)).size===value.entities.length);
+    for(const row of value.entities){v2ValidateEntity(row);v2Assert(grant.choices.modules[v2Module(row.kind)] && (grant.choices.includeFuture || grant.frozenRefs.includes(row.ref)));}
+    const refs=new Map(value.entities.map(e=>[e.ref,e.kind]));
+    for(const row of value.entities)for(const key of ['trackRef','subjectRef','subjectRefs'])if(Object.hasOwn(row.fields,key)) {
+        const targets=key==='subjectRefs'?row.fields[key]:[row.fields[key]];v2Assert(targets.every(ref=>ref===null || refs.get(ref)===(key==='trackRef'?'study.track':'study.subject')));
+    }
+    v2Assert(new TextEncoder().encode(JSON.stringify(value)).byteLength<=64000);return value;
+}
+async function v2Project(state,grant) {
+    const entities=[], ref=async(kind,id)=>{v2Assert(id!==undefined && id!==null);return v2Hash(grant.grantId+':'+kind+':'+String(id));};
+    const text=value=>v2Text(String(value??'')); const number=value=>{const n=Number(value);return Number.isFinite(n)&&n>=0?Math.floor(n):null;};
+    async function add(kind,item,fields){const r=await ref(kind,item.id);if(!grant.choices.includeFuture && !grant.frozenRefs.includes(r))return;entities.push({ref:r,kind,entityVersion:await v2Hash(JSON.stringify(fields)),fields});}
+    if(grant.choices.modules.missions)for(const t of state.tasks||[]) {
+        const activityType=t.activityType==='meeting'?'meeting':'task';
+        const status=t.completed?'completed':activityType==='meeting'?(t.meetingOutcome==='not_held'||t.googleCalendarSourceStatus==='cancelled'?'not_held':'planned'):['in_progress','paused'].includes(t.workflowStatus)?t.workflowStatus:'planned';
+        await add('mission',t,{title:text(t.text),category:text(t.category),activityType,status,day:text(t.day),weekStart:text(t.planningWeekStart||t.googleCalendarWeekStart||''),durationMinutes:number(parseInt(t.time,10)),startTime:text(t.startTime),endTime:text(t.endTime),subtasks:(t.subtasks||[]).map(s=>({title:text(s.text),completed:Boolean(s.completed)}))});
+    }
+    if(grant.choices.modules.radar)for(const d of state.operationalControl?.demands||[]) await add('radar',d,{title:text(d.title),area:text(d.area),project:text(d.project),status:text(d.workflowStatus||'active'),nextAction:v2Text(String(d.nextAction||''),1000),dueDate:text(d.dueDate),nextReviewAt:text(d.nextReviewAt),attentionLevel:text(d.attentionLevel||'controlled'),waitingFor:text(d.waitingFor),waitingSince:text(d.waitingSince),followUpAt:text(d.followUpAt)});
+    if(grant.choices.modules.studies){
+        const s=state.studyData||{},plan=s.studyPlan||{};
+        for(const t of plan.tracks||[])await add('study.track',t,{name:text(t.name),weeklyGoalMinutes:number(t.weeklyGoalMinutes),priority:text(t.priority),active:t.active!==false});
+        for(const t of s.subjects||[]) {
+            const sessions=(s.sessions||[]).filter(x=>String(x.subjectId)===String(t.id));const sum=key=>sessions.reduce((n,x)=>n+(number(x[key])||0),0);
+            await add('study.subject',t,{name:text(t.name),trackRef:t.trackId?await ref('study.track',t.trackId):null,progress:{minutes:sum('duration'),sessions:sessions.length,questions:sum('qTotal'),correct:sum('qCorrect')}});
+        }
+        for(const b of plan.weeklyBlocks||[])await add('study.block',b,{title:text(b.title),trackRef:b.trackId?await ref('study.track',b.trackId):null,subjectRef:b.subjectId?await ref('study.subject',b.subjectId):null,day:text(b.day),status:text(b.status),studyType:text(b.studyType),plannedMinutes:number(b.plannedMinutes),startTime:text(b.startTime),endTime:text(b.endTime)});
+        for(const r of s.reviews||[])await add('study.review',r,{subjectRef:r.subjectId?await ref('study.subject',r.subjectId):null,dueDate:text(r.dueDate),status:text(r.status),intervalDays:number(r.intervalDays)});
+        for(const c of s.cycles||[])await add('study.cycle',c,{name:text(c.name),subjectRefs:await Promise.all((c.subjectIds||[]).map(id=>ref('study.subject',id))),weeklyGoalMinutes:number(Number(c.weeklyHoursGoal)*60),active:Boolean(c.active)});
+    }
+    const included=new Set(entities.map(e=>e.ref));for(const e of entities){for(const k of ['trackRef','subjectRef'])if(e.fields[k]&&!included.has(e.fields[k]))e.fields[k]=null;if(e.fields.subjectRefs)e.fields.subjectRefs=e.fields.subjectRefs.filter(r=>included.has(r));e.entityVersion=await v2Hash(JSON.stringify(e.fields));}
+    v2Assert(entities.length<=200);return entities;
+}
+async function v2BuildSnapshot(state,grant,expectedProjectionVersion=0){
+    const snapshot={schemaVersion:2,grantId:grant.grantId,grantVersion:grant.version,expectedProjectionVersion,sourceSavedAt:state.lastSavedAt||state.updatedAt||'',coverage:{...grant.choices.modules},omissions:['Finanças, saúde, notas livres e anexos','Agenda externa não convertida em missão','Registros individuais de sessões e questões de estudo'],entities:await v2Project(state,grant)};
+    return v2ValidateSnapshot(snapshot,grant);
+}
+
+// ./foundation.v2.mjs
+const V2_ORIGIN='https://victorduarteferreira1997.github.io';
+function createV2Foundation({verifyOwner=createFirebaseVerifier(),now=Date.now}={}) {
+    let slot=-1,count=0;
+    return {async fetch(request,env){
+        const url=new URL(request.url),method=request.method,origin=request.headers.get('Origin');
+        const cors=origin===V2_ORIGIN?{'Access-Control-Allow-Origin':V2_ORIGIN,Vary:'Origin'}:{};
+        const send=(status,data)=>Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...cors}});
+        if(env.AI_V2_ENABLED!=='true')return send(404,{error:'v2_not_enabled'});
+        if(origin!==V2_ORIGIN)return send(403,{error:'origin_not_allowed'});
+        const methods=url.pathname==='/v2/app/grant'?['GET','PUT','DELETE']:url.pathname==='/v2/app/snapshot'?['PUT']:[];
+        if(url.search || !methods.length)return send(404,{error:'not_found'});
+        if(method==='OPTIONS'){
+            const headers=(request.headers.get('Access-Control-Request-Headers')||'').toLowerCase().split(',').map(s=>s.trim()).filter(Boolean);
+            if(!methods.includes(request.headers.get('Access-Control-Request-Method'))||headers.some(h=>!['authorization','content-type','x-firebase-appcheck'].includes(h)))return send(403,{error:'preflight_not_allowed'});
+            return new Response(null,{status:204,headers:{...cors,'Access-Control-Allow-Methods':methods.join(', '),'Access-Control-Allow-Headers':'Authorization, Content-Type, X-Firebase-AppCheck'}});
+        }
+        if(!methods.includes(method))return send(404,{error:'not_found'});
+        try {
+            await verifyOwner(request);
+            const minute=Math.floor(now()/60000);if(slot!==minute){slot=minute;count=0;}if(++count>60)return send(429,{error:'rate_limited'});
+            const db=env.DB.withSession?env.DB.withSession('first-primary'):env.DB;
+            const cleanup=await db.prepare("UPDATE ai_v2_access SET snapshot=NULL,source_saved_at=NULL,synced_at=NULL WHERE singleton=1 AND expires_at<=? AND snapshot IS NOT NULL").bind(now()).run();
+            if(cleanup.success!==true)throw new Error('D1 failure');
+            const load=()=>db.prepare('SELECT * FROM ai_v2_access WHERE singleton=1').bind().first();
+            const map=row=>row?{grantId:row.grant_id,version:row.version,status:row.status==='active'&&row.expires_at<=now()?'expired':row.status,issuedAt:new Date(row.issued_at).toISOString(),expiresAt:new Date(row.expires_at).toISOString(),choices:JSON.parse(row.choices),frozenRefs:JSON.parse(row.frozen_refs),projectionVersion:row.projection_version,sourceSavedAt:row.source_saved_at,syncedAt:row.synced_at?new Date(row.synced_at).toISOString():null,freshUntil:row.synced_at&&row.source_saved_at?new Date(Math.min(Date.parse(row.source_saved_at),row.synced_at)+V2_FRESH_MS).toISOString():null}:null;
+            if(method==='GET')return send(200,{grant:map(await load())});
+            if((request.headers.get('Content-Type')||'').split(';')[0]!=='application/json')return send(415,{error:'json_required'});
+            const reader=request.body?.getReader();if(!reader)return send(422,{error:'invalid_data'});
+            const chunks=[];let size=0;try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>70000){await reader.cancel();return send(413,{error:'body_too_large'});}chunks.push(value);}}finally{reader.releaseLock();}
+            const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+            let body;try{body=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));}catch{return send(422,{error:'invalid_data'});}
+            if(url.pathname==='/v2/app/grant' && method==='PUT'){
+                const b=v2ValidateGrantRequest(body),time=now();
+                const result=b.expectedVersion===0
+                    ? await db.prepare("INSERT INTO ai_v2_access (singleton,grant_id,version,status,issued_at,expires_at,choices,frozen_refs) VALUES (1,?,1,'active',?,?,?,?) ON CONFLICT(singleton) DO NOTHING").bind(b.grantId,time,time+V2_GRANT_MS,JSON.stringify(b.choices),JSON.stringify(b.frozenRefs)).run()
+                    : await db.prepare("UPDATE ai_v2_access SET grant_id=?,version=version+1,status='active',issued_at=?,expires_at=?,choices=?,frozen_refs=?,projection_version=0,source_saved_at=NULL,synced_at=NULL,snapshot=NULL WHERE singleton=1 AND version=?").bind(b.grantId,time,time+V2_GRANT_MS,JSON.stringify(b.choices),JSON.stringify(b.frozenRefs),b.expectedVersion).run();
+                if(result.success!==true)throw new Error('D1 failure');
+                if(!result.meta.changes)return send(409,{error:'grant_changed'});
+                return send(200,{grant:map(await load())});
+            }
+            if(method==='DELETE'){
+                v2Exact(body,['grantId','expectedVersion']);v2GrantId(body.grantId);v2Integer(body.expectedVersion);
+                const result=await db.prepare("UPDATE ai_v2_access SET status='revoked',version=version+1,snapshot=NULL,source_saved_at=NULL,synced_at=NULL WHERE singleton=1 AND grant_id=? AND version=?").bind(body.grantId,body.expectedVersion).run();
+                if(result.success!==true)throw new Error('D1 failure');if(!result.meta.changes)return send(409,{error:'grant_changed'});return send(200,{grant:map(await load())});
+            }
+            const row=await load(),grant=map(row);if(!grant || grant.status!=='active')return send(409,{error:'grant_not_active'});
+            const snapshot=v2ValidateSnapshot(body,grant,now()),time=now();
+            const result=await db.prepare(`UPDATE ai_v2_access SET snapshot=?,projection_version=projection_version+1,source_saved_at=?,synced_at=? WHERE singleton=1 AND grant_id=? AND version=? AND status='active' AND expires_at>? AND projection_version=?`).bind(JSON.stringify(snapshot),snapshot.sourceSavedAt,time,grant.grantId,grant.version,time,snapshot.expectedProjectionVersion).run();
+            if(result.success!==true)throw new Error('D1 failure');if(!result.meta.changes)return send(409,{error:'projection_changed'});return send(200,{grant:map(await load())});
+        }catch(error){
+            if(error instanceof AuthError)return send(401,{error:'unauthorized'});
+            if(error instanceof V2ValidationError)return send(422,{error:'invalid_data'});
+            return send(503,{error:'service_unavailable'});
+        }
+    }};
+}
+
 // ./worker.mjs
 
 const APP_ORIGIN = 'https://victorduarteferreira1997.github.io';
@@ -498,8 +649,10 @@ async function readJson(request,limit) {
 
 function createWorker({verifyOwner=createFirebaseVerifier(),storeFactory=createD1Store,now=Date.now,requestsPerMinute=60,pluginFetch=fetch} = {}) {
     let minute=-1,requests=0;
+    const foundation=createV2Foundation({verifyOwner,now});
     const worker = {
         async fetch(request,env) {
+            if(new URL(request.url).pathname.startsWith('/v2/'))return foundation.fetch(request,env);
             const pluginResponse=await plugin(request,env);if(pluginResponse)return pluginResponse;
             const url = new URL(request.url), method=request.method;
             const appRoute = url.pathname.startsWith('/v1/app/');
@@ -513,6 +666,7 @@ function createWorker({verifyOwner=createFirebaseVerifier(),storeFactory=createD
             }
             try {
                 if (method==='GET' && url.pathname==='/healthz' && !url.search) return send(200,{ok:true,service:'missao-tatica-ai-bridge',schemaVersion:1});
+                if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=v2') return send(200,{service:'missao-tatica-ai-bridge',foundationVersion:1,enabled:env.AI_V2_ENABLED==='true'});
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=keys') {
                     if(typeof verifyOwner.inspectPublicKeys!=='function')return send(503,{error:'service_unavailable'});
                     return send(200,{service:'missao-tatica-ai-bridge',diagnosticVersion:1,publicKeys:await verifyOwner.inspectPublicKeys()});

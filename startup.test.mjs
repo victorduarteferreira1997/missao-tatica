@@ -1,3 +1,8 @@
+import {AI_OWNER_UID} from './ai/contract.v1.js';
+import {AI_V2_CONFIG} from './ai/config.v2.js';
+import {createConfirmedStateWriter} from './ai/v2/saved_state.js';
+import {createV2BrowserStore} from './ai/v2/browser.js';
+import {installAiAccess} from './ui/ai_access.v2.js';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {runInNewContext} from 'node:vm';
@@ -20,7 +25,7 @@ function boot(saved=null){
  const document={activeElement:null,getElementById:id=>elements[id]||null,querySelector(){return null;},querySelectorAll(){return [];},addEventListener(){}};
  const window={lucide:{createIcons(){}},location:{origin:'https://victorduarteferreira1997.github.io',pathname:'/missao-tatica/app.html'},addEventListener(){}};
  const c={window,document,Date:FixedDate,console,TextEncoder,Uint8Array,Uint32Array,DataView,URL,Blob,Intl,localStorage:{getItem:key=>stored.get(key)||null,setItem:(key,value)=>{stored.set(key,value);writes.push(key);}},
- setTimeout:()=>1,clearTimeout(){},setInterval:()=>1,clearInterval(){},lucide:window.lucide,initializeApp:()=>({}),initializeAppCheck(){},ReCaptchaEnterpriseProvider:class{},getAuth:()=>({}),getFirestore:()=>({}),GoogleAuthProvider:class{},signInWithPopup(){},signInWithRedirect(){},signOut:async()=>{},onAuthStateChanged:(auth,callback)=>c.authCallback=callback,doc(){},getDoc(){throw Error('A inicialização não deve ler a nuvem sem login.');},setDoc(){throw Error('O teste não deve gravar na nuvem.');},createCalendarSync:options=>{c.calendarOnChange=options.onChange;return createCalendarSync(options);},installFormDialogs,installTaskForms,installPlanningViews,installAiInbox,AI_CONFIG,createAiBrowserStore};
+ setTimeout:()=>1,clearTimeout(){},setInterval:()=>1,clearInterval(){},lucide:window.lucide,initializeApp:()=>({}),initializeAppCheck(){},ReCaptchaEnterpriseProvider:class{},getAuth:()=>({}),getFirestore:()=>({}),GoogleAuthProvider:class{},signInWithPopup(){},signInWithRedirect(){},signOut:async()=>{},onAuthStateChanged:(auth,callback)=>c.authCallback=callback,doc(){},getDoc(){throw Error('A inicialização não deve ler a nuvem sem login.');},setDoc(){throw Error('O teste não deve gravar na nuvem.');},createCalendarSync:options=>{c.calendarOnChange=options.onChange;return createCalendarSync(options);},installFormDialogs,installTaskForms,installPlanningViews,installAiInbox,AI_CONFIG,createAiBrowserStore,AI_V2_CONFIG,createConfirmedStateWriter,createV2BrowserStore,installAiAccess};
  runInNewContext(moduleSource+'\nwindow.startupForTest = {getState:()=>state,getUI:()=>uiState,getTimer:()=>pomodoro,render};',c,{timeout:3000});
  return {c,window,elements,stored,writes,state:window.startupForTest.getState(),ui:window.startupForTest.getUI(),render:window.startupForTest.render};
 }
@@ -130,4 +135,19 @@ test('painéis atualizam estados de sincronização, erro e entrada vazia preser
  b.c.calendarOnChange();assert.match(b.elements['calendar-sync-panel'].outerHTML,/>Reconectar<\/button>/);
  assert.match(b.elements['calendar-inbox-panel'].outerHTML,/Conecte ou reconecte/);
  assert.equal(b.writes.length,0);
+});
+
+test('app confirma gravação Firebase do snapshot exato e retorna falha sem anunciar sucesso',async()=>{
+ const b=boot(),user={uid:AI_OWNER_UID,email:'fictional@example.test'};
+ b.c.getDoc=async()=>({exists:()=>true,data:()=>({data:JSON.stringify({tasks:[],ownerUid:AI_OWNER_UID}),updatedAt:'2026-10-06T22:30:00Z'})});
+ b.c.setDoc=async()=>{};await b.c.authCallback(user);
+ const current=b.window.startupForTest.getState(),payloads=[],published=[];let release;
+ current.tasks.push({id:'first',text:'Primeiro',day:'monday',category:'life'});
+ b.window.onAiV2Saved=(snapshot,uid)=>published.push({snapshot,uid});
+ b.c.setDoc=async(ref,data)=>{if(data.app&&!release)await new Promise(r=>release=r);if(data.data)payloads.push(JSON.parse(data.data));};
+ const saving=b.window.saveStateNow(true);current.tasks.push({id:'next',text:'Segundo',day:'tuesday',category:'life'});
+ await new Promise(r=>setImmediate(r));assert.equal(payloads.length,0);release();assert.equal(await saving,true);
+ assert.deepEqual(payloads[0].tasks.map(t=>t.id),['first']);assert.deepEqual(published[0].snapshot.tasks.map(t=>t.id),['first']);assert.equal(published[0].uid,AI_OWNER_UID);
+ b.c.setDoc=async()=>{throw Error('simulated offline');};assert.equal(await b.window.saveStateNow(true),false);
+ assert.equal(published.length,1);assert.equal(b.elements['sync-text'].innerText,'Erro ao salvar');
 });

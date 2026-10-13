@@ -30,6 +30,50 @@ exigem contexto publicado e válido; propostas já recebidas podem ser revisadas
 sem selecionar contexto novamente. Esta mudança não ativa os módulos isolados
 `ai_inbox.v2.js`/`task_forms.v3.js` nem a arquitetura IA 2.0.
 
+## Fundação IA v2 — entrega 1A preparada, ainda desligada
+
+Contrato: [`docs/CONTRATO_IA_V2_PROPOSTA.md`](../docs/CONTRATO_IA_V2_PROPOSTA.md).
+Inclui missões de todas as categorias, RADAR e estudos do módulo Inteligência.
+`ui/ai_access.v2.js` oferece módulos desmarcados, prévia, confirmação por 30 dias,
+registros futuros opt-in, sincronização e revogação. A flag pública
+`ai/config.v2.js` continua `enabled:false`; não existe transmissão v2 antes da
+ativação e da confirmação explícita no app.
+
+A fundação expõe somente `/v2/app/grant` (GET/PUT/DELETE) e `/v2/app/snapshot`
+(PUT), com proprietário + Auth + App Check e versões esperadas. Não expõe novas
+tools MCP, criação v2, RADAR por IA ou edição de planos de estudos. Essas partes
+pertencem às próximas entregas. As ferramentas e a aceitação v1 continuam v1.
+
+O app usa escritor com snapshot imutável e fila local, e `saveStateNow` agora
+retorna sucesso/falha. Callback v2 recebe exatamente o JSON confirmado no
+Firestore; erro da ponte não muda o resultado do salvamento Firebase. Isso
+não resolve conflitos entre dispositivos. Grants/snapshots ocupam uma única
+linha D1; seleção é invalidada em troca de grant. Limite: 200 entidades/64 KiB
+UTF-8, com recusa integral e aviso; não truncar o planejamento silenciosamente.
+Sessões/questões de estudos são agregadas por disciplina; notas, barreiras,
+confiança, logs de erros, finanças, saúde e credenciais não são compartilhados.
+
+### Instalação da fundação, antes da ativação do frontend
+
+1. No D1 **missao-tatica-ai**, aplicar somente
+   [`cloudflare/v2-schema.sql`](cloudflare/v2-schema.sql). Cria `ai_v2_access`
+   sem alterar as tabelas v1. Conferir `PRAGMA table_info(ai_v2_access);`.
+2. No Worker **missao-tatica-ai-bridge**, substituir o código pelo bundle
+   [`cloudflare/worker-dashboard.js`](cloudflare/worker-dashboard.js). Esse
+   arquivo é gerado/testado; preservar binding `DB` e `ACTION_SECRET` existente.
+3. Adicionar variável de texto `AI_V2_ENABLED` com valor `true`. Publicar.
+   `/healthz?check=v2` deve retornar `foundationVersion:1, enabled:true`;
+   confirma código/flag, não autenticação nem tabelas. Não requer credenciais.
+4. Depois da conferência, habilitar `ai/config.v2.js` e publicar Pages. No app,
+   verificar prévia, consentimento, atualização, conta autorizada e revogação
+   antes de ampliar uso. Teste real dessa etapa deve ser guiado em passos curtos.
+5. Para reversão, desligar o frontend e a variável Worker; preservar dados para
+   diagnóstico e usar revogação explícita para remover o snapshot. Não remover
+   a tabela como procedimento de rollback.
+
+Não há custo/upgrade habilitado por esta entrega. Workers Logs continua um ponto
+operacional a revisar no painel; a fundação não registra payloads ou tokens.
+
 ## Estado da integração
 
 - Firebase voltou ao plano Spark, com o banco original `(default)`.

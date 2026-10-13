@@ -266,3 +266,17 @@ test('arquivo do editor é reproduzível e executa a mesma ponte sem imports ou 
     assert.deepEqual(Object.keys(openapi.paths).sort(),['/v1/proposals','/v1/week']);assert.equal(openapi.paths['/v1/proposals'].post['x-openai-isConsequential'],true);
     assert.equal(openapi.servers[0].url,'https://missao-tatica-ai-bridge.victorduarteferreira1997.workers.dev');
 });
+
+test('fundação v2 reutiliza verificação RSA de proprietário/App Check antes de acessar D1',async t=>{
+ const a=api(t);a.sql.exec(await readFile(new URL('./cloudflare/v2-schema.sql',import.meta.url),'utf8'));
+ const request=headers=>new Request('https://bridge.example/v2/app/grant',{headers:{...ownerHeaders,...headers}});
+ let response=await a.worker.fetch(request({Authorization:'Bearer forged-token'}),{DB:a.db,ACTION_SECRET:secret,AI_V2_ENABLED:'true'});
+ assert.equal(response.status,401);assert.equal(a.calls.length,0);
+ response=await a.worker.fetch(request({}),{DB:a.db,ACTION_SECRET:secret,AI_V2_ENABLED:'true'});
+ assert.equal(response.status,200);assert.deepEqual(await response.json(),{grant:null});
+});
+
+test('health da fundação v2 confirma código/flag sem acessar banco ou credenciais',async t=>{
+ const a=api(t);const response=await a.worker.fetch(new Request('https://bridge.example/healthz?check=v2'),{AI_V2_ENABLED:'true'});
+ assert.deepEqual(await response.json(),{service:'missao-tatica-ai-bridge',foundationVersion:1,enabled:true});assert.equal(a.calls.length,0);
+});

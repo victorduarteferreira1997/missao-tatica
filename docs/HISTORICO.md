@@ -2,6 +2,21 @@
 
 [Voltar ao README](../README.md)
 
+## IA 2.0 — fundação 1A preparada · 2026-10-13
+
+- Consentimento de 30 dias, missões/RADAR/estudos por módulo, prévia e novos
+  registros opt-in. Flags desligadas até instalar banco/Worker e validar.
+- Projeção mínima com referências opacas, progresso agregado de estudos,
+  limites de bytes/entidades e versões condicionais. Revogar apaga a cópia.
+- Escritor Firebase captura snapshot imutável, serializa gravações nesta sessão
+  e retorna resultado; sincronização v2 só recebe snapshots confirmados.
+- Novas rotas são exclusivas do proprietário; ferramentas MCP e propostas v2
+  ainda não foram liberadas. Concorrência entre dispositivos continua pendente.
+- Migração SQL aditiva, bundle gerado e roteiro de instalação em ai/README.md.
+- Testes abrangem SQL real, Auth/App Check, consentimento, omissões, limites,
+  falhas, sessão, montagem do app e regressão v1. Teste real/visual pendente.
+
+
 ## Retorno à integração após cadastrar proposta IA · 2026-10-13
 
 - Cadastrar uma proposta retorna automaticamente à caixa de entrada, permitindo
