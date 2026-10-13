@@ -42,8 +42,11 @@ no app. A variável `AI_V2_ENABLED=true` também está registrada no Wrangler.
 
 Em 13/10/2026, o Console D1 confirmou a criação de `ai_v2_access`, o painel
 confirmou `DB → missao-tatica-ai` e o healthcheck público retornou
-`foundationVersion:1, enabled:true`. O teste real de autorização, sincronização
-e revogação na conta do proprietário continua pendente; o healthcheck não o substitui.
+`foundationVersion:1, enabled:true`. Capturas da conta do proprietário confirmaram
+autorização dos três módulos e registros futuros, sincronização, revogação
+(status revogado e última sincronização removida) e nova autorização/sincronização.
+Isso valida o fluxo real do painel; não comprova ferramentas MCP v2, que ainda
+não foram liberadas, nem substitui uma inspeção direta da cópia no D1.
 
 A fundação expõe somente `/v2/app/grant` (GET/PUT/DELETE) e `/v2/app/snapshot`
 (PUT), com proprietário + Auth + App Check e versões esperadas. Não expõe novas

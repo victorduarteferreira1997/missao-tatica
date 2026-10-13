@@ -10,8 +10,10 @@
 - Flag do frontend habilitada para abrir o painel e revisar o compartilhamento;
   módulos e inclusão de registros futuros continuam exigindo consentimento no app.
 - Wrangler registra a variável ativa para preservar a configuração em deploys futuros.
-- Autorização, sincronização e revogação reais no app ainda aguardam verificação.
-  Ferramentas MCP v2 e criação de planos de estudos continuam para a próxima entrega.
+- Capturas do app confirmaram autorização e sincronização dos três módulos com
+  registros futuros, revogação e nova autorização/sincronização. Estado revogado
+  exibiu última sincronização removida; a nova autorização recebeu novo prazo.
+- Ferramentas MCP v2 e criação de planos de estudos continuam para a próxima entrega.
 
 ## IA 2.0 — fundação 1A preparada · 2026-10-13
 
