@@ -51,3 +51,10 @@ test('Escape cancels only the active confirmation and stops propagation to its p
  w.bindFormDialog(root,{id:parent.id,initialFocus:'missing',close:()=>parentClosed++,blocked:true});w.bindFormDialog(root,{id:child.id,initialFocus:button.id,close:()=>cancelled++});
  let stopped=false;child.listeners.keydown({key:'Escape',preventDefault(){},stopPropagation(){stopped=true;}});assert.equal(cancelled,1);assert.equal(parentClosed,0);assert.equal(stopped,true);
 });
+
+test('changing the main day or view does not reuse expansion from the previous page',()=>{
+ const {root,w}=dom();root.append(detail(null,'Histórico',true));const snapshot=w.captureViewState(root,{pageKey:'day:monday'});
+ root.children=[];const next=detail(null,'Histórico');root.append(next);w.restoreViewState(root,snapshot,{pageKey:'week:monday'});assert.equal(next.open,false);
+ w.restoreViewState(root,snapshot,{pageKey:'day:tuesday'});assert.equal(next.open,false);
+ w.restoreViewState(root,snapshot,{pageKey:'day:monday'});assert.equal(next.open,true);
+});

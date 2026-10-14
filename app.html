@@ -6301,7 +6301,8 @@
         // ==========================================
         function render() {
             const appDiv = document.getElementById('app');
-            const viewSnapshot = window.captureViewState?.(appDiv, {pageKey: `${uiState.mainView}:${state.activeTab}`});
+            const viewPageKey = `${uiState.mainView}:${state.activeTab}`;
+            const viewSnapshot = window.captureViewState?.(appDiv, {pageKey: appDiv.__viewPageKey || viewPageKey});
             const recoverySnapshots = window.captureRecoveryDialogs(appDiv);
             const workSnapshots = window.captureWorkDialogs(appDiv);
             window.capturePomodoroDraft(appDiv);
@@ -6886,7 +6887,8 @@
             </footer>`;
 
             appDiv.innerHTML = html;
-            window.restoreViewState?.(appDiv, viewSnapshot, {pageKey: `${uiState.mainView}:${state.activeTab}`, blocked: true});
+            appDiv.__viewPageKey = viewPageKey;
+            window.restoreViewState?.(appDiv, viewSnapshot, {pageKey: viewPageKey, blocked: true});
             if (uiState.showCreateTaskModal && uiState.createTaskDraft) {
                 uiState.createTaskDraft.fields.forEach(field => {
                     const el = document.getElementById(field.id);
@@ -6930,7 +6932,7 @@
             }
             window.bindEditTaskDialog(appDiv);
             const viewBlocked = uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) || Boolean(uiState.studyTrackDeletion);
-            window.restoreViewState?.(appDiv, viewSnapshot, {pageKey: `${uiState.mainView}:${state.activeTab}`, blocked: viewBlocked});
+            window.restoreViewState?.(appDiv, viewSnapshot, {pageKey: viewPageKey, blocked: viewBlocked});
             if (uiState.studyTrackDeletion) window.bindFormDialog(appDiv, {id:'study-track-delete-dialog',initialFocus:'study-track-delete-close',close:window.closeStudyTrackDeletion,blocked:uiState.confirm.show || uiState.alert.show});
             if (uiState.confirm.show) window.bindFormDialog(appDiv, {id:'confirmation-dialog',initialFocus:'confirmation-cancel',close:()=>window.handleConfirmResult(false),blocked:uiState.alert.show});
             if (uiState.alert.show) window.bindFormDialog(appDiv, {id:'alert-dialog',initialFocus:'alert-close',close:window.closeAlertModal});
