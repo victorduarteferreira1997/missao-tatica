@@ -78,11 +78,11 @@ test('falha Firebase não publica; falha da ponte não desfaz sucesso; outra ses
  const bridgeFail=createConfirmedStateWriter({getUser:()=>user,writeAccount:async()=>{},writeSnapshot:async()=>{},onSaved:()=>{throw Error('bridge offline');}});assert.equal(await bridgeFail(user,{title:'a'}),true);
  const changed=createConfirmedStateWriter({getUser:()=>user,writeAccount:async()=>{user=null;},writeSnapshot:async()=>{throw Error('must not write');},onSaved:()=>saved++});assert.equal(await changed(original,{title:'a'}),false);assert.equal(saved,0);
 });
-function access({enabled=true,failSave=false}={}){
+function access({enabled=true,failSave=false,config={}}={}){
  const s=state(),events=[];let user={uid:AI_OWNER_UID},current=null;
  const w={escapeHtml:v=>String(v).replace(/</g,'&lt;'),bindFormDialog(){}};
  const store={get:async()=>current,authorize:async b=>{events.push('authorize');current={...grant(),...b,version:b.expectedVersion+1};return current;},revoke:async()=>{events.push('revoke');current={...current,version:current.version+1,status:'revoked'};return current;},publish:async b=>{events.push(['publish',b]);current={...current,projectionVersion:b.expectedProjectionVersion+1,syncedAt:new Date(clock).toISOString()};return current;}};
- installAiAccess(w,{document:{},config:{enabled},getState:()=>s,getUser:()=>user,store,saveConfirmed:async()=>{events.push('save');if(failSave)return false;await w.onAiV2Saved(structuredClone(s),user.uid);return true;},render(){},newId:()=>grant().grantId,now:()=>clock});return {w,s,events,setUser:u=>user=u};
+ installAiAccess(w,{document:{},config:{enabled,...config},getState:()=>s,getUser:()=>user,store,saveConfirmed:async()=>{events.push('save');if(failSave)return false;await w.onAiV2Saved(structuredClone(s),user.uid);return true;},render(){},newId:()=>grant().grantId,now:()=>clock});return {w,s,events,getGrant:()=>current,setUser:u=>user=u};
 }
 test('UI não compartilha sem prévia/confirmação e flag desligada não faz rede',async()=>{
  const off=access({enabled:false});await off.w.openAiAccess();await off.w.refreshAiAccess();assert.equal(off.w.renderAiAccessButton(),'');assert.equal(off.events.length,0);
@@ -113,4 +113,23 @@ test('resposta de publicação de sessão anterior não restaura janela após lo
  installAiAccess(w,{document:{},config:{enabled:true},getState:()=>s,getUser:()=>user,store,saveConfirmed:async()=>true,render(){}});
  await w.openAiAccess();const saving=w.onAiV2Saved(s,AI_OWNER_UID);await started;
  user=null;w.resetAiAccess();finish({...current,projectionVersion:1});await saving;assert.equal(w.renderAiAccess(),'');assert.equal(w.renderAiAccessButton(),'');
+});
+
+test('permissões RADAR e estudos alternam independentemente e seguem na autorização',async()=>{
+ const a=access({config:{proposalsEnabled:true,entitiesEnabled:true}});await a.w.openAiAccess();
+ for(const module of ['missions','radar','studies'])a.w.setAiAccessChoice(module,true);
+ a.w.setAiAccessChoice('allowProposals',true);
+ for(const [key,label] of [['allowRadarProposals','Permitir propostas de criação e alteração no RADAR'],['allowStudyProposals','Permitir propostas de planos semanais de estudo']]){
+  a.w.setAiAccessChoice(key,true);
+  assert.ok(a.w.renderAiAccess().split("<input").find(input=>input.includes("setAiAccessChoice('"+key+"',this.checked)")).split(">")[0].includes("checked onchange"));
+  a.w.setAiAccessChoice(key,false);
+  assert.ok(!a.w.renderAiAccess().split("<input").find(input=>input.includes("setAiAccessChoice('"+key+"',this.checked)")).split(">")[0].includes("checked onchange"));
+  a.w.setAiAccessChoice(key,true);
+ }
+ await a.w.previewAiAccess();await a.w.authorizeAiAccess();
+ const body=a.getGrant();
+ assert.deepEqual(body.choices,{modules:{missions:true,radar:true,studies:true},includeFuture:false,allowProposals:true,allowRadarProposals:true,allowStudyProposals:true});
+ a.w.setAiAccessChoice('radar',false);await a.w.previewAiAccess();await a.w.authorizeAiAccess();
+ assert.equal(a.getGrant().choices.allowRadarProposals,false);
+ assert.equal(a.getGrant().choices.allowStudyProposals,true);
 });
