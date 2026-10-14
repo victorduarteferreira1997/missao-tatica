@@ -517,3 +517,12 @@ projeção durante INSERT, DTOs dos novos kinds, criação/atualização com com
 planos sem gravação parcial, dados privados/manuais preservados, interface e
 fluxo Site → Worker/D1 → transação simulada. Instalação, consentimento, aparência
 real dos formulários e operações reais ainda aguardam conferência do proprietário.
+
+### Ativação de RADAR/estudos · 14/10/2026
+
+Capturas mostram migração kind executada, Worker ativo, variável de produção e
+healthcheck entitiesVersion:1, enabled:true. listProposals real passa com SELECT
+explícito da coluna kind. Frontend entitiesEnabled:true e Wrangler atualizados.
+Permissões de RADAR/estudos começam desmarcadas no grant anterior; revisar no app,
+autorizar e reativar consultas/envio no Site. Operações reais e aparência dos
+formulários ainda pendentes. Finanças e Corpo permanecem manuais.

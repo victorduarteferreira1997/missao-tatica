@@ -243,11 +243,11 @@ RADAR real preenchido, OAuth direto real e esta versão no celular ainda não
 receberam conferência específica. Ferramentas de
 propostas independentes e aplicação definitiva v2 ainda não estão implementadas.
 
-## 12. Ampliação preparada em 14/10/2026
+## 12. Ampliação habilitada em 14/10/2026
 
 RADAR: radar.create e radar.update com targetRef/targetVersion de seleção real,
 comparação e conferência transacional. Inteligência: study.plan.create para nova
 trilha, disciplinas e blocos semanais; sem alterar planos anteriores ou progresso.
 Permissões separadas allowRadarProposals/allowStudyProposals, opt-in por módulo.
-Finanças e Corpo permanecem manuais por decisão do proprietário. Implantação e
-conferência real pendentes; detalhes operacionais e limites em ai/README.md.
+Finanças e Corpo permanecem manuais por decisão do proprietário. Instalação conferida por capturas e consulta real da coluna kind. Consentimento
+e operações reais ainda pendentes; detalhes operacionais em ai/README.md.

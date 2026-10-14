@@ -2,6 +2,16 @@
 
 [Voltar ao README](../README.md)
 
+## IA 2.0 — permissões de RADAR e estudos habilitadas · 2026-10-14
+
+- Capturas confirmam ALTER TABLE executado, Worker ativo, variável de produção e
+  healthcheck entitiesVersion:1, enabled:true. Consulta MCP real da fila passou
+  usando a referência explícita à coluna kind.
+- Frontend habilita permissões separadas para RADAR e planos semanais de estudo;
+  Wrangler registra variável ativa. Compartilhamento anterior não é ampliado.
+- Consentimento dos novos módulos, reativação no Site e operações reais ainda
+  dependem do proprietário. Finanças e Corpo continuam manuais.
+
 ## IA 2.0 — RADAR e planos de estudos preparados · 2026-10-14
 
 - Finanças e Corpo permanecem manuais por decisão explícita do proprietário.
