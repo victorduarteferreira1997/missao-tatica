@@ -1,6 +1,6 @@
 import {DAYS,validateWeek,ContractError} from '../contract.v1.js';
 import {V2_FRESH_MS,V2ValidationError,v2ValidateChoices,v2ValidateSnapshot,v2Module,v2GrantId,v2Integer,v2Ref} from '../v2/contract.js';
-import {V2_PROPOSAL_SCOPE,V2_PROPOSAL_TOOLS} from '../v2/proposals.js';
+import {V2_PROPOSAL_SCOPE,v2ProposalAllowed,V2_ENTITY_KINDS,V2_PROPOSAL_TOOLS} from '../v2/proposals.js';
 import {ProposalError} from './proposals.v2.mjs';
 
 export const PLANNING_SCOPE='planning:read';
@@ -55,7 +55,7 @@ export function createPlanningService({now=Date.now,readBody,proposals}={}){
         if(!row)planningFail(401,'grant_not_active');grant(row);
         if(expected&&(row.grant_id!==expected.grantId||row.version!==expected.grantVersion))planningFail(401,'grant_changed');return row;
     }
-    async function oauthGrant(env,scope=PLANNING_SCOPE){const row=await activeGrant(env);if(scope.split(' ').includes(V2_PROPOSAL_SCOPE)){if(env.AI_V2_PROPOSALS_ENABLED!=='true')planningFail(404,'v2_proposals_not_enabled');const choices=grant(row).choices;if(!choices.modules.missions||choices.allowProposals!==true)planningFail(403,'proposal_consent_required');}return {grantId:row.grant_id,grantVersion:row.version};}
+    async function oauthGrant(env,scope=PLANNING_SCOPE){const row=await activeGrant(env);if(scope.split(' ').includes(V2_PROPOSAL_SCOPE)){if(env.AI_V2_PROPOSALS_ENABLED!=='true')planningFail(404,'v2_proposals_not_enabled');const choices=grant(row).choices;if(!['mission.create',...(env.AI_V2_ENTITIES_ENABLED==='true'?V2_ENTITY_KINDS:[])].some(kind=>v2ProposalAllowed(choices,kind)))planningFail(403,'proposal_consent_required');}return {grantId:row.grant_id,grantVersion:row.version};}
     async function bind(body,env){
         const requestedScope=body?.requestedScope??PLANNING_SCOPE;
         if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).sort().join(',')!==(Object.hasOwn(body,'requestedScope')?'expectedGrantId,expectedGrantVersion,requestedScope,subject':'expectedGrantId,expectedGrantVersion,subject')||!/^[a-f0-9]{64}$/.test(body.subject)||![PLANNING_SCOPE,V2_PROPOSAL_SCOPE].includes(requestedScope))planningFail(400,'invalid_arguments');

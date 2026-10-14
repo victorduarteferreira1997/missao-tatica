@@ -8,7 +8,7 @@ import {V2_PROPOSAL_TTL,v2ProposalRequest} from './v2/proposals.js';
 import {installAiV2Proposals} from '../ui/ai_proposals.v2.js';
 import {AI_OWNER_UID} from './contract.v1.js';
 const base='https://missao-tatica-ai-bridge.victorduarteferreira1997.workers.dev',initial=Date.parse('2026-10-13T12:00:00Z'),secret='synthetic-proposals-secret-1234567890';
-const schemas=await Promise.all(['schema.sql','oauth-schema.sql','v2-schema.sql','proposals-v2-schema.sql','apply-v2-schema.sql'].map(p=>readFile(new URL('./cloudflare/'+p,import.meta.url),'utf8')));
+const schemas=await Promise.all(['schema.sql','oauth-schema.sql','v2-schema.sql','proposals-v2-schema.sql','apply-v2-schema.sql','entities-v2-schema.sql'].map(p=>readFile(new URL('./cloudflare/'+p,import.meta.url),'utf8')));
 const fields={title:'Proposta fictícia',weekStart:'2026-10-12',day:'tuesday',durationMinutes:30,startTime:'',endTime:'',subtasks:['Passo fictício'],category:'pessoal'};
 const proposal=(id='test-key-0001')=>({idempotencyKey:id,kind:'mission.create',fields:{...fields}});
 async function fixture(t,{consent=true}={}){
@@ -101,4 +101,37 @@ test('recusa anterior impede reserva; reserva sobrevive expiração para recuper
  const b=await fixture(t);b.env.AI_V2_APPLY_ENABLED='true';const bp=(await (await b.rpc((await b.token()).token,'createProposal',proposal())).json()).proposal;
  await b.owner('/v2/app/proposals/reserve','POST',{id:bp.id,expectedVersion:1,applicationId:bp.id,fields});b.setTime(initial+V2_PROPOSAL_TTL+1);
  const list=await (await b.owner('/v2/app/proposals?status=applying')).json();assert.equal(list.items.length,1);assert.equal(list.items[0].fields.title,fields.title);
+});
+
+const radarFields={title:'Demanda fictícia',area:'Pessoal',project:'Teste',nextAction:'Conferir informações',status:'active',attentionLevel:'controlled',dueDate:'',nextReviewAt:'',waitingFor:'',waitingSince:'',followUpAt:''};
+const studyFields={title:'Plano fictício',weeklyGoalMinutes:60,subjects:[{name:'Inglês'}],blocks:[{title:'Vocabulário',subjectIndex:0,day:'monday',plannedMinutes:30,startTime:'',endTime:'',studyType:'teoria'}]};
+async function entityConsent(a,permissions={radar:true,studies:true}){
+ a.env.AI_V2_ENTITIES_ENABLED='true';a.env.AI_V2_APPLY_ENABLED='true';const choices={modules:{missions:false,radar:true,studies:true},includeFuture:true,allowProposals:false,allowRadarProposals:permissions.radar,allowStudyProposals:permissions.studies};
+ await a.owner('/v2/app/grant','PUT',{grantId:a.g.grantId,expectedVersion:1,choices,frozenRefs:[]});a.g.version=2;
+ return (await a.token()).token;
+}
+test('RADAR e estudo exigem suas permissões; token novo não precisa compartilhar missões; Finanças e Corpo são recusados',async t=>{
+ const a=await fixture(t),old=(await a.token()).token;assert.equal((await a.rpc(old,'createProposal',{kind:'radar.create',idempotencyKey:'radar-key-0001',fields:radarFields})).status,404);
+ const token=await entityConsent(a,{radar:true,studies:false});assert.ok(token);const body={kind:'radar.create',idempotencyKey:'radar-key-0001',fields:radarFields};const reply=await (await a.rpc(token,'createProposal',body)).json();assert.equal(reply.proposal.kind,'radar.create');assert.equal(reply.proposal.applyEligible,true);
+ assert.equal((await a.rpc(token,'createProposal',{kind:'study.plan.create',idempotencyKey:'study-key-0001',fields:studyFields})).status,403);
+ for(const kind of ['finance.create','body.create'])assert.equal((await a.rpc(token,'createProposal',{kind,idempotencyKey:'other-key-0001',fields:radarFields})).status,400);
+ assert.equal((await a.rpc(token,'createProposal',{...body,fields:{...radarFields,dueDate:'2026-99-01'}})).status,422);
+});
+test('planos validam disciplinas, blocos, horários e repetição; reserva e lista preservam kind',async t=>{
+ const a=await fixture(t),token=await entityConsent(a),body={kind:'study.plan.create',idempotencyKey:'study-key-0001',fields:studyFields};
+ const p=(await (await a.rpc(token,'createProposal',body)).json()).proposal;assert.equal((await (await a.rpc(token,'createProposal',body)).json()).replayed,true);
+ for(const fields of [{...studyFields,xp:99},{...studyFields,blocks:[{...studyFields.blocks[0],subjectIndex:1}]},{...studyFields,subjects:[{name:'Inglês'},{name:' inglês '}]},{...studyFields,blocks:[{...studyFields.blocks[0],startTime:'10:00',endTime:'10:05'}]}])assert.equal((await a.rpc(token,'createProposal',{...body,idempotencyKey:'bad-study-key-001',fields})).status,422);
+ const reserved=await (await a.owner('/v2/app/proposals/reserve','POST',{id:p.id,expectedVersion:1,applicationId:p.id,fields:studyFields})).json();assert.equal(reserved.proposal.kind,'study.plan.create');
+ await a.owner('/v2/app/proposals/acknowledge','POST',{id:p.id,applicationId:p.id,taskRef:'a'.repeat(64)});const listed=await (await a.owner('/v2/app/proposals?status=accepted')).json();assert.equal(listed.items[0].kind,'study.plan.create');
+});
+test('alteração RADAR só aceita alvo/version consultados; snapshot concorrente bloqueia insert e alvo não pode mudar na revisão',async t=>{
+ const a=await fixture(t),token=await entityConsent(a);const entity={ref:'a'.repeat(64),kind:'radar',entityVersion:'b'.repeat(64),fields:radarFields};
+ a.sql.prepare('UPDATE ai_v2_access SET snapshot=?').run(JSON.stringify({entities:[entity]}));
+ const body={kind:'radar.update',idempotencyKey:'radar-update-key-01',fields:{...radarFields,targetRef:entity.ref,targetVersion:entity.entityVersion}};
+ assert.equal((await a.rpc(token,'createProposal',{...body,fields:{...body.fields,targetRef:'c'.repeat(64)}})).status,409);
+ const p=(await (await a.rpc(token,'createProposal',body)).json()).proposal;
+ assert.equal((await a.owner('/v2/app/proposals/reserve','POST',{id:p.id,expectedVersion:1,applicationId:p.id,fields:{...body.fields,targetRef:'c'.repeat(64)}})).status,409);
+ a.setBeforeRun(q=>{if(q.startsWith('INSERT INTO ai_v2_proposals')){a.setBeforeRun(null);a.sql.prepare('UPDATE ai_v2_access SET snapshot=?').run(JSON.stringify({entities:[]}));}});
+ assert.equal((await a.rpc(token,'createProposal',{...body,idempotencyKey:'radar-update-key-02'})).status,409);
+ assert.equal((await (await a.rpc(token,'createProposal',body)).json()).replayed,true);
 });

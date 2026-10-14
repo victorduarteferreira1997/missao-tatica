@@ -69,6 +69,7 @@ export function createWorker({verifyOwner=createFirebaseVerifier(),storeFactory=
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=reads') return send(200,{service:'missao-tatica-ai-bridge',readsVersion:1,enabled:env.AI_V2_ENABLED==='true'&&env.AI_V2_READ_ENABLED==='true'});
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=proposals') return send(200,{service:'missao-tatica-ai-bridge',proposalsVersion:1,enabled:env.AI_V2_ENABLED==='true'&&env.AI_V2_PROPOSALS_ENABLED==='true'});
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=apply') return send(200,{service:'missao-tatica-ai-bridge',applyVersion:1,enabled:env.AI_V2_ENABLED==='true'&&env.AI_V2_PROPOSALS_ENABLED==='true'&&env.AI_V2_APPLY_ENABLED==='true'});
+                if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=entities') return send(200,{service:'missao-tatica-ai-bridge',entitiesVersion:1,enabled:['AI_V2_ENABLED','AI_V2_READ_ENABLED','AI_V2_PROPOSALS_ENABLED','AI_V2_APPLY_ENABLED','AI_V2_ENTITIES_ENABLED'].every(key=>env[key]==='true')});
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=keys') {
                     if(typeof verifyOwner.inspectPublicKeys!=='function')return send(503,{error:'service_unavailable'});
                     return send(200,{service:'missao-tatica-ai-bridge',diagnosticVersion:1,publicKeys:await verifyOwner.inspectPublicKeys()});

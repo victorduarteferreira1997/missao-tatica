@@ -12,8 +12,9 @@ export function v2GrantId(value) { v2Assert(typeof value==='string' && /^[a-zA-Z
 export function v2Date(value) { v2Text(value,40); v2Assert(value==='' || (Number.isFinite(Date.parse(value)) && /^20\d\d-\d\d-\d\d(?:T.*)?$/.test(value))); }
 export async function v2Hash(value) { const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)); return [...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join(''); }
 export function v2ValidateChoices(value) {
-    v2Exact(value,Object.hasOwn(value||{},'allowProposals')?['modules','includeFuture','allowProposals']:['modules','includeFuture']); v2Exact(value.modules,V2_MODULES);
-    if(Object.hasOwn(value,'allowProposals'))v2Assert(typeof value.allowProposals==='boolean'&&(!value.allowProposals||value.modules.missions));
+    const permissions={allowProposals:'missions',allowRadarProposals:'radar',allowStudyProposals:'studies'};
+    v2Exact(value,['modules','includeFuture',...Object.keys(permissions).filter(k=>Object.hasOwn(value||{},k))]);v2Exact(value.modules,V2_MODULES);
+    for(const [key,module] of Object.entries(permissions))if(Object.hasOwn(value,key))v2Assert(typeof value[key]==='boolean'&&(!value[key]||value.modules[module]));
     v2Assert(V2_MODULES.every(k=>typeof value.modules[k]==='boolean') && V2_MODULES.some(k=>value.modules[k]) && typeof value.includeFuture==='boolean'); return value;
 }
 export function v2ValidateGrantRequest(value) {

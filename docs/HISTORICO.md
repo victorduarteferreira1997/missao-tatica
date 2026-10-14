@@ -2,6 +2,18 @@
 
 [Voltar ao README](../README.md)
 
+## IA 2.0 — RADAR e planos de estudos preparados · 2026-10-14
+
+- Finanças e Corpo permanecem manuais por decisão explícita do proprietário.
+- Propostas de criar/alterar RADAR com alvos opacos e versões reais; comparação
+  antes/depois, preservação de campos privados e bloqueio de edição desatualizada.
+- Nova trilha de estudo com disciplinas e blocos semanais criada atomicamente;
+  edição estruturada sem JSON, sem modificar planos existentes ou simular estudos.
+- Permissões independentes por módulo, sem ampliação automática do grant anterior.
+- Migração aditiva kind, novo bundle/flag e instruções do plugin. Cadastro reaproveita
+  comprovantes e retomada. Flag da interface permanece desligada até instalar.
+- Testes locais e fluxo integrado sintético aprovados; instalação e testes reais pendentes.
+
 ## IA 2.0 — progresso de cadastro e posição da janela · 2026-10-14
 
 - Proprietário confirmou cadastro real e permanência da fila aberta. Reabertura

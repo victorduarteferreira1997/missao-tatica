@@ -104,6 +104,7 @@
         import { installAiInbox } from './ui/ai_inbox.v3.js';
         import { AI_CONFIG } from './ai/config.v1.js';
         import { AI_V2_CONFIG } from './ai/config.v2.js';
+        import { applyEntity, radarTarget } from './ai/v2/entity_apply.js';
         import { createCloudStateStore } from './ai/v2/cloud_state.js';
         import { createConfirmedStateWriter } from './ai/v2/saved_state.js';
         import { createV2BrowserStore } from './ai/v2/browser.js';
@@ -1744,7 +1745,11 @@
                 const ref=doc(db,'users',user.uid,'state','main');
                 return work({get:async()=>{const snap=await transaction.get(ref);return snap.exists()?snap.data():null;},set:value=>transaction.set(ref,value,{merge:true})});
             }),
-            onAdopt:(saved,uid)=>{if(currentUser?.uid!==uid)return;for(const task of saved.tasks.filter(t=>t.aiV2ProposalId)){if(!state.tasks.some(t=>String(t.id)===String(task.id))&&!state.aiAppliedProposals?.[task.aiV2ProposalId])state.tasks.push(task);}
+            onAdopt:(saved,uid,receipt)=>{if(currentUser?.uid!==uid)return;for(const task of saved.tasks.filter(t=>t.aiV2ProposalId)){if(!state.tasks.some(t=>String(t.id)===String(task.id))&&!state.aiAppliedProposals?.[task.aiV2ProposalId])state.tasks.push(task);}
+                if(receipt?.kind&&receipt.kind!=='mission.create'&&!state.aiAppliedProposals?.[receipt.proposalId]){
+                    if(receipt.kind.startsWith('radar.')){state.operationalControl=state.operationalControl||{};const demands=state.operationalControl.demands=state.operationalControl.demands||[];const updated=saved.operationalControl?.demands.find(d=>String(d.id)===String(receipt.taskId));const index=demands.findIndex(d=>String(d.id)===String(receipt.taskId));if(updated){if(index>=0)demands[index]=updated;else if(receipt.kind==='radar.create')demands.unshift(updated);}}
+                    if(receipt.kind==='study.plan.create'){state.studyData=state.studyData||{};state.studyData.studyPlan=state.studyData.studyPlan||{};for(const [parent,key,source] of [[state.studyData.studyPlan,'tracks',saved.studyData.studyPlan.tracks],[state.studyData,'subjects',saved.studyData.subjects],[state.studyData.studyPlan,'weeklyBlocks',saved.studyData.studyPlan.weeklyBlocks]]){const items=parent[key]=parent[key]||[];for(const item of source.filter(i=>i.aiV2ProposalId===receipt.proposalId)){if(!items.some(i=>String(i.id)===String(item.id)))items.push(item);}}}
+                }
                 state.aiAppliedProposals={...(state.aiAppliedProposals||{}),...(saved.aiAppliedProposals||{})};state.lastSavedAt=saved.lastSavedAt;state.updatedAt=saved.updatedAt;
                 localStorage.setItem('planeamento_semanal_v11',JSON.stringify(state));render();}
         });
@@ -3654,9 +3659,11 @@
             saveConfirmed: () => window.saveStateNow(true, 'ai-v2-share'), render
         });
         installAiV2Proposals(window, {config: AI_V2_CONFIG, getUser: () => currentUser, render, document,
-            getCategories:()=>window.getTaskCategories(),saveConfirmed:()=>window.saveStateNow(true,'ai-v2-before-apply'),
+            getCategories:()=>window.getTaskCategories(),previewEntity:(row)=>radarTarget(state,row,row.fields).then(result=>result.entity.fields),saveConfirmed:()=>window.saveStateNow(true,'ai-v2-before-apply'),
             applyMission:(row,fields)=>{const user=currentUser;return confirmedStateWriter.exclusive(()=>{
-                const cost=window.calculateTaskCost('media',2,fields.durationMinutes,'drain','normal'),stamp=new Date().toISOString();
+                const stamp=new Date().toISOString(),campaign=window.normalizePrestige().campaign;
+                if(row.kind&&row.kind!=='mission.create')return cloudStateStore.applyMutation(user,row.id,s=>applyEntity(s,row,fields,{createdAt:stamp,campaign}),stamp).then(result=>{try{Promise.resolve(window.onAiV2Saved?.(JSON.parse(result.payload),user.uid)).catch(()=>{});}catch{}return result;});
+                const cost=window.calculateTaskCost('media',2,fields.durationMinutes,'drain','normal');
                 const task={id:Number.parseInt(row.id.slice(0,13),16),aiV2ProposalId:row.id,day:fields.day,planningWeekStart:fields.weekStart,category:fields.category,text:fields.title,activityType:'task',xp:cost.xp,energyCost:cost.hp,completed:false,priority:'media',time:fields.durationMinutes+' min',complexity:2,impactType:'drain',missionNature:'normal',startTime:fields.startTime,endTime:fields.endTime,order:window.getNextTaskOrder(fields.day),subtasks:fields.subtasks.map((text,i)=>({id:Number.parseInt(row.id.slice(0,13),16)+i+1,text,completed:false,createdAt:stamp})),isRecurring:false,recurrenceDays:[],recurrenceGroupId:null,createdAt:stamp,campaignId:window.normalizePrestige().campaign};
                 return cloudStateStore.apply(user,row.id,task,stamp).then(result=>{try{Promise.resolve(window.onAiV2Saved?.(JSON.parse(result.payload),user.uid)).catch(()=>{});}catch{}return result;});
             });},

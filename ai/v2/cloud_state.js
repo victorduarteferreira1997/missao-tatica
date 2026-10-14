@@ -12,16 +12,19 @@ export function createCloudStateStore({getUser,transact,onAdopt=()=>{}}){
    tx.set({data:payload,updatedAt:savedAt,revision:(row?.revision||0)+1});
   });check(user);bases.set(user.uid,payload);
  },
- async apply(user,proposalId,task,savedAt){check(user);const expected=bases.get(user.uid);if(expected===undefined)throw Error('Reabra o app para conferir a conexão.');
+ async applyMutation(user,proposalId,mutate,savedAt){check(user);const expected=bases.get(user.uid);if(expected===undefined)throw Error('Reabra o app para conferir a conexão.');
   const result=await transact(user,async tx=>{check(user);const row=await tx.get();check(user);const s=parse(row),receipts=row.aiApplications||{},old=receipts[proposalId];
    if(old)return {payload:row.data,receipt:old,replayed:true};
    if(row.data!==expected)conflict();if(Object.keys(receipts).length>=1000)throw Error('Limite de comprovantes atingido.');
-   if(s.tasks.some(t=>t.aiV2ProposalId===proposalId))throw Error('Vínculo anterior sem comprovante. Confira a missão antes de continuar.');
-   if(s.tasks.some(t=>String(t.id)===String(task.id)))throw Error('ID de missão já utilizado. Nenhum cadastro foi feito.');
-   const receipt={taskId:task.id,createdAt:savedAt};s.tasks.push(task);s.aiAppliedProposals={...(s.aiAppliedProposals||{}),[proposalId]:task.id};s.lastSavedAt=savedAt;s.updatedAt=savedAt;s.lastSaveReason='ai-v2-apply';
+   const receipt=await mutate(s);if(!receipt||receipt.taskId===undefined)throw Error('Cadastro inválido.');receipt.createdAt=savedAt;
+   s.aiAppliedProposals={...(s.aiAppliedProposals||{}),[proposalId]:receipt.taskId};s.lastSavedAt=savedAt;s.updatedAt=savedAt;s.lastSaveReason='ai-v2-apply';
    const payload=JSON.stringify(s);tx.set({data:payload,updatedAt:savedAt,revision:(row.revision||0)+1,aiApplications:{...receipts,[proposalId]:receipt}});
    return {payload,receipt,replayed:false};
-  });check(user);bases.set(user.uid,result.payload);onAdopt(JSON.parse(result.payload),user.uid);return result;
- }
+  });check(user);bases.set(user.uid,result.payload);onAdopt(JSON.parse(result.payload),user.uid,{...result.receipt,proposalId});return result;
+ },
+ apply(user,proposalId,task,savedAt){return this.applyMutation(user,proposalId,s=>{
+  if(s.tasks.some(t=>t.aiV2ProposalId===proposalId))throw Error('Vínculo anterior sem comprovante. Confira a missão antes de continuar.');
+  if(s.tasks.some(t=>String(t.id)===String(task.id)))throw Error('ID de missão já utilizado. Nenhum cadastro foi feito.');s.tasks.push(task);return {taskId:task.id};
+ },savedAt);}
  };
 }

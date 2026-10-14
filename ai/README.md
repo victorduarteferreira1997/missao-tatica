@@ -468,3 +468,52 @@ validando leitura com JOIN da nova tabela. Frontend applyEnabled:true e Wrangler
 registram ativação. Conferência de constraints completas, gravação Firebase real,
 regras para revision/aiApplications e visual do formulário ainda pendentes.
 Fechar e atualizar clientes antigos antes do teste. Consentimento atual permanece.
+
+## RADAR e Inteligência — propostas específicas preparadas
+
+Decisão de produto de 14/10/2026: Finanças e Corpo permanecem manuais, sem
+ampliação de compartilhamento, ferramentas ou propostas desses módulos.
+
+Novos kinds: radar.create, radar.update e study.plan.create. Permissões opcionais
+allowRadarProposals e allowStudyProposals exigem seus módulos selecionados;
+a permissão antiga de missões não autoriza novas operações. A conexão usa o
+scope proposals:create existente, sempre vinculado ao grant/version atual.
+Nova autorização exige reativar consultas e envio no Site, sem upgrade silencioso.
+
+RADAR: título, área/projeto, próxima ação, estado, atenção, prazo/revisão e espera.
+Update exige targetRef/targetVersion consultados de um registro autorizado.
+Servidor verifica alvo e versão na projeção, inclusive no INSERT condicional;
+o app resolve o ref sem expor o ID interno e confere os campos atuais novamente
+na transação. Antes/depois fica visível na revisão. Alvo inexistente/alterado não
+é sobrescrito; preparar nova proposta após sincronizar. Não altera owner,
+requester, source ou outros campos não propostos, nem concede recompensas.
+
+Study.plan.create cria uma nova trilha, disciplinas e blocos semanais em uma
+única transação, sem alterar planos anteriores ou registrar sessões realizadas.
+É um modelo semanal, sem promessa de reserva de horário ou Google Agenda.
+Campos: título, weeklyGoalMinutes (0–3000), subjects (1–12 nomes únicos) e blocks
+(1–21, subjectIndex válido, dia, título, plannedMinutes 5–480, horários opcionais
+coerentes e studyType teoria/revisao/questoes/pratica). Soma de blocos até 3000 min.
+O formulário permite editar nomes, adicionar/remover disciplinas não usadas e
+editar/adicionar/remover blocos. Sem JSON no fluxo do usuário.
+
+Tipos novos reutilizam reserva, comprovante Firebase e ACK da etapa 2. Operações
+iniciadas mantêm campos congelados e são retomáveis sem duplicar. O comprovante
+continua top-level com taskId como nome legado para o ID local do artefato e kind;
+só o hash opaco segue ao D1. Migração aditiva de kind não muda CHECKs/status,
+propostas anteriores, tabelas de grants, snapshots ou comprovantes.
+
+Instalação: executar entities-v2-schema.sql **uma vez** no D1 (ALTER TABLE ADD
+COLUMN kind); se a coluna já existir, conferir PRAGMA table_info e não repetir.
+Publicar worker-dashboard.js atualizado e adicionar AI_V2_ENTITIES_ENABLED=true.
+/healthz?check=entities confirma versão/flags; leitura real da fila usa referência
+explícita à coluna kind e confere disponibilidade do novo esquema. Só depois
+habilitar ai/config.v2.js → entitiesEnabled:true, revisar as permissões no app,
+autorizar e reativar consultas/envio no Site. Frontend permanece desligado nesta
+entrega preparada. Não desligar flags de servidor para liberar reservas já iniciadas.
+
+Testes incluem SQL real, escopos separados, alvos fora da seleção, mudança da
+projeção durante INSERT, DTOs dos novos kinds, criação/atualização com comprovante,
+planos sem gravação parcial, dados privados/manuais preservados, interface e
+fluxo Site → Worker/D1 → transação simulada. Instalação, consentimento, aparência
+real dos formulários e operações reais ainda aguardam conferência do proprietário.

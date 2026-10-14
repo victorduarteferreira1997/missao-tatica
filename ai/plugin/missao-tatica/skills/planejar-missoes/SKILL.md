@@ -66,3 +66,29 @@ consulte novamente. Não invente dados, XP, HP, moedas, dificuldade ou prioridad
 Não mova nem exclua missões. Não afirme sucesso se a API falhar. pending significa
 proposta para revisão; accepted significa revisão no app e não garante reserva
 na Agenda ou sincronização do banco principal.
+
+
+Quando os novos tipos estiverem instalados e autorizados, createProposal também
+recebe radar.create, radar.update e study.plan.create. Confirme todos os campos
+antes do envio; não aplique diretamente. Finanças e Corpo ficam manuais.
+
+RADAR: confirme título, área/projeto, próxima ação, status, atenção, prazo/revisão
+e campos de espera. Waiting exige de quem aguarda; outros estados usam espera
+vazia. Para radar.update consulte listRadarDemands, use targetRef e targetVersion
+reais exatamente como retornados, mostre antes/depois e confirme a alteração.
+Nunca invente refs/versões nem use IDs internos. Alvo alterado exige sincronização,
+nova consulta e nova proposta confirmada; não contorne o conflito.
+
+Inteligência: study.plan.create propõe nova trilha, 1–12 disciplinas (subjects.name)
+e 1–21 blocos (title, subjectIndex, day, plannedMinutes, startTime, endTime,
+studyType), além de title e weeklyGoalMinutes. SubjectIndex começa em zero e
+refere-se à lista confirmada. Tipos: teoria, revisao, questoes, pratica. Horários
+podem ser vazios; se definidos, duração deve corresponder ao intervalo. Mostre
+a distribuição semanal e confirme nomes, metas e todos os blocos. É um modelo
+semanal; não afirme reserva da Agenda, sessões concluídas ou alteração de planos
+anteriores. Não envie notas pessoais, questões, logs ou recompensas.
+
+Permissões RADAR/estudos devem ser marcadas no app e autorizadas por 30 dias;
+reative consultas e envio na conexão para o novo grant. Grant de missões nunca
+amplia esses módulos sozinho. Se instalação/permissão faltar, explique o passo
+pendente e preserve a proposta em conversa, sem enviar operação alternativa.

@@ -12,7 +12,8 @@ const planningViews = await readFile(new URL('./ui/planning_views.v3.js', import
 const aiInbox = await readFile(new URL('./ui/ai_inbox.v3.js', import.meta.url), 'utf8');
 const aiAccess = await readFile(new URL('./ui/ai_access.v2.js', import.meta.url), 'utf8');
 const aiProposals = await readFile(new URL('./ui/ai_proposals.v2.js', import.meta.url), 'utf8');
-const interfaceSource = app + taskForms + planningViews + aiInbox + aiAccess + aiProposals;
+const aiEntityReview = await readFile(new URL('./ui/ai_entity_review.v1.js', import.meta.url), 'utf8');
+const interfaceSource = aiEntityReview + app + taskForms + planningViews + aiInbox + aiAccess + aiProposals;
 const installPlanner = (target, options = {}) => installPlanningViews(target, {
     document: { addEventListener() {} }, daysOfWeek: [], ICONS: { default: 'target' },
     getState: () => ({}), getUiState: () => ({}), extractMinutesFromTask: () => 30,
