@@ -2358,7 +2358,10 @@
             uiState.confirm.show = true; uiState.confirm.message = message; uiState.confirm.onConfirm = onConfirmCallback; render();
         };
         window.handleConfirmResult = function(accepted) {
-            uiState.confirm.show = false; if (accepted && uiState.confirm.onConfirm) uiState.confirm.onConfirm(); uiState.confirm.onConfirm = null; render();
+            const callback = uiState.confirm.onConfirm;
+            uiState.confirm.show = false; uiState.confirm.onConfirm = null;
+            if (accepted && callback) callback();
+            render();
         };
         window.showAlertModal = function(message) { uiState.alert.show = true; uiState.alert.message = message; render(); };
         window.closeAlertModal = function() { uiState.alert.show = false; render(); };
@@ -5011,6 +5014,24 @@
             window.showToast('Trilha restaurada', 'Disciplinas e planejamento disponíveis novamente.', 'route', 'text-cyan-300');
         };
 
+        window.openStudyTrackDeletion = function(trackId) {
+            if (!window.getStudyTrackDeletionImpact(trackId)) return;
+            uiState.studyTrackDeletion = {trackId: String(trackId)};
+            render();
+        };
+        window.closeStudyTrackDeletion = function() { uiState.studyTrackDeletion = null; render(); };
+        window.chooseStudyTrackDeletion = function(mode) {
+            const trackId = uiState.studyTrackDeletion?.trackId;
+            if (!trackId || !['keep','cascade'].includes(mode)) return;
+            uiState.studyTrackDeletion = null;
+            window.requestPermanentStudyTrackDeletion(trackId,mode);
+        };
+        window.renderStudyTrackDeletion = function() {
+            const impact = uiState.studyTrackDeletion && window.getStudyTrackDeletionImpact(uiState.studyTrackDeletion.trackId);
+            if (!impact) return '';
+            return `<div class="fixed inset-0 bg-black/80 flex items-center justify-center p-3 sm:p-4 z-[90] backdrop-blur-sm"><section id="study-track-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="study-track-delete-title" class="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-2xl"><header class="flex items-start justify-between gap-3"><div><h2 id="study-track-delete-title" class="text-lg font-semibold text-slate-100">Excluir trilha</h2><p class="mt-1 text-sm text-slate-400 break-words">${window.escapeHtml(impact.track.name)}</p></div><button id="study-track-delete-close" type="button" onclick="window.closeStudyTrackDeletion()" aria-label="Cancelar exclusão" class="rounded-lg p-2 text-slate-400 hover:bg-slate-800"><i data-lucide="x" class="w-4 h-4"></i></button></header><p class="mt-4 text-sm text-slate-300">O que você quer manter?</p><div class="mt-3 space-y-2"><button type="button" onclick="window.chooseStudyTrackDeletion('keep')" class="w-full rounded-xl border border-slate-700 px-4 py-3 text-left hover:bg-slate-800"><span class="block text-sm font-medium text-slate-100">Manter matérias e histórico</span><span class="block mt-1 text-xs text-slate-400">Remove só a trilha. Você poderá reorganizar os estudos.</span></button><button type="button" onclick="window.chooseStudyTrackDeletion('cascade')" class="w-full rounded-xl border border-rose-900/50 px-4 py-3 text-left hover:bg-rose-950/20"><span class="block text-sm font-medium text-rose-300">Apagar conteúdo vinculado</span><span class="block mt-1 text-xs text-slate-400">Remove matérias, blocos, sessões, revisões e erros desta trilha.</span></button></div><p class="mt-4 text-xs text-slate-500">No próximo passo, confira as quantidades e confirme a exclusão definitiva.</p></section></div>`;
+        };
+
         window.getStudyTrackDeletionImpact = function(trackId) {
             const data = state.studyData, plan = data?.studyPlan;
             const same = id => String(id) === String(trackId);
@@ -5509,7 +5530,7 @@
                 if (body && snapshot) body.scrollTop = snapshot.scrollTop;
                 window.bindFormDialog(root, { id:`${kind}-module-dialog`, initialFocus:snapshot?.focusId || `${kind}-module-close`,
                     close:kind === 'finance' ? window.toggleFinanceModal : kind === 'health' ? window.toggleHealthModal : window.toggleStudyModal,
-                    blocked:uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) });
+                    blocked:uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) || Boolean(uiState.studyTrackDeletion) });
             }
         };
 
@@ -6280,6 +6301,7 @@
         // ==========================================
         function render() {
             const appDiv = document.getElementById('app');
+            const viewSnapshot = window.captureViewState?.(appDiv, {pageKey: `${uiState.mainView}:${state.activeTab}`});
             const recoverySnapshots = window.captureRecoveryDialogs(appDiv);
             const workSnapshots = window.captureWorkDialogs(appDiv);
             window.capturePomodoroDraft(appDiv);
@@ -6327,12 +6349,12 @@
             if (uiState.confirm.show) {
                 html += `
                 <div class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-[999] backdrop-blur-sm font-mono">
-                    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm w-full shadow-2xl modal-enter">
-                        <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2"><i data-lucide="help-circle" class="text-indigo-400"></i> Confirmação Tática</h3>
+                    <div id="confirmation-dialog" role="dialog" aria-modal="true" aria-labelledby="confirmation-title" class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm w-full shadow-2xl modal-enter">
+                        <h3 id="confirmation-title" class="text-lg font-bold text-white mb-2 flex items-center gap-2"><i data-lucide="help-circle" class="text-indigo-400"></i> Confirmação Tática</h3>
                         <p class="text-slate-300 text-sm mb-6 leading-relaxed whitespace-pre-line">${window.escapeHtml(uiState.confirm.message)}</p>
                         <div class="flex gap-3">
-                            <button onclick="window.handleConfirmResult(false)" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-lg text-sm font-bold transition-colors">Cancelar</button>
-                            <button onclick="window.handleConfirmResult(true)" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">Confirmar</button>
+                            <button id="confirmation-cancel" type="button" onclick="window.handleConfirmResult(false)" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-lg text-sm font-bold transition-colors">Cancelar</button>
+                            <button id="confirmation-accept" type="button" onclick="window.handleConfirmResult(true)" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">Confirmar</button>
                         </div>
                     </div>
                 </div>`;
@@ -6341,16 +6363,17 @@
             if (uiState.alert.show) {
                 html += `
                 <div class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-[999] backdrop-blur-sm font-mono">
-                    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm w-full shadow-2xl modal-enter">
-                        <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2"><i data-lucide="alert-circle" class="text-yellow-500"></i> Alerta</h3>
+                    <div id="alert-dialog" role="dialog" aria-modal="true" aria-labelledby="alert-title" class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm w-full shadow-2xl modal-enter">
+                        <h3 id="alert-title" class="text-lg font-bold text-white mb-2 flex items-center gap-2"><i data-lucide="alert-circle" class="text-yellow-500"></i> Alerta</h3>
                         <p class="text-slate-300 text-sm mb-6 leading-relaxed whitespace-pre-line">${window.escapeHtml(uiState.alert.message)}</p>
-                        <button onclick="window.closeAlertModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-lg text-sm font-bold transition-colors">OK</button>
+                        <button id="alert-close" type="button" onclick="window.closeAlertModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-lg text-sm font-bold transition-colors">OK</button>
                     </div>
                 </div>`;
             }
 
 
             html += window.renderDataManager();
+            html += window.renderStudyTrackDeletion();
 
             const profileNeedsSetup = !state?.userProfile?.configured;
             if (profileNeedsSetup || uiState.showProfileModal) {
@@ -6820,7 +6843,7 @@
             if (uiState.showStatsModal) {
                 html += `
                 <div id="qg-scroll" class="fixed inset-0 bg-black/90 flex flex-col items-center justify-start p-2 sm:p-6 z-[60] backdrop-blur-md overflow-y-auto pt-10 font-sans">
-                    <div id="qg-dialog" role="dialog" aria-modal="true" aria-labelledby="qg-title" class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-4xl shadow-2xl modal-enter relative mb-10">
+                    <div id="qg-dialog" data-view-scope="${window.escapeHtml(uiState.statsTab)}" role="dialog" aria-modal="true" aria-labelledby="qg-title" class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-4xl shadow-2xl modal-enter relative mb-10">
                         <button id="qg-close" aria-label="Fechar Quartel General" onclick="window.toggleStatsModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full p-1"><i data-lucide="x"></i></button>
                         <div class="p-5 sm:p-8">
                             <h2 id="qg-title" class="text-2xl font-black text-white flex items-center gap-3 mb-6 pr-8"><i data-lucide="building-2" class="text-yellow-500 w-8 h-8"></i> Quartel General</h2>
@@ -6863,6 +6886,7 @@
             </footer>`;
 
             appDiv.innerHTML = html;
+            window.restoreViewState?.(appDiv, viewSnapshot, {pageKey: `${uiState.mainView}:${state.activeTab}`, blocked: true});
             if (uiState.showCreateTaskModal && uiState.createTaskDraft) {
                 uiState.createTaskDraft.fields.forEach(field => {
                     const el = document.getElementById(field.id);
@@ -6905,6 +6929,11 @@
                 });
             }
             window.bindEditTaskDialog(appDiv);
+            const viewBlocked = uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) || Boolean(uiState.studyTrackDeletion);
+            window.restoreViewState?.(appDiv, viewSnapshot, {pageKey: `${uiState.mainView}:${state.activeTab}`, blocked: viewBlocked});
+            if (uiState.studyTrackDeletion) window.bindFormDialog(appDiv, {id:'study-track-delete-dialog',initialFocus:'study-track-delete-close',close:window.closeStudyTrackDeletion,blocked:uiState.confirm.show || uiState.alert.show});
+            if (uiState.confirm.show) window.bindFormDialog(appDiv, {id:'confirmation-dialog',initialFocus:'confirmation-cancel',close:()=>window.handleConfirmResult(false),blocked:uiState.alert.show});
+            if (uiState.alert.show) window.bindFormDialog(appDiv, {id:'alert-dialog',initialFocus:'alert-close',close:window.closeAlertModal});
 
             
             // Render specific components that require external DOM access safely
@@ -6987,7 +7016,7 @@
 
             if (!activeBlocks.length) {
                 return `
-                <details class="mb-4 rounded-2xl border border-slate-800 bg-slate-900/60 font-mono overflow-hidden">
+                <details data-view-key="daily-study" class="mb-4 rounded-2xl border border-slate-800 bg-slate-900/60 font-mono overflow-hidden">
                     <summary class="cursor-pointer list-none px-3 py-3 flex items-center justify-between gap-3 hover:bg-slate-800/40">
                         <div class="flex items-center gap-2 min-w-0"><i data-lucide="book-open" class="w-4 h-4 text-cyan-400"></i><span class="text-xs font-black text-slate-300">Estudos de ${dayLabel}</span><span class="text-[10px] text-slate-600">0 blocos</span></div>
                         <span class="text-[9px] text-slate-500 uppercase font-black tracking-wider">Expandir</span>
@@ -7000,7 +7029,7 @@
             }
 
             return `
-            <details class="mb-4 rounded-xl border border-slate-800 bg-slate-950/35 font-mono overflow-hidden">
+            <details data-view-key="daily-study" class="mb-4 rounded-xl border border-slate-800 bg-slate-950/35 font-mono overflow-hidden">
                 <summary class="cursor-pointer list-none px-3 py-3 flex items-center justify-between gap-3 hover:bg-slate-900/50">
                     <div class="min-w-0 flex items-center gap-2">
                         <i data-lucide="book-open" class="w-4 h-4 text-cyan-500"></i>
@@ -7239,7 +7268,7 @@
         };
         window.renderCampaignEmblems = function() {
             const emblems = window.normalizePrestige().emblems;
-            return `<details class="rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer text-sm font-bold text-white">Emblemas de campanha · ${emblems.length}</summary><p class="text-xs text-slate-400 mt-3">Um emblema por subtema concluído. Repetir a trajetória acrescenta uma campanha ao histórico.</p>${emblems.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">${emblems.map(e => {
+            return `<details data-view-key="campaign-emblems" class="rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer text-sm font-bold text-white">Emblemas de campanha · ${emblems.length}</summary><p class="text-xs text-slate-400 mt-3">Um emblema por subtema concluído. Repetir a trajetória acrescenta uma campanha ao histórico.</p>${emblems.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">${emblems.map(e => {
                 const t = window.getCampaignDefinition(e.themeId);
                 return `<div class="flex items-center gap-3 rounded-lg bg-slate-800/50 p-3"><i data-lucide="${t.icon}" style="color:${t.color}" class="w-6 h-6 shrink-0"></i><div><p class="text-sm font-bold text-white">${window.escapeHtml(window.formatCampaignTitle(t.ranks[14].name, 15, t.id))}</p><p class="text-xs text-slate-400 mt-1">${t.name} · Campanha ${Number(e.campaign) || 1}</p></div></div>`;
             }).join('')}</div>` : '<p class="text-xs text-slate-500 mt-3">Seu primeiro emblema espera no fim de uma campanha.</p>'}</details>`;
@@ -7258,7 +7287,7 @@
             const head = `<div class="flex flex-wrap gap-2"><button type="button" aria-pressed="${!career}" onclick="window.setCampaignCollectionScope('current')" class="px-4 py-2 rounded-lg text-sm font-bold ${career ? 'text-slate-400 border border-slate-700' : 'bg-indigo-600 text-white'}">Campanha atual</button><button type="button" aria-pressed="${career}" onclick="window.setCampaignCollectionScope('career')" class="px-4 py-2 rounded-lg text-sm font-bold ${career ? 'bg-indigo-600 text-white' : 'text-slate-400 border border-slate-700'}">Coleção da carreira</button></div>`;
             if (career) {
                 const groups = [...p.campaigns, { number: p.campaign, themeId: p.themeId, badgeEvents: p.badgeEvents, active: true }];
-                return `<div class="space-y-5">${head}<p class="text-sm text-slate-400">Suas conquistas ficam organizadas por campanha e tema.</p>${window.renderCampaignEmblems()}${groups.map(c => `<details class="rounded-xl border border-slate-700 p-4"><summary class="cursor-pointer text-sm font-bold text-slate-200">Campanha ${c.number} · ${window.getCampaignDefinition(c.themeId).name} · ${c.badgeEvents.length} medalhas${c.active ? ' · atual' : ''}</summary><div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">${c.badgeEvents.map(e => window.renderCampaignBadgeCard(window.getCampaignBadgeDefinition(e.id, c.themeId), e, true, c.themeId)).join('') || '<p class="text-sm text-slate-400">Esta campanha ainda não tem medalhas.</p>'}</div></details>`).join('')}<details class="rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer text-sm text-slate-300">Marcos da carreira</summary><div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">${BADGES_DB.filter(b => ['veterano', 'legado'].includes(b.id)).map(b => window.renderCampaignBadgeCard(b, state.unlockedBadges.includes(b.id) ? { id: b.id } : null)).join('')}</div></details></div>`;
+                return `<div class="space-y-5">${head}<p class="text-sm text-slate-400">Suas conquistas ficam organizadas por campanha e tema.</p>${window.renderCampaignEmblems()}${groups.map(c => `<details data-view-key="campaign-${c.number}" class="rounded-xl border border-slate-700 p-4"><summary class="cursor-pointer text-sm font-bold text-slate-200">Campanha ${c.number} · ${window.getCampaignDefinition(c.themeId).name} · ${c.badgeEvents.length} medalhas${c.active ? ' · atual' : ''}</summary><div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">${c.badgeEvents.map(e => window.renderCampaignBadgeCard(window.getCampaignBadgeDefinition(e.id, c.themeId), e, true, c.themeId)).join('') || '<p class="text-sm text-slate-400">Esta campanha ainda não tem medalhas.</p>'}</div></details>`).join('')}<details class="rounded-xl border border-slate-800 p-4"><summary class="cursor-pointer text-sm text-slate-300">Marcos da carreira</summary><div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">${BADGES_DB.filter(b => ['veterano', 'legado'].includes(b.id)).map(b => window.renderCampaignBadgeCard(b, state.unlockedBadges.includes(b.id) ? { id: b.id } : null)).join('')}</div></details></div>`;
             }
             return `<div class="space-y-5">${head}<section class="rounded-xl border border-slate-700 bg-slate-800/30 p-5"><p class="text-xs font-bold text-slate-400 uppercase tracking-widest">${window.getCampaignDefinition().name} · Campanha ${p.campaign}</p><h3 class="text-xl font-black text-white mt-2">${earned.length} de ${base.length} medalhas conquistadas</h3><p class="text-sm text-slate-400 mt-2">Cada medalha reconhece uma ação nesta campanha. Os bônus de XP de cada critério são concedidos uma única vez na carreira.</p></section><section><h3 class="text-sm font-bold text-emerald-300 mb-3">Conquistadas</h3>${earned.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${earned.map(b => window.renderCampaignBadgeCard(window.getCampaignBadgeDefinition(b.id), events.find(e => e.id === b.id), true)).join('')}</div>` : '<p class="text-sm text-slate-400">Suas primeiras conquistas aparecerão aqui.</p>'}</section>${locked.length ? `<section><h3 class="text-sm font-bold text-slate-300 mb-3">Próximos desafios</h3><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${locked.map(b => window.renderCampaignBadgeCard(window.getCampaignBadgeDefinition(b.id))).join('')}</div></section>` : '<p class="text-sm text-amber-300">Coleção completa. Todas as medalhas desta campanha foram conquistadas.</p>'}</div>`;
         };
@@ -7310,7 +7339,7 @@
         };
         window.bindQGDialog = function(root, snapshot) {
             if (!root.querySelector('#qg-dialog')) return;
-            const blocked = uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager);
+            const blocked = uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) || Boolean(uiState.studyTrackDeletion);
             const sameTab = snapshot?.tab === uiState.statsTab;
             const scroller = root.querySelector('#qg-scroll');
             if (scroller && sameTab) scroller.scrollTop = snapshot.scrollTop;
@@ -7647,7 +7676,7 @@
                 });
                 const attentionSubjects = subjectRows.filter(row => ['Atenção','Crítica','Revisar'].includes(row.radarStatus)).length;
 
-                html += `<details class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden mb-3">
+                html += `<details data-view-key="study-retention" class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden mb-3">
                     <summary class="cursor-pointer list-none p-4 flex items-center justify-between gap-3 hover:bg-slate-900/60"><div class="flex items-center gap-2 min-w-0"><i data-lucide="bar-chart-2" class="text-cyan-400 w-4 h-4 shrink-0"></i><div class="min-w-0"><div class="text-xs font-black text-slate-300 uppercase tracking-widest">Retenção por disciplina</div><div class="text-[10px] text-slate-600 mt-0.5">Abra quando quiser diagnosticar uma matéria específica.</div></div></div><span class="text-[10px] font-bold ${attentionSubjects ? 'text-yellow-300' : 'text-slate-600'}">${attentionSubjects ? attentionSubjects + ' para atenção' : subjects.length + ' disciplina' + (subjects.length === 1 ? '' : 's')}</span></summary>
                     <div class="border-t border-slate-800 p-4 space-y-3">`;
                 if (subjects.length === 0) {
@@ -7733,7 +7762,7 @@
                             <div class="border-t border-slate-800 p-4">
                                 <div class="space-y-2 mb-4">
                                     ${activeTracks.length ? activeTracks.map(t => { const subjectCount = window.getStudySubjects(t.id).length; return `<div class="flex items-center justify-between gap-2 bg-slate-900 border border-slate-800 rounded-lg p-3"><div class="flex items-center gap-2 min-w-0"><i data-lucide="${t.icon}" class="w-4 h-4 ${t.color}"></i><div class="min-w-0"><div class="text-sm font-bold text-white truncate">${window.escapeHtml(t.name)}</div><div class="text-[9px] text-slate-500">${subjectCount} disciplina${subjectCount === 1 ? '' : 's'} • meta ${t.weeklyGoalMinutes || 0} min</div></div></div><button type="button" onclick="window.deleteStudyTrack(${window.recoveryHandlerArgument(t.id)})" class="text-slate-400 hover:text-red-400 p-2" aria-label="Arquivar ${window.escapeHtml(t.name)}" title="Arquivar trilha"><i data-lucide="archive" class="w-4 h-4"></i></button></div>`; }).join('') : `<p class="text-xs text-slate-400">Nenhuma trilha ativa. Crie uma abaixo ou restaure uma arquivada.</p>`}
-                                    ${archivedTracks.length ? `<details class="rounded-lg border border-slate-800"><summary class="cursor-pointer px-3 py-2 text-xs text-slate-400">Trilhas arquivadas (${archivedTracks.length})</summary><div class="px-3 pb-3 space-y-2"><p class="text-xs text-slate-500">Histórico preservado. Restaure uma trilha para voltar a visualizar suas disciplinas.</p>${archivedTracks.map(t => `<div class="flex items-center justify-between gap-3 py-2 border-t border-slate-800"><span class="text-sm text-slate-400 break-words">${window.escapeHtml(t.name)}</span><div class="shrink-0"><button type="button" onclick="window.restoreStudyTrack(${window.recoveryHandlerArgument(t.id)})" class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-cyan-300">Restaurar</button><details class="mt-2"><summary class="cursor-pointer text-xs text-rose-400">Excluir definitivamente</summary><div class="mt-2 flex flex-col gap-2"><button type="button" onclick="window.requestPermanentStudyTrackDeletion(${window.recoveryHandlerArgument(t.id)}, 'keep')" class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300">Excluir só a trilha · manter matérias</button><button type="button" onclick="window.requestPermanentStudyTrackDeletion(${window.recoveryHandlerArgument(t.id)}, 'cascade')" class="rounded-lg border border-rose-900/60 px-3 py-2 text-xs text-rose-300">Excluir trilha, matérias e registros</button></div></details></div></div>`).join('')}</div></details>` : ''}
+                                    ${archivedTracks.length ? `<details data-view-key="study-archived-tracks" class="rounded-lg border border-slate-800"><summary class="cursor-pointer px-3 py-2 text-xs text-slate-400">Trilhas arquivadas (${archivedTracks.length})</summary><div class="px-3 pb-3"><p class="text-xs text-slate-500 mb-2">Histórico preservado.</p>${archivedTracks.map(t => `<div class="flex flex-wrap items-center justify-between gap-3 py-3 border-t border-slate-800"><span class="min-w-0 flex-1 text-sm text-slate-300 break-words">${window.escapeHtml(t.name)}</span><div class="flex items-center gap-1 shrink-0"><button type="button" onclick="window.restoreStudyTrack(${window.recoveryHandlerArgument(t.id)})" class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs text-cyan-300 hover:bg-slate-800"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>Restaurar</button><button type="button" onclick="window.openStudyTrackDeletion(${window.recoveryHandlerArgument(t.id)})" class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs text-rose-300 hover:bg-rose-950/40" aria-label="Excluir definitivamente ${window.escapeHtml(t.name)}"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i>Excluir</button></div></div>`).join('')}</div></details>` : ''}
                                 </div>
                                 <div class="grid grid-cols-2 gap-2">
                                     <input id="study-track-name" placeholder="Nova trilha" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
@@ -7758,7 +7787,7 @@
                 html += `<div class="space-y-3">`;
                 activeTracks.forEach((track, trackIndex) => {
                     const subjects = window.getStudySubjects(track.id);
-                    html += `<details ${trackIndex === 0 && track.active !== false ? 'open' : ''} class="group rounded-2xl border ${track.border} ${track.bg} overflow-hidden ${track.active === false ? 'opacity-60' : ''}">
+                    html += `<details data-view-key="study-track-${window.escapeHtml(track.id)}" ${trackIndex === 0 && track.active !== false ? 'open' : ''} class="group rounded-2xl border ${track.border} ${track.bg} overflow-hidden ${track.active === false ? 'opacity-60' : ''}">
                         <summary class="cursor-pointer list-none flex items-center justify-between gap-3 p-4 hover:bg-slate-950/30 transition-colors">
                             <div class="flex items-center gap-3 min-w-0"><div class="p-2 bg-slate-950/60 border border-slate-800 rounded-lg"><i data-lucide="${track.icon}" class="w-4 h-4 ${track.color}"></i></div><div class="min-w-0"><h4 class="font-black text-white truncate">${window.escapeHtml(track.name)}</h4><p class="text-[9px] text-slate-500 uppercase font-bold tracking-widest">${subjects.length} disciplina${subjects.length === 1 ? '' : 's'} • meta ${track.weeklyGoalMinutes || 0} min/semana${track.active === false ? ' • arquivada' : ''}</p></div></div>
                             <i data-lucide="chevron-down" class="w-4 h-4 text-slate-500 group-open:rotate-180 transition-transform shrink-0"></i>
@@ -7772,7 +7801,7 @@
                             const errorCount = (state.studyData.errorLog || []).filter(err => String(err.subjectId) === String(sub.id) && err.status === 'open').length;
                             const plannedCount = (state.studyData.studyPlan?.weeklyBlocks || []).filter(block => String(block.subjectId) === String(sub.id) && block.status !== 'cancelled').length;
                             return `<div class="bg-slate-950 border border-slate-800 p-3.5 rounded-xl"><div class="flex items-center gap-3 min-w-0"><div class="w-3.5 h-3.5 rounded-full ${sub.color} shrink-0"></div><div class="min-w-0 flex-1"><div class="font-bold text-white truncate">${window.escapeHtml(sub.name)}</div><div class="text-[9px] text-slate-600 mt-1">${plannedCount} bloco${plannedCount === 1 ? '' : 's'} • ${sessionCount} sessão${sessionCount === 1 ? '' : 'ões'}${errorCount ? ` • <span class="text-fuchsia-400">${errorCount} erro${errorCount === 1 ? '' : 's'}</span>` : ''}</div></div></div>
-                                <details class="mt-3 group/manage"><summary class="cursor-pointer list-none inline-flex items-center gap-1 text-[9px] uppercase tracking-widest font-black text-slate-600 hover:text-slate-300">Gerenciar <i data-lucide="chevron-down" class="w-3 h-3 group-open/manage:rotate-180"></i></summary><div class="mt-2 rounded-lg border border-slate-800 bg-slate-900/60 p-2.5"><label class="text-[8px] text-slate-600 uppercase font-black tracking-widest block mb-1">Mover para outra trilha</label><select onchange="window.updateSubjectTrack('${sub.id}', this.value)" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white">${activeTracks.map(t => `<option value="${t.id}" ${String(t.id) === String(sub.trackId) ? 'selected' : ''}>${window.escapeHtml(t.name)}</option>`).join('')}</select><button onclick="window.deleteSubject(${sub.id})" class="mt-2 w-full border border-red-950/70 bg-red-950/20 hover:bg-red-950/40 text-red-400 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest">Excluir disciplina</button></div></details>
+                                <details data-view-key="study-subject-${window.escapeHtml(sub.id)}" class="mt-3 group/manage"><summary class="cursor-pointer list-none inline-flex items-center gap-1 text-[9px] uppercase tracking-widest font-black text-slate-600 hover:text-slate-300">Gerenciar <i data-lucide="chevron-down" class="w-3 h-3 group-open/manage:rotate-180"></i></summary><div class="mt-2 rounded-lg border border-slate-800 bg-slate-900/60 p-2.5"><label class="text-[8px] text-slate-600 uppercase font-black tracking-widest block mb-1">Mover para outra trilha</label><select onchange="window.updateSubjectTrack('${sub.id}', this.value)" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white">${activeTracks.map(t => `<option value="${t.id}" ${String(t.id) === String(sub.trackId) ? 'selected' : ''}>${window.escapeHtml(t.name)}</option>`).join('')}</select><button onclick="window.deleteSubject(${sub.id})" class="mt-2 w-full border border-red-950/70 bg-red-950/20 hover:bg-red-950/40 text-red-400 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest">Excluir disciplina</button></div></details>
                             </div>`;
                         }).join('')}</div>`;
                     }

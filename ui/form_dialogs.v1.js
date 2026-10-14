@@ -26,6 +26,48 @@ export function installFormDialogs(target, document) {
         </div>`;
     };
 
+    // Preserve uncontrolled disclosures by identity, never by their list position.
+    const detailToken = element => element.id ? ['id',element.id] : element.getAttribute('data-view-key') ? ['key',element.getAttribute('data-view-key')] : ['label',element.querySelector(':scope > summary')?.textContent.trim().replace(/\s+/g,' ') || ''];
+    const viewScope = (element, pageKey) => {
+        const dialog = element.closest('[role="dialog"]');
+        return dialog ? ['dialog',dialog.id || dialog.getAttribute('aria-labelledby'),dialog.getAttribute('data-work-tab') || dialog.getAttribute('data-view-scope') || ''] : ['page',pageKey];
+    };
+    const detailKey = (element, pageKey) => {
+        const parents=[];
+        for(let parent=element.parentElement?.closest('details');parent;parent=parent.parentElement?.closest('details')) parents.unshift(detailToken(parent));
+        return JSON.stringify([viewScope(element,pageKey),parents,detailToken(element)]);
+    };
+    const uniqueDetails = (root, pageKey) => {
+        const entries=new Map();
+        for(const element of root.querySelectorAll('details')) {
+            // These sections already have explicit state and intentional reset handlers.
+            if(element.hasAttribute('ontoggle')) continue;
+            const key=detailKey(element,pageKey);
+            entries.set(key,entries.has(key)?null:element);
+        }
+        return entries;
+    };
+    target.captureViewState = function(root,{pageKey='main'}={}) {
+        const details=[...uniqueDetails(root,pageKey)].filter(([,element])=>element).map(([key,element])=>({key,open:element.open}));
+        const scroll=[...root.querySelectorAll('[id]')].filter(element=>element.scrollTop || element.scrollLeft).map(element=>({id:element.id,scope:JSON.stringify(viewScope(element,pageKey)),top:element.scrollTop,left:element.scrollLeft}));
+        const active=document.activeElement;
+        const focus=active?.id && root.contains(active) ? {id:active.id,scope:JSON.stringify(viewScope(active,pageKey)),start:active.selectionStart,end:active.selectionEnd} : null;
+        return {details,scroll,focus};
+    };
+    target.restoreViewState = function(root,snapshot,{pageKey='main',blocked=false}={}) {
+        if(!snapshot) return;
+        const entries=uniqueDetails(root,pageKey);
+        for(const saved of snapshot.details) {const element=entries.get(saved.key);if(element)element.open=saved.open;}
+        for(const saved of snapshot.scroll) {const element=document.getElementById(saved.id);if(element && root.contains(element) && saved.scope===JSON.stringify(viewScope(element,pageKey))) {element.scrollTop=saved.top;element.scrollLeft=saved.left;}}
+        if(!blocked && snapshot.focus) {
+            const saved=snapshot.focus,element=document.getElementById(saved.id);
+            if(element && root.contains(element) && !element.disabled && saved.scope===JSON.stringify(viewScope(element,pageKey)) && element.getClientRects().length) {
+                element.focus({preventScroll:true});
+                if(saved.start != null)try{element.setSelectionRange(saved.start,saved.end);}catch{}
+            }
+        }
+    };
+
     target.bindFormDialog = function(root, { id, initialFocus, close, blocked = false, prepare }) {
         const dialog = root.querySelector(`#${id}`);
         if (!dialog || blocked) return;

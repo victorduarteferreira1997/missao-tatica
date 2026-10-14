@@ -182,3 +182,17 @@ test('app adota demanda e plano confirmados sem afetar missões ou recompensas',
  const plan={title:'Plano teste',weeklyGoalMinutes:30,subjects:[{name:'Disciplina teste'}],blocks:[{title:'Tema teste',subjectIndex:0,day:'monday',plannedMinutes:30,startTime:'',endTime:'',studyType:'teoria'}]};
  await b.c.v2ProposalsOptions.applyMission({id:'b'.repeat(64),grantId:'app-entity-grant-0001',grantVersion:1,kind:'study.plan.create'},plan);state=b.window.startupForTest.getState();assert.equal(state.studyData.studyPlan.tracks.at(-1).name,plan.title);assert.equal(state.studyData.subjects.at(-1).name,plan.subjects[0].name);assert.equal(state.studyData.studyPlan.weeklyBlocks.at(-1).title,plan.blocks[0].title);assert.equal(JSON.parse(row.data).xp,before.xp);assert.equal(JSON.parse(row.data).coins,before.coins);
 });
+
+test('exclusão sequencial de trilhas mantém Inteligência aberta e escolha/cancelamento não apagam dados',()=>{
+ const b=boot();b.state.userProfile={displayName:'Teste',configured:true};b.ui.showStudyModal=true;b.ui.studyTab='subjects';
+ b.state.studyData.studyPlan.tracks.push({id:'archived-a',name:'Arquivada A',active:false},{id:'archived-b',name:'Arquivada B',active:false});
+ b.window.openStudyTrackDeletion('archived-a');assert.match(b.elements.app.innerHTML,/study-track-delete-dialog/);assert.ok(b.ui.showStudyModal);
+ b.window.closeStudyTrackDeletion();assert.ok(b.state.studyData.studyPlan.tracks.some(t=>t.id==='archived-a'));assert.ok(b.ui.showStudyModal);
+ b.window.openStudyTrackDeletion('archived-a');b.window.chooseStudyTrackDeletion('keep');assert.equal(b.ui.confirm.show,true);assert.equal(b.ui.studyTrackDeletion,null);
+ b.window.handleConfirmResult(false);assert.ok(b.state.studyData.studyPlan.tracks.some(t=>t.id==='archived-a'));assert.ok(b.ui.showStudyModal);
+ for(const id of ['archived-a','archived-b']){b.window.openStudyTrackDeletion(id);b.window.chooseStudyTrackDeletion('cascade');b.window.handleConfirmResult(true);assert.ok(b.ui.showStudyModal);assert.match(b.elements.app.innerHTML,/study-module-dialog/);assert.ok(!b.state.studyData.studyPlan.tracks.some(t=>t.id===id));}
+});
+test('confirmar uma ação não apaga a confirmação seguinte criada pelo callback',()=>{
+ const b=boot();let completed=0;b.window.showConfirmModal('Primeira',()=>b.window.showConfirmModal('Segunda',()=>completed++));b.window.handleConfirmResult(true);
+ assert.equal(b.ui.confirm.show,true);assert.equal(b.ui.confirm.message,'Segunda');b.window.handleConfirmResult(true);assert.equal(completed,1);assert.equal(b.ui.confirm.onConfirm,null);
+});
