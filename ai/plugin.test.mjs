@@ -9,7 +9,7 @@ import {buildContext} from './contract.v1.js';
 const secret='test-only-plugin-secret-'.padEnd(48,'x'),client='https://chatgpt.com/oauth/client.json',callback='https://chatgpt.com/connector_platform_oauth_redirect';
 const verifier='a'.repeat(43),hash=async s=>Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s))).toString('base64url');
 const challenge=await hash(verifier),initial=Date.parse('2026-10-08T00:00:00Z');
-const schemas=await Promise.all(['schema.sql','oauth-schema.sql'].map(p=>readFile(new URL('./cloudflare/'+p,import.meta.url),'utf8')));
+const schemas=await Promise.all(['schema.sql','oauth-schema.sql','v2-schema.sql','proposals-v2-schema.sql'].map(p=>readFile(new URL('./cloudflare/'+p,import.meta.url),'utf8')));
 function api(t,{badMetadata=false}={}){
     const sql=new DatabaseSync(':memory:');schemas.forEach(s=>sql.exec(s));t.after(()=>sql.close());let time=initial,metadataCalls=0;const calls=[];
     const db={prepare(query){return {bind(...args){const stmt=sql.prepare(query);return {
@@ -121,3 +121,23 @@ test('pacote privado não inclui headers/segredos nem operações administrativa
     const mcp=JSON.parse(await readFile(new URL('./plugin/missao-tatica/mcp.json',import.meta.url),'utf8'));assert.deepEqual(mcp.mcpServers['missao-tatica'],{type:'streamable-http',url:MCP_RESOURCE});
     assert.equal(PLUGIN_TOOLS.length,2);
 });
+
+ test('OAuth de propostas exige consentimento separado, preserva leitura e invalida grant substituído',async t=>{
+ const a=api(t);Object.assign(a.env,{AI_V2_ENABLED:'true',AI_V2_READ_ENABLED:'true',AI_V2_PROPOSALS_ENABLED:'true'});
+ const headers={'Content-Type':'application/json',Origin:APP_ORIGIN,Authorization:'Bearer test-owner'};
+ const grant={grantId:'oauth-proposal-grant-01',expectedVersion:0,choices:{modules:{missions:true,radar:false,studies:false},includeFuture:true},frozenRefs:[]};
+ assert.equal((await a.call('/v2/app/grant','PUT',JSON.stringify(grant),headers)).status,200);
+ assert.equal((await a.call(a.authQuery({scope:'proposals:create'}))).status,403);
+ const read=await (await a.exchange(await a.authorize({scope:'planning:read'}))).json();
+ const fields={title:'Fictícia',weekStart:'2026-10-05',day:'friday',durationMinutes:30,startTime:'',endTime:'',subtasks:[],category:'pessoal'};
+ const params={name:'createProposal',arguments:{kind:'mission.create',idempotencyKey:'oauth-proposal-key',fields}};
+ assert.equal((await a.rpc(read.access_token,'tools/call',params)).status,403);
+ grant.expectedVersion=1;grant.choices.allowProposals=true;
+ assert.equal((await a.call('/v2/app/grant','PUT',JSON.stringify(grant),headers)).status,200);
+ const token=await (await a.exchange(await a.authorize({scope:'proposals:create'}))).json();assert.equal(token.scope,'proposals:create');assert.equal(token.expires_in,3600);
+ const result=await (await a.rpc(token.access_token,'tools/call',params)).json();assert.equal(result.result.structuredContent.proposal.status,'pending');
+ const code=await a.authorize({scope:'proposals:create'});grant.expectedVersion=2;grant.choices.allowProposals=false;
+ assert.equal((await a.call('/v2/app/grant','PUT',JSON.stringify(grant),headers)).status,200);
+ assert.equal((await a.exchange(code)).status,403);
+ assert.equal((await a.rpc(token.access_token,'tools/call',params)).status,401);
+ });

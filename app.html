@@ -107,6 +107,8 @@
         import { createConfirmedStateWriter } from './ai/v2/saved_state.js';
         import { createV2BrowserStore } from './ai/v2/browser.js';
         import { installAiAccess } from './ui/ai_access.v2.js';
+        import { createV2ProposalsBrowserStore } from './ai/v2/proposals_browser.js';
+        import { installAiV2Proposals } from './ui/ai_proposals.v2.js';
         import { createAiBrowserStore } from './ai/bridge_rest.v1.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { initializeAppCheck, ReCaptchaEnterpriseProvider, getToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
@@ -3633,6 +3635,8 @@
             store: createV2BrowserStore({getUser: () => currentUser, getAppCheckToken: async () => (await getToken(appCheck, false)).token}),
             saveConfirmed: () => window.saveStateNow(true, 'ai-v2-share'), render
         });
+        installAiV2Proposals(window, {config: AI_V2_CONFIG, getUser: () => currentUser, render,
+            store: createV2ProposalsBrowserStore({getUser: () => currentUser, getAppCheckToken: async () => (await getToken(appCheck, false)).token})});
 
         window.openEditTaskModal = function(taskId, event) {
             if (event) { event.stopPropagation(); event.preventDefault(); }
@@ -6737,12 +6741,14 @@
 
             html += window.renderAiInbox?.() || '';
             html += window.renderAiAccess?.() || '';
+            html += window.renderAiV2Proposals?.() || '';
 
             // RODAPÉ: BACKUP E REINICIAR
             html += `
             <div class="flex flex-wrap justify-center gap-4 pb-8 pt-4 border-t border-slate-800/50 mt-8 relative">
                 ${window.renderAiInboxButton?.() || ''}
                 ${window.renderAiAccessButton?.() || ''}
+                ${window.renderAiV2ProposalsButton?.() || ''}
                 <button onclick="window.exportData()" class="text-xs text-slate-500 hover:text-emerald-400 font-bold uppercase tracking-widest transition-colors font-mono flex items-center gap-1"><i data-lucide="download" class="w-3 h-3"></i> Exportar backup JSON</button>
                 <button onclick="window.triggerImport()" class="text-xs text-slate-500 hover:text-blue-400 font-bold uppercase tracking-widest transition-colors font-mono flex items-center gap-1"><i data-lucide="upload" class="w-3 h-3"></i> Importar backup JSON</button>
                 <details class="w-full max-w-md mx-auto rounded-xl border border-slate-800/70 bg-slate-950/30 text-center"><summary class="cursor-pointer text-xs text-slate-500 hover:text-slate-300 py-3">Dados e reinício</summary><div class="px-4 pb-4"><p class="text-xs text-slate-500 leading-relaxed mb-3">Limpeza por módulo ou reinício completo, com revisão antes de confirmar.</p><button id="open-data-manager" type="button" onclick="window.openDataManager()" class="text-sm text-slate-300 hover:text-white rounded-lg border border-slate-700 px-4 py-2">Gerenciar dados</button></div></details>
@@ -6763,6 +6769,7 @@
             lucide.createIcons();
             window.bindAiInbox?.(appDiv);
             window.bindAiAccess?.(appDiv);
+            window.bindAiV2Proposals?.(appDiv);
             window.bindRecoveryDialogs(appDiv, recoverySnapshots);
             window.bindWorkDialogs(appDiv, workSnapshots);
             window.restorePomodoroDraft(appDiv);

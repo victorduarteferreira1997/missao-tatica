@@ -263,7 +263,8 @@ function v2GrantId(value) { v2Assert(typeof value==='string' && /^[a-zA-Z0-9_-]{
 function v2Date(value) { v2Text(value,40); v2Assert(value==='' || (Number.isFinite(Date.parse(value)) && /^20\d\d-\d\d-\d\d(?:T.*)?$/.test(value))); }
 async function v2Hash(value) { const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)); return [...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join(''); }
 function v2ValidateChoices(value) {
-    v2Exact(value,['modules','includeFuture']); v2Exact(value.modules,V2_MODULES);
+    v2Exact(value,Object.hasOwn(value||{},'allowProposals')?['modules','includeFuture','allowProposals']:['modules','includeFuture']); v2Exact(value.modules,V2_MODULES);
+    if(Object.hasOwn(value,'allowProposals'))v2Assert(typeof value.allowProposals==='boolean'&&(!value.allowProposals||value.modules.missions));
     v2Assert(V2_MODULES.every(k=>typeof value.modules[k]==='boolean') && V2_MODULES.some(k=>value.modules[k]) && typeof value.includeFuture==='boolean'); return value;
 }
 function v2ValidateGrantRequest(value) {
@@ -342,6 +343,92 @@ async function v2BuildSnapshot(state,grant,expectedProjectionVersion=0){
     return v2ValidateSnapshot(snapshot,grant);
 }
 
+// ../v2/proposals.js
+const V2_PROPOSAL_SCOPE='proposals:create';
+const V2_PROPOSAL_TTL=90*86400000;
+const V2_PROPOSAL_TOOLS=[
+ {name:'listProposals',title:'Consultar propostas novas para revisão',description:'Lista propostas v2 da autorização atual, incluindo avisos de horários não conferidos. Propostas antigas ficam disponíveis ao proprietário no app. Não cria missões.',inputSchema:{type:'object',additionalProperties:false,required:[],properties:{status:{type:'string',enum:['pending','rejected','expired']},pageSize:{type:'integer',minimum:1,maximum:50,default:25},cursor:{type:'string',maxLength:4096}}},annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:false},securitySchemes:[{type:'oauth2',scopes:['planning:read']}]},
+ {name:'createProposal',title:'Enviar proposta sem seleção semanal',description:'Após confirmação explícita do título, semana, dia, duração, horários, categoria e subtarefas pelo usuário, envia mission.create para revisão. Requer permissão específica no app. Funciona sem cópia recente; conflitos e duplicidades não estão verificados. Cadastro definitivo v2 ainda bloqueado.',inputSchema:{type:'object',additionalProperties:false,required:['idempotencyKey','kind','fields'],properties:{idempotencyKey:{type:'string',minLength:8,maxLength:80,pattern:'^[A-Za-z0-9_-]+$'},kind:{type:'string',enum:['mission.create']},fields:{type:'object',additionalProperties:false,required:['title','weekStart','day','durationMinutes','startTime','endTime','subtasks'],properties:{title:{type:'string',minLength:1,maxLength:200},weekStart:{type:'string',pattern:'^20[0-9]{2}-[0-9]{2}-[0-9]{2}$'},day:{type:'string',enum:DAYS},durationMinutes:{type:'integer',minimum:5,maximum:240},startTime:{type:'string',pattern:'^$|^([01][0-9]|2[0-3]):[0-5][0-9]$'},endTime:{type:'string',pattern:'^$|^([01][0-9]|2[0-3]):[0-5][0-9]$'},subtasks:{type:'array',maxItems:12,items:{type:'string',minLength:1,maxLength:200}},category:{type:'string',maxLength:200}}},basis:{type:'object',additionalProperties:false,required:['projectionVersion'],properties:{projectionVersion:{type:'integer',minimum:0}}}}},annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:false},securitySchemes:[{type:'oauth2',scopes:[V2_PROPOSAL_SCOPE]}]}
+];
+function v2ProposalRequest(value,grant){
+ v2Assert(value&&typeof value==='object'&&!Array.isArray(value));v2Exact(value,Object.hasOwn(value,'basis')?['idempotencyKey','kind','fields','basis']:['idempotencyKey','kind','fields']);
+ v2Assert(value.kind==='mission.create'&&typeof value.idempotencyKey==='string'&&/^[A-Za-z0-9_-]{8,80}$/.test(value.idempotencyKey));
+ const f=value.fields;v2Exact(f,Object.hasOwn(f||{},'category')?['title','weekStart','day','durationMinutes','startTime','endTime','subtasks','category']:['title','weekStart','day','durationMinutes','startTime','endTime','subtasks']);
+ const validated=validateProposal({idempotencyKey:value.idempotencyKey,contextRevision:'v2-independent',...Object.fromEntries(Object.entries(f).filter(([k])=>k!=='category'))});
+ if(validated.startTime){const minutes=s=>{const [h,m]=s.split(':').map(Number);return h*60+m;};v2Assert(minutes(validated.endTime)-minutes(validated.startTime)===validated.durationMinutes);}
+ const fields={title:validated.title,weekStart:validated.weekStart,day:validated.day,durationMinutes:validated.durationMinutes,startTime:validated.startTime,endTime:validated.endTime,subtasks:validated.subtasks,category:v2Text(f.category??'')};
+ let basis=null;if(Object.hasOwn(value,'basis')){v2Exact(value.basis,['projectionVersion']);v2Integer(value.basis.projectionVersion);basis={projectionVersion:value.basis.projectionVersion};}
+ v2GrantId(grant.grantId);v2Integer(grant.grantVersion);
+ const result={idempotencyKey:value.idempotencyKey,grantId:grant.grantId,grantVersion:grant.grantVersion,kind:'mission.create',fields,basis};
+ v2Assert(new TextEncoder().encode(JSON.stringify(result)).byteLength<=12000);return result;
+}
+function v2ProposalRow(row){
+ v2Exact(row,['id','grantId','grantVersion','version','kind','status','createdAt','expiresAt','reviewedAt','fields','basis','conflictCheck','applyEligible']);
+ v2Ref(row.id);v2GrantId(row.grantId);v2Integer(row.grantVersion);v2Integer(row.version);v2Assert(row.kind==='mission.create'&&['pending','rejected','expired'].includes(row.status)&&row.conflictCheck==='unverified'&&row.applyEligible===false);
+ for(const k of ['createdAt','expiresAt']){v2Date(row[k]);v2Assert(row[k]!=='');}if(row.reviewedAt!==null){v2Date(row.reviewedAt);v2Assert(row.reviewedAt!=='');}
+ if(row.fields!==null)v2ProposalRequest({idempotencyKey:'validation-only',kind:row.kind,fields:row.fields,...(row.basis!==null?{basis:row.basis}:{})},row);else v2Assert(row.status==='expired'&&row.basis===null);return row;
+}
+
+// ./proposals.v2.mjs
+const PROPOSAL_ORIGIN='https://victorduarteferreira1997.github.io';
+class ProposalError extends Error{constructor(status,code){super(code);this.status=status;this.code=code;}}
+const proposalFail=(status,code)=>{throw new ProposalError(status,code);};
+const proposalEncoder=new TextEncoder();
+const proposalB64=b=>btoa(String.fromCharCode(...b)).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,'');
+function createV2Proposals({now=Date.now,verifyOwner=createFirebaseVerifier(),readBody}={}){
+ const ready=env=>{if(env.AI_V2_ENABLED!=='true'||env.AI_V2_PROPOSALS_ENABLED!=='true')proposalFail(404,'v2_proposals_not_enabled');};
+ const database=env=>env.DB?.withSession?env.DB.withSession('first-primary'):env.DB;
+ const run=async q=>{const r=await q.run();if(r.success!==true)throw Error('database');return r.meta.changes;};
+ async function cleanup(db){await run(db.prepare("UPDATE ai_v2_proposals SET status='expired',payload=NULL,version=version+1 WHERE id IN (SELECT id FROM ai_v2_proposals WHERE expires_at<=? AND status!='expired' ORDER BY expires_at,id LIMIT 50)").bind(now()));}
+ function map(r){const p=r.payload?JSON.parse(r.payload):null;return v2ProposalRow({id:r.id,grantId:r.grant_id,grantVersion:r.grant_version,version:r.version,kind:'mission.create',status:r.expires_at<=now()?'expired':r.status,createdAt:new Date(r.created_at).toISOString(),expiresAt:new Date(r.expires_at).toISOString(),reviewedAt:r.reviewed_at===null?null:new Date(r.reviewed_at).toISOString(),fields:r.expires_at<=now()?null:p?.fields||null,basis:r.expires_at<=now()?null:p?.basis||null,conflictCheck:'unverified',applyEligible:false});}
+ async function active(db,claims){
+  v2GrantId(claims?.grantId);v2Integer(claims?.grantVersion);
+  const row=await db.prepare("SELECT grant_id,version,choices FROM ai_v2_access WHERE singleton=1 AND grant_id=? AND version=? AND status='active' AND expires_at>?").bind(claims.grantId,claims.grantVersion,now()).first();
+  if(!row)proposalFail(401,'grant_changed');const c=v2ValidateChoices(JSON.parse(row.choices));if(!c.modules.missions||c.allowProposals!==true)proposalFail(403,'proposal_consent_required');return row;
+ }
+ async function cursorKey(env){if(typeof env.ACTION_SECRET!=='string'||env.ACTION_SECRET.length<32)proposalFail(503,'service_unavailable');return crypto.subtle.importKey('raw',proposalEncoder.encode(env.ACTION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);}
+ async function encodeCursor(p,env){const b=proposalB64(proposalEncoder.encode(JSON.stringify(p)));return b+'.'+proposalB64(new Uint8Array(await crypto.subtle.sign('HMAC',await cursorKey(env),proposalEncoder.encode('proposal-cursor.'+b))));}
+ async function decodeCursor(v,env){try{if(typeof v!=='string'||v.length>4096)throw Error();const [b,s,...extra]=v.split('.');if(extra.length||!b||!s||!/^[A-Za-z0-9_-]+$/.test(b+s))throw Error();const bytes=x=>Uint8Array.from(atob(x.replaceAll('-','+').replaceAll('_','/')),c=>c.charCodeAt(0));if(!await crypto.subtle.verify('HMAC',await cursorKey(env),bytes(s),proposalEncoder.encode('proposal-cursor.'+b)))throw Error();return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes(b)));}catch(e){if(e instanceof ProposalError&&e.status===503)throw e;proposalFail(400,'invalid_cursor');}}
+ function listArgs(a){if(!a||typeof a!=='object'||Array.isArray(a)||Object.keys(a).some(k=>!['status','pageSize','cursor'].includes(k))||a.status!==undefined&&!['pending','rejected','expired'].includes(a.status)||a.pageSize!==undefined&&(!Number.isInteger(a.pageSize)||a.pageSize<1||a.pageSize>50)||a.cursor!==undefined&&(typeof a.cursor!=='string'||a.cursor.length>4096))proposalFail(400,'invalid_arguments');return {status:a.status||'pending',pageSize:a.pageSize??25,cursor:a.cursor};}
+ async function list(a,claims,env,owner=false){
+  ready(env);const f=listArgs(a),db=database(env);if(!owner){if(!claims?.scope?.split(' ').includes('planning:read'))proposalFail(403,'insufficient_scope');await active(db,claims);}await cleanup(db);
+  const binding=owner?'owner':claims.grantId+':'+claims.grantVersion;let after=-1,id='';
+  if(f.cursor){const c=await decodeCursor(f.cursor,env);if(c.binding!==binding||c.status!==f.status||c.pageSize!==f.pageSize||c.expiresAt<=now()||!Number.isSafeInteger(c.after)||c.after<0)proposalFail(400,'invalid_cursor');v2Ref(c.id);after=c.after;id=c.id;}
+  const result=await db.prepare(`SELECT * FROM ai_v2_proposals WHERE status=? ${owner?'':'AND grant_id=? AND grant_version=?'} AND (created_at>? OR (created_at=? AND id>?)) ORDER BY created_at,id LIMIT ?`).bind(f.status,...(owner?[]:[claims.grantId,claims.grantVersion]),after,after,id,f.pageSize+1).all();
+  if(result.success!==true)throw Error('database');const rows=result.results,items=rows.slice(0,f.pageSize).map(map),last=rows[Math.min(rows.length,f.pageSize)-1];
+  const nextCursor=rows.length>f.pageSize?await encodeCursor({binding,status:f.status,pageSize:f.pageSize,after:last.created_at,id:last.id,expiresAt:now()+600000},env):null;
+  if(!owner)await active(db,claims);
+  return {schemaVersion:2,...(!owner?{grantId:claims.grantId,grantVersion:claims.grantVersion}:{}),items,nextCursor};
+ }
+ async function create(a,claims,env){
+  ready(env);if(!claims?.scope?.split(' ').includes(V2_PROPOSAL_SCOPE))proposalFail(403,'insufficient_scope');
+  const p=v2ProposalRequest(a,claims),json=JSON.stringify(p),hash=await v2Hash(json),id=await v2Hash(p.grantId+':'+p.grantVersion+':'+p.idempotencyKey),db=database(env);await active(db,claims);await cleanup(db);
+  const find=()=>db.prepare('SELECT * FROM ai_v2_proposals WHERE id=?').bind(id).first();let old=await find();
+  if(old){if(old.payload_hash!==hash)proposalFail(409,'idempotency_conflict');await active(db,claims);return {schemaVersion:2,proposal:map(old),replayed:true};}
+  const time=now();const changed=await run(db.prepare(`INSERT INTO ai_v2_proposals (id,grant_id,grant_version,payload_hash,status,created_at,expires_at,payload)
+   SELECT ?,?,?,?,'pending',?,?,? FROM ai_v2_access WHERE singleton=1 AND grant_id=? AND version=? AND status='active' AND expires_at>?
+   AND json_extract(choices,'$.allowProposals')=1 AND json_extract(choices,'$.modules.missions')=1
+   AND (SELECT COUNT(*) FROM ai_v2_proposals)<1000 AND (SELECT COUNT(*) FROM ai_v2_proposals WHERE status='pending')<100 ON CONFLICT(id) DO NOTHING`).bind(id,p.grantId,p.grantVersion,hash,time,time+V2_PROPOSAL_TTL,json,p.grantId,p.grantVersion,time));
+  old=await find();if(!changed){await active(db,claims);if(!old)proposalFail(409,'proposal_capacity_reached');if(old.payload_hash!==hash)proposalFail(409,'idempotency_conflict');}
+  await active(db,claims);return {schemaVersion:2,proposal:map(old),replayed:!changed};
+ }
+ async function reject(body,env){v2Exact(body,['id','expectedVersion']);v2Ref(body.id);v2Integer(body.expectedVersion);const db=database(env);await cleanup(db);const changed=await run(db.prepare("UPDATE ai_v2_proposals SET status='rejected',version=version+1,reviewed_at=? WHERE id=? AND version=? AND status='pending' AND expires_at>?").bind(now(),body.id,body.expectedVersion,now()));const row=await db.prepare('SELECT * FROM ai_v2_proposals WHERE id=?').bind(body.id).first();if(!row)proposalFail(404,'proposal_not_found');if(!changed&&!(row.status==='rejected'&&row.version===body.expectedVersion+1))proposalFail(409,'proposal_changed');return {schemaVersion:2,proposal:map(row)};}
+ let slot=-1,count=0;
+ async function fetchRoute(request,env){
+  const url=new URL(request.url);if(!['/v2/app/proposals','/v2/app/proposals/reject'].includes(url.pathname))return null;
+  const origin=request.headers.get('Origin'),cors=origin===PROPOSAL_ORIGIN?{'Access-Control-Allow-Origin':PROPOSAL_ORIGIN,Vary:'Origin'}:{};
+  const send=(s,d)=>Response.json(d,{status:s,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...cors}});
+  try{ready(env);if(origin!==PROPOSAL_ORIGIN)proposalFail(403,'origin_not_allowed');const methods=url.pathname.endsWith('/reject')?['POST']:['GET'];
+   if(request.method==='OPTIONS'){const h=(request.headers.get('Access-Control-Request-Headers')||'').toLowerCase().split(',').map(s=>s.trim()).filter(Boolean);if(!methods.includes(request.headers.get('Access-Control-Request-Method'))||h.some(s=>!['authorization','content-type','x-firebase-appcheck'].includes(s)))proposalFail(403,'preflight_not_allowed');return new Response(null,{status:204,headers:{...cors,'Access-Control-Allow-Methods':methods.join(', '),'Access-Control-Allow-Headers':'Authorization, Content-Type, X-Firebase-AppCheck'}});}
+   if(!methods.includes(request.method))proposalFail(404,'not_found');if(request.method==='POST'&&url.search)proposalFail(400,'invalid_arguments');
+   await verifyOwner(request);const minute=Math.floor(now()/60000);if(slot!==minute){slot=minute;count=0;}if(++count>60)proposalFail(429,'rate_limited');
+   if(request.method==='GET'){const a={};for(const [k,v] of url.searchParams){if(Object.hasOwn(a,k)||!['status','pageSize','cursor'].includes(k))proposalFail(400,'invalid_arguments');a[k]=k==='pageSize'&&/^\d+$/.test(v)?Number(v):v;}return send(200,await list(a,null,env,true));}
+   return send(200,await reject(await readBody(request,2000),env));
+  }catch(e){const status=e instanceof AuthError?401:e instanceof ProposalError?e.status:e instanceof V2ValidationError||e instanceof ContractError?422:e?.status===413?413:e?.status===415?415:503;return send(status,{error:e instanceof AuthError?'unauthorized':e instanceof ProposalError?e.code:status===422?'invalid_arguments':status===413?'body_too_large':status===415?'json_required':'service_unavailable'});}
+ }
+ return {create,list,reject,fetch:fetchRoute,async call(name,args,claims,env){if(name==='createProposal')return create(args,claims,env);if(name==='listProposals')return list(args,claims,env);proposalFail(400,'invalid_arguments');}};
+}
+
 // ./planning.v2.mjs
 
 const PLANNING_SCOPE='planning:read';
@@ -365,8 +452,9 @@ const planningB64=b=>btoa(String.fromCharCode(...b)).replaceAll('+','-').replace
 function planningUnb64(s){if(typeof s!=='string'||s.length>8192||!/^[A-Za-z0-9_-]+$/.test(s))planningFail(401,'invalid_token');return Uint8Array.from(atob(s.replaceAll('-','+').replaceAll('_','/')),c=>c.charCodeAt(0));}
 function planningSecret(s){if(typeof s!=='string'||s.length<32||s.length>256||/\s/.test(s))planningFail(503,'service_unavailable');}
 function planningArguments(name,args){
-    const t=PLANNING_TOOLS.find(t=>t.name===name);
+    const t=[...PLANNING_TOOLS,...V2_PROPOSAL_TOOLS].find(t=>t.name===name);
     if(!t||!args||typeof args!=='object'||Array.isArray(args)||Object.keys(args).some(k=>!Object.hasOwn(t.inputSchema.properties,k)))planningFail(400,'invalid_arguments');
+    if(t.inputSchema.required.some(k=>!Object.hasOwn(args,k)))planningFail(400,'invalid_arguments');
     for(const [k,v] of Object.entries(args)){
         const p=t.inputSchema.properties[k];
         if(p.type==='integer'&&(!Number.isInteger(v)||v<p.minimum||v>p.maximum))planningFail(400,'invalid_arguments');
@@ -375,7 +463,7 @@ function planningArguments(name,args){
     }
     return args;
 }
-function createPlanningService({now=Date.now,readBody}={}){
+function createPlanningService({now=Date.now,readBody,proposals}={}){
     let cachedSecret='',cachedKey;
     async function signingKey(secret){planningSecret(secret);if(secret!==cachedSecret){cachedSecret=secret;cachedKey=crypto.subtle.importKey('raw',planningEncoder.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);}return cachedKey;}
     async function seal(kind,p,secret){const body=planningB64(planningEncoder.encode(JSON.stringify(p)));return body+'.'+planningB64(new Uint8Array(await crypto.subtle.sign('HMAC',await signingKey(secret),planningEncoder.encode(kind+'.'+body))));}
@@ -395,19 +483,22 @@ function createPlanningService({now=Date.now,readBody}={}){
         if(!row)planningFail(401,'grant_not_active');grant(row);
         if(expected&&(row.grant_id!==expected.grantId||row.version!==expected.grantVersion))planningFail(401,'grant_changed');return row;
     }
-    async function oauthGrant(env){const row=await activeGrant(env);return {grantId:row.grant_id,grantVersion:row.version};}
+    async function oauthGrant(env,scope=PLANNING_SCOPE){const row=await activeGrant(env);if(scope.split(' ').includes(V2_PROPOSAL_SCOPE)){if(env.AI_V2_PROPOSALS_ENABLED!=='true')planningFail(404,'v2_proposals_not_enabled');const choices=grant(row).choices;if(!choices.modules.missions||choices.allowProposals!==true)planningFail(403,'proposal_consent_required');}return {grantId:row.grant_id,grantVersion:row.version};}
     async function bind(body,env){
-        if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).sort().join(',')!=='expectedGrantId,expectedGrantVersion,subject'||!/^[a-f0-9]{64}$/.test(body.subject))planningFail(400,'invalid_arguments');
+        const requestedScope=body?.requestedScope??PLANNING_SCOPE;
+        if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).sort().join(',')!==(Object.hasOwn(body,'requestedScope')?'expectedGrantId,expectedGrantVersion,requestedScope,subject':'expectedGrantId,expectedGrantVersion,subject')||!/^[a-f0-9]{64}$/.test(body.subject)||![PLANNING_SCOPE,V2_PROPOSAL_SCOPE].includes(requestedScope))planningFail(400,'invalid_arguments');
         if(body.expectedGrantId===null){if(body.expectedGrantVersion!==0)planningFail(400,'invalid_arguments');}else{try{v2GrantId(body.expectedGrantId);v2Integer(body.expectedGrantVersion);}catch{planningFail(400,'invalid_arguments');}if(body.expectedGrantVersion===0)planningFail(400,'invalid_arguments');}
         const row=await activeGrant(env,body.expectedGrantId===null?null:{grantId:body.expectedGrantId,grantVersion:body.expectedGrantVersion});
+        if(requestedScope===V2_PROPOSAL_SCOPE)await oauthGrant(env,requestedScope);
         const iat=Math.floor(now()/1000),exp=Math.min(iat+300,Math.ceil(row.expires_at/1000));
-        const p={iss:PLANNING_BASE,aud:PLANNING_BASE+'/v2/planning',sub:body.subject,scope:PLANNING_SCOPE,grantId:row.grant_id,grantVersion:row.version,iat,exp};
+        const p={iss:PLANNING_BASE,aud:PLANNING_BASE+'/v2/planning',sub:body.subject,scope:requestedScope,grantId:row.grant_id,grantVersion:row.version,iat,exp};
         const accessToken=await seal('planning-access',p,env.ACTION_SECRET);
         await activeGrant(env,p);
-        return {accessToken,expiresAt:new Date(exp*1000).toISOString(),grantId:p.grantId,grantVersion:p.grantVersion,scope:PLANNING_SCOPE};
+        return {accessToken,expiresAt:new Date(exp*1000).toISOString(),grantId:p.grantId,grantVersion:p.grantVersion,scope:requestedScope};
     }
     async function read(name,args,claims,env){
         ready(env);planningArguments(name,args);
+        if(V2_PROPOSAL_TOOLS.some(t=>t.name===name))return proposals.call(name,args,claims,env);
         if(typeof claims?.scope!=='string'||!claims.scope.split(' ').includes(PLANNING_SCOPE))planningFail(403,'insufficient_scope');
         try{v2GrantId(claims.grantId);v2Integer(claims.grantVersion);}catch{planningFail(401,'invalid_token');}
         const db=database(env);
@@ -457,7 +548,7 @@ function createPlanningService({now=Date.now,readBody}={}){
             if(url.pathname==='/v2/connection')return send(200,await bind(body,env));
             if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).sort().join(',')!=='arguments,name')planningFail(400,'invalid_arguments');
             return send(200,await read(body.name,body.arguments,claims,env));
-        }catch(e){return send(e instanceof PlanningError?e.status:e?.status===413?413:e?.status===415?415:e instanceof ContractError?400:e instanceof V2ValidationError?422:503,{error:e instanceof PlanningError?e.code:e?.status===413?'body_too_large':e?.status===415?'json_required':e instanceof ContractError?'invalid_arguments':e instanceof V2ValidationError?'invalid_shared_data':'service_unavailable'});}
+        }catch(e){return send(e instanceof PlanningError||e instanceof ProposalError?e.status:e?.status===413?413:e?.status===415?415:e instanceof ContractError?400:e instanceof V2ValidationError?422:503,{error:e instanceof PlanningError||e instanceof ProposalError?e.code:e?.status===413?'body_too_large':e?.status===415?'json_required':e instanceof ContractError?'invalid_arguments':e instanceof V2ValidationError?'invalid_shared_data':'service_unavailable'});}
     }
     return {oauthGrant,bind,read,fetch:fetchRoute};
 }
@@ -468,7 +559,7 @@ const BRIDGE_BASE='https://missao-tatica-ai-bridge.victorduarteferreira1997.work
 const MCP_RESOURCE=BRIDGE_BASE+'/mcp';
 const CHATGPT_CLIENT='https://chatgpt.com/oauth/client.json';
 const CHATGPT_CALLBACK='https://chatgpt.com/connector_platform_oauth_redirect';
-const PLUGIN_SCOPES=['context:read','proposals:write',PLANNING_SCOPE];
+const PLUGIN_SCOPES=['context:read','proposals:write',PLANNING_SCOPE,V2_PROPOSAL_SCOPE];
 const PROTOCOLS=['2025-11-25','2025-06-18','2025-03-26'];
 const pluginEncoder=new TextEncoder();
 const clockSchema={type:'string',pattern:'^$|^([01][0-9]|2[0-3]):[0-5][0-9]$'};
@@ -579,8 +670,9 @@ function createPluginGateway({now=Date.now,fetchImpl=fetch,readBody,callBridge,p
         if(!['/mcp','/oauth/authorize','/oauth/token','/.well-known/oauth-protected-resource','/.well-known/oauth-protected-resource/mcp','/.well-known/oauth-authorization-server'].includes(path))return null;
         try{
             const readsEnabled=env.AI_V2_ENABLED==='true'&&env.AI_V2_READ_ENABLED==='true';
-            const scopes=readsEnabled?PLUGIN_SCOPES:PLUGIN_SCOPES.filter(s=>s!==PLANNING_SCOPE);
-            const tools=readsEnabled?[...PLUGIN_TOOLS,...PLANNING_TOOLS]:PLUGIN_TOOLS;
+            const proposalsEnabled=readsEnabled&&env.AI_V2_PROPOSALS_ENABLED==='true';
+            const scopes=PLUGIN_SCOPES.filter(s=>(s!==PLANNING_SCOPE||readsEnabled)&&(s!==V2_PROPOSAL_SCOPE||proposalsEnabled));
+            const tools=[...PLUGIN_TOOLS,...(readsEnabled?PLANNING_TOOLS:[]),...(proposalsEnabled?V2_PROPOSAL_TOOLS:[])];
             if(url.origin!==BRIDGE_BASE||url.username||url.password)pluginFail(400,'invalid_request');
             const origin=request.headers.get('Origin');
             if(origin&&!['https://chatgpt.com',BRIDGE_BASE].includes(origin))pluginFail(403,'origin_not_allowed');
@@ -595,12 +687,12 @@ function createPluginGateway({now=Date.now,fetchImpl=fetch,readBody,callBridge,p
                 const q=url.searchParams;
                 pluginParams(q,['response_type','client_id','redirect_uri','resource','scope','state','code_challenge','code_challenge_method'],['response_type','client_id','redirect_uri','resource','state','code_challenge','code_challenge_method']);
                 if(q.get('response_type')!=='code'||q.get('client_id')!==CHATGPT_CLIENT||q.get('redirect_uri')!==CHATGPT_CALLBACK||q.get('resource')!==MCP_RESOURCE||q.get('code_challenge_method')!=='S256'||!/^[A-Za-z0-9_-]{43}$/.test(q.get('code_challenge'))||!q.get('state')||q.get('state').length>1024)pluginFail(400,'invalid_request');
-                const scope=pluginScopes(q.get('scope')||scopes.join(' '));
+                const scope=pluginScopes(q.get('scope')||scopes.filter(s=>s!==V2_PROPOSAL_SCOPE).join(' '));
                 if(scope.split(' ').some(s=>!scopes.includes(s)))pluginFail(400,'invalid_scope');
                 await verifyClient();const nonce=pluginRandom(),iat=Math.floor(now()/1000);
-                const binding=scope.split(' ').includes(PLANNING_SCOPE)?await planning.oauthGrant(env):{};
+                const binding=scope.split(' ').some(s=>[PLANNING_SCOPE,V2_PROPOSAL_SCOPE].includes(s))?await planning.oauthGrant(env,scope):{};
                 const ticket=await seal('consent',{...Object.fromEntries(q),...binding,scope,nonce,iat,exp:iat+600},env.ACTION_SECRET);
-                const html=`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Conectar Missão Tática</title><body><main><h1>Conectar Missão Tática ao ChatGPT</h1><p>Permissões solicitadas: ${pluginHtml(scope)}.</p><p>O ChatGPT poderá consultar a seleção publicada e, com planning:read, os módulos autorizados por 30 dias no aplicativo. Essa conexão fica vinculada à autorização atual; revogar ou substituir a autorização bloqueia novas consultas. Quando autorizado, poderá enviar propostas v1 para revisão. As missões serão criadas por você no aplicativo.</p><form method="post" action="/oauth/authorize"><input type="hidden" name="ticket" value="${pluginHtml(ticket)}"><label>Segredo da integração <input type="password" name="secret" required minlength="32" maxlength="256" autocomplete="current-password"></label><p>Use o ACTION_SECRET guardado no Bitwarden. Ele será verificado neste Worker e não será enviado ao ChatGPT.</p><button name="decision" value="allow">Autorizar conexão</button><button name="decision" value="deny" formnovalidate>Cancelar</button></form></main></body></html>`;
+                const html=`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Conectar Missão Tática</title><body><main><h1>Conectar Missão Tática ao ChatGPT</h1><p>Permissões solicitadas: ${pluginHtml(scope)}.</p><p>O ChatGPT poderá consultar a seleção publicada e, com planning:read, os módulos autorizados por 30 dias no aplicativo. Essa conexão fica vinculada à autorização atual; revogar ou substituir a autorização bloqueia novas consultas. Com proposals:write, poderá enviar propostas v1 para revisão. Com proposals:create e a permissão específica no app, poderá enviar propostas independentes da seleção semanal. Revogar ou substituir a autorização bloqueia novos envios. Propostas independentes ficam pendentes; o cadastro definitivo ainda está indisponível.</p><form method="post" action="/oauth/authorize"><input type="hidden" name="ticket" value="${pluginHtml(ticket)}"><label>Segredo da integração <input type="password" name="secret" required minlength="32" maxlength="256" autocomplete="current-password"></label><p>Use o ACTION_SECRET guardado no Bitwarden. Ele será verificado neste Worker e não será enviado ao ChatGPT.</p><button name="decision" value="allow">Autorizar conexão</button><button name="decision" value="deny" formnovalidate>Cancelar</button></form></main></body></html>`;
                 return new Response(html,{headers:{...headers,'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':"default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",'Set-Cookie':`mt_oauth=${nonce}; Secure; HttpOnly; SameSite=Strict; Path=/oauth/authorize; Max-Age=600`}});
             }
             if(path==='/oauth/authorize'&&method==='POST'&&!url.search){
@@ -613,7 +705,7 @@ function createPluginGateway({now=Date.now,fetchImpl=fetch,readBody,callBridge,p
                 if(f.get('decision')==='deny')redirect.searchParams.set('error','access_denied');
                 else{
                     if(f.get('decision')!=='allow'||!await pluginEqual(f.get('secret')||'',env.ACTION_SECRET))pluginFail(401,'invalid_credentials');
-                    if(p.scope.split(' ').includes(PLANNING_SCOPE)){const g=await planning.oauthGrant(env);if(g.grantId!==p.grantId||g.grantVersion!==p.grantVersion)pluginFail(401,'grant_changed');}
+                    if(p.scope.split(' ').some(s=>[PLANNING_SCOPE,V2_PROPOSAL_SCOPE].includes(s))){const g=await planning.oauthGrant(env,p.scope);if(g.grantId!==p.grantId||g.grantVersion!==p.grantVersion)pluginFail(401,'grant_changed');}
                     const code=pluginRandom(),hash=await pluginHash(code),expiry=now()+300000;
                     await env.DB.prepare('DELETE FROM ai_oauth_codes WHERE expires_at <= ?').bind(now()).run();
                     const row=await env.DB.prepare('INSERT INTO ai_oauth_codes (code_hash,payload,expires_at) SELECT ?,?,? WHERE (SELECT COUNT(*) FROM ai_oauth_codes)<128 RETURNING code_hash').bind(hash,f.get('ticket'),expiry).first();
@@ -630,13 +722,13 @@ function createPluginGateway({now=Date.now,fetchImpl=fetch,readBody,callBridge,p
                 if(!row)pluginFail(400,'invalid_grant');let p;
                 try{p=await unseal('consent',row.payload,env.ACTION_SECRET);}catch(e){if(e instanceof PluginError&&e.status===503)throw e;pluginFail(400,'invalid_grant');}
                 if(p.resource!==MCP_RESOURCE||p.client_id!==f.get('client_id')||p.redirect_uri!==f.get('redirect_uri')||p.code_challenge!==await pluginHash(f.get('code_verifier')))pluginFail(400,'invalid_grant');
-                if(p.scope.split(' ').includes(PLANNING_SCOPE)){const g=await planning.oauthGrant(env);if(g.grantId!==p.grantId||g.grantVersion!==p.grantVersion)pluginFail(400,'invalid_grant');}
+                if(p.scope.split(' ').some(s=>[PLANNING_SCOPE,V2_PROPOSAL_SCOPE].includes(s))){const g=await planning.oauthGrant(env,p.scope);if(g.grantId!==p.grantId||g.grantVersion!==p.grantVersion)pluginFail(400,'invalid_grant');}
                 // The original signed consent binds unused codes to the signing secret.
                 const used=await env.DB.prepare('DELETE FROM ai_oauth_codes WHERE code_hash=? AND expires_at>? RETURNING code_hash').bind(hash,now()).first();
                 if(!used)pluginFail(400,'invalid_grant');
                 const iat=Math.floor(now()/1000),scope=pluginScopes(p.scope);
-                const expires=scope.split(' ').includes(PLANNING_SCOPE)?3600:86400;
-                const access_token=await seal('access',{iss:BRIDGE_BASE,aud:MCP_RESOURCE,sub:'owner',client_id:CHATGPT_CLIENT,scope,...(scope.split(' ').includes(PLANNING_SCOPE)?{grantId:p.grantId,grantVersion:p.grantVersion}:{}),iat,exp:iat+expires},env.ACTION_SECRET);
+                const bound=scope.split(' ').some(s=>[PLANNING_SCOPE,V2_PROPOSAL_SCOPE].includes(s)),expires=bound?3600:86400;
+                const access_token=await seal('access',{iss:BRIDGE_BASE,aud:MCP_RESOURCE,sub:'owner',client_id:CHATGPT_CLIENT,scope,...(bound?{grantId:p.grantId,grantVersion:p.grantVersion}:{}),iat,exp:iat+expires},env.ACTION_SECRET);
                 return json(200,{access_token,token_type:'Bearer',expires_in:expires,scope});
             }
             if(path!=='/mcp'||url.search)pluginFail(404,'not_found');
@@ -666,16 +758,16 @@ function createPluginGateway({now=Date.now,fetchImpl=fetch,readBody,callBridge,p
             if(!tool.securitySchemes[0].scopes.every(s=>owner.scope.split(' ').includes(s)))return json(403,{error:'insufficient_scope'},authChallenge());
             const args=params.arguments;
             if(!args||typeof args!=='object'||Array.isArray(args)||tool.inputSchema.required.some(k=>!Object.hasOwn(args,k))||Object.keys(args).some(k=>!Object.hasOwn(tool.inputSchema.properties,k)))return rpcError(-32602,'Invalid arguments');
-            if(PLANNING_TOOLS.some(t=>t.name===params.name)){
+            if([...PLANNING_TOOLS,...V2_PROPOSAL_TOOLS].some(t=>t.name===params.name)){
                 try{const data=await planning.read(params.name,args,owner,env);return result({content:[{type:'text',text:JSON.stringify(data)}],structuredContent:data});}
-                catch(e){if(e instanceof PlanningError&&e.status===400)return rpcError(-32602,'Invalid arguments');if(e instanceof PlanningError&&[401,403].includes(e.status))throw e;return result({isError:true,content:[{type:'text',text:JSON.stringify({error:e instanceof PlanningError?e.code:'invalid_shared_data'})}]});}
+                catch(e){if(e instanceof ContractError||e instanceof V2ValidationError||e instanceof PlanningError&&e.status===400)return rpcError(-32602,'Invalid arguments');if((e instanceof PlanningError||e instanceof ProposalError)&&[401,403].includes(e.status))throw e;return result({isError:true,content:[{type:'text',text:JSON.stringify({error:e instanceof PlanningError||e instanceof ProposalError?e.code:'invalid_shared_data'})}]});}
             }
             const read=params.name==='getSharedWeek';
             const internal=new Request(BRIDGE_BASE+(read?'/v1/week?weekStart='+encodeURIComponent(args.weekStart):'/v1/proposals'),{method:read?'GET':'POST',headers:{Authorization:'Bearer '+env.ACTION_SECRET,'Content-Type':'application/json'},...(!read?{body:JSON.stringify(args)}:{})});
             const response=await callBridge(internal,env),data=await response.json();
             return result({content:[{type:'text',text:JSON.stringify(data)}],...(response.ok?{structuredContent:data}:{isError:true})});
         }catch(e){
-            const status=e instanceof PluginError||e instanceof PlanningError?e.status:e instanceof ContractError?400:503,code=e instanceof PluginError||e instanceof PlanningError?e.code:e instanceof ContractError?'invalid_request':'service_unavailable';
+            const status=e instanceof PluginError||e instanceof PlanningError||e instanceof ProposalError?e.status:e instanceof ContractError?400:503,code=e instanceof PluginError||e instanceof PlanningError||e instanceof ProposalError?e.code:e instanceof ContractError?'invalid_request':'service_unavailable';
             return json(status,{error:code},status===401?authChallenge():status===429?{'Retry-After':'60'}:{});
         }
     };
@@ -782,10 +874,11 @@ async function readJson(request,limit) {
 function createWorker({verifyOwner=createFirebaseVerifier(),storeFactory=createD1Store,now=Date.now,requestsPerMinute=60,pluginFetch=fetch} = {}) {
     let minute=-1,requests=0;
     const foundation=createV2Foundation({verifyOwner,now});
-    const planning=createPlanningService({now,readBody:readJson});
+    const proposals=createV2Proposals({now,readBody:readJson,verifyOwner});
+    const planning=createPlanningService({now,readBody:readJson,proposals});
     const worker = {
         async fetch(request,env) {
-            if(new URL(request.url).pathname.startsWith('/v2/'))return await planning.fetch(request,env) || foundation.fetch(request,env);
+            if(new URL(request.url).pathname.startsWith('/v2/'))return await proposals.fetch(request,env) || await planning.fetch(request,env) || foundation.fetch(request,env);
             const pluginResponse=await plugin(request,env);if(pluginResponse)return pluginResponse;
             const url = new URL(request.url), method=request.method;
             const appRoute = url.pathname.startsWith('/v1/app/');
@@ -801,6 +894,7 @@ function createWorker({verifyOwner=createFirebaseVerifier(),storeFactory=createD
                 if (method==='GET' && url.pathname==='/healthz' && !url.search) return send(200,{ok:true,service:'missao-tatica-ai-bridge',schemaVersion:1});
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=v2') return send(200,{service:'missao-tatica-ai-bridge',foundationVersion:1,enabled:env.AI_V2_ENABLED==='true'});
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=reads') return send(200,{service:'missao-tatica-ai-bridge',readsVersion:1,enabled:env.AI_V2_ENABLED==='true'&&env.AI_V2_READ_ENABLED==='true'});
+                if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=proposals') return send(200,{service:'missao-tatica-ai-bridge',proposalsVersion:1,enabled:env.AI_V2_ENABLED==='true'&&env.AI_V2_PROPOSALS_ENABLED==='true'});
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=keys') {
                     if(typeof verifyOwner.inspectPublicKeys!=='function')return send(503,{error:'service_unavailable'});
                     return send(200,{service:'missao-tatica-ai-bridge',diagnosticVersion:1,publicKeys:await verifyOwner.inspectPublicKeys()});

@@ -368,3 +368,38 @@ checks. Não há chamada a dados reais nos testes nem reset de dados.
 - [Validar App Check em backend próprio](https://firebase.google.com/docs/app-check/custom-resource-backend)
 - [GPT Actions, autenticação](https://developers.openai.com/api/docs/actions/authentication)
 - [GPT Actions, confirmação](https://developers.openai.com/api/docs/actions/production)
+
+## IA 2.0 — propostas independentes (preparadas)
+
+`createProposal` recebe apenas `mission.create` para revisão, mesmo sem snapshot
+ou seleção semanal publicada. `listProposals` consulta a fila. Nenhuma destas
+operações escreve no Firebase. A fila nova permite consultar e recusar; aceitar,
+editar e cadastrar dependem da persistência confirmada da etapa 2.
+
+Instalação: executar `cloudflare/proposals-v2-schema.sql` no mesmo D1, publicar
+`cloudflare/worker-dashboard.js` e adicionar `AI_V2_PROPOSALS_ENABLED=true`.
+Manter `AI_V2_ENABLED=true` e `AI_V2_READ_ENABLED=true`. O healthcheck
+`/healthz?check=proposals` confirma versão/flag, não valida existência da tabela.
+O frontend mantém `proposalsEnabled:false` até a instalação ser conferida.
+Depois habilitar, revisar no app a permissão **Permitir propostas de novas
+missões**, autorizar novamente e, na conexão privada, reativar consultas e clicar
+**Ativar envio de propostas**. A autorização exige o módulo Missões; autorizações
+antigas e tokens de leitura nunca recebem escrita automaticamente.
+
+O OAuth direto usa o scope separado `proposals:create`, somente quando solicitado,
+vinculado ao grant/versão e com validade de uma hora. O Site emite tokens de cinco
+minutos contra a autorização salva e exige ativação específica. Substituição,
+revogação e vencimento bloqueiam novos envios. O proprietário pode recusar propostas
+anteriores mesmo após revogar. Respostas nunca indicam horário livre ou aplicação:
+`conflictCheck:unverified`, `applyEligible:false`.
+
+Idempotência: mesma chave e mesmos campos retornam o registro existente; outra
+carga na mesma chave falha. Inserção confere grant/versão/consentimento no SQL.
+Recusa exige versão e é repetível sem alterar o resultado. Limites: payload de
+12.000 bytes, 100 pendências e 1.000 marcadores totais nesta fila pessoal. Conteúdo
+vence em 90 dias; operações autenticadas removem até 50 payloads vencidos por vez,
+preservando marcador para evitar repetição. Não há cron nem exclusão física dos
+marcadores; ao atingir a capacidade novas chaves são recusadas.
+
+Testes sintéticos cobrem Worker/D1, escopos OAuth, Site, idempotência, revogação,
+concorrência e recusa. Instalação e envio real ainda precisam de conferência.

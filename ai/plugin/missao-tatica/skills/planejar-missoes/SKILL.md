@@ -18,6 +18,22 @@ Estudos incluem planos e progresso agregado; estas ferramentas só consultam.
 Não afirme que criou ou alterou um plano. Ausência de horários nunca comprova
 disponibilidade; confirme as restrições ausentes com o usuário.
 
+Se createProposal estiver disponível, prefira essa ferramenta para propostas de
+novas missões de qualquer categoria. Não exige publicar a seleção semanal nem
+uma cópia fresca. Mostre título, semana (segunda-feira), dia, duração, horário,
+subtarefas e categoria; obtenha confirmação explícita de todos os campos antes
+do envio. Use kind mission.create, fields e idempotencyKey. Se os horários forem
+informados, duração deve corresponder ao intervalo. Não invente basis; envie
+projectionVersion somente quando tiver consultado a versão real pertinente.
+
+O envio exige permissão específica no app e Ativar envio de propostas na conexão
+privada, após reativar consultas para o grant atual. Se faltar permissão, explique
+o passo necessário; nunca tente ampliar escopo silenciosamente. Consulte
+listProposals com paginação para conferir estado. Pending significa recebida para
+revisão, não missão criada. Oriente abrir Propostas novas da IA no app. Nesta
+entrega o usuário pode consultar e recusar; cadastro definitivo está indisponível.
+Não use submitProposal como atalho para aplicar uma proposta v2 já recebida.
+
 Se as consultas não estiverem disponíveis, informe a limitação e use somente
 as ferramentas existentes. Para enviar proposta v1, consulte getSharedWeek e
 use sua contextRevision. A seleção semanal v1 continua parcial e publicada
@@ -37,10 +53,11 @@ formulário. O usuário conclui a criação no app; o app calcula XP, HP e moeda
 
 Use uma idempotencyKey única de 8–80 caracteres (letras, números, hífen ou
 sublinhado) por proposta confirmada. Preserve a mesma chave E os mesmos dados
-ao repetir após falha/timeout. Para outra proposta, obtenha nova confirmação.
+ao repetir após falha/timeout em qualquer ferramenta de envio. Para outra proposta,
+obtenha nova confirmação.
 Use contextRevision exatamente como retornado pela consulta.
 
-Se o contexto estiver ausente, expirado ou alterado, peça nova publicação e
+Para submitProposal v1, se o contexto estiver ausente, expirado ou alterado, peça nova publicação e
 consulte novamente. Não invente dados, XP, HP, moedas, dificuldade ou prioridade.
 Não mova nem exclua missões. Não afirme sucesso se a API falhar. pending significa
 proposta para revisão; accepted significa revisão no app e não garante reserva

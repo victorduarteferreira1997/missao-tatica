@@ -2,6 +2,18 @@
 
 [Voltar ao README](../README.md)
 
+## IA 2.0 — propostas sem seleção semanal preparadas · 2026-10-14
+
+- Nova fila independente para missões de qualquer categoria. Envio exige permissão
+  explícita no app e ativação no Site; leitura existente não ganha escrita.
+- Criação repetida não duplica; grant e versão conferidos na inserção. Novas
+  propostas são bloqueadas após revogação, vencimento ou troca da autorização.
+- App consulta e recusa sem fechar a fila. Cadastro definitivo permanece bloqueado
+  até a etapa 2; planos de estudos e escrita no RADAR continuam para depois.
+- Tabela aditiva, limpeza lógica após 90 dias e limites de capacidade. Instalação
+  do Worker/D1 e conferência real pendentes; flag do frontend permanece desligada.
+- Testes locais incluem fluxo Site → Worker, OAuth direto e regressões existentes.
+
 ## IA 2.0 — consultas instaladas e conferidas no ChatGPT · 2026-10-13
 
 - Capturas confirmaram a publicação do novo Worker e healthcheck de leituras

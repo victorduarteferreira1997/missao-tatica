@@ -3,6 +3,8 @@ import {AI_V2_CONFIG} from './ai/config.v2.js';
 import {createConfirmedStateWriter} from './ai/v2/saved_state.js';
 import {createV2BrowserStore} from './ai/v2/browser.js';
 import {installAiAccess} from './ui/ai_access.v2.js';
+import {createV2ProposalsBrowserStore} from './ai/v2/proposals_browser.js';
+import {installAiV2Proposals} from './ui/ai_proposals.v2.js';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {runInNewContext} from 'node:vm';
@@ -25,7 +27,7 @@ function boot(saved=null){
  const document={activeElement:null,getElementById:id=>elements[id]||null,querySelector(){return null;},querySelectorAll(){return [];},addEventListener(){}};
  const window={lucide:{createIcons(){}},location:{origin:'https://victorduarteferreira1997.github.io',pathname:'/missao-tatica/app.html'},addEventListener(){}};
  const c={window,document,Date:FixedDate,console,TextEncoder,Uint8Array,Uint32Array,DataView,URL,Blob,Intl,localStorage:{getItem:key=>stored.get(key)||null,setItem:(key,value)=>{stored.set(key,value);writes.push(key);}},
- setTimeout:()=>1,clearTimeout(){},setInterval:()=>1,clearInterval(){},lucide:window.lucide,initializeApp:()=>({}),initializeAppCheck(){},ReCaptchaEnterpriseProvider:class{},getAuth:()=>({}),getFirestore:()=>({}),GoogleAuthProvider:class{},signInWithPopup(){},signInWithRedirect(){},signOut:async()=>{},onAuthStateChanged:(auth,callback)=>c.authCallback=callback,doc(){},getDoc(){throw Error('A inicialização não deve ler a nuvem sem login.');},setDoc(){throw Error('O teste não deve gravar na nuvem.');},createCalendarSync:options=>{c.calendarOnChange=options.onChange;return createCalendarSync(options);},installFormDialogs,installTaskForms,installPlanningViews,installAiInbox,AI_CONFIG,createAiBrowserStore,AI_V2_CONFIG,createConfirmedStateWriter,createV2BrowserStore,installAiAccess};
+ setTimeout:()=>1,clearTimeout(){},setInterval:()=>1,clearInterval(){},lucide:window.lucide,initializeApp:()=>({}),initializeAppCheck(){},ReCaptchaEnterpriseProvider:class{},getAuth:()=>({}),getFirestore:()=>({}),GoogleAuthProvider:class{},signInWithPopup(){},signInWithRedirect(){},signOut:async()=>{},onAuthStateChanged:(auth,callback)=>c.authCallback=callback,doc(){},getDoc(){throw Error('A inicialização não deve ler a nuvem sem login.');},setDoc(){throw Error('O teste não deve gravar na nuvem.');},createCalendarSync:options=>{c.calendarOnChange=options.onChange;return createCalendarSync(options);},installFormDialogs,installTaskForms,installPlanningViews,installAiInbox,AI_CONFIG,createAiBrowserStore,AI_V2_CONFIG,createConfirmedStateWriter,createV2BrowserStore,installAiAccess,createV2ProposalsBrowserStore,installAiV2Proposals};
  runInNewContext(moduleSource+'\nwindow.startupForTest = {getState:()=>state,getUI:()=>uiState,getTimer:()=>pomodoro,render};',c,{timeout:3000});
  return {c,window,elements,stored,writes,state:window.startupForTest.getState(),ui:window.startupForTest.getUI(),render:window.startupForTest.render};
 }
