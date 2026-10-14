@@ -1540,7 +1540,9 @@
             if (!state.studyData.studyPlan) state.studyData.studyPlan = {};
             if (!Array.isArray(state.studyData.studyPlan.tracks)) state.studyData.studyPlan.tracks = [];
             if (!Array.isArray(state.studyData.studyPlan.weeklyBlocks)) state.studyData.studyPlan.weeklyBlocks = [];
+            state.studyData.studyPlan.removedDefaultTrackIds = (Array.isArray(state.studyData.studyPlan.removedDefaultTrackIds) ? state.studyData.studyPlan.removedDefaultTrackIds : []).filter(id => DEFAULT_STUDY_TRACKS.some(track => track.id === id));
             DEFAULT_STUDY_TRACKS.forEach(defaultTrack => {
+                if (state.studyData.studyPlan.removedDefaultTrackIds.includes(defaultTrack.id)) return;
                 const existing = state.studyData.studyPlan.tracks.find(t => t.id === defaultTrack.id);
                 if (!existing) {
                     state.studyData.studyPlan.tracks.push({ ...defaultTrack });
@@ -1580,7 +1582,8 @@
             state.studyData.studyPlan.weeklyBlocks.forEach(block => {
                 if (!block.id) block.id = Date.now() + Math.random();
                 if (!daysOfWeek.some(d => d.id === block.day)) block.day = 'monday';
-                if (!block.trackId || !state.studyData.studyPlan.tracks.some(t => String(t.id) === String(block.trackId))) block.trackId = state.studyData.studyPlan.tracks.find(t => t.active !== false)?.id || 'ingles';
+                if (typeof block.trackId === 'undefined') block.trackId = state.studyData.studyPlan.tracks.find(t => t.active !== false)?.id || null;
+                else if (block.trackId && !state.studyData.studyPlan.tracks.some(t => String(t.id) === String(block.trackId))) block.trackId = null;
                 const linkedSubject = state.studyData.subjects.find(s => String(s.id) === String(block.subjectId));
                 if (block.subjectId && !linkedSubject) block.subjectId = null;
                 if (linkedSubject?.trackId) block.trackId = linkedSubject.trackId;
@@ -5008,6 +5011,72 @@
             window.showToast('Trilha restaurada', 'Disciplinas e planejamento disponíveis novamente.', 'route', 'text-cyan-300');
         };
 
+        window.getStudyTrackDeletionImpact = function(trackId) {
+            const data = state.studyData, plan = data?.studyPlan;
+            const same = id => String(id) === String(trackId);
+            const track = plan?.tracks?.find(t => same(t.id));
+            if (!track || track.active !== false) return null;
+            const subjects = (data.subjects || []).filter(subject => same(subject.trackId));
+            const subjectIds = new Set(subjects.map(subject => String(subject.id)));
+            const sessions = (data.sessions || []).filter(row => subjectIds.has(String(row.subjectId)) || same(row.trackId));
+            const sessionIds = new Set(sessions.map(row => String(row.id)));
+            const reviews = (data.reviews || []).filter(row => subjectIds.has(String(row.subjectId)) || sessionIds.has(String(row.sourceSessionId)));
+            const errors = (data.errorLog || []).filter(row => subjectIds.has(String(row.subjectId)));
+            const blocks = (plan.weeklyBlocks || []).filter(row => same(row.trackId) || subjectIds.has(String(row.subjectId)));
+            const cycles = (data.cycles || []).filter(row => (row.subjectIds || []).some(id => subjectIds.has(String(id))));
+            const impact = {track, subjects, sessions, reviews, errors, blocks, cycles};
+            return {...impact, signature: JSON.stringify(impact)};
+        };
+
+        window.requestPermanentStudyTrackDeletion = function(trackId, mode) {
+            if (!['keep', 'cascade'].includes(mode)) return;
+            const impact = window.getStudyTrackDeletionImpact(trackId);
+            if (!impact) return;
+            const removeAll = mode === 'cascade';
+            const trackBlocks = impact.blocks.filter(block => String(block.trackId) === String(trackId));
+            const explanation = removeAll
+                ? `Registros que serão apagados:\nTrilhas: 1 · Matérias: ${impact.subjects.length} · Blocos de planejamento: ${impact.blocks.length} · Sessões: ${impact.sessions.length} · Revisões: ${impact.reviews.length} · Erros: ${impact.errors.length}.\n${impact.cycles.length} ciclos serão ajustados; ciclos sem matérias serão removidos.`
+                : `Será apagada somente a trilha. Registros mantidos sem trilha para reorganizar: ${impact.subjects.length} matéria(s) e ${trackBlocks.length} bloco(s). Sessões, revisões, erros e ciclos serão mantidos.`;
+            window.showConfirmModal(`Excluir definitivamente "${impact.track.name}"?\n\n${explanation}\n\nXP, moedas e conquistas acumulados serão mantidos. Esta exclusão não pode ser desfeita; exporte um backup antes se quiser uma cópia.`, () => {
+                const latest = window.getStudyTrackDeletionImpact(trackId);
+                if (!latest) return;
+                if (latest.signature !== impact.signature) {
+                    window.showAlertModal('Os registros desta trilha mudaram. Revise a exclusão novamente.');
+                    return;
+                }
+                const data = state.studyData, plan = data.studyPlan;
+                const subjectIds = new Set(latest.subjects.map(row => String(row.id)));
+                const sessionIds = new Set(latest.sessions.map(row => String(row.id)));
+                const ids = rows => new Set(rows.map(row => String(row.id)));
+                plan.tracks = plan.tracks.filter(row => String(row.id) !== String(trackId));
+                if (DEFAULT_STUDY_TRACKS.some(row => String(row.id) === String(trackId))) {
+                    plan.removedDefaultTrackIds = [...new Set([...(plan.removedDefaultTrackIds || []), String(trackId)])];
+                }
+                if (removeAll) {
+                    data.subjects = (data.subjects || []).filter(row => !subjectIds.has(String(row.id)));
+                    data.sessions = (data.sessions || []).filter(row => !sessionIds.has(String(row.id)));
+                    const reviewIds = ids(latest.reviews), errorIds = ids(latest.errors), blockIds = ids(latest.blocks);
+                    data.reviews = (data.reviews || []).filter(row => !reviewIds.has(String(row.id)));
+                    data.errorLog = (data.errorLog || []).filter(row => !errorIds.has(String(row.id)));
+                    plan.weeklyBlocks = (plan.weeklyBlocks || []).filter(row => !blockIds.has(String(row.id)));
+                    data.cycles = (data.cycles || []).filter(cycle => {
+                        if (!latest.cycles.includes(cycle)) return true;
+                        cycle.subjectIds = cycle.subjectIds.filter(id => !subjectIds.has(String(id)));
+                        return cycle.subjectIds.length > 0;
+                    });
+                    plan.weeklyBlocks.forEach(block => { if (sessionIds.has(String(block.linkedSessionId))) block.linkedSessionId = null; });
+                    if (blockIds.has(String(uiState.editingStudyBlockId))) uiState.editingStudyBlockId = null;
+                } else {
+                    latest.subjects.forEach(subject => { subject.trackId = null; });
+                    trackBlocks.forEach(block => { block.trackId = null; });
+                }
+                if (String(uiState.studyPlanningTrackId) === String(trackId)) uiState.studyPlanningTrackId = '';
+                window.clearWorkDraft?.('study', 'planning');
+                window.saveStudyPlanningState();
+                window.showToast('Trilha excluída definitivamente', removeAll ? 'Registros vinculados removidos.' : 'Matérias e histórico mantidos para reorganizar.', 'trash-2', 'text-slate-300');
+            });
+        };
+
         window.addStudyPlanBlock = function() {
             if (!state.studyData.studyPlan) state.studyData.studyPlan = { tracks: [], weeklyBlocks: [] };
             const title = document.getElementById('study-block-title')?.value.trim();
@@ -7664,7 +7733,7 @@
                             <div class="border-t border-slate-800 p-4">
                                 <div class="space-y-2 mb-4">
                                     ${activeTracks.length ? activeTracks.map(t => { const subjectCount = window.getStudySubjects(t.id).length; return `<div class="flex items-center justify-between gap-2 bg-slate-900 border border-slate-800 rounded-lg p-3"><div class="flex items-center gap-2 min-w-0"><i data-lucide="${t.icon}" class="w-4 h-4 ${t.color}"></i><div class="min-w-0"><div class="text-sm font-bold text-white truncate">${window.escapeHtml(t.name)}</div><div class="text-[9px] text-slate-500">${subjectCount} disciplina${subjectCount === 1 ? '' : 's'} • meta ${t.weeklyGoalMinutes || 0} min</div></div></div><button type="button" onclick="window.deleteStudyTrack(${window.recoveryHandlerArgument(t.id)})" class="text-slate-400 hover:text-red-400 p-2" aria-label="Arquivar ${window.escapeHtml(t.name)}" title="Arquivar trilha"><i data-lucide="archive" class="w-4 h-4"></i></button></div>`; }).join('') : `<p class="text-xs text-slate-400">Nenhuma trilha ativa. Crie uma abaixo ou restaure uma arquivada.</p>`}
-                                    ${archivedTracks.length ? `<details class="rounded-lg border border-slate-800"><summary class="cursor-pointer px-3 py-2 text-xs text-slate-400">Trilhas arquivadas (${archivedTracks.length})</summary><div class="px-3 pb-3 space-y-2"><p class="text-xs text-slate-500">Histórico preservado. Restaure uma trilha para voltar a visualizar suas disciplinas.</p>${archivedTracks.map(t => `<div class="flex items-center justify-between gap-3 py-2 border-t border-slate-800"><span class="text-sm text-slate-400 break-words">${window.escapeHtml(t.name)}</span><button type="button" onclick="window.restoreStudyTrack(${window.recoveryHandlerArgument(t.id)})" class="shrink-0 rounded-lg border border-slate-700 px-3 py-2 text-xs text-cyan-300">Restaurar</button></div>`).join('')}</div></details>` : ''}
+                                    ${archivedTracks.length ? `<details class="rounded-lg border border-slate-800"><summary class="cursor-pointer px-3 py-2 text-xs text-slate-400">Trilhas arquivadas (${archivedTracks.length})</summary><div class="px-3 pb-3 space-y-2"><p class="text-xs text-slate-500">Histórico preservado. Restaure uma trilha para voltar a visualizar suas disciplinas.</p>${archivedTracks.map(t => `<div class="flex items-center justify-between gap-3 py-2 border-t border-slate-800"><span class="text-sm text-slate-400 break-words">${window.escapeHtml(t.name)}</span><div class="shrink-0"><button type="button" onclick="window.restoreStudyTrack(${window.recoveryHandlerArgument(t.id)})" class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-cyan-300">Restaurar</button><details class="mt-2"><summary class="cursor-pointer text-xs text-rose-400">Excluir definitivamente</summary><div class="mt-2 flex flex-col gap-2"><button type="button" onclick="window.requestPermanentStudyTrackDeletion(${window.recoveryHandlerArgument(t.id)}, 'keep')" class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300">Excluir só a trilha · manter matérias</button><button type="button" onclick="window.requestPermanentStudyTrackDeletion(${window.recoveryHandlerArgument(t.id)}, 'cascade')" class="rounded-lg border border-rose-900/60 px-3 py-2 text-xs text-rose-300">Excluir trilha, matérias e registros</button></div></details></div></div>`).join('')}</div></details>` : ''}
                                 </div>
                                 <div class="grid grid-cols-2 gap-2">
                                     <input id="study-track-name" placeholder="Nova trilha" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">

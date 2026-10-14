@@ -56,9 +56,11 @@ function engine() {
         section('window.checkLevelUp = function()', 'window.showToast ='),
         section('window.getComboMultiplier =', 'window.getUserDisplayName ='),
         section('window.saveState =', 'window.saveStateNow ='),
+        section('window.getStudyTracks =', 'window.addStudyPlanBlock ='),
         'window.cleanupModulesForTest = DATA_CLEANUP_MODULES;'
     ].join('\n'), ctx);
     ctx.window.getCurrentCalendarWeekStartKey = () => '2026-10-05';
+    ctx.window.saveStudyPlanningState = () => ctx.window.saveState();
     ctx.window.validateState(); ctx.pomodoro.timeLeft = 900;
     ctx.window.openDataManager(); ctx.persisted = () => JSON.parse(persisted);
     return ctx;
@@ -198,4 +200,52 @@ test('backup JSON real inclui o aplicativo inteiro e restaura os dados após rei
     assert.equal(restored.xp, before.xp); assert.deepEqual(restored.financeData, before.financeData);
     assert.deepEqual(restored.healthData, before.healthData); assert.deepEqual(restored.userProfile, before.userProfile);
     assert.deepEqual(restored.prestige, before.prestige); assert.equal(event.target.value, '');
+});
+
+function trackDeletionFixture() {
+    const ctx = engine(), data = ctx.state.studyData;
+    data.studyPlan.tracks.find(row => row.id === 'custom').active = false;
+    data.subjects[0].trackId = 'custom';
+    data.subjects.push({id: 'other-subject', name: 'Outra matéria', trackId: 'ingles'});
+    data.sessions.push({id: 'other-session', subjectId: 'other-subject'});
+    data.reviews.push({id: 'other-review', subjectId: 'other-subject'});
+    data.errorLog = [{id:'target-error',subjectId:'s1'},{id:'other-error',subjectId:'other-subject'}];
+    data.cycles = [{id:'mixed',subjectIds:['s1','other-subject']},{id:'empty-after',subjectIds:['s1']},{id:'unrelated',subjectIds:['other-subject']}];
+    data.studyPlan.weeklyBlocks.push({id:'other-block',trackId:'ingles',subjectId:'other-subject',day:'tuesday',title:'Outro bloco',linkedSessionId:'ss'});
+    ctx.window.stampCampaignRecords();
+    return ctx;
+}
+test('exclusão de trilha exige arquivo e confirmação; manter matérias preserva histórico e vínculos vazios após recarregar', () => {
+    const ctx = trackDeletionFixture(), before = plain(ctx.state);
+    ctx.window.requestPermanentStudyTrackDeletion('ingles','cascade');assert.equal(ctx.window.confirmCallback,undefined);
+    ctx.window.requestPermanentStudyTrackDeletion('custom','invalid');assert.equal(ctx.window.confirmCallback,undefined);
+    ctx.window.requestPermanentStudyTrackDeletion('custom','keep');assert.deepEqual(plain(ctx.state),before);
+    assert.match(ctx.window.confirmMessage,/somente a trilha/);assert.match(ctx.window.confirmMessage,/1 matéria\(s\) e 1 bloco\(s\)/);
+    ctx.window.confirmCallback();
+    assert.ok(!ctx.state.studyData.studyPlan.tracks.some(row=>row.id==='custom'));
+    assert.equal(ctx.state.studyData.subjects[0].trackId,null);assert.equal(ctx.state.studyData.studyPlan.weeklyBlocks[0].trackId,null);
+    for(const key of ['sessions','reviews','errorLog','cycles'])assert.deepEqual(plain(ctx.state.studyData[key]),before.studyData[key]);
+    ctx.window.validateState();assert.equal(ctx.state.studyData.studyPlan.weeklyBlocks[0].trackId,null);
+    assert.equal(ctx.state.xp,before.xp);assert.equal(ctx.state.coins,before.coins);
+});
+test('exclusão completa remove só registros vinculados, ajusta ciclos e preserva recompensas, recibos e outros módulos', () => {
+    const ctx = trackDeletionFixture(), before = plain(ctx.state);ctx.state.aiApplications = {'receipt':'keep'};
+    ctx.window.requestPermanentStudyTrackDeletion('custom','cascade');
+    assert.match(ctx.window.confirmMessage,/Trilhas: 1 · Matérias: 1 · Blocos de planejamento: 1 · Sessões: 1 · Revisões: 1 · Erros: 1/);
+    assert.match(ctx.window.confirmMessage,/2 ciclos serão ajustados/);ctx.window.confirmCallback();
+    const data=ctx.state.studyData;
+    assert.deepEqual(data.subjects.map(row=>row.id),['other-subject']);assert.deepEqual(data.sessions.map(row=>row.id),['other-session']);
+    assert.deepEqual(data.reviews.map(row=>row.id),['other-review']);assert.deepEqual(data.errorLog.map(row=>row.id),['other-error']);
+    assert.deepEqual(data.studyPlan.weeklyBlocks.map(row=>row.id),['other-block']);assert.equal(data.studyPlan.weeklyBlocks[0].linkedSessionId,null);
+    assert.deepEqual(plain(data.cycles),[{id:'mixed',subjectIds:['other-subject']},{id:'unrelated',subjectIds:['other-subject']}]);
+    for(const key of ['xp','coins','energy','prestige','tasks','financeData','healthData','operationalControl'])assert.deepEqual(plain(ctx.state[key]),before[key]);
+    assert.deepEqual(ctx.state.aiApplications,{'receipt':'keep'});const saved=JSON.stringify(ctx.state);ctx.window.confirmCallback();assert.equal(JSON.stringify(ctx.state),saved);
+});
+test('trilha padrão excluída não reaparece após validação; mudanças depois da prévia impedem exclusão', () => {
+    const ctx=trackDeletionFixture();ctx.window.requestPermanentStudyTrackDeletion('custom','cascade');
+    ctx.state.studyData.sessions.push({id:'new',subjectId:'s1'});const before=JSON.stringify(ctx.state);ctx.window.confirmCallback();
+    assert.equal(JSON.stringify(ctx.state),before);assert.match(ctx.window.alertMessage,/mudaram/);
+    ctx.state.studyData.studyPlan.tracks.find(row=>row.id==='ingles').active=false;ctx.window.requestPermanentStudyTrackDeletion('ingles','keep');ctx.window.confirmCallback();
+    ctx.window.validateState();ctx.window.validateState();assert.ok(!ctx.state.studyData.studyPlan.tracks.some(row=>row.id==='ingles'));
+    assert.ok(ctx.state.studyData.studyPlan.removedDefaultTrackIds.includes('ingles'));
 });
