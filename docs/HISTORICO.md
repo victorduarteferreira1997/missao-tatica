@@ -2,6 +2,17 @@
 
 [Voltar ao README](../README.md)
 
+## IA 2.0 — cadastro habilitado após conferência do servidor · 2026-10-14
+
+- Captura mostra AI_V2_APPLY_ENABLED=true em produção. Healthcheck real confirma
+  applyVersion:1, enabled:true e consulta MCP real da fila passa sem erro.
+- A consulta ativa usa o JOIN da tabela aditiva; instalação suficiente para leitura
+  conferida, sem afirmar inspeção completa de constraints do D1.
+- Frontend habilita revisão/cadastro e salvamento transacional. Wrangler registra
+  flag ativa. Orientação de fechar abas antigas antes de usar o novo salvamento.
+- Cadastro real, regras Firebase para revision/aiApplications e confirmação visual
+  do formulário ainda pendentes de teste pelo proprietário.
+
 ## IA 2.0 — cadastro confirmado preparado · 2026-10-14
 
 - Formulário edita os campos da proposta e calcula custos no app; cadastro mantém

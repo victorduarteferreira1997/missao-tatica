@@ -459,3 +459,12 @@ Testes locais incluem SQL real/reserva/recusa/ACK, concorrência, falha após co
 comprovante após exclusão, sessão, campos/XSS, integração completa do app e
 Site → Worker → transação simulada → ACK. Firestore real, regras para os novos
 campos e conferência visual do formulário ainda aguardam ativação/teste do usuário.
+
+### Ativação da etapa 2 · 14/10/2026
+
+Variável de produção conferida por captura; healthcheck consultado confirma
+applyVersion:1, enabled:true. listProposals real retorna fila vazia sem erro,
+validando leitura com JOIN da nova tabela. Frontend applyEnabled:true e Wrangler
+registram ativação. Conferência de constraints completas, gravação Firebase real,
+regras para revision/aiApplications e visual do formulário ainda pendentes.
+Fechar e atualizar clientes antigos antes do teste. Consentimento atual permanece.
