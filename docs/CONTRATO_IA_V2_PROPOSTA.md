@@ -2,7 +2,8 @@
 
 Contrato aprovado com ampliação de escopo em 13/10/2026, America/Sao_Paulo.
 Fundação e consultas instaladas e validadas no app/conexão privada e no ChatGPT.
-Propostas v2 implementadas e testadas localmente; instalação e validação real pendentes.
+Propostas v2 implementadas; instalação D1/Worker conferida por capturas em 14/10/2026.
+Frontend habilitado; consentimento e envio real ainda pendentes.
 Recebimento e recusa são permitidos; aplicação definitiva continua bloqueada até a etapa 2.
 Base oficial conferida: `b747ff73aa911ebc579f77409b8be9ef82faad12`.
 

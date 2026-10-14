@@ -369,7 +369,7 @@ checks. Não há chamada a dados reais nos testes nem reset de dados.
 - [GPT Actions, autenticação](https://developers.openai.com/api/docs/actions/authentication)
 - [GPT Actions, confirmação](https://developers.openai.com/api/docs/actions/production)
 
-## IA 2.0 — propostas independentes (preparadas)
+## IA 2.0 — propostas independentes (instaladas; ativação pessoal pendente)
 
 `createProposal` recebe apenas `mission.create` para revisão, mesmo sem snapshot
 ou seleção semanal publicada. `listProposals` consulta a fila. Nenhuma destas
@@ -380,8 +380,9 @@ Instalação: executar `cloudflare/proposals-v2-schema.sql` no mesmo D1, publica
 `cloudflare/worker-dashboard.js` e adicionar `AI_V2_PROPOSALS_ENABLED=true`.
 Manter `AI_V2_ENABLED=true` e `AI_V2_READ_ENABLED=true`. O healthcheck
 `/healthz?check=proposals` confirma versão/flag, não valida existência da tabela.
-O frontend mantém `proposalsEnabled:false` até a instalação ser conferida.
-Depois habilitar, revisar no app a permissão **Permitir propostas de novas
+Capturas de 14/10/2026 confirmam SQL executado, Worker publicado, variável ativa
+e healthcheck `proposalsVersion:1, enabled:true`. Frontend `proposalsEnabled:true`.
+Revisar no app a permissão **Permitir propostas de novas
 missões**, autorizar novamente e, na conexão privada, reativar consultas e clicar
 **Ativar envio de propostas**. A autorização exige o módulo Missões; autorizações
 antigas e tokens de leitura nunca recebem escrita automaticamente.
@@ -402,4 +403,4 @@ preservando marcador para evitar repetição. Não há cron nem exclusão físic
 marcadores; ao atingir a capacidade novas chaves são recusadas.
 
 Testes sintéticos cobrem Worker/D1, escopos OAuth, Site, idempotência, revogação,
-concorrência e recusa. Instalação e envio real ainda precisam de conferência.
+concorrência e recusa. Consentimento de envio no app, ativação no Site e envio real ainda precisam de conferência.

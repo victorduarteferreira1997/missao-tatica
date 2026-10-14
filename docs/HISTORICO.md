@@ -2,6 +2,15 @@
 
 [Voltar ao README](../README.md)
 
+## IA 2.0 — instalação da fila de propostas conferida · 2026-10-14
+
+- Capturas mostram execução bem-sucedida do SQL aditivo no D1, publicação do
+  Worker, variável de produção ativa e healthcheck proposalsVersion:1, enabled:true.
+- Frontend libera a permissão específica e a fila de consulta/recusa. Wrangler
+  registra a flag ativa para preservar a configuração nos próximos deploys.
+- Consentimento de propostas no app, ativação do envio no Site e envio real ainda
+  precisam de conferência. Cadastro definitivo continua bloqueado até a etapa 2.
+
 ## IA 2.0 — propostas sem seleção semanal preparadas · 2026-10-14
 
 - Nova fila independente para missões de qualquer categoria. Envio exige permissão

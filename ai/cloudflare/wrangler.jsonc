@@ -3,7 +3,7 @@
   "main": "worker.mjs",
   "compatibility_date": "2026-10-07",
   "workers_dev": true,
-  "vars": { "AI_V2_ENABLED": "true", "AI_V2_READ_ENABLED": "true", "AI_V2_PROPOSALS_ENABLED": "false" },
+  "vars": { "AI_V2_ENABLED": "true", "AI_V2_READ_ENABLED": "true", "AI_V2_PROPOSALS_ENABLED": "true" },
   "observability": { "enabled": false },
   "d1_databases": [{
     "binding": "DB",
