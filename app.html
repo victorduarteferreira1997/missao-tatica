@@ -5000,6 +5000,14 @@
             });
         };
 
+        window.restoreStudyTrack = function(trackId) {
+            const track = state.studyData?.studyPlan?.tracks?.find(t => String(t.id) === String(trackId));
+            if (!track || track.active !== false) return;
+            track.active = true;
+            window.saveStudyPlanningState();
+            window.showToast('Trilha restaurada', 'Disciplinas e planejamento disponíveis novamente.', 'route', 'text-cyan-300');
+        };
+
         window.addStudyPlanBlock = function() {
             if (!state.studyData.studyPlan) state.studyData.studyPlan = { tracks: [], weeklyBlocks: [] };
             const title = document.getElementById('study-block-title')?.value.trim();
@@ -6774,18 +6782,16 @@
             html += window.renderAiAccess?.() || '';
             html += window.renderAiV2Proposals?.() || '';
 
-            // RODAPÉ: BACKUP E REINICIAR
+            // Ações principais da IA e manutenção dos dados.
+            const aiProposalsButton = window.renderAiV2ProposalsButton?.() || '';
+            const aiAccessButton = window.renderAiAccessButton?.() || '';
+            const aiLegacyButton = window.renderAiInboxButton?.() || '';
             html += `
-            <div class="flex flex-wrap justify-center gap-4 pb-8 pt-4 border-t border-slate-800/50 mt-8 relative">
-                ${window.renderAiInboxButton?.() || ''}
-                ${window.renderAiAccessButton?.() || ''}
-                ${window.renderAiV2ProposalsButton?.() || ''}
-                ${window.renderLocalConflictBackupButton?.() || ''}
-                <button onclick="window.exportData()" class="text-xs text-slate-500 hover:text-emerald-400 font-bold uppercase tracking-widest transition-colors font-mono flex items-center gap-1"><i data-lucide="download" class="w-3 h-3"></i> Exportar backup JSON</button>
-                <button onclick="window.triggerImport()" class="text-xs text-slate-500 hover:text-blue-400 font-bold uppercase tracking-widest transition-colors font-mono flex items-center gap-1"><i data-lucide="upload" class="w-3 h-3"></i> Importar backup JSON</button>
-                <details class="w-full max-w-md mx-auto rounded-xl border border-slate-800/70 bg-slate-950/30 text-center"><summary class="cursor-pointer text-xs text-slate-500 hover:text-slate-300 py-3">Dados e reinício</summary><div class="px-4 pb-4"><p class="text-xs text-slate-500 leading-relaxed mb-3">Limpeza por módulo ou reinício completo, com revisão antes de confirmar.</p><button id="open-data-manager" type="button" onclick="window.openDataManager()" class="text-sm text-slate-300 hover:text-white rounded-lg border border-slate-700 px-4 py-2">Gerenciar dados</button></div></details>
-                <p class="text-[10px] text-slate-500 text-center w-full mt-4 font-mono">Ambiente oficial de rotina · sincronização segura com o Google Agenda.</p>
-            </div>`;
+            <footer class="pb-8 pt-5 border-t border-slate-800/50 mt-8 space-y-3">
+                ${aiProposalsButton || aiAccessButton || aiLegacyButton ? `<section aria-label="Assistente de IA" class="mx-auto max-w-2xl rounded-2xl border border-indigo-900/50 bg-slate-900/70 p-4"><div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-sm font-semibold text-slate-100 flex items-center gap-2"><i data-lucide="sparkles" class="w-4 h-4 text-indigo-300"></i>Assistente de IA</h2><p class="mt-1 text-xs text-slate-400">Planeje no ChatGPT e revise as propostas aqui.</p></div>${aiProposalsButton}</div><details class="mt-3 border-t border-slate-800 pt-3"><summary class="cursor-pointer text-xs text-slate-400 hover:text-slate-200">Acesso e conexão</summary><div class="mt-3 space-y-3"><p class="text-xs text-slate-400 leading-relaxed">O acesso dura 30 dias. Os dados autorizados sincronizam ao salvar no app. Confira a prévia ao autorizar ou mudar permissões; reative a conexão se a autorização mudar, vencer ou for revogada.</p><div class="flex flex-wrap items-center gap-3">${aiAccessButton}<a href="https://missao-tatica-conexao.victorduarteferreira.chatgpt.site" target="_blank" rel="noopener noreferrer" class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800">Abrir conexão privada</a></div>${aiLegacyButton ? `<details class="border-t border-slate-800 pt-3"><summary class="cursor-pointer text-xs text-slate-500">Compartilhamento manual da semana</summary><p class="mt-2 text-xs text-slate-500">Fluxo anterior, opcional. As novas propostas usam o acesso autorizado acima.</p><div class="mt-3">${aiLegacyButton}</div></details>` : ''}</div></details></section>` : ''}
+                <details class="mx-auto max-w-2xl rounded-xl border border-slate-800 bg-slate-950/30"><summary class="cursor-pointer px-4 py-3 text-xs text-slate-400 hover:text-slate-200">Backups e gerenciamento de dados</summary><div class="px-4 pb-4"><p class="text-xs text-slate-500 mb-3">Exporte ou restaure uma cópia. Limpeza e reinício passam por revisão antes de confirmar.</p><div class="flex flex-wrap gap-3">${window.renderLocalConflictBackupButton?.() || ''}<button type="button" onclick="window.exportData()" class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800">Exportar backup</button><button type="button" onclick="window.triggerImport()" class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800">Importar backup</button><button id="open-data-manager" type="button" onclick="window.openDataManager()" class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800">Gerenciar dados</button></div></div></details>
+                <p class="text-[10px] text-slate-500 text-center font-mono">Ambiente oficial de rotina · sincronização segura com o Google Agenda.</p>
+            </footer>`;
 
             appDiv.innerHTML = html;
             if (uiState.showCreateTaskModal && uiState.createTaskDraft) {
@@ -7622,6 +7628,7 @@
             else if (uiState.studyTab === 'subjects') {
                 const activeTracks = window.getStudyTracks();
                 const allTracks = window.getStudyTracks(true);
+                const archivedTracks = allTracks.filter(track => track.active === false);
                 const unassignedSubjects = state.studyData.subjects.filter(s => !s.trackId);
                 const openErrorsCount = (state.studyData.errorLog || []).filter(e => e.status === 'open').length;
                 const activeTrackCount = activeTracks.length;
@@ -7656,7 +7663,8 @@
                             <summary class="cursor-pointer list-none flex items-center justify-between gap-3 p-4 hover:bg-slate-900/60"><div class="flex items-center gap-2"><i data-lucide="route" class="w-4 h-4 text-cyan-300"></i><div><div class="text-xs font-black text-slate-200 uppercase tracking-widest">Gerenciar trilhas</div><div class="text-[10px] text-slate-600 mt-0.5">Criar, definir meta ou arquivar.</div></div></div><i data-lucide="chevron-down" class="w-4 h-4 text-slate-500 group-open:rotate-180 transition-transform"></i></summary>
                             <div class="border-t border-slate-800 p-4">
                                 <div class="space-y-2 mb-4">
-                                    ${allTracks.length ? allTracks.map(t => { const subjectCount = window.getStudySubjects(t.id).length; return `<div class="flex items-center justify-between gap-2 bg-slate-900 border border-slate-800 rounded-lg p-3 ${t.active === false ? 'opacity-50' : ''}"><div class="flex items-center gap-2 min-w-0"><i data-lucide="${t.icon}" class="w-4 h-4 ${t.color}"></i><div class="min-w-0"><div class="text-sm font-bold text-white truncate">${window.escapeHtml(t.name)}</div><div class="text-[9px] text-slate-500">${subjectCount} disciplina${subjectCount === 1 ? '' : 's'} • meta ${t.weeklyGoalMinutes || 0} min</div></div></div>${t.active !== false ? `<button onclick="window.deleteStudyTrack('${t.id}')" class="text-slate-600 hover:text-red-400 p-2" title="Arquivar trilha"><i data-lucide="archive" class="w-4 h-4"></i></button>` : `<span class="text-[9px] text-slate-600 uppercase font-bold">Arquivada</span>`}</div>`; }).join('') : `<p class="text-xs text-slate-600">Nenhuma trilha cadastrada.</p>`}
+                                    ${activeTracks.length ? activeTracks.map(t => { const subjectCount = window.getStudySubjects(t.id).length; return `<div class="flex items-center justify-between gap-2 bg-slate-900 border border-slate-800 rounded-lg p-3"><div class="flex items-center gap-2 min-w-0"><i data-lucide="${t.icon}" class="w-4 h-4 ${t.color}"></i><div class="min-w-0"><div class="text-sm font-bold text-white truncate">${window.escapeHtml(t.name)}</div><div class="text-[9px] text-slate-500">${subjectCount} disciplina${subjectCount === 1 ? '' : 's'} • meta ${t.weeklyGoalMinutes || 0} min</div></div></div><button type="button" onclick="window.deleteStudyTrack(${window.recoveryHandlerArgument(t.id)})" class="text-slate-400 hover:text-red-400 p-2" aria-label="Arquivar ${window.escapeHtml(t.name)}" title="Arquivar trilha"><i data-lucide="archive" class="w-4 h-4"></i></button></div>`; }).join('') : `<p class="text-xs text-slate-400">Nenhuma trilha ativa. Crie uma abaixo ou restaure uma arquivada.</p>`}
+                                    ${archivedTracks.length ? `<details class="rounded-lg border border-slate-800"><summary class="cursor-pointer px-3 py-2 text-xs text-slate-400">Trilhas arquivadas (${archivedTracks.length})</summary><div class="px-3 pb-3 space-y-2"><p class="text-xs text-slate-500">Histórico preservado. Restaure uma trilha para voltar a visualizar suas disciplinas.</p>${archivedTracks.map(t => `<div class="flex items-center justify-between gap-3 py-2 border-t border-slate-800"><span class="text-sm text-slate-400 break-words">${window.escapeHtml(t.name)}</span><button type="button" onclick="window.restoreStudyTrack(${window.recoveryHandlerArgument(t.id)})" class="shrink-0 rounded-lg border border-slate-700 px-3 py-2 text-xs text-cyan-300">Restaurar</button></div>`).join('')}</div></details>` : ''}
                                 </div>
                                 <div class="grid grid-cols-2 gap-2">
                                     <input id="study-track-name" placeholder="Nova trilha" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
@@ -7679,7 +7687,7 @@
                 }
 
                 html += `<div class="space-y-3">`;
-                allTracks.forEach((track, trackIndex) => {
+                activeTracks.forEach((track, trackIndex) => {
                     const subjects = window.getStudySubjects(track.id);
                     html += `<details ${trackIndex === 0 && track.active !== false ? 'open' : ''} class="group rounded-2xl border ${track.border} ${track.bg} overflow-hidden ${track.active === false ? 'opacity-60' : ''}">
                         <summary class="cursor-pointer list-none flex items-center justify-between gap-3 p-4 hover:bg-slate-950/30 transition-colors">

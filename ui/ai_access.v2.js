@@ -45,7 +45,7 @@ export function installAiAccess(window,{document,config,getState,getUser,store,s
             }catch(error){if(gen===generation&&grant?.grantId===authorization&&grant.version===version){message=error.message;blocked=true;if(open)render();}}
         });return queue;
     };
-    window.renderAiAccessButton=()=>owner()?'<button type="button" onclick="window.openAiAccess()" class="text-xs text-indigo-300">Acesso da IA · missões, RADAR e estudos</button>':'';
+    window.renderAiAccessButton=()=>owner()?'<button type="button" onclick="window.openAiAccess()" class="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800">Configurar acesso da IA</button>':'';
     window.renderAiAccess=()=>{
         if(!open||!owner())return '';const disabled=busy?'disabled':'';
         const status=!grant?'Sem autorização':grant.status==='expired'||Date.parse(grant.expiresAt)<=now()?'Autorização expirada':grant.status==='revoked'?'Acesso revogado':'Acesso autorizado';
