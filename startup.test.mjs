@@ -1,5 +1,6 @@
 import {AI_OWNER_UID} from './ai/contract.v1.js';
 import {AI_V2_CONFIG} from './ai/config.v2.js';
+import {createCloudStateStore} from './ai/v2/cloud_state.js';
 import {createConfirmedStateWriter} from './ai/v2/saved_state.js';
 import {createV2BrowserStore} from './ai/v2/browser.js';
 import {installAiAccess} from './ui/ai_access.v2.js';
@@ -20,14 +21,14 @@ const app=await readFile(new URL('./app.html',import.meta.url),'utf8');
 const moduleSource=app.match(/<script\s+type="module">([\s\S]*?)<\/script>/)[1].replace(/^\s*import .+;\s*$/gm,'');
 const plain=v=>JSON.parse(JSON.stringify(v));
 class FixedDate extends Date{constructor(...args){super(...(args.length?args:['2026-10-06T22:30:00Z']));}static now(){return Date.parse('2026-10-06T22:30:00Z');}}
-function boot(saved=null){
+function boot(saved=null,applyEnabled=false){
  const elements={};const element=()=>({style:{},classList:{add(){},remove(){}},querySelector(){return null;},querySelectorAll(){return [];},addEventListener(){},innerHTML:''});
  for(const id of ['app','auth-overlay','app-wrapper','sync-text','sync-indicator','auth-access-message'])elements[id]=element();
  const stored=new Map(saved?[['planeamento_semanal_v11',JSON.stringify(saved)]]:[]),writes=[];
  const document={activeElement:null,getElementById:id=>elements[id]||null,querySelector(){return null;},querySelectorAll(){return [];},addEventListener(){}};
  const window={lucide:{createIcons(){}},location:{origin:'https://victorduarteferreira1997.github.io',pathname:'/missao-tatica/app.html'},addEventListener(){}};
  const c={window,document,Date:FixedDate,console,TextEncoder,Uint8Array,Uint32Array,DataView,URL,Blob,Intl,localStorage:{getItem:key=>stored.get(key)||null,setItem:(key,value)=>{stored.set(key,value);writes.push(key);}},
- setTimeout:()=>1,clearTimeout(){},setInterval:()=>1,clearInterval(){},lucide:window.lucide,initializeApp:()=>({}),initializeAppCheck(){},ReCaptchaEnterpriseProvider:class{},getAuth:()=>({}),getFirestore:()=>({}),GoogleAuthProvider:class{},signInWithPopup(){},signInWithRedirect(){},signOut:async()=>{},onAuthStateChanged:(auth,callback)=>c.authCallback=callback,doc(){},getDoc(){throw Error('A inicialização não deve ler a nuvem sem login.');},setDoc(){throw Error('O teste não deve gravar na nuvem.');},createCalendarSync:options=>{c.calendarOnChange=options.onChange;return createCalendarSync(options);},installFormDialogs,installTaskForms,installPlanningViews,installAiInbox,AI_CONFIG,createAiBrowserStore,AI_V2_CONFIG,createConfirmedStateWriter,createV2BrowserStore,installAiAccess,createV2ProposalsBrowserStore,installAiV2Proposals};
+ setTimeout:()=>1,clearTimeout(){},setInterval:()=>1,clearInterval(){},lucide:window.lucide,initializeApp:()=>({}),initializeAppCheck(){},ReCaptchaEnterpriseProvider:class{},getAuth:()=>({}),getFirestore:()=>({}),GoogleAuthProvider:class{},signInWithPopup(){},signInWithRedirect(){},signOut:async()=>{},onAuthStateChanged:(auth,callback)=>c.authCallback=callback,doc(){},getDoc(){throw Error('A inicialização não deve ler a nuvem sem login.');},setDoc(){throw Error('O teste não deve gravar na nuvem.');},createCalendarSync:options=>{c.calendarOnChange=options.onChange;return createCalendarSync(options);},installFormDialogs,installTaskForms,installPlanningViews,installAiInbox,AI_CONFIG,createAiBrowserStore,AI_V2_CONFIG:{...AI_V2_CONFIG,applyEnabled},createCloudStateStore,createConfirmedStateWriter,createV2BrowserStore,installAiAccess,createV2ProposalsBrowserStore,installAiV2Proposals:(w,options)=>{c.v2ProposalsOptions=options;return installAiV2Proposals(w,options);}};
  runInNewContext(moduleSource+'\nwindow.startupForTest = {getState:()=>state,getUI:()=>uiState,getTimer:()=>pomodoro,render};',c,{timeout:3000});
  return {c,window,elements,stored,writes,state:window.startupForTest.getState(),ui:window.startupForTest.getUI(),render:window.startupForTest.render};
 }
@@ -152,4 +153,22 @@ test('app confirma gravação Firebase do snapshot exato e retorna falha sem anu
  assert.deepEqual(payloads[0].tasks.map(t=>t.id),['first']);assert.deepEqual(published[0].snapshot.tasks.map(t=>t.id),['first']);assert.equal(published[0].uid,AI_OWNER_UID);
  b.c.setDoc=async()=>{throw Error('simulated offline');};assert.equal(await b.window.saveStateNow(true),false);
  assert.equal(published.length,1);assert.equal(b.elements['sync-text'].innerText,'Erro ao salvar');
+});
+
+test('app com cadastro habilitado usa transação, recusa nuvem concorrente e preserva cópia local ao reabrir',async()=>{
+ const b=boot(null,true),user={uid:AI_OWNER_UID,email:'synthetic@example.test'};let row={data:JSON.stringify({tasks:[],ownerUid:AI_OWNER_UID}),updatedAt:'2026-10-06T22:30:00Z'};
+ b.c.getDoc=async()=>({exists:()=>true,data:()=>plain(row)});b.c.setDoc=async()=>{};
+ b.c.runTransaction=async(db,work)=>work({get:async()=>({exists:()=>true,data:()=>plain(row)}),set:(ref,value)=>row={...row,...plain(value)}});
+ await b.c.authCallback(user);const state=b.window.startupForTest.getState();state.tasks.push({id:'mine',text:'Minha alteração',day:'monday',category:'life'});
+ assert.equal(await b.window.saveStateNow(true),true);assert.equal(row.revision,1);
+ row={...row,data:JSON.stringify({...JSON.parse(row.data),tasks:[{id:'other',text:'Outra aba'}]})};state.tasks.push({id:'unsaved',text:'Não sincronizada'});assert.equal(await b.window.saveStateNow(true),false);assert.equal(JSON.parse(row.data).tasks[0].id,'other');
+ row.data=JSON.stringify({...JSON.parse(row.data),lastSavedAt:'2026-10-05T00:00:00Z',updatedAt:'2026-10-05T00:00:00Z'});row.updatedAt='2026-10-05T00:00:00Z';await b.c.authCallback(user);assert.ok(b.stored.get('missao_tatica_conflict_backup_'+user.uid).includes('unsaved'));assert.equal(b.window.startupForTest.getState().tasks[0].id,'other');
+});
+
+test('cadastro real do app mantém IDs compatíveis com ações de missão e subtarefas e não concede recompensas',async()=>{
+ const b=boot(null,true),user={uid:AI_OWNER_UID,email:'synthetic@example.test'};let row={data:JSON.stringify({tasks:[],ownerUid:AI_OWNER_UID,xp:0,coins:0}),updatedAt:'2026-10-06T22:30:00Z'};
+ b.c.getDoc=async()=>({exists:()=>true,data:()=>plain(row)});b.c.setDoc=async()=>{};b.c.runTransaction=async(db,work)=>work({get:async()=>({exists:()=>true,data:()=>plain(row)}),set:(ref,value)=>row={...row,...plain(value)}});
+ await b.c.authCallback(user);assert.equal(await b.window.saveStateNow(true),true);const before=JSON.parse(row.data),fields={title:'Teste sintético',weekStart:'2026-10-05',day:'tuesday',durationMinutes:5,startTime:'',endTime:'',category:'life',subtasks:['Passo']};
+ const saved=await b.c.v2ProposalsOptions.applyMission({id:'a'.repeat(64)},fields),data=JSON.parse(row.data),task=data.tasks.at(-1);assert.equal(saved.replayed,false);assert.ok(Number.isSafeInteger(task.id));assert.ok(Number.isSafeInteger(task.subtasks[0].id));assert.equal(data.xp,before.xp);assert.equal(data.coins,before.coins);assert.equal(task.campaignId,before.prestige.campaign);assert.equal(task.planningWeekStart,fields.weekStart);
+ b.window.toggleSubtask(task.id,task.subtasks[0].id,{stopPropagation(){}});assert.equal(b.window.startupForTest.getState().tasks.find(t=>t.id===task.id).subtasks[0].completed,true);
 });

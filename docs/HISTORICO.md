@@ -2,6 +2,20 @@
 
 [Voltar ao README](../README.md)
 
+## IA 2.0 — cadastro confirmado preparado · 2026-10-14
+
+- Formulário edita os campos da proposta e calcula custos no app; cadastro mantém
+  a fila aberta. Cancelar revisão mantém pendência.
+- Reserva condicional no D1, missão + comprovante na mesma transação Firebase e
+  confirmação posterior permitem recuperar falhas sem duplicar.
+- Gravações normais usam conferência de conflitos após habilitar a etapa. Cópia
+  local mais recente preservada para download ao carregar nuvem após conflito.
+- Comprovantes persistem após exclusão/importação; cadastro não concede recompensas.
+- 222 testes do app/Worker e 14 da conexão passaram, com fluxo integrado sintético.
+  Flag de cadastro permanece desligada até instalação D1/Worker e conferência real.
+- Teste real anterior confirmou criação da proposta, consulta e recusa sem fechar
+  a janela. Consentimento e envio da etapa 1 também conferidos por capturas.
+
 ## IA 2.0 — instalação da fila de propostas conferida · 2026-10-14
 
 - Capturas mostram execução bem-sucedida do SQL aditivo no D1, publicação do

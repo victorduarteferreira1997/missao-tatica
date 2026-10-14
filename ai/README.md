@@ -404,3 +404,58 @@ marcadores; ao atingir a capacidade novas chaves são recusadas.
 
 Testes sintéticos cobrem Worker/D1, escopos OAuth, Site, idempotência, revogação,
 concorrência e recusa. Consentimento de envio no app, ativação no Site e envio real ainda precisam de conferência.
+
+## Etapa 2 — revisão e cadastro confirmado (preparada)
+
+Fluxo: editar campos na fila → salvar estado local confirmado → reservar os campos
+no D1 → transação Firebase cria missão e comprovante → confirmar receipt no D1.
+A fila continua aberta. Cancelar antes da confirmação mantém a proposta pendente.
+Após reservar, os campos ficam congelados; em caso de falha usar Cadastro a concluir
+→ Retomar cadastro. Não liberar automaticamente reservas por timeout: o Firebase
+pode ter confirmado a gravação mesmo se a resposta tiver sido perdida.
+
+Instalar `cloudflare/apply-v2-schema.sql` no mesmo D1, substituir Worker pelo bundle
+atual e adicionar `AI_V2_APPLY_ENABLED=true`. `/healthz?check=apply` deve informar
+`applyVersion:1, enabled:true`. Conferir instalação antes de habilitar
+`ai/config.v2.js` → `applyEnabled:true`. Não exige novo scope ou novo consentimento.
+Tabela anterior e seus CHECKs não mudam. D1 não recebe IDs internos do Firebase:
+a confirmação inclui hash opaco do ID da missão. Somente owner Auth/App Check
+pode reservar e confirmar; MCP permanece incapaz de aplicar diretamente.
+
+Reserva atômica vinculada à versão, chave e hash dos campos impede recusa concorrente.
+Applying e accepted são derivados do registro aditivo, sem reescrever constraints
+v1. Accepted significa confirmação do proprietário após comprovante Firebase;
+o Worker não possui credenciais nem verifica Firestore diretamente. Não implica
+reserva ou sincronização confirmada no Google Agenda. Aplicações iniciadas não
+expiram automaticamente; dados são mantidos para recuperação. Aplicações aceitas
+removem campos após 90 dias em lotes de até 50, mantendo marcadores.
+
+Firebase grava no documento existente `state/main`, com transação, `revision` e
+`aiApplications` (comprovantes por proposta). IDs de missão são determinísticos.
+Limite de 1.000 comprovantes; não remover em exclusão, importação ou limpeza de
+missões. Excluir uma missão não permite recriar a mesma proposta. A transação
+repetida consulta o comprovante; callbacks não alteram UI até commit confirmado.
+
+Após habilitar cadastro, gravações normais também comparam a cópia-base da nuvem,
+recusando sobrescrita concorrente. Uma gravação já enfileirada sem os novos
+marcadores não pode apagar o cadastro. Ao reabrir após conflito, a nuvem é carregada;
+a cópia local mais recente não sincronizada fica preservada para download no
+rodapé. Há uma cópia de recuperação por conta; novo conflito substitui essa cópia.
+Importação mantém marcadores atuais. Sem conciliação automática de alterações.
+
+Fechar e atualizar abas/dispositivos antigos antes de usar esta entrega: versões
+anteriores ainda usam setDoc e podem sobrescrever data. Os comprovantes top-level
+sobrevivem ao merge antigo e impedem duplicação, mas não impedem que um cliente
+antigo apague uma missão. Atualização de todas as abas é parte da ativação.
+Reversão após começar cadastros: desligar apenas o frontend, manter flag/tabela
+Worker para não liberar recusa de propostas com gravação iniciada.
+
+Cadastro inicial usa atividade Tarefa, prioridade Média, dificuldade 2 e impacto
+Normal. O app calcula custo previsto; criar não concede XP, HP ou moedas.
+Título, semana, dia, duração, horários, categoria e subtarefas são editáveis antes
+da confirmação. Ajustes adicionais podem ser feitos depois na edição da missão.
+
+Testes locais incluem SQL real/reserva/recusa/ACK, concorrência, falha após commit,
+comprovante após exclusão, sessão, campos/XSS, integração completa do app e
+Site → Worker → transação simulada → ACK. Firestore real, regras para os novos
+campos e conferência visual do formulário ainda aguardam ativação/teste do usuário.

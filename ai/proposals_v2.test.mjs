@@ -8,7 +8,7 @@ import {V2_PROPOSAL_TTL,v2ProposalRequest} from './v2/proposals.js';
 import {installAiV2Proposals} from '../ui/ai_proposals.v2.js';
 import {AI_OWNER_UID} from './contract.v1.js';
 const base='https://missao-tatica-ai-bridge.victorduarteferreira1997.workers.dev',initial=Date.parse('2026-10-13T12:00:00Z'),secret='synthetic-proposals-secret-1234567890';
-const schemas=await Promise.all(['schema.sql','oauth-schema.sql','v2-schema.sql','proposals-v2-schema.sql'].map(p=>readFile(new URL('./cloudflare/'+p,import.meta.url),'utf8')));
+const schemas=await Promise.all(['schema.sql','oauth-schema.sql','v2-schema.sql','proposals-v2-schema.sql','apply-v2-schema.sql'].map(p=>readFile(new URL('./cloudflare/'+p,import.meta.url),'utf8')));
 const fields={title:'Proposta fictícia',weekStart:'2026-10-12',day:'tuesday',durationMinutes:30,startTime:'',endTime:'',subtasks:['Passo fictício'],category:'pessoal'};
 const proposal=(id='test-key-0001')=>({idempotencyKey:id,kind:'mission.create',fields:{...fields}});
 async function fixture(t,{consent=true}={}){
@@ -81,4 +81,24 @@ test('fila do app não abre nem consulta com flag desligada; erros e sessão ant
  installAiV2Proposals(w,{config:{enabled:true,proposalsEnabled:false},getUser:()=>user,store:{list:()=>calls++},render(){}});await w.openAiV2Proposals();assert.equal(calls,0);assert.equal(w.renderAiV2ProposalsButton(),'');
  installAiV2Proposals(w,{config:{enabled:true,proposalsEnabled:true},getUser:()=>user,store:{list:()=>new Promise(r=>resolve=r)},render(){}});const load=w.openAiV2Proposals();w.closeAiV2Proposals();resolve({items:[],nextCursor:null});await load;assert.equal(w.renderAiV2Proposals(),'');
  const second=w.openAiV2Proposals();user=null;w.resetAiV2Proposals();resolve({items:[],nextCursor:null});await second;assert.equal(w.renderAiV2Proposals(),'');
+});
+
+test('reserva congela campos, impede recusa concorrente e confirmação pode repetir sem outro cadastro',async t=>{
+ const a=await fixture(t),token=(await a.token()).token;const p=(await (await a.rpc(token,'createProposal',proposal())).json()).proposal;
+ const body={id:p.id,expectedVersion:p.version,applicationId:p.id,fields:{...fields,title:'Título revisado'}};
+ assert.equal((await a.owner('/v2/app/proposals/reserve','POST',body)).status,404);a.env.AI_V2_APPLY_ENABLED='true';
+ const reserved=await (await a.owner('/v2/app/proposals/reserve','POST',body)).json();assert.equal(reserved.proposal.status,'applying');assert.equal(reserved.proposal.fields.title,'Título revisado');
+ assert.equal((await a.owner('/v2/app/proposals/reject','POST',{id:p.id,expectedVersion:1})).status,409);
+ assert.equal((await a.owner('/v2/app/proposals/reserve','POST',{...body,fields:{...fields,title:'Outro'}})).status,409);
+ const ack={id:p.id,applicationId:p.id,taskRef:'b'.repeat(64)};assert.equal((await a.owner('/v2/app/proposals/acknowledge','POST',ack)).status,200);assert.equal((await a.owner('/v2/app/proposals/acknowledge','POST',ack)).status,200);
+ assert.equal((await (await a.owner('/v2/app/proposals')).json()).items.length,0);assert.equal((await (await a.owner('/v2/app/proposals?status=accepted')).json()).items.length,1);
+ assert.equal((await a.owner('/v2/app/proposals/acknowledge','POST',{...ack,taskRef:'c'.repeat(64)})).status,409);
+ assert.equal(a.sql.prepare('SELECT COUNT(*) n FROM ai_v2_applications').get().n,1);
+});
+test('recusa anterior impede reserva; reserva sobrevive expiração para recuperação',async t=>{
+ const a=await fixture(t);a.env.AI_V2_APPLY_ENABLED='true';const token=(await a.token()).token,p=(await (await a.rpc(token,'createProposal',proposal())).json()).proposal;
+ await a.owner('/v2/app/proposals/reject','POST',{id:p.id,expectedVersion:1});assert.equal((await a.owner('/v2/app/proposals/reserve','POST',{id:p.id,expectedVersion:1,applicationId:p.id,fields})).status,409);
+ const b=await fixture(t);b.env.AI_V2_APPLY_ENABLED='true';const bp=(await (await b.rpc((await b.token()).token,'createProposal',proposal())).json()).proposal;
+ await b.owner('/v2/app/proposals/reserve','POST',{id:bp.id,expectedVersion:1,applicationId:bp.id,fields});b.setTime(initial+V2_PROPOSAL_TTL+1);
+ const list=await (await b.owner('/v2/app/proposals?status=applying')).json();assert.equal(list.items.length,1);assert.equal(list.items[0].fields.title,fields.title);
 });

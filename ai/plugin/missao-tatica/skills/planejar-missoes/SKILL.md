@@ -30,8 +30,12 @@ O envio exige permissão específica no app e Ativar envio de propostas na conex
 privada, após reativar consultas para o grant atual. Se faltar permissão, explique
 o passo necessário; nunca tente ampliar escopo silenciosamente. Consulte
 listProposals com paginação para conferir estado. Pending significa recebida para
-revisão, não missão criada. Oriente abrir Propostas novas da IA no app. Nesta
-entrega o usuário pode consultar e recusar; cadastro definitivo está indisponível.
+revisão, não missão criada. Oriente abrir Propostas novas da IA no app. Quando a etapa de cadastro estiver habilitada, o proprietário pode revisar, editar
+e confirmar no app. Se ainda não estiver, poderá apenas consultar e recusar.
+Applying significa cadastro iniciado: usar Cadastro a concluir → Retomar cadastro.
+Accepted significa comprovante de salvamento confirmado pelo proprietário; não
+garante reserva na Agenda. Não tente aplicar, liberar reserva ou recriar proposta
+para contornar erro. Cancelar revisão antes da confirmação mantém pendência.
 Não use submitProposal como atalho para aplicar uma proposta v2 já recebida.
 
 Se as consultas não estiverem disponíveis, informe a limitação e use somente

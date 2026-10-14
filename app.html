@@ -104,6 +104,7 @@
         import { installAiInbox } from './ui/ai_inbox.v3.js';
         import { AI_CONFIG } from './ai/config.v1.js';
         import { AI_V2_CONFIG } from './ai/config.v2.js';
+        import { createCloudStateStore } from './ai/v2/cloud_state.js';
         import { createConfirmedStateWriter } from './ai/v2/saved_state.js';
         import { createV2BrowserStore } from './ai/v2/browser.js';
         import { installAiAccess } from './ui/ai_access.v2.js';
@@ -113,7 +114,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { initializeAppCheck, ReCaptchaEnterpriseProvider, getToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
         import { getAuth, signInWithPopup, signInWithRedirect, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
@@ -1701,16 +1702,22 @@
             try {
                 const docRef = doc(db, 'users', uid, 'state', 'main');
                 const docSnap = await getDoc(docRef);
+                cloudStateStore.observe(currentUser, docSnap.exists()?docSnap.data():null);
                 if (docSnap.exists()) {
                     const cloudState = JSON.parse(docSnap.data().data);
+                    if(docSnap.data().aiApplications)cloudState.aiAppliedProposals=Object.fromEntries(Object.entries(docSnap.data().aiApplications).map(([id,r])=>[id,r.taskId]));
                     const localState = state ? JSON.parse(JSON.stringify(state)) : null;
                     const localSavedAt = Date.parse(localState?.lastSavedAt || localState?.updatedAt || 0);
                     const cloudSavedAt = Date.parse(cloudState?.lastSavedAt || cloudState?.updatedAt || docSnap.data().updatedAt || 0);
                     const localBelongsToThisUser = localState?.ownerUid && String(localState.ownerUid) === String(uid);
 
+                    if ((docSnap.data().revision || docSnap.data().aiApplications) && localBelongsToThisUser && localSavedAt > cloudSavedAt + 1500) {
+                        localStorage.setItem('missao_tatica_conflict_backup_'+uid,JSON.stringify(localState));
+                        window.showAlertModal('Os dados da nuvem foram carregados. Sua cópia local mais recente foi preservada; use Baixar cópia local preservada no rodapé para recuperar alterações não sincronizadas.');
+                    }
                     // Proteção contra perda de dados: se o navegador tem um estado local mais novo
                     // do mesmo usuário, ele não é sobrescrito por uma cópia antiga da nuvem.
-                    if (localBelongsToThisUser && localSavedAt && cloudSavedAt && localSavedAt > cloudSavedAt + 1500) {
+                    if (!docSnap.data().revision && !docSnap.data().aiApplications && localBelongsToThisUser && localSavedAt && cloudSavedAt && localSavedAt > cloudSavedAt + 1500) {
                         state = localState;
                         window.validateState();
                         localStorage.setItem('planeamento_semanal_v11', JSON.stringify(state));
@@ -1732,13 +1739,22 @@
             return cloudReady;
         }
 
+        const cloudStateStore = createCloudStateStore({getUser:()=>currentUser,
+            transact:(user,work)=>runTransaction(db,async transaction=>{
+                const ref=doc(db,'users',user.uid,'state','main');
+                return work({get:async()=>{const snap=await transaction.get(ref);return snap.exists()?snap.data():null;},set:value=>transaction.set(ref,value,{merge:true})});
+            }),
+            onAdopt:(saved,uid)=>{if(currentUser?.uid!==uid)return;for(const task of saved.tasks.filter(t=>t.aiV2ProposalId)){if(!state.tasks.some(t=>String(t.id)===String(task.id))&&!state.aiAppliedProposals?.[task.aiV2ProposalId])state.tasks.push(task);}
+                state.aiAppliedProposals={...(state.aiAppliedProposals||{}),...(saved.aiAppliedProposals||{})};state.lastSavedAt=saved.lastSavedAt;state.updatedAt=saved.updatedAt;
+                localStorage.setItem('planeamento_semanal_v11',JSON.stringify(state));render();}
+        });
         const confirmedStateWriter = createConfirmedStateWriter({
             getUser: () => currentUser,
             writeAccount: user => setDoc(doc(db, 'users', user.uid), { email: user.email, displayName: user.displayName || '', updatedAt: new Date().toISOString(), app: 'missao-tatica' }, { merge: true }),
-            writeSnapshot: (user, payload, savedAt) => setDoc(doc(db, 'users', user.uid, 'state', 'main'), { data: payload, updatedAt: savedAt || new Date().toISOString() }, { merge: true }),
+            writeSnapshot: (user, payload, savedAt) => AI_V2_CONFIG.applyEnabled===true?cloudStateStore.write(user,payload,savedAt):setDoc(doc(db, 'users', user.uid, 'state', 'main'), { data: payload, updatedAt: savedAt || new Date().toISOString() }, { merge: true }),
             onStatus: status => window.updateSyncStatus(status),
             onSaved: (snapshot, uid) => window.onAiV2Saved?.(snapshot, uid),
-            onError: () => console.error('Falha ao salvar ou sincronizar dados.')
+            onError: error => {console.error('Falha ao salvar ou sincronizar dados.');if(AI_V2_CONFIG.applyEnabled===true&&error?.message)window.updateSyncStatus(error.message);}
         });
         async function writeStateToFirestore(userSnapshot = currentUser) {
             return confirmedStateWriter(userSnapshot, state);
@@ -1844,6 +1860,8 @@
             dlAnchorElem.click();
         };
 
+        window.renderLocalConflictBackupButton=()=>currentUser&&localStorage.getItem('missao_tatica_conflict_backup_'+currentUser.uid)?'<button type="button" onclick="window.exportLocalConflictBackup()" class="text-xs text-amber-300">Baixar cópia local preservada</button>':'';
+        window.exportLocalConflictBackup=()=>{if(!currentUser)return;const data=localStorage.getItem('missao_tatica_conflict_backup_'+currentUser.uid);if(!data)return;const a=document.createElement('a');a.setAttribute('href','data:text/json;charset=utf-8,'+encodeURIComponent(data));a.setAttribute('download','missao_tatica_copia_local_preservada.json');a.click();};
         window.triggerImport = function() { document.getElementById('import-file').click(); };
 
         window.importData = function(event) {
@@ -1854,7 +1872,7 @@
                 try {
                     const importedState = JSON.parse(e.target.result);
                     if (importedState && importedState.tasks) {
-                        state = importedState; window.validateState(); window.saveState();
+                        importedState.aiAppliedProposals={...(importedState.aiAppliedProposals||{}),...(state.aiAppliedProposals||{})};state = importedState; window.validateState(); window.saveState();
                         window.showToast("Importação Concluída", "Os seus dados foram recuperados com sucesso.", "upload-cloud", "text-emerald-400");
                     } else { window.showAlertModal("Arquivo JSON inválido para esta aplicação."); }
                 } catch(err) { window.showAlertModal("Erro ao processar o arquivo."); }
@@ -3635,7 +3653,13 @@
             store: createV2BrowserStore({getUser: () => currentUser, getAppCheckToken: async () => (await getToken(appCheck, false)).token}),
             saveConfirmed: () => window.saveStateNow(true, 'ai-v2-share'), render
         });
-        installAiV2Proposals(window, {config: AI_V2_CONFIG, getUser: () => currentUser, render,
+        installAiV2Proposals(window, {config: AI_V2_CONFIG, getUser: () => currentUser, render, document,
+            getCategories:()=>window.getTaskCategories(),saveConfirmed:()=>window.saveStateNow(true,'ai-v2-before-apply'),
+            applyMission:(row,fields)=>{const user=currentUser;return confirmedStateWriter.exclusive(()=>{
+                const cost=window.calculateTaskCost('media',2,fields.durationMinutes,'drain','normal'),stamp=new Date().toISOString();
+                const task={id:Number.parseInt(row.id.slice(0,13),16),aiV2ProposalId:row.id,day:fields.day,planningWeekStart:fields.weekStart,category:fields.category,text:fields.title,activityType:'task',xp:cost.xp,energyCost:cost.hp,completed:false,priority:'media',time:fields.durationMinutes+' min',complexity:2,impactType:'drain',missionNature:'normal',startTime:fields.startTime,endTime:fields.endTime,order:window.getNextTaskOrder(fields.day),subtasks:fields.subtasks.map((text,i)=>({id:Number.parseInt(row.id.slice(0,13),16)+i+1,text,completed:false,createdAt:stamp})),isRecurring:false,recurrenceDays:[],recurrenceGroupId:null,createdAt:stamp,campaignId:window.normalizePrestige().campaign};
+                return cloudStateStore.apply(user,row.id,task,stamp).then(result=>{try{Promise.resolve(window.onAiV2Saved?.(JSON.parse(result.payload),user.uid)).catch(()=>{});}catch{}return result;});
+            });},
             store: createV2ProposalsBrowserStore({getUser: () => currentUser, getAppCheckToken: async () => (await getToken(appCheck, false)).token})});
 
         window.openEditTaskModal = function(taskId, event) {
@@ -6749,6 +6773,7 @@
                 ${window.renderAiInboxButton?.() || ''}
                 ${window.renderAiAccessButton?.() || ''}
                 ${window.renderAiV2ProposalsButton?.() || ''}
+                ${window.renderLocalConflictBackupButton?.() || ''}
                 <button onclick="window.exportData()" class="text-xs text-slate-500 hover:text-emerald-400 font-bold uppercase tracking-widest transition-colors font-mono flex items-center gap-1"><i data-lucide="download" class="w-3 h-3"></i> Exportar backup JSON</button>
                 <button onclick="window.triggerImport()" class="text-xs text-slate-500 hover:text-blue-400 font-bold uppercase tracking-widest transition-colors font-mono flex items-center gap-1"><i data-lucide="upload" class="w-3 h-3"></i> Importar backup JSON</button>
                 <details class="w-full max-w-md mx-auto rounded-xl border border-slate-800/70 bg-slate-950/30 text-center"><summary class="cursor-pointer text-xs text-slate-500 hover:text-slate-300 py-3">Dados e reinício</summary><div class="px-4 pb-4"><p class="text-xs text-slate-500 leading-relaxed mb-3">Limpeza por módulo ou reinício completo, com revisão antes de confirmar.</p><button id="open-data-manager" type="button" onclick="window.openDataManager()" class="text-sm text-slate-300 hover:text-white rounded-lg border border-slate-700 px-4 py-2">Gerenciar dados</button></div></details>

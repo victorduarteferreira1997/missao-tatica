@@ -7,7 +7,7 @@ export function createV2BrowserRequest({getUser,getAppCheckToken,fetchImpl=fetch
         const [id,check]=await Promise.all([user.getIdToken(),getAppCheckToken()]);if(getUser()!==user)throw Error('A sessão mudou.');
         const r=await fetchImpl(V2_BRIDGE+path,{method,credentials:'omit',redirect:'error',signal:AbortSignal.timeout(15000),headers:{Authorization:'Bearer '+id,'X-Firebase-AppCheck':check,'Content-Type':'application/json'},...(body!==undefined?{body:JSON.stringify(body)}:{})});
         if(getUser()!==user)throw Error('A sessão mudou.');
-        if(!r.ok){const e=new Error(r.status===409?'A autorização ou a cópia mudou em outra janela. Reabra este painel e confira os dados antes de sincronizar.':r.status===404?'A integração nova ainda precisa ser ativada no Cloudflare.':'Não foi possível atualizar o compartilhamento.');e.status=r.status;throw e;}
+        if(!r.ok){const e=new Error(r.status===409?(path.startsWith('/v2/app/proposals')?'A proposta mudou ou há um cadastro em andamento. Atualize a fila e use Retomar cadastro se aparecer.':'A autorização ou a cópia mudou em outra janela. Reabra este painel e confira os dados antes de sincronizar.'):r.status===404?'A integração nova ainda precisa ser ativada no Cloudflare.':'Não foi possível atualizar o compartilhamento.');e.status=r.status;throw e;}
         const result=await r.json();if(getUser()!==user)throw Error('A sessão mudou.');
         return result;
     }

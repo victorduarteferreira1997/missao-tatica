@@ -1,7 +1,7 @@
 // Serializes writes within this browser session; does not claim cross-device isolation.
 export function createConfirmedStateWriter({getUser,writeAccount,writeSnapshot,onSaved=()=>{},onStatus=()=>{},onError=()=>{}}) {
     let tail=Promise.resolve();
-    return function write(user,state){
+    function write(user,state){
         if(!user || getUser()!==user)return Promise.resolve(false);
         let payload;try{payload=JSON.stringify(state);}catch(error){onStatus('Erro ao salvar');onError(error);return Promise.resolve(false);}
         const savedAt=state.lastSavedAt||state.updatedAt||'';
@@ -19,5 +19,7 @@ export function createConfirmedStateWriter({getUser,writeAccount,writeSnapshot,o
             }catch(error){if(getUser()===user)onStatus('Erro ao salvar');onError(error);return false;}
         };
         const result=tail.then(work,work);tail=result.catch(()=>{});return result;
-    };
+    }
+    write.exclusive=function(work){const result=tail.then(work,work);tail=result.catch(()=>{});return result;};
+    return write;
 }
