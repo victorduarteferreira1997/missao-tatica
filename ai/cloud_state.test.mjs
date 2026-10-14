@@ -34,3 +34,17 @@ test('revisão mantém fila aberta e recupera confirmação perdida sem repetir 
  await w.openAiV2Proposals();w.reviewAiV2Proposal(row.id);w.editAiV2Proposal('title','<Título revisado>');await w.confirmAiV2Proposal();assert.equal(commits,1);assert.match(w.renderAiV2Proposals(),/Retomar cadastro/);assert.match(w.renderAiV2Proposals(),/&lt;Título revisado>/);assert.match(w.renderAiV2Proposals(),/Falha sintética/);
  await w.confirmAiV2Proposal();assert.equal(commits,1);assert.equal(acknowledgments,2);assert.match(w.renderAiV2Proposals(),/Nenhuma missão duplicada/);assert.match(w.renderAiV2Proposals(),/ai-v2-proposals-dialog/);assert.deepEqual(order,['save','reserve','apply','ack','save','reserve','apply','ack']);
 });
+
+test('cadastro mostra progresso no botão, bloqueia segundo clique e mantém rolagem e texto durante redesenho',async()=>{
+ const proposal={id:'d'.repeat(64),grantId:'progress-grant-001',grantVersion:1,version:1,status:'pending',applyEligible:true,fields:{title:'Teste',weekStart:'2026-10-12',day:'wednesday',durationMinutes:5,startTime:'',endTime:'',subtasks:[],category:'life'}};
+ let release,saveCalls=0,markup='',oldDialog=null,focus=null;const elements={};
+ const document={get activeElement(){return focus;},getElementById:id=>id==='ai-v2-proposals-dialog'?oldDialog:elements[id]};
+ const w={escapeHtml:s=>String(s).replaceAll('<','&lt;'),bindFormDialog(){}};
+ function render(){markup=w.renderAiV2Proposals();if(!markup)return;const dialog={scrollTop:0,contains:el=>el===focus&&!!el,querySelector:s=>s==='#ai-v2-review-title'?title:s==='#ai-v2-proposals-close'?close:null,focus:opts=>{assert.equal(opts.preventScroll,true);focus=dialog;}};
+ const title={id:'ai-v2-review-title',disabled:/aria-busy="true"/.test(markup),selectionStart:3,selectionEnd:3,focus:opts=>{assert.equal(opts.preventScroll,true);focus=title;},setSelectionRange(a,b){this.selectionStart=a;this.selectionEnd=b;}};
+ const close={id:'ai-v2-proposals-close',focus:()=>focus=close};elements['ai-v2-submit-label']={textContent:''};elements['ai-v2-proposals-status']={textContent:''};oldDialog=dialog;w.bindAiV2Proposals({querySelector:()=>dialog});}
+ installAiV2Proposals(w,{document,config:{enabled:true,proposalsEnabled:true,applyEnabled:true},getUser:()=>({uid:AI_OWNER_UID}),getCategories:()=>[{id:'life',label:'Pessoal'}],render,saveConfirmed:async()=>{saveCalls++;return new Promise(r=>release=r);},applyMission:async()=>({receipt:{taskId:1},replayed:false}),store:{list:async()=>({items:[proposal],nextCursor:null}),reserve:async row=>({...row,status:'applying',applicationId:row.id}),acknowledge:async row=>({...row,status:'accepted'})}});
+ await w.openAiV2Proposals();w.reviewAiV2Proposal(proposal.id);oldDialog.scrollTop=640;focus={id:'ai-v2-review-title',selectionStart:3,selectionEnd:3};w.editAiV2Proposal('title','Texto em edição');render();assert.equal(oldDialog.scrollTop,640);assert.equal(focus.id,'ai-v2-review-title');assert.equal(focus.selectionStart,3);assert.match(markup,/Texto em edição/);
+ const pending=w.confirmAiV2Proposal();assert.match(markup,/Salvando seus dados…/);assert.match(markup,/ai-v2-review-submit[^>]*disabled/);assert.equal(oldDialog.scrollTop,640);await w.confirmAiV2Proposal();assert.equal(saveCalls,1);
+ release(true);await pending;assert.match(markup,/Missão cadastrada e salva na nuvem/);assert.equal(oldDialog.scrollTop,640);
+});

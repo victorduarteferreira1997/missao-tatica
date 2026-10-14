@@ -2,6 +2,17 @@
 
 [Voltar ao README](../README.md)
 
+## IA 2.0 — progresso de cadastro e posição da janela · 2026-10-14
+
+- Proprietário confirmou cadastro real e permanência da fila aberta. Reabertura
+  para comprovar persistência visual ainda não foi confirmada nesta conversa.
+- Janela preserva rolagem, foco e seleção de texto ao redesenhar; digitação atualiza
+  o rascunho sem esperar perda de foco, preservando linhas livres das subtarefas.
+- Botão mostra progresso de salvamento/preparação/cadastro/confirmação com indicador
+  visual e bloqueio de clique repetido. Rodapé do formulário permanece visível.
+- Teste cobre posição, rascunho, progresso, segundo clique e conclusão com fila aberta.
+  Conferência visual real do ajuste ainda pendente.
+
 ## IA 2.0 — cadastro habilitado após conferência do servidor · 2026-10-14
 
 - Captura mostra AI_V2_APPLY_ENABLED=true em produção. Healthcheck real confirma
