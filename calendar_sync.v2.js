@@ -106,7 +106,7 @@ export function buildWeekEvents(state, ownerUid, timeZone = Intl.DateTimeFormat(
 
     for (const task of state.tasks || []) {
         if (task.activityType === 'meeting' && (task.meetingOutcome === 'not_held' || task.googleCalendarSourceStatus === 'cancelled')) continue;
-        if (task.googleCalendarWeekStart && task.googleCalendarWeekStart !== week) continue;
+        if ((task.googleCalendarWeekStart || task.planningWeekStart || state.planning?.legacyWeek) && (task.googleCalendarWeekStart || task.planningWeekStart || state.planning?.legacyWeek) !== week) continue;
         // Uma missão convertida da agenda principal já possui um evento no Google.
         // Não a copie para a agenda secundária do Missão Tática.
         if (task.googleCalendarSource === 'primary' && task.googleCalendarEventId) continue;

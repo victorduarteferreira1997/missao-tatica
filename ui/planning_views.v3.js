@@ -92,6 +92,7 @@ export function installPlanningViews(window, {
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0 flex-1">
                                     <div class="text-base font-semibold leading-snug ${completed ? 'line-through text-slate-500' : 'text-slate-100'}">${window.escapeHtml(task.text)}</div>
+                                    ${window.renderMissionRelations?.(task) || ''}
                                     <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                                         ${meeting ? '<span class="inline-flex items-center gap-1 text-xs font-medium text-sky-300"><i data-lucide="users" class="w-3 h-3"></i>Reunião</span>' : ''}
                                         ${task.googleCalendarSourceMissing ? `<span class="text-xs text-amber-300">${task.googleCalendarSourceStatus === 'cancelled' ? 'Cancelada na agenda' : 'Evento indisponível na agenda'}</span>` : ''}
@@ -221,7 +222,7 @@ export function installPlanningViews(window, {
                     <div class="flex items-start gap-3">
                         <i data-lucide="${done ? 'check-circle-2' : 'circle'}" class="w-4 h-4 mt-0.5 ${done ? 'text-emerald-400' : 'text-indigo-300'} shrink-0"></i>
                         <div class="min-w-0 flex-1">
-                            <div class="text-sm font-semibold leading-snug ${done ? 'text-slate-400 line-through' : 'text-slate-100'} break-words">${window.escapeHtml(task.text || 'Missão sem título')}</div>
+                            <div class="text-sm font-semibold leading-snug ${done ? 'text-slate-400 line-through' : 'text-slate-100'} break-words">${window.escapeHtml(task.text || 'Missão sem título')}</div>${window.renderMissionRelations?.(task) || ''}
                             <div class="flex flex-wrap items-center gap-2 mt-1.5 text-xs">
                                 ${meeting ? `<span class="text-sky-300">Reunião · ${window.getMeetingStatus(task) === 'not_held' ? 'Não ocorreu' : done ? 'Realizada' : 'Agendada'}</span>` : ''}
                                 <span class="inline-flex items-center gap-1 text-slate-400"><i data-lucide="${cat.icon || 'target'}" class="w-3 h-3 ${cat.color || 'text-slate-400'}"></i>${window.escapeHtml(cat.label || 'Geral')}</span>

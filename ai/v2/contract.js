@@ -71,7 +71,7 @@ export async function v2Project(state,grant) {
     if(grant.choices.modules.missions)for(const t of state.tasks||[]) {
         const activityType=t.activityType==='meeting'?'meeting':'task';
         const status=t.completed?'completed':activityType==='meeting'?(t.meetingOutcome==='not_held'||t.googleCalendarSourceStatus==='cancelled'?'not_held':'planned'):['in_progress','paused'].includes(t.workflowStatus)?t.workflowStatus:'planned';
-        await add('mission',t,{title:text(t.text),category:text(t.category),activityType,status,day:text(t.day),weekStart:text(t.planningWeekStart||t.googleCalendarWeekStart||''),durationMinutes:number(parseInt(t.time,10)),startTime:text(t.startTime),endTime:text(t.endTime),subtasks:(t.subtasks||[]).map(s=>({title:text(s.text),completed:Boolean(s.completed)}))});
+        await add('mission',t,{title:text(t.text),category:text(t.category),activityType,status,day:text(t.day),weekStart:text(t.googleCalendarWeekStart||t.planningWeekStart||''),durationMinutes:number(parseInt(t.time,10)),startTime:text(t.startTime),endTime:text(t.endTime),subtasks:(t.subtasks||[]).map(s=>({title:text(s.text),completed:Boolean(s.completed)}))});
     }
     if(grant.choices.modules.radar)for(const d of state.operationalControl?.demands||[]) await add('radar',d,{title:text(d.title),area:text(d.area),project:text(d.project),status:text(d.workflowStatus||'active'),nextAction:v2Text(String(d.nextAction||''),1000),dueDate:text(d.dueDate),nextReviewAt:text(d.nextReviewAt),attentionLevel:text(d.attentionLevel||'controlled'),waitingFor:text(d.waitingFor),waitingSince:text(d.waitingSince),followUpAt:text(d.followUpAt)});
     if(grant.choices.modules.studies){

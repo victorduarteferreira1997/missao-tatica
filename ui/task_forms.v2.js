@@ -29,6 +29,7 @@ export function installTaskForms(window, { daysOfWeek, getState, getUiState }) {
                             <input type="hidden" id="et-impact-type" value="${nature === 'recharge' ? 'recharge' : 'drain'}">
                             <p id="et-nature-summary" class="text-xs leading-relaxed text-slate-400"></p>
                             <div class="divide-y divide-slate-800 border-t border-slate-800">
+                                ${window.renderTaskRelationsFields?.('et',task) || ''}
                                 <details data-edit-section="schedule" ${task.startTime || task.endTime ? 'open' : ''}>
                                     <summary class="${summaryClass}"><span>Definir horário</span><i data-lucide="chevron-down" class="h-4 w-4 text-slate-400"></i></summary>
                                     <div class="grid grid-cols-2 gap-x-3 gap-y-2 pt-2 pb-4"><div><label for="et-start-time" class="${labelClass}">Início</label><input id="et-start-time" type="time" ${task.googleCalendarSource === 'primary' ? 'readonly' : ''} value="${window.escapeHtml(task.startTime || '')}" class="${fieldClass}"></div><div><label for="et-end-time" class="${labelClass}">Fim</label><input id="et-end-time" type="time" ${task.googleCalendarSource === 'primary' ? 'readonly' : ''} value="${window.escapeHtml(task.endTime || '')}" class="${fieldClass}"></div><p class="col-span-2 text-xs leading-relaxed text-slate-400">${task.googleCalendarSource === 'primary' ? 'Horários gerenciados no Google Agenda. Altere o evento lá e sincronize aqui.' : 'Reuniões precisam de início e fim. Tarefas podem ficar sem horário.'}</p></div>
@@ -136,6 +137,7 @@ export function installTaskForms(window, { daysOfWeek, getState, getUiState }) {
                             <input type="hidden" id="ct-impact-type" value="drain">
                             <p id="ct-nature-summary" class="text-xs leading-relaxed text-slate-400">Trabalho, estudo ou treino: rende XP e moedas e consome energia.</p>
                             <div class="divide-y divide-slate-800 border-t border-slate-800">
+                                ${window.renderTaskRelationsFields?.('ct') || ''}
                                 <details data-create-section="subtasks">
                                     <summary class="${summaryClass}"><span>Adicionar subtarefas</span><i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i></summary>
                                     <div class="pt-2 pb-4"><label for="ct-subtasks" class="block text-xs text-slate-400">Uma subtarefa por linha</label><textarea id="ct-subtasks" rows="3" placeholder="Separar documentos&#10;Revisar o texto&#10;Enviar para aprovação" class="${fieldClass} resize-y"></textarea></div>

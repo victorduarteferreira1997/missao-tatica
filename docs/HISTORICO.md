@@ -1,3 +1,27 @@
+## Planejamento integrado · 14/10/2026
+
+- Missões podem apontar para uma demanda do RADAR e até 20 pré-requisitos.
+  Validação impede ciclos e autorreferência, inclusive entre ocorrências de uma
+  recorrência. Conclusão e foco respeitam os pré-requisitos; encerrar uma demanda
+  continua manual. O RADAR reúne missões atuais e referências no histórico.
+- Missões locais passam a ter semana explícita; dados antigos recebem a semana
+  já selecionada na migração, sem reatribuição ao navegar. Eventos do Google usam
+  a semana de origem e não são movidos pelo fechamento.
+- Fechamento revisado guarda o estado da semana, transfere pendências com o mesmo
+  ID e sem horários fixos e cria novas ocorrências recorrentes sem recompensas
+  reaproveitadas. Estados dos estudos são guardados e reiniciados; sessões e
+  revisões, recibos de IA, Finanças, Corpo e ganhos acumulados são preservados.
+- Histórico: até 12 semanas e 320 KB, até 500 itens por fechamento. A confirmação
+  informa a retenção e quantas semanas sairão, com opção de exportar backup pelo
+  fluxo existente. Conteúdo grande interrompe o fechamento. Dependências já
+  concluídas recebem comprovantes limitados por missão para sobreviver à retenção.
+- Revisar planejamento reúne sinais por regras de títulos semelhantes, sobreposição
+  de intervalos, carga diária ajustável, pendências anteriores, resumo e histórico.
+  São alertas para revisão; não são garantias de disponibilidade nem decisões da IA.
+- Skill do plugin 0.1.5 orienta análises no chat usando todas as páginas autorizadas,
+  com frescor, cobertura e limites explícitos. Não amplia scopes ou os campos do
+  contrato; vínculos e histórico ainda são consultados no app.
+
 # Histórico e detalhes das entregas
 
 [Voltar ao README](../README.md)

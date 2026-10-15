@@ -98,6 +98,7 @@
     <!-- Script Principal com Firebase em Módulo -->
     <script type="module">
         import { createCalendarSync } from './calendar_sync.v2.js';
+        import { installPlanningTools } from './ui/planning_tools.v1.js';
         import { installFormDialogs } from './ui/form_dialogs.v1.js';
         import { installTaskForms } from './ui/task_forms.v2.js';
         import { installPlanningViews } from './ui/planning_views.v3.js';
@@ -921,15 +922,19 @@
             const groupId = templateTask.recurrenceGroupId || options.groupId || `rec-${Date.now()}-${Math.random().toString(16).slice(2)}`;
             templateTask.recurrenceGroupId = groupId;
             const templateSubtasks = Array.isArray(templateTask.subtasks) ? templateTask.subtasks : [];
+            const sameWeek = t => !window.taskPlanningWeek || window.taskPlanningWeek(t) === window.taskPlanningWeek(templateTask);
 
             if (options.removeUnselected !== false) {
-                state.tasks = state.tasks.filter(t => !(String(t.recurrenceGroupId || '') === String(groupId) && !days.includes(t.day)));
+                state.tasks = state.tasks.filter(t => !(String(t.recurrenceGroupId || '') === String(groupId) && sameWeek(t) && !days.includes(t.day)));
             }
 
             const applyFullTemplate = (target, targetDay, isNew = false) => {
                 target.day = targetDay;
                 target.category = templateTask.category;
                 target.text = templateTask.text;
+                target.planningWeekStart = templateTask.planningWeekStart;
+                target.radarDemandId = templateTask.radarDemandId || null;
+                target.dependsOnTaskIds = [...(templateTask.dependsOnTaskIds || [])];
                 target.xp = templateTask.xp;
                 target.energyCost = templateTask.energyCost;
                 target.priority = templateTask.priority;
@@ -956,7 +961,7 @@
 
             const touched = [];
             days.forEach((dayId, index) => {
-                let occurrence = state.tasks.find(t => String(t.recurrenceGroupId || '') === String(groupId) && t.day === dayId);
+                let occurrence = state.tasks.find(t => String(t.recurrenceGroupId || '') === String(groupId) && sameWeek(t) && t.day === dayId);
                 if (!occurrence) {
                     occurrence = {
                         ...templateTask,
@@ -975,7 +980,7 @@
             // Evita cards duplicados do mesmo grupo no mesmo dia, mantendo o primeiro encontrado.
             const seen = new Set();
             state.tasks = state.tasks.filter(t => {
-                if (String(t.recurrenceGroupId || '') !== String(groupId)) return true;
+                if (String(t.recurrenceGroupId || '') !== String(groupId) || !sameWeek(t)) return true;
                 const key = `${groupId}::${t.day}`;
                 if (seen.has(key)) return false;
                 seen.add(key);
@@ -996,7 +1001,7 @@
                 if (!t) return;
                 const days = Array.isArray(t.recurrenceDays) ? t.recurrenceDays.filter(day => validDays.includes(day)) : [];
                 if (!t.recurrenceGroupId || !(t.isRecurring || days.length)) return;
-                const key = String(t.recurrenceGroupId);
+                const key = String(t.recurrenceGroupId) + ':' + (window.taskPlanningWeek?.(t) || '');
                 if (!groups.has(key)) groups.set(key, []);
                 groups.get(key).push(t);
             });
@@ -1316,50 +1321,6 @@
             });
         };
 
-        window.prepareNextWeekPlanning = function() {
-            const nextMondayKey = window.getNextCalendarWeekStartKey();
-            window.showConfirmModal('Preparar a próxima semana agora? Isso vai limpar as missões comuns da semana atual, preservar missões recorrentes e compromissos vinculados ao Google Agenda, zerar o status dos estudos planejados e abrir o calendário da próxima semana. Ideal para usar no domingo, depois de revisar/fechar a semana atual.', () => {
-                window.normalizeRecurringTaskSchedules();
-                const recurringTasks = state.tasks
-                    .filter(t => t.googleCalendarSource !== 'primary' && (t.isRecurring || (Array.isArray(t.recurrenceDays) && t.recurrenceDays.length > 0)))
-                    .map(t => {
-                        const cleanTask = {
-                            ...t,
-                            completed: false,
-                            workflowStatus: 'planned',
-                            skipped: false,
-                            subtasks: (Array.isArray(t.subtasks) ? t.subtasks : []).map(st => ({ ...st, completed: false }))
-                        };
-                        delete cleanTask.rewardedXp;
-                        delete cleanTask.rewardedCoins;
-                        delete cleanTask.rewardedEnergyCost;
-                        return cleanTask;
-                    });
-
-                if (state.studyData?.studyPlan?.weeklyBlocks) {
-                    state.studyData.studyPlan.weeklyBlocks.forEach(block => {
-                        if (block.status !== 'cancelled') block.status = 'planned';
-                        delete block.linkedSessionId;
-                        delete block.completedAt;
-                        delete block.partialAt;
-                        delete block.remarkedAt;
-                        delete block.lastActionAt;
-                    });
-                }
-
-                state.tasks = [...recurringTasks, ...state.tasks.filter(t => t.googleCalendarSource === 'primary' && t.googleCalendarEventId)];
-                state.quickTasks = [];
-                state.combo = 0;
-                window.rollOverEconomyWeekIfNeeded();
-                state.energy = 100;
-                state.activeTab = 'monday';
-                state.currentFilter = 'all';
-                state.currentPlanningWeekStart = nextMondayKey;
-                uiState.mainView = 'week';
-                window.saveState();
-                window.showToast('Próxima semana preparada', `${recurringTasks.length} missão(ões) recorrente(s) e vínculos da agenda preservados. Estudos voltaram para planejado.`, 'calendar-plus', 'text-cyan-300');
-            });
-        };
 
         window.validateState = function() {
             if (!state) {
@@ -1442,6 +1403,7 @@
                 const categoryExistsForTask = state.taskCategories.some(c => c.id === t.category);
                 if (!categoryExistsForTask) t.category = state.taskCategories.find(c => c.active !== false)?.id || 'geral';
             });
+            window.normalizePlanning?.();
             window.normalizeRecurringTaskSchedules();
             if (state.currentFilter !== 'all' && !state.taskCategories.some(c => c.id === state.currentFilter && c.active !== false)) state.currentFilter = 'all';
             
@@ -1638,6 +1600,8 @@
             };
         }
 
+        installPlanningTools(window,{document,getState:()=>state,getUiState:()=>uiState,render,save:()=>window.saveStudyPlanningState()});
+        window.isPlanningTransitionBlocked=()=>{if(pomodoro.isRunning||pomodoro.currentFocusStartedAt||uiState.pomodoroEvaluationData||calendarSync.view().busy){window.showAlertModal('Finalize o ciclo de foco ou a sincronização antes de fechar a semana.');return true;}return false;};
         window.validateState();
 
         // ------------------------------------------
@@ -1980,6 +1944,11 @@
                     if (item.status === 'converted') { item.status = 'pending'; item.linkedTaskId = null; }
                 });
             }
+            if (next.planning?.history) {
+                if (has('missions')) next.planning.history.forEach(row=>{row.tasks=[];delete row.summary;});
+                if (has('study')) next.planning.history.forEach(row=>{row.studyBlocks=[];delete row.summary;});
+                next.planning.history=next.planning.history.filter(row=>row.tasks?.length||row.studyBlocks?.length);
+            }
             if (has('rewards') && next.economy) next.economy.targetReward = null;
             if (has('game')) {
                 const p = original.prestige || {};
@@ -2155,7 +2124,7 @@
         window.exportVisibleWeekToIcs = function() {
             if (typeof window.normalizeRecurringTaskSchedules === 'function') window.normalizeRecurringTaskSchedules();
 
-            const tasks = (Array.isArray(state.tasks) ? state.tasks : []).filter(t => (!t.googleCalendarWeekStart || t.googleCalendarWeekStart === state.currentPlanningWeekStart) && !(t.activityType === 'meeting' && (t.meetingOutcome === 'not_held' || t.googleCalendarSourceStatus === 'cancelled')));
+            const tasks = (Array.isArray(state.tasks) ? state.tasks : []).filter(t => (window.isPlanningTaskVisible ? window.isPlanningTaskVisible(t) : (!t.googleCalendarWeekStart || t.googleCalendarWeekStart === state.currentPlanningWeekStart)) && !(t.activityType === 'meeting' && (t.meetingOutcome === 'not_held' || t.googleCalendarSourceStatus === 'cancelled')));
             const studyBlocks = (state.studyData?.studyPlan?.weeklyBlocks || []).filter(b => b.status !== 'cancelled');
             const subjects = state.studyData?.subjects || [];
             const weekStart = window.getActivePlanningWeekStartDate();
@@ -2583,6 +2552,7 @@
             if (!['planned', 'in_progress', 'paused', 'completed'].includes(nextStatus)) return;
             const task = state.tasks.find(t => String(t.id) === String(taskId));
             if (!task || window.getMissionStatus(task) === nextStatus) return;
+            if (!task.completed && nextStatus === 'in_progress' && window.assertTaskDependencies?.(task) === false) return;
             // Concluir/reabrir sempre usa a regra existente de recompensas.
             if (nextStatus === 'completed') { window.toggleTask(taskId, event); return; }
             task.workflowStatus = nextStatus;
@@ -2595,6 +2565,7 @@
             if (!task) return;
 
             if (task.activityType === 'meeting' && !task.completed && (task.meetingOutcome === 'not_held' || task.googleCalendarSourceStatus === 'cancelled')) return;
+            if (!task.completed && window.assertTaskDependencies?.(task) === false) return;
             const nature = window.getTaskNature(task);
 
             if (task.completed) {
@@ -3014,7 +2985,7 @@
         };
 
         window.getNextTaskOrder = function(dayId) {
-            const orders = state.tasks.filter(t => t.day === dayId && (!t.googleCalendarWeekStart || t.googleCalendarWeekStart === state.currentPlanningWeekStart)).map(t => typeof t.order === 'number' ? t.order : 0);
+            const orders = state.tasks.filter(t => t.day === dayId && (window.isPlanningTaskVisible ? window.isPlanningTaskVisible(t) : (!t.googleCalendarWeekStart || t.googleCalendarWeekStart === state.currentPlanningWeekStart))).map(t => typeof t.order === 'number' ? t.order : 0);
             return orders.length ? Math.max(...orders) + 1 : 1;
         };
 
@@ -3031,11 +3002,11 @@
         };
 
         window.sortTasksForDay = function(dayId) {
-            return window.sortTasksByManualOrder(state.tasks.filter(t => t.day === dayId && (!t.googleCalendarWeekStart || t.googleCalendarWeekStart === state.currentPlanningWeekStart)));
+            return window.sortTasksByManualOrder(state.tasks.filter(t => t.day === dayId && (window.isPlanningTaskVisible ? window.isPlanningTaskVisible(t) : (!t.googleCalendarWeekStart || t.googleCalendarWeekStart === state.currentPlanningWeekStart))));
         };
 
         window.reindexTaskOrderForDay = function(dayId) {
-            window.sortTasksBySchedule(state.tasks.filter(t => t.day === dayId && (!t.googleCalendarWeekStart || t.googleCalendarWeekStart === state.currentPlanningWeekStart))).forEach((t, index) => { t.order = index + 1; });
+            window.sortTasksBySchedule(state.tasks.filter(t => t.day === dayId && (window.isPlanningTaskVisible ? window.isPlanningTaskVisible(t) : (!t.googleCalendarWeekStart || t.googleCalendarWeekStart === state.currentPlanningWeekStart)))).forEach((t, index) => { t.order = index + 1; });
         };
 
         window.handleTaskDragStart = function(taskId, event) {
@@ -3155,9 +3126,10 @@
         };
 
         window.getCurrentFocusTargetTask = function() {
-            const dayTasks = state.tasks.filter(t => t.day === state.activeTab && t.activityType !== 'meeting' && (!t.googleCalendarWeekStart || t.googleCalendarWeekStart === state.currentPlanningWeekStart));
-            const targetTasks = state.currentFilter === 'all' ? dayTasks : dayTasks.filter(t => t.category === state.currentFilter);
-            return (window.findTaskByExactId(state.focusedTaskId) && !window.findTaskByExactId(state.focusedTaskId).completed && window.findTaskByExactId(state.focusedTaskId).day === state.activeTab && dayTasks.includes(window.findTaskByExactId(state.focusedTaskId)))
+            const dayTasks = state.tasks.filter(t => t.day === state.activeTab && t.activityType !== 'meeting' && (window.isPlanningTaskVisible ? window.isPlanningTaskVisible(t) : (!t.googleCalendarWeekStart || t.googleCalendarWeekStart === state.currentPlanningWeekStart)));
+            const eligibleTasks = dayTasks.filter(t => !window.getTaskBlockers?.(t).length);
+            const targetTasks = state.currentFilter === 'all' ? eligibleTasks : eligibleTasks.filter(t => t.category === state.currentFilter);
+            return (window.findTaskByExactId(state.focusedTaskId) && !window.findTaskByExactId(state.focusedTaskId).completed && window.findTaskByExactId(state.focusedTaskId).day === state.activeTab && eligibleTasks.includes(window.findTaskByExactId(state.focusedTaskId)))
                 ? window.findTaskByExactId(state.focusedTaskId)
                 : (targetTasks.find(t => !t.completed) || null);
         };
@@ -3221,6 +3193,8 @@
                 clearInterval(pomodoro.intervalId); 
                 pomodoro.isRunning = false; 
             } else { 
+                const target = window.getPomodoroLockedTask(taskIdFromButton);
+                if (target && window.assertTaskDependencies?.(target) === false) return;
                 pomodoro.isRunning = true; 
                 if (pomodoro.mode === 'focus' && !pomodoro.currentFocusStartedAt) {
                     pomodoro.currentFocusStartedAt = new Date().toISOString();
@@ -3740,6 +3714,8 @@
                 input?.focus();
                 return;
             }
+            const relations = window.readTaskRelations?.('et',task);
+            if (relations === null) return;
             const oldDay = task.day;
             const newDay = document.getElementById('et-day')?.value || task.day || state.activeTab;
             const activeCategories = window.getTaskCategories();
@@ -3762,6 +3738,7 @@
             const duration = activityType === 'meeting' && calendarTime.startTime && calendarTime.endTime ? (task.googleCalendarSource === 'primary' ? extractMinutesFromTask(task) : minutesFromClock(calendarTime.endTime) - minutesFromClock(calendarTime.startTime)) : timeVal;
             cost = window.calculateTaskCost(priority, complexity, duration, impactType, missionNature);
             const applyValues = (target, targetDay) => {
+                if (relations) Object.assign(target,relations);
                 target.text = task.sanitizedOrigin === 'coaktion' ? 'Reunião · Coaktion' : text;
                 target.activityType = activityType;
                 target.day = targetDay;
@@ -3896,6 +3873,8 @@
                 titleInput.focus({ preventScroll: false });
                 return;
             }
+            const relations = window.readTaskRelations?.('ct');
+            if (relations === null) return;
             const sourceInboxItem = uiState.calendarInboxEventId
                 ? calendarSync.getInbox({ includeHandled: true }).find(item => item.id === uiState.calendarInboxEventId)
                 : null;
@@ -3913,6 +3892,8 @@
             const activeCategories = window.getTaskCategories();
             const selectedCategory = document.getElementById('ct-category').value || activeCategories[0]?.id || 'life';
             const selectedDay = document.getElementById('ct-day').value;
+            const targetPlanningWeek = sourceInboxItem?.weekStart || (selectedDay === 'next_week' ? window.nextPlanningWeek?.() : state.currentPlanningWeekStart);
+            if (window.assertPlanningWeekWritable?.(targetPlanningWeek) === false) return;
             const calendarTime = sourceInboxItem ? { startTime: sourceInboxItem.startTime || '', endTime: sourceInboxItem.endTime || '' } : window.readCalendarTimeFields('ct', parseInt(document.getElementById('ct-time')?.value, 10) || 30);
             if (!calendarTime) return;
             if (activityType === 'meeting' && !sourceInboxItem?.allDay && (!calendarTime.startTime || !calendarTime.endTime)) { window.showAlertModal('Informe início e fim da reunião.'); return; }
@@ -3922,7 +3903,7 @@
                 .filter(d => document.getElementById(`ct-repeat-${d.id}`)?.checked)
                 .map(d => d.id);
             const isRecurring = recurrenceDays.length > 0;
-            const daysToCreate = isRecurring ? recurrenceDays : [selectedDay];
+            const daysToCreate = isRecurring ? recurrenceDays : [selectedDay === 'next_week' ? 'monday' : selectedDay];
             const recurrenceGroupId = isRecurring ? `rec-${Date.now()}-${Math.random().toString(16).slice(2)}` : null;
 
             let firstCreatedTaskId = null;
@@ -3932,6 +3913,8 @@
                 state.tasks.push({
                     id: taskId,
                     ...(window.aiDraftMetadata?.() || {}),
+                    ...(relations || {}),
+                    planningWeekStart: targetPlanningWeek,
                     day: targetDay,
                     category: selectedCategory,
                     text: sourceInboxItem?.sanitizedOrigin === 'coaktion' ? 'Reunião · Coaktion' : text,
@@ -3984,6 +3967,8 @@
 
         window.setCategoryFilter = function(filterId) { state.currentFilter = filterId; window.saveState(); };
         window.changeFocusedTask = function(taskId) {
+            const candidate = state.tasks.find(t=>String(t.id)===String(taskId));
+            if (candidate && window.assertTaskDependencies?.(candidate) === false) return;
             if (state.tasks.find(t => String(t.id) === String(taskId))?.activityType === 'meeting') return;
             if(window.isIndependentPomodoro()){window.switchPomodoroContext(false,taskId);return;}
             // Guardar o ID exato como string. Alguns IDs de tarefas têm casas decimais;
@@ -6104,7 +6089,8 @@
                             <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400 mt-0.5 shrink-0"></i>
                             <div class="min-w-0"><div class="text-xs font-black text-emerald-300">Situação operacional sob controle</div><div class="text-[10px] text-slate-500 mt-0.5">Nenhuma demanda conhecida requer atenção até ${window.formatOperationalDate(untilDateKey)}.</div></div>
                         </div>
-                        <button onclick="window.setMainView('control')" class="shrink-0 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-sky-300">Abrir Radar</button>
+                        ${window.renderPlanningReviewButton?.() || ''}
+                    <button onclick="window.setMainView('control')" class="shrink-0 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-sky-300">Abrir Radar</button>
                     </section>`;
             }
 
@@ -6229,6 +6215,7 @@
                         ${isClosed ? `<button type="button" onclick="window.reopenOperationalDemand(${demandArg})" class="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-sky-900/60 px-3 py-2 text-xs font-medium text-sky-200 hover:bg-sky-950/50"><i data-lucide="rotate-ccw" class="h-3.5 w-3.5"></i>Reabrir</button>` : `<button type="button" onclick="window.closeOperationalDemand(${demandArg})" class="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-emerald-200"><i data-lucide="check" class="h-3.5 w-3.5"></i>Encerrar</button>`}
                         </div>
                     </div>
+                    ${window.renderDemandMissions?.(demand) || ''}
                     <div id="radar-details-${encodeURIComponent(String(demand.id))}" role="region" aria-label="Detalhes de ${window.escapeHtml(demand.title)}" ${uiState.radarExpandedSections[sectionKey] ? '' : 'hidden'} class="mt-3 border-t border-slate-800 pt-3">
                         <div class="flex flex-col items-start sm:flex-row gap-4 sm:gap-6">
                             <dl class="w-full min-w-0 flex-1 grid content-start grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
@@ -6375,6 +6362,7 @@
 
             html += window.renderDataManager();
             html += window.renderStudyTrackDeletion();
+            html += window.renderPlanningReview?.() || '';
 
             const profileNeedsSetup = !state?.userProfile?.configured;
             if (profileNeedsSetup || uiState.showProfileModal) {
@@ -6644,7 +6632,9 @@
             </div>`;
 
             if (uiState.mainView === 'week') {
-                html += window.renderWeeklyPlanningOverview();
+                const closedPlanningWeek = window.renderClosedPlanningWeek?.();
+                if (closedPlanningWeek) html += closedPlanningWeek;
+                else html += window.renderWeeklyPlanningOverview();
             } else if (uiState.mainView === 'control') {
                 html += window.renderOperationalControl();
             } else {
@@ -6933,6 +6923,7 @@
             window.bindEditTaskDialog(appDiv);
             const viewBlocked = uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) || Boolean(uiState.studyTrackDeletion);
             window.restoreViewState?.(appDiv, viewSnapshot, {pageKey: viewPageKey, blocked: viewBlocked});
+            window.bindPlanningReview?.(appDiv);
             if (uiState.studyTrackDeletion) window.bindFormDialog(appDiv, {id:'study-track-delete-dialog',initialFocus:'study-track-delete-close',close:window.closeStudyTrackDeletion,blocked:uiState.confirm.show || uiState.alert.show});
             if (uiState.confirm.show) window.bindFormDialog(appDiv, {id:'confirmation-dialog',initialFocus:'confirmation-cancel',close:()=>window.handleConfirmResult(false),blocked:uiState.alert.show});
             if (uiState.alert.show) window.bindFormDialog(appDiv, {id:'alert-dialog',initialFocus:'alert-close',close:window.closeAlertModal});

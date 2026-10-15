@@ -12,6 +12,7 @@ import {readFile} from 'node:fs/promises';
 import {runInNewContext} from 'node:vm';
 import test from 'node:test';
 import {createCalendarSync} from './calendar_sync.v2.js';
+import {installPlanningTools} from './ui/planning_tools.v1.js';
 import {installFormDialogs} from './ui/form_dialogs.v1.js';
 import {installTaskForms} from './ui/task_forms.v2.js';
 import {installPlanningViews} from './ui/planning_views.v3.js';
@@ -29,7 +30,7 @@ function boot(saved=null,applyEnabled=false){
  const document={activeElement:null,getElementById:id=>elements[id]||null,querySelector(){return null;},querySelectorAll(){return [];},addEventListener(){}};
  const window={lucide:{createIcons(){}},location:{origin:'https://victorduarteferreira1997.github.io',pathname:'/missao-tatica/app.html'},addEventListener(){}};
  const c={window,document,Date:FixedDate,console,TextEncoder,Uint8Array,Uint32Array,DataView,URL,Blob,Intl,localStorage:{getItem:key=>stored.get(key)||null,setItem:(key,value)=>{stored.set(key,value);writes.push(key);}},
- setTimeout:()=>1,clearTimeout(){},setInterval:()=>1,clearInterval(){},lucide:window.lucide,initializeApp:()=>({}),initializeAppCheck(){},ReCaptchaEnterpriseProvider:class{},getAuth:()=>({}),getFirestore:()=>({}),GoogleAuthProvider:class{},signInWithPopup(){},signInWithRedirect(){},signOut:async()=>{},onAuthStateChanged:(auth,callback)=>c.authCallback=callback,doc(){},getDoc(){throw Error('A inicialização não deve ler a nuvem sem login.');},setDoc(){throw Error('O teste não deve gravar na nuvem.');},createCalendarSync:options=>{c.calendarOnChange=options.onChange;return createCalendarSync(options);},installFormDialogs,installTaskForms,installPlanningViews,installAiInbox,AI_CONFIG,createAiBrowserStore,AI_V2_CONFIG:{...AI_V2_CONFIG,applyEnabled},createCloudStateStore,applyEntity,radarTarget,createConfirmedStateWriter,createV2BrowserStore,installAiAccess,createV2ProposalsBrowserStore,installAiV2Proposals:(w,options)=>{c.v2ProposalsOptions=options;return installAiV2Proposals(w,options);}};
+ setTimeout:()=>1,clearTimeout(){},setInterval:()=>1,clearInterval(){},lucide:window.lucide,initializeApp:()=>({}),initializeAppCheck(){},ReCaptchaEnterpriseProvider:class{},getAuth:()=>({}),getFirestore:()=>({}),GoogleAuthProvider:class{},signInWithPopup(){},signInWithRedirect(){},signOut:async()=>{},onAuthStateChanged:(auth,callback)=>c.authCallback=callback,doc(){},getDoc(){throw Error('A inicialização não deve ler a nuvem sem login.');},setDoc(){throw Error('O teste não deve gravar na nuvem.');},createCalendarSync:options=>{c.calendarOnChange=options.onChange;return createCalendarSync(options);},installPlanningTools,installFormDialogs,installTaskForms,installPlanningViews,installAiInbox,AI_CONFIG,createAiBrowserStore,AI_V2_CONFIG:{...AI_V2_CONFIG,applyEnabled},createCloudStateStore,applyEntity,radarTarget,createConfirmedStateWriter,createV2BrowserStore,installAiAccess,createV2ProposalsBrowserStore,installAiV2Proposals:(w,options)=>{c.v2ProposalsOptions=options;return installAiV2Proposals(w,options);}};
  runInNewContext(moduleSource+'\nwindow.startupForTest = {getState:()=>state,getUI:()=>uiState,getTimer:()=>pomodoro,render};',c,{timeout:3000});
  return {c,window,elements,stored,writes,state:window.startupForTest.getState(),ui:window.startupForTest.getUI(),render:window.startupForTest.render};
 }
@@ -195,4 +196,38 @@ test('exclusão sequencial de trilhas mantém Inteligência aberta e escolha/can
 test('confirmar uma ação não apaga a confirmação seguinte criada pelo callback',()=>{
  const b=boot();let completed=0;b.window.showConfirmModal('Primeira',()=>b.window.showConfirmModal('Segunda',()=>completed++));b.window.handleConfirmResult(true);
  assert.equal(b.ui.confirm.show,true);assert.equal(b.ui.confirm.message,'Segunda');b.window.handleConfirmResult(true);assert.equal(completed,1);assert.equal(b.ui.confirm.onConfirm,null);
+});
+
+test('planejamento integra vínculo RADAR, valida edição antes de mutar e bloqueia conclusão/foco por pré-requisitos',()=>{
+ const b=boot();b.state.tasks=[{id:1,text:'Primeiro',day:'monday',category:'life',time:'30 min',xp:10,energyCost:0,completed:false,subtasks:[]},{id:2,text:'Depois',day:'monday',category:'life',time:'30 min',xp:10,energyCost:0,completed:false,dependsOnTaskIds:['1'],subtasks:[]}];b.state.operationalControl.demands=[{id:'d1',title:'Demanda <teste>',workflowStatus:'active'}];b.window.normalizePlanning();
+ const xp=b.state.xp,coins=b.state.coins;b.window.toggleTask(2);assert.equal(b.state.tasks[1].completed,false);assert.equal(b.state.xp,xp);assert.equal(b.state.coins,coins);assert.match(b.ui.alert.message,/pré-requisitos/);
+ b.window.setMissionStatus(2,'in_progress');assert.notEqual(b.state.tasks[1].workflowStatus,'in_progress');const focus=b.state.focusedTaskId;b.window.changeFocusedTask(2);assert.equal(b.state.focusedTaskId,focus);
+ b.elements['et-text']={value:'Não deve alterar'};b.elements['et-radar']={value:'d1'};b.ui.editingTaskId=1;b.c.document.querySelectorAll=selector=>selector.includes('et-dependencies')?[{value:'2'}]:[];b.window.saveEditedTask();assert.equal(b.state.tasks[0].text,'Primeiro');assert.match(b.ui.alert.message,/ciclo/);
+ assert.match(b.window.renderTaskRelationsFields('ct'),/Demanda &lt;teste&gt;/);assert.match(b.window.renderTaskRelationsFields('ct'),/ct-dependencies/);
+ b.window.toggleTask(1);assert.equal(b.state.tasks[0].completed,true);b.window.toggleTask(2);assert.equal(b.state.tasks[1].completed,true);
+ assert.equal(b.state.operationalControl.demands[0].workflowStatus,'active');
+});
+test('fechamento real mantém o histórico e compromissos externos, pede nova revisão se os dados mudarem',()=>{
+ const b=boot();const week=b.state.currentPlanningWeekStart;b.state.tasks=[{id:1,text:'Pendente',day:'monday',time:'30 min',completed:false},{id:2,text:'Concluída',day:'tuesday',completed:true},{id:3,text:'Evento',day:'wednesday',googleCalendarSource:'primary',googleCalendarEventId:'test',googleCalendarWeekStart:week}];b.window.normalizePlanning();b.state.financeData.incomes=[{id:1,amount:1000}];
+ b.window.prepareNextWeekPlanning();assert.equal(b.ui.confirm.show,true);b.state.tasks[0].text='Alterada depois da prévia';b.window.handleConfirmResult(true);assert.equal(b.state.currentPlanningWeekStart,week);assert.match(b.ui.alert.message,/mudaram/);
+ b.ui.alert.show=false;b.window.prepareNextWeekPlanning();b.window.handleConfirmResult(true);assert.notEqual(b.state.currentPlanningWeekStart,week);assert.equal(b.state.planning.history.length,1);assert.equal(b.state.tasks.find(row=>row.id===3).googleCalendarWeekStart,week);assert.equal(b.state.tasks.find(row=>row.id===1).carryover.count,1);assert.ok(!b.state.tasks.some(row=>row.id===2));assert.equal(b.state.financeData.incomes[0].amount,1000);
+ b.window.openPlanningReview();assert.match(b.elements.app.innerHTML,/Histórico de semanas/);assert.match(b.elements.app.innerHTML,/Revisão do planejamento/);assert.match(b.elements.app.innerHTML,/não são conclusões da IA/);
+});
+test('navegar por semanas filtra missões locais e da IA e não altera datas ou cria cópias',()=>{
+ const b=boot();const current=b.state.currentPlanningWeekStart,next=b.window.nextPlanningWeek();b.state.tasks=[{id:1,text:'Atual',day:'monday',planningWeekStart:current},{id:2,text:'IA futura',day:'monday',planningWeekStart:next,aiV2ProposalId:'proof'}];b.window.normalizePlanning();assert.equal(b.window.sortTasksForDay('monday').length,1);b.state.currentPlanningWeekStart=next;assert.equal(b.window.sortTasksForDay('monday')[0].id,2);assert.equal(b.state.tasks.length,2);assert.equal(b.state.tasks[0].planningWeekStart,current);
+});
+test('criar missão a partir do RADAR prepara formulário vinculado e cancelar não cria registros',()=>{
+ const b=boot();b.state.operationalControl.demands=[{id:'r1',title:'Demanda',nextAction:'Revisar documento',workflowStatus:'active'}];b.window.createMissionForDemand('r1');assert.equal(b.ui.showCreateTaskModal,true);assert.ok(b.ui.createTaskDraft.fields.some(field=>field.id==='ct-radar'&&field.value==='r1'));assert.equal(b.state.tasks.length,0);assert.match(b.elements.app.innerHTML,/RADAR e pré-requisitos/);
+});
+test('limpeza de módulos remove só suas cópias históricas e preserva os outros registros',()=>{
+ const b=boot();b.state.planning.history=[{week:b.state.currentPlanningWeekStart,tasks:[{id:1,text:'Antiga'}],studyBlocks:[{id:2,title:'Estudo'}],summary:{total:1}}];
+ const missions=b.window.buildDataCleanupState(['missions']);assert.equal(missions.planning.history[0].tasks.length,0);assert.equal(missions.planning.history[0].studyBlocks.length,1);
+ const studies=b.window.buildDataCleanupState(['study']);assert.equal(studies.planning.history[0].tasks.length,1);assert.equal(studies.planning.history[0].studyBlocks.length,0);assert.equal(b.state.planning.history[0].tasks.length,1);
+});
+
+test('cadastro real grava vínculo e pré-requisito junto da nova missão, sem alterar a demanda',()=>{
+ const b=boot();b.state.tasks=[{id:1,text:'Pré-requisito',day:'monday',completed:false}];b.state.operationalControl.demands=[{id:'r1',title:'Demanda',workflowStatus:'active'}];b.window.normalizePlanning();
+ for(const [id,value] of Object.entries({'ct-text':'Missão vinculada','ct-activity-type':'task','ct-day':'tuesday','ct-category':'life','ct-priority':'media','ct-complexity':'2','ct-time':'30','ct-impact-type':'drain','ct-nature':'normal','ct-start-time':'','ct-end-time':'','ct-subtasks':'','ct-radar':'r1'}))b.elements[id]={id,value};
+ b.c.document.querySelectorAll=selector=>selector.includes('ct-dependencies')?[{value:'1'}]:[];b.window.saveNewTask();
+ const created=b.state.tasks.find(row=>row.text==='Missão vinculada');assert.ok(created);assert.equal(created.radarDemandId,'r1');assert.deepEqual(plain(created.dependsOnTaskIds),['1']);assert.equal(created.planningWeekStart,b.state.currentPlanningWeekStart);assert.equal(created.completed,false);assert.equal(b.state.operationalControl.demands[0].workflowStatus,'active');
 });

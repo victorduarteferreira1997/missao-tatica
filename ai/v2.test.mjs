@@ -133,3 +133,8 @@ test('permissões RADAR e estudos alternam independentemente e seguem na autoriz
  assert.equal(a.getGrant().choices.allowRadarProposals,false);
  assert.equal(a.getGrant().choices.allowStudyProposals,true);
 });
+
+test('projeção IA acompanha a semana remarcada do Google quando a missão possui semana local antiga',async()=>{
+ const s=state();s.tasks[0].planningWeekStart='2026-10-05';s.tasks[0].googleCalendarSource='primary';s.tasks[0].googleCalendarWeekStart='2026-10-12';
+ const rows=await v2Project(s,grant());assert.equal(rows.find(row=>row.kind==='mission').fields.weekStart,'2026-10-12');
+});

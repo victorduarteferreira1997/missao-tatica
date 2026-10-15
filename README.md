@@ -29,10 +29,10 @@ fragmentos dos favoritos são preservados.
 
 ## Validação
 
-Requer Node.js 18 ou mais recente. Execute na raiz do repositório:
+A suíte completa, incluindo SQLite do D1, requer Node.js 24 ou mais recente. Execute na raiz do repositório:
 
 ```bash
-TZ=America/Sao_Paulo node --test app_integrity.test.mjs calendar_sync.test.mjs security.test.mjs gamification.test.mjs data_cleanup.test.mjs recovery_ui.test.mjs finance_study.test.mjs finance_export.test.mjs health_focus.test.mjs rewards_ui.test.mjs startup.test.mjs activity_types.test.mjs
+TZ=America/Sao_Paulo node --test '*.test.mjs' 'ai/*.test.mjs'
 ```
 
 Os testes cobrem regras, preservação de registros, migrações, inicialização,
@@ -93,10 +93,27 @@ sanitizadas, mas não cria acesso à agenda corporativa nem instala automações
 O teste real deve usar um evento genérico de teste: criar, converter uma vez,
 mudar dia/horário, mudar de semana, cancelar e sincronizar novamente.
 
-## Integração privada com IA (em preparação)
+## Integração privada com IA
 
-A ponte de GPT Actions, contexto selecionado e caixa de entrada estão em
-[ai/README.md](ai/README.md). A integração fica desligada por padrão até a
-validação da ponte Cloudflare Workers + D1 e da prévia; não está publicada
-nem conectada. O Firebase original permanece no plano Spark e sem acesso
-administrativo concedido à ponte.
+As consultas e propostas de missões, RADAR e estudos usam autorização por módulo
+e revisão no app. Detalhes operacionais estão em [ai/README.md](ai/README.md).
+A ponte não recebe acesso administrativo ao Firebase. Finanças e Corpo permanecem
+manuais. Alterações na autorização exigem reativar a conexão privada; a rotina de
+consulta não exige nova publicação manual da seleção semanal legada.
+
+## Planejamento integrado
+
+Use **Revisar planejamento** junto de Hoje, Semana e Radar para consultar alertas,
+limites diários, pendências anteriores e histórico. Na criação/edição de missão,
+abra **RADAR e pré-requisitos**. No RADAR, **Missões vinculadas** permite criar
+uma missão já relacionada à demanda.
+
+**Preparar próxima semana** abre uma revisão do fechamento: transfere pendências
+sem horários fixos, renova recorrências sem duplicar recompensas e guarda até
+12 semanas/320 KB. O histórico começa no primeiro fechamento e não reconstrói
+semanas antigas. A confirmação informa quais semanas antigas sairão da retenção.
+Eventos do Google continuam nas datas da agenda. Finanças e Corpo permanecem manuais.
+
+Os alertas do aplicativo são calculados por regras locais. No ChatGPT, peça ao
+plugin Missão Tática para revisar a semana com os módulos já autorizados. As
+consultas atuais não incluem vínculos, dependências ou histórico fechado.
