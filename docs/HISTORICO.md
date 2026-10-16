@@ -1,3 +1,13 @@
+## Exclusão de demandas do RADAR · 16/10/2026
+
+- Ações de demandas ativas e encerradas incluem Excluir, com confirmação do título
+  e quantidade de missões vinculadas, incluindo o histórico sem contar cópias
+  da mesma missão mais de uma vez.
+- Excluir remove a demanda e seus vínculos. Missões atuais e históricas,
+  pré-requisitos, recompensas, demais demandas e módulos são preservados.
+- Alterações na demanda, nos vínculos ou na sessão após a prévia impedem a
+  exclusão até nova revisão. Cancelar mantém os dados e a tela em uso.
+
 ## Planejamento integrado · 14/10/2026
 
 - Missões podem apontar para uma demanda do RADAR e até 20 pré-requisitos.

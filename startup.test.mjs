@@ -231,3 +231,32 @@ test('cadastro real grava vínculo e pré-requisito junto da nova missão, sem a
  b.c.document.querySelectorAll=selector=>selector.includes('ct-dependencies')?[{value:'1'}]:[];b.window.saveNewTask();
  const created=b.state.tasks.find(row=>row.text==='Missão vinculada');assert.ok(created);assert.equal(created.radarDemandId,'r1');assert.deepEqual(plain(created.dependsOnTaskIds),['1']);assert.equal(created.planningWeekStart,b.state.currentPlanningWeekStart);assert.equal(created.completed,false);assert.equal(b.state.operationalControl.demands[0].workflowStatus,'active');
 });
+
+function radarDeletionFixture(status='active'){
+ const b=boot();b.ui.mainView='control';b.state.userProfile={displayName:'Teste',gender:'feminino',configured:true};
+ b.state.operationalControl.demands=[{id:'radar-delete',title:'Demanda <teste>',workflowStatus:status},{id:'radar-keep',title:'Outra demanda',workflowStatus:'active'}];
+ b.state.tasks=[{id:1,text:'Missão atual',radarDemandId:'radar-delete',dependsOnTaskIds:['2'],notes:'Preservar notas',completed:false},{id:2,text:'Outra missão',radarDemandId:'radar-keep',completed:true}];
+ b.state.planning.history=[{week:'2026-09-28',tasks:[{id:1,text:'Missão atual no fechamento',radarDemandId:'radar-delete',completed:false},{id:3,text:'Missão histórica',radarDemandId:'radar-delete',completed:true,rewardedXp:100}],studyBlocks:[]}];
+ b.state.aiAppliedProposals={proof:1};b.window.stampCampaignRecords();return b;
+}
+test('exclusão RADAR revisa vínculos únicos, cancelar preserva dados e a mesma tela',()=>{
+ const b=radarDeletionFixture(),before=JSON.stringify(b.state);b.window.deleteOperationalDemand('radar-delete');assert.equal(JSON.stringify(b.state),before);assert.equal(b.ui.confirm.show,true);assert.match(b.ui.confirm.message,/2 missão\(ões\)/);assert.match(b.ui.confirm.message,/incluindo o histórico/);assert.match(b.ui.confirm.message,/não pode ser desfeita/);
+ b.window.handleConfirmResult(false);assert.equal(JSON.stringify(b.state),before);assert.equal(b.ui.mainView,'control');assert.match(b.elements.app.innerHTML,/window.deleteOperationalDemand/);assert.match(b.elements.app.innerHTML,/Demanda &lt;teste&gt;/);
+});
+test('excluir demanda ativa ou encerrada preserva missões, histórico, pré-requisitos, recibos e outros módulos',()=>{
+ for(const status of ['active','closed']){
+  const b=radarDeletionFixture(status),before=plain(b.state);b.window.deleteOperationalDemand('radar-delete');const confirm=b.ui.confirm.onConfirm;b.window.handleConfirmResult(true);
+  assert.deepEqual(b.state.operationalControl.demands.map(row=>row.id),['radar-keep']);
+  const expectedTasks=before.tasks.map(task=>({...task,...(task.radarDemandId==='radar-delete'?{radarDemandId:null}:{})}));assert.deepEqual(plain(b.state.tasks),expectedTasks);
+  const expectedHistory=before.planning.history.map(week=>({...week,tasks:week.tasks.map(task=>({...task,...(task.radarDemandId==='radar-delete'?{radarDemandId:null}:{})}))}));assert.deepEqual(plain(b.state.planning.history),expectedHistory);
+  for(const key of ['xp','coins','energy','prestige','studyData','financeData','healthData','aiAppliedProposals'])assert.deepEqual(plain(b.state[key]),before[key]);
+  assert.equal(b.ui.mainView,'control');const saved=JSON.parse(b.stored.get('planeamento_semanal_v11'));assert.ok(!saved.operationalControl.demands.some(row=>row.id==='radar-delete'));assert.equal(saved.tasks[0].radarDemandId,null);
+  const after=JSON.stringify(b.state);confirm();assert.equal(JSON.stringify(b.state),after);
+ }
+});
+test('demanda ou vínculos alterados após confirmar a prévia exigem nova revisão',()=>{
+ for(const change of [b=>{b.state.operationalControl.demands[0].title='Alterada';},b=>{b.state.tasks.push({id:10,text:'Nova vinculada',radarDemandId:'radar-delete'});}]){
+  const b=radarDeletionFixture();b.window.deleteOperationalDemand('radar-delete');change(b);const before=JSON.stringify(b.state);b.window.handleConfirmResult(true);assert.equal(JSON.stringify(b.state),before);assert.match(b.ui.alert.message,/mudaram/);
+ }
+ const b=radarDeletionFixture();b.window.deleteOperationalDemand('missing');assert.equal(b.ui.confirm.show,false);
+});

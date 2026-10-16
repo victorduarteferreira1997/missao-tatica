@@ -5948,6 +5948,47 @@
             );
         };
 
+        window.getOperationalDemandDeletionImpact = function(demandId) {
+            const demand = window.getOperationalDemand(demandId);
+            if (!demand) return null;
+            const tasks = [...(state.tasks || []), ...(state.planning?.history || []).flatMap(week => week.tasks || [])]
+                .filter(task => String(task.radarDemandId ?? '') === String(demandId));
+            return { demand, tasks, missionCount: new Set(tasks.map(task => String(task.id))).size,
+                signature: JSON.stringify({ demand, tasks }) };
+        };
+
+        window.deleteOperationalDemand = function(demandId) {
+            const impact = window.getOperationalDemandDeletionImpact(demandId);
+            if (!impact) return;
+            const originalState = state, ownerUid = currentUser?.uid;
+            const linkedMessage = impact.missionCount
+                ? `${impact.missionCount} missão(ões) vinculada(s), incluindo o histórico, serão preservadas. Apenas o vínculo com esta demanda será removido.`
+                : 'Nenhuma missão está vinculada a esta demanda.';
+            window.showConfirmModal(`Excluir definitivamente a demanda "${impact.demand.title}"?\n\n${linkedMessage}\n\nAs outras demandas, dependências, histórico das missões e recompensas serão mantidos. Esta exclusão não pode ser desfeita.`, () => {
+                if (state !== originalState || currentUser?.uid !== ownerUid) {
+                    window.showAlertModal('A sessão ou os dados mudaram. Revise a exclusão novamente.');
+                    return;
+                }
+                const latest = window.getOperationalDemandDeletionImpact(demandId);
+                if (!latest) return;
+                if (latest.signature !== impact.signature) {
+                    window.showAlertModal('A demanda ou suas missões vinculadas mudaram. Revise a exclusão novamente.');
+                    return;
+                }
+                window.getOperationalControl().demands = window.getOperationalControl().demands
+                    .filter(demand => String(demand.id) !== String(demandId));
+                latest.tasks.forEach(task => { task.radarDemandId = null; });
+                delete uiState.radarExpandedSections?.[`demand:${demandId}`];
+                if (String(uiState.editingOperationalDemandId) === String(demandId)) {
+                    uiState.showOperationalDemandModal = false;
+                    uiState.editingOperationalDemandId = null;
+                    uiState.operationalDemandDraft = null;
+                }
+                window.showToast('Demanda excluída', 'Missões preservadas; vínculos com a demanda removidos.', 'trash-2', 'text-slate-300');
+                window.persistOperationalControl('operational-demand-delete');
+            });
+        };
+
         window.reopenOperationalDemand = function(demandId) {
             const demand = window.getOperationalDemand(demandId);
             if (!demand || demand.workflowStatus !== 'closed') return;
@@ -6213,6 +6254,7 @@
                         <div class="ml-auto flex items-center gap-2">
                         <button type="button" onclick="window.openOperationalDemandModal(${demandArg})" class="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800"><i data-lucide="pencil" class="h-3.5 w-3.5"></i>Editar</button>
                         ${isClosed ? `<button type="button" onclick="window.reopenOperationalDemand(${demandArg})" class="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-sky-900/60 px-3 py-2 text-xs font-medium text-sky-200 hover:bg-sky-950/50"><i data-lucide="rotate-ccw" class="h-3.5 w-3.5"></i>Reabrir</button>` : `<button type="button" onclick="window.closeOperationalDemand(${demandArg})" class="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-emerald-200"><i data-lucide="check" class="h-3.5 w-3.5"></i>Encerrar</button>`}
+                        <button type="button" onclick="window.deleteOperationalDemand(${demandArg})" aria-label="Excluir definitivamente ${window.escapeHtml(demand.title)}" title="Excluir demanda" class="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-400 hover:bg-rose-950/30 hover:text-rose-300"><i data-lucide="trash-2" class="h-3.5 w-3.5"></i>Excluir</button>
                         </div>
                     </div>
                     ${window.renderDemandMissions?.(demand) || ''}
