@@ -16,10 +16,13 @@ export function createConfirmedStateWriter({getUser,writeAccount,writeSnapshot,o
                 // A bridge failure must not turn a confirmed Firebase write into a failed write.
                 try{Promise.resolve(onSaved(JSON.parse(payload),user.uid)).catch(onError);}catch(error){onError(error);}
                 return true;
-            }catch(error){if(getUser()===user)onStatus('Erro ao salvar');onError(error);return false;}
+            }catch(error){if(getUser()===user)onStatus('Erro ao salvar');onError(error,user);return false;}
         };
         const result=tail.then(work,work);tail=result.catch(()=>{});return result;
     }
     write.exclusive=function(work){const result=tail.then(work,work);tail=result.catch(()=>{});return result;};
+    // A stalled request from a logged-out session must not block a new account.
+    // Existing jobs keep their original user reference and fail their session checks.
+    write.reset = () => { tail = Promise.resolve(); };
     return write;
 }
