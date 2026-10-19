@@ -37,3 +37,35 @@ export function createAccountStorage(storage, ownerUid) {
         }
     };
 }
+
+// Recovery copies are never silently replaced. A full local buffer stops the
+// operation so the current account cache stays available until copies are saved.
+export function createAccountRecovery(storage, ownerUid, {maxCopies = 5, maxBytes = 2000000} = {}) {
+    const key = uid => 'missao_tatica_conflict_backup_' + uid;
+    function read(uid) {
+        const first = storage.getItem(key(uid));
+        const history = JSON.parse(storage.getItem(key(uid) + ':history') || '[]');
+        if (!Array.isArray(history) || history.some(item => typeof item !== 'string')) throw Error('Cópias de recuperação inválidas.');
+        const copies = [...(first ? [first] : []), ...history];
+        for (const raw of copies) validateAccountState(JSON.parse(raw), uid, {legacyOwner:true, ownerUid});
+        return copies;
+    }
+    return {
+        list(uid) {
+            return read(uid).map(raw => validateAccountState(JSON.parse(raw), uid, {legacyOwner:true, ownerUid}));
+        },
+        preserve(uid, value) {
+            const payload = JSON.stringify(validateAccountState(value, uid, {legacyOwner:true, ownerUid}));
+            const copies = read(uid);
+            if (copies.includes(payload)) return;
+            if (copies.length >= maxCopies || [...copies, payload].reduce((size, raw) => size + raw.length * 2, 0) > maxBytes) {
+                const error = Error('As cópias de recuperação atingiram o limite local. Baixe as cópias preservadas e limpe esse histórico antes de tentar novamente.');
+                error.code = 'recovery-full';
+                throw error;
+            }
+            if (!copies.length) storage.setItem(key(uid), payload);
+            else storage.setItem(key(uid) + ':history', JSON.stringify([...copies.slice(1), payload]));
+        },
+        clear(uid) { storage.removeItem(key(uid)); storage.removeItem(key(uid) + ':history'); }
+    };
+}

@@ -18,7 +18,7 @@ Implementação de desenvolvimento v1.9.62. Nenhuma mudança de produção foi r
 | Agenda | Motor separado a cada sessão, token em memória, mesma verificação de email Google já usada e mesmos escopos. Respostas antigas não recebem token, estado, configuração ou callbacks da conta seguinte. |
 | IA privada | Worker, D1, grants, tokens, banco separado e contratos existentes preservados. Botões e aplicação de propostas restritos ao proprietário; Sara não tem IA nesta fase. |
 
-A nuvem tem prioridade ao abrir uma conta. Uma cópia local diferente é preservada em `missao_tatica_conflict_backup_{uid}`; se for mais recente, a interface avisa. A versão anterior podia publicar automaticamente uma cópia local mais nova sobre nuvem sem revisão: essa mescla automática foi removida para evitar conflitos entre dispositivos. A recuperação é manual por backup do próprio titular.
+A nuvem tem prioridade ao abrir uma conta. Uma cópia local diferente é preservada em `missao_tatica_conflict_backup_{uid}` e cópias adicionais em `missao_tatica_conflict_backup_{uid}:history`; se for mais recente, a interface avisa. A versão anterior podia publicar automaticamente uma cópia local mais nova sobre nuvem sem revisão: essa mescla automática foi removida para evitar conflitos entre dispositivos. A recuperação é manual por backup do próprio titular. Cada conta guarda até cinco cópias distintas, com teto estimado de 2 MB no armazenamento local. A primeira nunca é substituída automaticamente. Cópias repetidas são deduplicadas; ao atingir o limite, o carregamento ou a restauração param antes de substituir o estado local. Os arquivos continuam disponíveis para download, inclusive na tela de login. Limpar esse histórico exige confirmação e preserva o estado atual da conta.
 
 O envelope remoto recebe `ownerUid` nas novas escritas. O proprietário continua lendo formatos legados sem esse campo e sem `ownerUid` dentro do JSON. Os demais usuários precisam de titular explícito. Não há reescrita em lote, troca de IDs ou limpeza de histórico. As regras não conseguem interpretar o JSON serializado: a identidade autenticada e o caminho protegem o acesso no servidor; o aplicativo confere também o titular interno para impedir importações acidentais.
 
@@ -30,9 +30,9 @@ Ambiente: Node 24.19, timezone America/Sao_Paulo; Firebase JS 11.6.1; Rules Unit
 
 | Verificação | Resultado |
 | --- | --- |
-| Suíte da aplicação, incluindo os 267 testes anteriores | 291 testes aprovados, zero falhas. |
+| Suíte da aplicação, incluindo os 267 testes anteriores | 296 testes aprovados, zero falhas. |
 | Regras reais compiladas/executadas em emulador local | 9 cenários aprovados; múltiplas operações permitidas/negadas por cenário. |
-| Interface em Chromium, com Firebase/Google simulados e rede externa interceptada | Perfil novo, missão, diálogos de Inteligência/Finanças/Corpo/Rituais, troca de conta e evento real de storage entre duas abas aprovados. |
+| Interface em Chromium, com Firebase/Google simulados e rede externa interceptada | Perfil novo, missão, diálogos de Inteligência/Finanças/Corpo/Rituais, troca de conta e evento real de storage entre duas abas, download de cópia preservada, cancelamento/confirmação de limpeza e retomada do carregamento aprovados. |
 | Agenda | Regressões existentes e quatro cenários novos de isolamento de OAuth/token/respostas aprovados dentro da suíte. |
 | Integração IA | Suíte existente de contratos/Worker/D1/propostas e guardas da aplicação aprovada; nenhuma chamada real foi feita com dados pessoais. |
 

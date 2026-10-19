@@ -14,7 +14,7 @@ function engine() {
     let persisted;
     const arrays = keys => Object.fromEntries(keys.map(key => [key, [{ id: key, amount: 20, campaignId: 1 }]]));
     const ctx = {
-        currentUser:{uid: 'test-owner'}, sessionGeneration:1, sessionReady:true, APP_OWNER_UID:'test-owner',validateAccountState,
+        accountRecovery:{preserve(){},list:()=>[]},currentUser:{uid: 'test-owner'}, sessionGeneration:1, sessionReady:true, APP_OWNER_UID:'test-owner',validateAccountState,
         isSession:(user,generation)=>user===ctx.currentUser && generation===ctx.sessionGeneration,
         saveAccountCache:()=>{persisted=JSON.stringify(ctx.state);return true;},
         state: {

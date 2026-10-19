@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {boot,plain} from './test-support/app_boot.mjs';
 import {AI_OWNER_UID as owner} from './ai/contract.v1.js';
-import {createAccountStorage,accountStateKey,LEGACY_STATE_KEY,AUTH_TRANSITION_KEY,validateAccountState} from './account_storage.v1.js';
+import {createAccountStorage,createAccountRecovery,accountStateKey,LEGACY_STATE_KEY,AUTH_TRANSITION_KEY,validateAccountState} from './account_storage.v1.js';
 const sara='fictional-sara',user=uid=>({uid,email:uid+'@example.test',displayName:'Pessoa fictícia'});
 const snap=row=>({exists:()=>Boolean(row),data:()=>plain(row)});
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
@@ -155,4 +155,44 @@ test('logout remains possible during a stalled network write and preserves the l
  const leaving=b.window.logout();await tick();for(const callback of [...b.timers.values()])await callback();await leaving;
  assert.equal(b.elements['app-wrapper'].style.display,'none');assert.equal(b.getState().tasks.length,0);assert.equal(JSON.parse(b.stored.get(accountStateKey(owner))).tasks[0].id,42);
  wait.resolve();await tick();
+});
+
+test('reopening twice never replaces the preserved unsynchronized recovery snapshot',async()=>{
+ const b=fixture({[path(owner)]:row(owner,{tasks:[{id:8,text:'Nuvem',day:'monday'}]})});
+ b.stored.set(LEGACY_STATE_KEY,JSON.stringify({tasks:[{id:4,text:'Não sincronizada',day:'monday'}],lastSavedAt:'2026-10-19T12:00:00Z'}));
+ await b.c.authCallback(user(owner));const backup=b.stored.get('missao_tatica_conflict_backup_'+owner);
+ await b.c.authCallback(user(owner));
+ assert.equal(b.stored.get('missao_tatica_conflict_backup_'+owner),backup);
+});
+
+test('recovery history deduplicates, isolates UIDs and preserves every distinct copy',()=>{
+ const values=new Map(),storage={getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v),removeItem:k=>values.delete(k)},recovery=createAccountRecovery(storage,owner);
+ const first={ownerUid:owner,tasks:[{id:1}]},second={ownerUid:owner,tasks:[{id:2}]};
+ recovery.preserve(owner,first);const bytes=values.get('missao_tatica_conflict_backup_'+owner);
+ recovery.preserve(owner,second);recovery.preserve(owner,second);recovery.preserve(sara,{ownerUid:sara,tasks:[]});
+ assert.equal(recovery.list(owner).length,2);assert.equal(recovery.list(sara).length,1);assert.equal(values.get('missao_tatica_conflict_backup_'+owner),bytes);
+ assert.throws(()=>recovery.preserve(sara,first));recovery.clear(sara);assert.equal(recovery.list(sara).length,0);assert.equal(recovery.list(owner).length,2);
+});
+test('recovery count/size limits and storage errors never evict older copies',()=>{
+ const values=new Map(),storage={getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v),removeItem:k=>values.delete(k)},recovery=createAccountRecovery(storage,owner,{maxCopies:1});
+ const first={ownerUid:owner,tasks:[{id:1}]};recovery.preserve(owner,first);
+ assert.throws(()=>recovery.preserve(owner,{ownerUid:owner,tasks:[{id:2}]}),/limite/);assert.equal(recovery.list(owner)[0].tasks[0].id,1);
+ const small=createAccountRecovery(storage,owner,{maxBytes:5});assert.throws(()=>small.preserve(sara,{ownerUid:sara,tasks:[]}),/limite/);assert.equal(small.list(sara).length,0);
+ storage.setItem=()=>{throw Error('quota');};assert.throws(()=>createAccountRecovery(storage,owner).preserve(owner,{ownerUid:owner,tasks:[{id:2}]}),/quota/);assert.equal(recovery.list(owner).length,1);
+});
+test('full recovery buffer keeps current local data and provides downloads/confirmation on the login screen',async()=>{
+ const b=fixture({[path(owner)]:row(owner)}),recovery=createAccountRecovery(b.c.localStorage,owner);
+ for(let n=0;n<5;n++)recovery.preserve(owner,{ownerUid:owner,tasks:[{id:n}]});
+ const pending=JSON.stringify({ownerUid:owner,tasks:[{id:99,text:'Pendente',day:'monday'}]});b.stored.set(accountStateKey(owner),pending);
+ await b.c.authCallback(user(owner));assert.equal(b.elements['app-wrapper'].style.display,'none');assert.equal(b.stored.get(accountStateKey(owner)),pending);assert.match(b.elements['auth-recovery-copies'].innerHTML,/exportLocalConflictBackup/);
+ let exported;b.c.document.createElement=()=>({setAttribute:(k,v)=>{if(k==='href')exported=JSON.parse(decodeURIComponent(v.split(',')[1]));},click(){}});
+ b.window.exportLocalConflictBackup(0);assert.equal(exported.tasks[0].id,0);b.window.exportLocalConflictBackup(4);assert.equal(exported.tasks[0].id,4);
+ b.window.clearLocalConflictBackups();assert.match(b.elements['auth-recovery-copies'].innerHTML,/alertdialog/);b.window.cancelLocalRecoveryCleanup();assert.equal(recovery.list(owner).length,5);
+ b.window.clearLocalConflictBackups();b.window.confirmLocalRecoveryCleanup();assert.equal(recovery.list(owner).length,0);assert.equal(b.stored.get(accountStateKey(owner)),pending);
+ await b.window.retryAccountLoad();assert.equal(b.elements['app-wrapper'].style.display,'block');assert.equal(recovery.list(owner)[0].tasks[0].id,99);
+});
+test('recovery cleanup confirmation is invalidated when accounts switch',async()=>{
+ const b=fixture({[path(owner)]:row(owner),[path(sara)]:row(sara)}),recovery=createAccountRecovery(b.c.localStorage,owner);
+ recovery.preserve(owner,{ownerUid:owner,tasks:[{id:1}]});await b.c.authCallback(user(owner));b.window.clearLocalConflictBackups();const callback=b.getUI().confirm.onConfirm;
+ await b.c.authCallback(user(sara));callback();assert.ok(recovery.list(owner).some(s=>s.tasks[0]?.id===1));
 });

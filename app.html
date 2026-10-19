@@ -84,6 +84,7 @@
                 Login alternativo por redirecionamento
             </button>
             <button id="auth-retry-button" type="button" style="display:none" onclick="window.retryAccountLoad()" class="w-full mt-3 border border-slate-700 rounded-xl px-4 py-2 text-sm">Tentar carregar novamente</button>
+            <div id="auth-recovery-copies" class="mt-3 text-left"></div>
             <p id="auth-access-message" class="hidden mt-4 rounded-xl border px-3 py-2 text-xs font-bold leading-relaxed" role="alert"></p>
         </div>
     </div>
@@ -116,7 +117,7 @@
         import { createAiBrowserStore } from './ai/bridge_rest.v1.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { initializeAppCheck, ReCaptchaEnterpriseProvider, getToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
-        import { createAccountStorage, validateAccountState, AUTH_TRANSITION_KEY } from './account_storage.v1.js';
+        import { createAccountStorage, createAccountRecovery, validateAccountState, AUTH_TRANSITION_KEY } from './account_storage.v1.js';
         import { authorizeAccount } from './account_access.v1.js';
         import { getAuth, signInWithPopup, signInWithRedirect, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDocFromServer, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -404,6 +405,7 @@
         let state = null; // No personal cache is read before authorization.
         let sessionGeneration = 0, sessionReady = false;
         const accountStorage = createAccountStorage(localStorage, APP_OWNER_UID);
+        const accountRecovery = createAccountRecovery(localStorage, APP_OWNER_UID);
         const isSession = (user, generation = sessionGeneration) => Boolean(user && currentUser === user && generation === sessionGeneration);
         window.guardAccountCallback = callback => {
             const generation = sessionGeneration;
@@ -1701,7 +1703,7 @@
                     if (row.aiApplications) cloudState.aiAppliedProposals = Object.fromEntries(Object.entries(row.aiApplications).map(([id,r])=>[id,r.taskId]));
                     // Cloud is authoritative; preserve any different local snapshot for recovery.
                     if (localState && JSON.stringify(localState) !== JSON.stringify(cloudState)) {
-                        localStorage.setItem('missao_tatica_conflict_backup_'+uid, JSON.stringify(localState));
+                        accountRecovery.preserve(uid, localState);
                         if (Date.parse(localState.lastSavedAt || localState.updatedAt || 0) > Date.parse(cloudState.lastSavedAt || row.updatedAt || 0) + 1500)
                             window.showAlertModal('Os dados da nuvem foram carregados. A cópia local foi preservada; use Baixar cópia local preservada no rodapé para recuperar alterações não sincronizadas.');
                     }
@@ -1726,7 +1728,8 @@
                 if (isSession(user, generation)) {
                     sessionReady = false;
                     window.updateSyncStatus('Erro de conexão');
-                    setAuthAccessMessage('Não foi possível conferir os dados desta conta. Sua cópia foi preservada. Tente carregar novamente.', true);
+                    setAuthAccessMessage(error.code === 'recovery-full' ? error.message : 'Não foi possível conferir os dados desta conta. Sua cópia foi preservada. Tente carregar novamente.', true);
+                    document.getElementById('auth-recovery-copies').innerHTML = window.renderLocalConflictBackupButton();
                     document.getElementById('auth-retry-button').style.display = 'block';
                 }
                 return false;
@@ -1814,6 +1817,7 @@
         };
 
         function clearAccountSession() {
+            document.getElementById('auth-recovery-copies').innerHTML = '';
             document.getElementById('auth-retry-button').style.display = 'none';
             document.getElementById('app-wrapper').style.display = 'none';
             document.getElementById('app').innerHTML = '';
@@ -1903,8 +1907,43 @@
             dlAnchorElem.click();
         };
 
-        window.renderLocalConflictBackupButton=()=>currentUser&&localStorage.getItem('missao_tatica_conflict_backup_'+currentUser.uid)?'<button type="button" onclick="window.exportLocalConflictBackup()" class="text-xs text-amber-300">Baixar cópia local preservada</button>':'';
-        window.exportLocalConflictBackup=()=>{if(!currentUser)return;const data=localStorage.getItem('missao_tatica_conflict_backup_'+currentUser.uid);if(!data)return;const a=document.createElement('a');a.setAttribute('href','data:text/json;charset=utf-8,'+encodeURIComponent(data));a.setAttribute('download','missao_tatica_copia_local_preservada.json');a.click();};
+        window.renderLocalConflictBackupButton = () => {
+            if (!currentUser) return '';
+            let copies; try { copies = accountRecovery.list(currentUser.uid); } catch { return ''; }
+            if (!copies.length) return '';
+            return `<details class="text-xs text-amber-300"><summary class="cursor-pointer py-2">Cópias locais preservadas (${copies.length})</summary><div class="flex flex-col gap-2">${copies.map((copy,index) => `<button type="button" onclick="window.exportLocalConflictBackup(${index})" class="text-left underline">Baixar cópia ${index+1} · ${window.escapeHtml(copy.lastSavedAt || copy.updatedAt || 'Sem data')}</button>`).join('')}<button type="button" onclick="window.clearLocalConflictBackups()" class="text-left text-slate-400">Limpar cópias após baixar</button></div></details>`;
+        };
+        window.exportLocalConflictBackup = (index = 0) => {
+            if (!currentUser || !Number.isInteger(index) || index < 0) return;
+            const copy = accountRecovery.list(currentUser.uid)[index]; if (!copy) return;
+            const a = document.createElement('a');
+            a.setAttribute('href', 'data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(copy)));
+            a.setAttribute('download', 'missao_tatica_copia_local_preservada_'+(index+1)+'.json'); a.click();
+        };
+        window.clearLocalConflictBackups = () => {
+            if (!currentUser) return;
+            const user = currentUser, generation = sessionGeneration;
+            const message = 'Você já baixou as cópias que precisa guardar? Limpar o histórico de recuperação apaga essas cópias deste navegador. Os dados atuais da conta serão mantidos.';
+            const clear = () => {
+                if (!isSession(user, generation)) return;
+                accountRecovery.clear(user.uid);
+                document.getElementById('auth-recovery-copies').innerHTML = '';
+                if (sessionReady) render();
+            };
+            if (sessionReady) window.showConfirmModal(message, clear);
+            else {
+                uiState.recoveryCleanup = clear;
+                document.getElementById('auth-recovery-copies').innerHTML = `<section role="alertdialog" aria-labelledby="recovery-clear-title" class="rounded-xl border border-amber-800 p-3 text-sm"><h2 id="recovery-clear-title">Limpar cópias de recuperação?</h2><p>${window.escapeHtml(message)}</p><div class="mt-3 flex gap-3"><button type="button" onclick="window.cancelLocalRecoveryCleanup()">Cancelar</button><button type="button" onclick="window.confirmLocalRecoveryCleanup()">Já baixei as cópias. Limpar histórico</button></div></section>`;
+            }
+        };
+        window.cancelLocalRecoveryCleanup = () => {
+            uiState.recoveryCleanup = null;
+            document.getElementById('auth-recovery-copies').innerHTML = window.renderLocalConflictBackupButton();
+        };
+        window.confirmLocalRecoveryCleanup = () => {
+            const callback = uiState.recoveryCleanup; uiState.recoveryCleanup = null;
+            callback?.();
+        };
         window.triggerImport = function() { if (sessionReady) document.getElementById('import-file').click(); };
 
         window.importData = function(event) {
@@ -1922,7 +1961,8 @@
                     const importedState = validateAccountState(candidate, user.uid, { legacyOwner: legacy, ownerUid: APP_OWNER_UID });
                     window.showConfirmModal(legacy ? 'Backup antigo sem titular. Confirma que este arquivo é seu? A restauração substituirá os dados desta conta.' : 'Restaurar o backup desta conta? Os dados atuais serão substituídos.', () => {
                         if (!isSession(user, generation) || !sessionReady) return;
-                        localStorage.setItem('missao_tatica_conflict_backup_'+user.uid, JSON.stringify(state));
+                        try { accountRecovery.preserve(user.uid, state); }
+                        catch (error) { window.showAlertModal(error.message || 'Não foi possível preservar a cópia anterior.'); return; }
                         importedState.aiAppliedProposals = {...(importedState.aiAppliedProposals||{}), ...(state.aiAppliedProposals||{})};
                         state = importedState; window.validateState();
                         window.saveStateNow(false, 'backup-restore').then(saved => {

@@ -55,6 +55,25 @@ try{
  // A second tab changes account on the same origin: storage events hide the first.
  const second=await context.newPage();await second.goto(origin+'/app.html');await second.waitForFunction(()=>!!window.__auth);activeAccount=sara;await second.evaluate(async uid=>window.__auth({uid,email:uid+'@example.test',getIdToken:async()=>'synthetic'}),sara);
  await page.waitForFunction(()=>document.getElementById('app-wrapper').style.display==='none');assert.equal(await page.locator('#app').textContent(),'');
+ // A full recovery buffer must expose safe download and confirmation on the
+ // login overlay, before the personal wrapper can be shown.
+ await page.evaluate(uid=>{
+  const copies=Array.from({length:5},(_,id)=>JSON.stringify({ownerUid:uid,tasks:[{id}]}));
+  localStorage.setItem('missao_tatica_conflict_backup_'+uid,copies[0]);
+  localStorage.setItem('missao_tatica_conflict_backup_'+uid+':history',JSON.stringify(copies.slice(1)));
+  localStorage.setItem('missao_tatica:v2:state:'+uid,JSON.stringify({ownerUid:uid,tasks:[{id:99,text:'Cópia pendente',day:'monday'}]}));
+ },sara);
+ await login(sara);assert.equal(await page.locator('#app-wrapper').isVisible(),false);
+ await page.locator('#auth-recovery-copies summary').click();
+ const downloadEvent=page.waitForEvent('download');await page.locator('#auth-recovery-copies [onclick="window.exportLocalConflictBackup(0)"]').click();
+ const download=await downloadEvent;assert.equal(JSON.parse(await readFile(await download.path(),'utf8')).tasks[0].id,0);
+ await page.locator('#auth-recovery-copies [onclick="window.clearLocalConflictBackups()"]').click();
+ await page.getByRole('button',{name:'Cancelar',exact:true}).click();
+ await page.locator('#auth-recovery-copies summary').click();
+ await page.locator('#auth-recovery-copies [onclick="window.clearLocalConflictBackups()"]').click();
+ await page.getByRole('button',{name:'Já baixei as cópias. Limpar histórico',exact:true}).click();
+ await page.locator('#auth-retry-button').click();await page.waitForFunction(()=>document.getElementById('app-wrapper').style.display==='block');
+ assert.equal(await page.evaluate(uid=>JSON.parse(localStorage.getItem('missao_tatica_conflict_backup_'+uid)).tasks[0].id,sara),99);
  assert.equal(aiRequests.includes(sara),false);assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
- console.log('Browser: authorized signup/profile, mission creation, module dialogs, account switching and real two-tab storage events passed. Firebase/Google were mocked; no production request was allowed.');
+ console.log('Browser: authorized signup/profile, mission creation, module dialogs, account switching real two-tab storage events and bounded recovery download/confirmation passed. Firebase/Google were mocked; no production request was allowed.');
 }catch(error){console.error({browserErrors:errors,unexpectedExternal:external});throw error;}finally{await browser.close();await new Promise(r=>server.close(r));}
