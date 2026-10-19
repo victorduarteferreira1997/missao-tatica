@@ -770,7 +770,7 @@ test('feminino funciona na campanha atual, catálogo, emblemas, histórico e per
 
 test('perfil permite prévia sem salvar, preserva preferências e valida nome', () => {
     const ctx = engine({ xp: 32287, level: 10, userProfile: { displayName: 'Victor', gender: 'masculino', configured: true, extraPreference: 'preservar' } });
-    const fields = { 'profile-display-name': { value: 'Ana' }, 'profile-preview-title': {}, 'profile-preview-name': {} };
+    const fields = { 'profile-display-name': { value: 'Ana' }, 'profile-preview-title': {style:{}}, 'profile-preview-name': {} };
     let selectedGender = 'feminino';
     ctx.document = { getElementById: id => fields[id], querySelector: () => ({ value: selectedGender }) };
     ctx.window.updateProfilePreview();
@@ -846,4 +846,19 @@ test('gravação real registra promoção, origem e metadados na mesma cópia pe
     assert.match(persisted.prestige.levelEvents.find(e => e.level === 11).date, /^\d{4}-/);
     assert.equal(persisted.userProfile.gender, 'feminino');
     assert.equal(ctx.window.getRankName(), 'Estrategista Mestra');
+});
+
+
+test('initial profile chooses and previews a campaign without mutating XP or starting another campaign',()=>{
+ const plain=value=>JSON.parse(JSON.stringify(value));
+ const ctx=engine({xp:0,level:1,userProfile:{displayName:'',gender:'',configured:false}});
+ const fields={'profile-display-name':{value:'Sara'},'profile-campaign-theme':{value:'navy'},'profile-preview-title':{style:{}},'profile-preview-name':{},'profile-preview-campaign':{}};
+ ctx.document={getElementById:id=>fields[id],querySelector:()=>({value:'feminino'})};
+ ctx.window.normalizePrestige();const before=plain(ctx.state.prestige);assert.match(ctx.window.renderProfileModal(),/id="profile-campaign-theme"/);
+ ctx.window.updateProfilePreview();assert.match(fields['profile-preview-title'].textContent,/Marinheira/);assert.match(fields['profile-preview-campaign'].textContent,/Marinha/);assert.deepEqual(plain(ctx.state.prestige),before);
+ fields['profile-campaign-theme'].value='invalid';ctx.window.saveUserProfile();assert.equal(ctx.state.userProfile.configured,false);
+ fields['profile-campaign-theme'].value='navy';ctx.window.saveUserProfile();assert.equal(ctx.state.prestige.themeId,'navy');assert.equal(ctx.state.userProfile.configured,true);assert.equal(ctx.state.prestige.campaign,before.campaign);assert.equal(ctx.state.xp,0);
+ assert.ok(!ctx.window.renderProfileModal().includes('id="profile-campaign-theme"'));
+ // A stale select cannot alter the campaign while editing an existing profile.
+ fields['profile-campaign-theme'].value='greek';ctx.window.saveUserProfile();assert.equal(ctx.state.prestige.themeId,'navy');
 });
