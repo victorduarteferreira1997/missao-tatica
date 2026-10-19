@@ -8,6 +8,7 @@ import {fileURLToPath} from 'node:url';
 import {resolve,extname} from 'node:path';
 import {boot,plain} from './app_boot.mjs';
 import {AI_OWNER_UID as owner} from '../ai/contract.v1.js';
+import {v2ProposalRequest} from '../ai/v2/proposals.js';
 const require=createRequire(new URL('../security-tests/package.json',import.meta.url));
 const {chromium}=require('playwright');
 const root=fileURLToPath(new URL('..',import.meta.url)).replace(/\/$/,''),sara='fictional-sara';
@@ -19,6 +20,8 @@ const server=createServer(async(req,res)=>{
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({headless:true});
 const context=await browser.newContext({viewport:{width:1280,height:900}}),page=await context.newPage(),errors=[],external=[],aiRequests=[];
+const proposalId='f'.repeat(64),proposalEdits=[];
+let proposal={id:proposalId,grantId:'browser-review-grant-001',grantVersion:1,version:1,kind:'mission.create',status:'pending',createdAt:'2026-10-19T12:00:00.000Z',expiresAt:'2026-12-01T12:00:00.000Z',reviewedAt:null,basis:null,conflictCheck:'unverified',applyEligible:true,fields:{title:'Proposta para editar',weekStart:'2026-10-19',day:'monday',category:'life',durationMinutes:30,startTime:'09:00',endTime:'09:30',subtasks:['Conferir']}};
 let activeAccount='';page.on('pageerror',error=>errors.push(error.message));
 await context.addInitScript(({owner,fixture})=>{
  window.__rows=JSON.parse(sessionStorage.getItem('test-cloud-rows')||'null')||{[`users/${owner}/state/main`]:{data:JSON.stringify(fixture),updatedAt:'2026-10-06T22:30:00Z',revision:1,aiApplications:{fixtureProof:{taskId:1}}}};window.__writes=[];
@@ -37,6 +40,13 @@ await context.route('**/*',async route=>{
  if(url.includes('unpkg.com/lucide'))return route.fulfill({contentType:'text/javascript',body:'window.lucide={createIcons(){}};'});
  if(url.includes('cdn.tailwindcss.com'))return route.fulfill({contentType:'text/javascript',body:"const style=document.createElement('style');style.textContent='.hidden{display:none}';document.head.append(style);"});
  if(url.includes('accounts.google.com/gsi/client'))return route.fulfill({contentType:'text/javascript',body:''});
+ if(url.includes('/v2/app/proposals')){
+  aiRequests.push(activeAccount);const request=route.request(),path=new URL(url).pathname;let result;
+  if(request.method()==='GET')result={schemaVersion:2,items:proposal.status===(new URL(url).searchParams.get('status')||'pending')?[proposal]:[],nextCursor:null};
+  else if(path.endsWith('/reserve')){const body=request.postDataJSON();const fields=v2ProposalRequest({idempotencyKey:'browser-edited-fields',kind:proposal.kind,fields:body.fields},proposal).fields;proposalEdits.push(fields);proposal={...proposal,status:'applying',fields,applicationId:body.applicationId,version:proposal.version+1};result={schemaVersion:2,proposal};}
+  else if(path.endsWith('/acknowledge')){proposal={...proposal,status:'accepted',reviewedAt:'2026-10-19T12:30:00.000Z'};result={schemaVersion:2,proposal};}
+  if(result)return route.fulfill({contentType:'application/json',body:JSON.stringify(result)});
+ }
  if(url.includes('/v2/')){aiRequests.push(activeAccount);return route.fulfill({status:403,contentType:'application/json',body:'{"error":"isolated test"}'});}
  external.push(url);return route.abort();
 });
@@ -52,13 +62,28 @@ try{
  for(const module of ['Study','Finance','Health','Ritual']){await page.evaluate(module=>window['toggle'+module+'Modal'](),module);assert.ok(await page.getByRole('dialog').count());await page.evaluate(module=>window['toggle'+module+'Modal'](),module);}
  const saraState=await page.evaluate(uid=>JSON.parse(localStorage.getItem('missao_tatica:v2:state:'+uid)),sara);assert.equal(saraState.tasks[0].text,'Missão exclusiva da Sara');assert.equal(saraState.userProfile.displayName,'Sara fictícia');assert.equal(saraState.prestige.themeId,'navy');
  await login(owner);assert.equal(await page.getByText('Missão exclusiva da Sara',{exact:true}).count(),0);assert.equal(await page.evaluate(uid=>JSON.parse(localStorage.getItem('missao_tatica:v2:state:'+uid)).tasks[0].text,owner),'Missão exclusiva do proprietário');
+ // Exercise actual input events, inline validation, review submission, reservation and cloud application.
+ await page.evaluate(()=>window.openAiV2Proposals());await page.getByRole('button',{name:'Revisar e cadastrar',exact:true}).click();
+ await page.locator('#ai-v2-review-durationMinutes').fill('0');await page.locator('#ai-v2-review-submit').click();
+ await page.waitForFunction(()=>document.getElementById('ai-v2-review-feedback')?.getAttribute('role')==='alert');
+ assert.match(await page.locator('#ai-v2-review-feedback').textContent(),/5.*240/);assert.equal(proposalEdits.length,0);
+ await page.locator('#ai-v2-review-title').fill('  Missão editada no navegador  ');await page.locator('#ai-v2-review-category').selectOption('work');
+ await page.locator('#ai-v2-review-weekStart').fill('2026-10-26');await page.locator('#ai-v2-review-day').selectOption('tuesday');
+ await page.locator('#ai-v2-review-durationMinutes').fill('60');assert.equal(await page.locator('#ai-v2-review-endTime').inputValue(),'10:00');
+ await page.locator('#ai-v2-review-startTime').fill('10:00');assert.equal(await page.locator('#ai-v2-review-endTime').inputValue(),'11:00');
+ await page.locator('#ai-v2-review-endTime').fill('11:15');assert.equal(await page.locator('#ai-v2-review-durationMinutes').inputValue(),'75');
+ await page.locator('#ai-v2-review-subtasks').fill(' Primeiro passo \n\n Segundo passo ');
+ await page.locator('#ai-v2-review-submit').click();await page.waitForFunction(()=>document.getElementById('ai-v2-proposals-status')?.textContent.includes('Missão cadastrada e salva'));
+ const edited=await page.evaluate(uid=>JSON.parse(window.__rows[`users/${uid}/state/main`].data).tasks.find(task=>task.aiV2ProposalId),owner);
+ assert.equal(edited.text,'Missão editada no navegador');assert.equal(edited.category,'work');assert.equal(edited.planningWeekStart,'2026-10-26');assert.equal(edited.day,'tuesday');assert.equal(edited.time,'75 min');assert.equal(edited.startTime,'10:00');assert.equal(edited.endTime,'11:15');assert.deepEqual(edited.subtasks.map(s=>s.text),['Primeiro passo','Segundo passo']);assert.equal(proposalEdits.length,1);
+ assert.equal(await page.locator('#ai-v2-proposals-dialog').count(),1);await page.getByRole('button',{name:'Fechar propostas',exact:true}).click();
  // Reset an account containing AI receipts; reopen and verify the cloud remains empty.
  await page.evaluate(()=>window.openDataManager());await page.getByRole('button',{name:'Selecionar tudo',exact:true}).click();await page.getByRole('button',{name:'Revisar limpeza',exact:true}).click();
  await page.getByRole('button',{name:'Confirmar',exact:true}).click();await page.waitForFunction(()=>!document.getElementById('cleanup-saving-title'));
  await page.locator('#profile-display-name').fill('Novo proprietário');await page.locator('input[name="profile-gender"][value="masculino"]').check();await page.locator('#profile-campaign-theme').selectOption('greek');
  await page.getByRole('button',{name:'Salvar perfil',exact:true}).click();assert.equal(await page.evaluate(()=>window.saveStateNow(true)),true);
  const resetRows=await page.evaluate(()=>window.__rows);const resetState=JSON.parse(resetRows[`users/${owner}/state/main`].data);
- assert.deepEqual(resetState.tasks,[]);assert.equal(resetState.prestige.themeId,'greek');assert.equal(resetState.userProfile.displayName,'Novo proprietário');assert.deepEqual(resetState.aiAppliedProposals,{fixtureProof:1});
+ assert.deepEqual(resetState.tasks,[]);assert.equal(resetState.prestige.themeId,'greek');assert.equal(resetState.userProfile.displayName,'Novo proprietário');assert.equal(resetState.aiAppliedProposals.fixtureProof,1);assert.equal(resetState.aiAppliedProposals[proposalId],edited.id);
  // The mock server snapshots persist across a genuine document reload.
  await page.evaluate(rows=>sessionStorage.setItem('test-cloud-rows',JSON.stringify(rows)),resetRows);
  await page.reload();await page.waitForFunction(()=>!!window.__auth);await login(owner);
@@ -87,5 +112,5 @@ try{
  await page.locator('#auth-retry-button').click();await page.waitForFunction(()=>document.getElementById('app-wrapper').style.display==='block');
  assert.equal(await page.evaluate(uid=>JSON.parse(localStorage.getItem('missao_tatica_conflict_backup_'+uid)).tasks[0].id,sara),99);
  assert.equal(aiRequests.includes(sara),false);assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
- console.log('Browser: confirmed full reset with AI receipts, persisted campaign selection after reload, authorized signup/profile, mission creation, module dialogs, account switching real two-tab storage events and bounded recovery download/confirmation passed. Firebase/Google were mocked; no production request was allowed.');
+ console.log('Browser: edited AI proposal validation and confirmed cloud submission, confirmed full reset with AI receipts, persisted campaign selection after reload, authorized signup/profile, mission creation, module dialogs, account switching real two-tab storage events and bounded recovery download/confirmation passed. Firebase/Google were mocked; no production request was allowed.');
 }catch(error){console.error({browserErrors:errors,unexpectedExternal:external});throw error;}finally{await browser.close();await new Promise(r=>server.close(r));}

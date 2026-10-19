@@ -1,3 +1,20 @@
+## Cadastro de propostas editadas · v1.9.64 · 19/10/2026
+
+- O título editado é aparado antes da validação, assim como as subtarefas. Espaços
+  periféricos não impedem o cadastro de uma missão válida.
+- Início, fim e duração são sincronizados no editor de missão, com os valores
+  relacionados atualizados na tela sem perder foco ou reconstruir o formulário.
+  Horários inválidos ou fora do mesmo dia continuam sendo recusados.
+- Validação explícita informa título, semana, categoria, duração, horários e limite
+  de subtarefas. O formulário usa `novalidate` para que uma restrição nativa não
+  bloqueie silenciosamente o envio; o contrato continua validando os dados.
+- Progresso e erros aparecem junto ao botão na revisão de Missões, RADAR e Estudos.
+  Os campos e a fila permanecem abertos após falha. Os módulos alterados usam URLs
+  de importação com versão para evitar a reutilização de arquivos antigos.
+- Validação: 302 testes aprovados, incluindo três regressões que falhavam antes
+  da correção. Chromium confirma entrada real nos campos, erro visível, ajuste
+  dos horários e gravação da missão editada; Firebase/Google/Worker simulados.
+
 ## Reinício confirmado e campanha no perfil · v1.9.63 · 19/10/2026
 
 - A limpeza completa mantém `aiAppliedProposals`, o índice técnico dos comprovantes

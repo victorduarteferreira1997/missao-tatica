@@ -22,9 +22,16 @@ A integração privada com IA continua exclusiva do proprietário.
 - [Aplicação oficial](https://victorduarteferreira1997.github.io/missao-tatica/)
 - [Endereço direto](https://victorduarteferreira1997.github.io/missao-tatica/app.html)
 
-A versão atual é **v1.9.63**. A raiz, `teste_novos_modulos.html` e as prévias
+A versão atual é **v1.9.64**. A raiz, `teste_novos_modulos.html` e as prévias
 estáticas v1.9.11/v1.9.13 encaminham para a aplicação oficial. Parâmetros e
 fragmentos dos favoritos são preservados.
+
+## Revisão das propostas da IA · v1.9.64
+
+A revisão normaliza espaços do título e das subtarefas antes de cadastrar.
+Alterar início ou duração ajusta o fim visível; alterar o fim recalcula a duração.
+Erros são específicos e aparecem junto ao botão, com o rascunho preservado.
+O cadastro mantém a fila aberta e confirma o salvamento na nuvem.
 
 ## Reinício e perfil · v1.9.63
 
