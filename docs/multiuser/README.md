@@ -7,7 +7,7 @@ Implementação de desenvolvimento v1.9.62. Nenhuma mudança de produção foi r
 | Área | Implementação |
 | --- | --- |
 | Identidade | Firebase Authentication Google; UID original preservado. |
-| Autorização | Proprietário original; Sara mediante documento administrativo `appAccess/{UID}` com `enabled: true` e `role: member`. Sem botão de cadastro público ou concessão de acesso pelo navegador. |
+| Autorização | Proprietário original com UID e email originais nas regras; Sara mediante documento administrativo `appAccess/{UID}` com `enabled: true` e `role: member`. Sem botão de cadastro público ou concessão de acesso pelo navegador. |
 | Dados remotos | Perfil em `users/{uid}`; estado integral de todos os módulos em `users/{uid}/state/main`. Regras propostas autorizam somente o próprio caminho e negam listagens globais. |
 | Estado local | `missao_tatica:v2:state:{uid}`. Nenhum dado pessoal é lido antes da autorização e da consulta ao servidor. |
 | Legado | Somente o proprietário pode migrar `planeamento_semanal_v11`. O original permanece intacto. Identificador de titular incompatível interrompe a operação. |
@@ -31,7 +31,7 @@ Ambiente: Node 24.19, timezone America/Sao_Paulo; Firebase JS 11.6.1; Rules Unit
 | Verificação | Resultado |
 | --- | --- |
 | Suíte da aplicação, incluindo os 267 testes anteriores | 296 testes aprovados, zero falhas. |
-| Regras reais compiladas/executadas em emulador local | 9 cenários aprovados; múltiplas operações permitidas/negadas por cenário. |
+| Regras reais compiladas/executadas em emulador local | 12 cenários aprovados; múltiplas operações permitidas/negadas por cenário. |
 | Interface em Chromium, com Firebase/Google simulados e rede externa interceptada | Perfil novo, missão, diálogos de Inteligência/Finanças/Corpo/Rituais, troca de conta e evento real de storage entre duas abas, download de cópia preservada, cancelamento/confirmação de limpeza e retomada do carregamento aprovados. |
 | Agenda | Regressões existentes e quatro cenários novos de isolamento de OAuth/token/respostas aprovados dentro da suíte. |
 | Integração IA | Suíte existente de contratos/Worker/D1/propostas e guardas da aplicação aprovada; nenhuma chamada real foi feita com dados pessoais. |
@@ -59,13 +59,15 @@ Não abrir uma cópia normal da branch e entrar com contas reais para testar: o 
 | Classificação | Itens |
 | --- | --- |
 | Implementado e validado em isolamento | Autorização, cache por UID, migração local preservada, sessões, conflitos, backups, motores da Agenda, perfil/módulos e guardas IA; regras propostas no emulador. |
-| Implementado, pendente de validação real | Login Google/Sara, App Check, formato efetivo dos documentos atuais, sincronização Agenda com duas contas e integração privada do proprietário após rollout aprovado. |
-| Pendente de configuração manual | Conferir/exportar regras ativas de `(default)`, revisar compatibilidade e backup, identificar/autorizar somente o UID da Sara, verificar usuários de teste OAuth caso o consentimento Google esteja em modo de testes e publicar somente após autorização. |
+| Implementado, pendente de validação real | Login Google/Sara, App Check, conteúdo efetivo do estado real e metadados atuais, sincronização Agenda com duas contas e integração privada do proprietário após rollout aprovado. |
+| Pendente de configuração manual | Guardar privadamente as regras originais fornecidas e conferir o release ativo, preparar a cópia de implantação com o email original, confirmar backup, identificar/autorizar somente o UID da Sara, verificar usuários de teste OAuth caso o consentimento Google esteja em modo de testes e publicar somente após autorização. |
 | Fora do escopo | IA para Sara, compartilhamento familiar, React/TypeScript, cadastro público e serviços pagos. |
 
 ## Limites conhecidos
 
-As regras atualmente aplicadas a `(default)` não foram acessadas: faltam credenciais/conector administrativo neste ambiente. O arquivo separado `ai/firestore.rules` foi identificado corretamente e permanece inalterado. Os testes provam a proposta, não a configuração hoje ativa em produção. A liberação não está concluída até a conferência administrativa e os testes reais autorizados.
+O usuário forneceu manualmente o conteúdo das regras de `(default)` em 19/10/2026. A política anterior exige UID e email do proprietário e acesso somente a seus próprios caminhos. A proposta mantém essas condições e foi testada com o formato de gravação do cliente v1.9.61, inclusive perfil, transação sem `ownerUid` externo e inclusão de recibos de IA. Foi testada também a recusa do proprietário com email ausente/incorreto, inclusive contra tentativa de contornar pela lista de membros. O arquivo `ai/firestore.rules` permanece inalterado.
+
+Não houve leitura administrativa direta do release ativo; a análise usa o texto enviado pelo usuário. A liberação continua pendente de backup, substituição privada do marcador de email e testes reais autorizados. **Não publicar o template do repositório sem configurar `__OWNER_EMAIL__`**: ele bloquearia o acesso do proprietário. O email real fica somente na cópia privada de implantação (`firestore.default.deployment.rules`, ignorada pelo git) ou no editor privado do Console. O teste substitui o marcador por `owner@example.test` em memória; nenhum email pessoal foi publicado no código.
 
 O cache local é separado por identidade, mas não criptografado. Pessoas com acesso às ferramentas do mesmo perfil de navegador podem inspecionar o armazenamento daquele perfil; usar perfis de navegador distintos em equipamentos compartilhados se essa privacidade local for necessária. O isolamento remoto é imposto pelas regras, independentemente do conteúdo do navegador.
 

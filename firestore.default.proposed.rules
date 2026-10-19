@@ -1,15 +1,20 @@
 // PROPOSED ONLY. Target: Firestore (default). Never deploy this file to
 // missao-tatica-ai. Export and compare the active default rules before rollout.
+// REQUIRED: replace __OWNER_EMAIL__ in a private deployment copy with the
+// owner's existing Firebase Auth email. Never deploy this unconfigured template.
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function originalOwner() {
+    function ownerUid() {
       return request.auth != null && request.auth.uid == '1LDBfIQ5vQTUtaE5j0k4Sp9w7Rj2';
+    }
+    function originalOwner() {
+      return ownerUid() && request.auth.token.get('email', '') == '__OWNER_EMAIL__';
     }
     function authorized(uid) {
       return database == '(default)' && request.auth != null && request.auth.uid == uid
         && (originalOwner() ||
-          (exists(/databases/$(database)/documents/appAccess/$(uid)) &&
+          (!ownerUid() && exists(/databases/$(database)/documents/appAccess/$(uid)) &&
            get(/databases/$(database)/documents/appAccess/$(uid)).data.enabled == true &&
            get(/databases/$(database)/documents/appAccess/$(uid)).data.role == 'member'));
     }

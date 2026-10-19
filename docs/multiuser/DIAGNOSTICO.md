@@ -6,7 +6,9 @@ Aplicação HTML/JS com Firebase JS 11.6.1, Authentication Google, App Check e F
 
 Riscos identificados antes das mudanças: cache global lido antes do login; respostas assíncronas antigas capazes de substituir estado; importação sem conferência do titular; gravação adiada acessando estado mutável; tokens/respostas da Agenda sobrevivendo a operações de troca; conflitos entre abas; mistura por spread de estado anterior e nuvem.
 
-Não há CLI Firebase autenticado nem conector administrativo disponível neste ambiente. As regras realmente ativas de `(default)` NÃO foram acessadas/verificadas. Não foi tentado acesso com credenciais encontradas em arquivos. A conferência/exportação administrativa das regras será obrigatória antes de liberar.
+Não há CLI Firebase autenticado nem conector administrativo disponível neste ambiente. Em 19/10/2026 o usuário enviou manualmente o texto da aba Regras do banco `(default)`, após imagem da seleção desse banco. O conteúdo foi analisado: exige autenticação, UID original e email original, e permite operações apenas em `/users/{uid}/**` do próprio titular. Não concede acesso a `appAccess`. O código conhecido usa o perfil e `state/main` dentro desse caminho. Não houve consulta administrativa direta ao release das regras; a origem é a cópia enviada pelo usuário.
+
+A proposta foi ajustada para manter também a verificação de email do proprietário. O endereço real não foi incluído no repositório público: o template usa `__OWNER_EMAIL__`, que precisa ser substituído em uma cópia privada antes de qualquer publicação. Os testes usam um email fictício e reproduzem a política anterior sem dados pessoais. A comparação e os testes de compatibilidade passaram; a confirmação real após liberação permanece pendente. As regras originais completas devem ser guardadas privadamente pelo administrador como backup de rollback. Nenhum segredo ou documento privado foi consultado.
 
 O único workflow identificado via API pública é o GitHub Pages dinâmico `pages-build-deployment`; não há `.github/workflows` no baseline. A API pública de configuração Pages retornou 404 (configuração não verificada). Não fazer push na main nem implantação.
 

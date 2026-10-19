@@ -9,9 +9,9 @@
 5. Confirmar GitHub Pages ligado exclusivamente à fonte de produção prevista e que não há workflow externo que publique esta branch. A configuração Pages não foi acessível via API pública; o único workflow identificado é o Pages dinâmico. Não mudar a fonte de publicação para esta branch durante revisão.
 6. Obter autorização explícita do proprietário para a liberação. Não houve deploy de regras, mudanças de dados, merge nem publicação nesta entrega.
 
-## Sequência de liberação aprovada
+## Sequência de liberação a executar somente após aprovação
 
-1. Aplicar as regras revisadas **somente a `(default)`**, inicialmente sem `appAccess` de membro ativo. Não alterar `ai/firestore.rules`, Worker/D1, segredos, grants ou tokens da IA. Não usar a configuração do emulador para deploy.
+1. As regras anteriores enviadas pelo usuário foram analisadas e a compatibilidade do cliente existente foi exercitada no emulador. Antes de publicar, preparar uma cópia privada de `firestore.default.proposed.rules` com `__OWNER_EMAIL__` substituído pelo email original já presente nas regras atuais. Guardá-la como `firestore.default.deployment.rules` (ignorada pelo git) ou preparar o conteúdo diretamente no editor privado do Console. Não fazer commit do email pessoal nem publicar o template não configurado. Aplicar as regras revisadas **somente a `(default)`**, inicialmente sem `appAccess` de membro ativo. Não alterar `ai/firestore.rules`, Worker/D1, segredos, grants ou tokens da IA. Não usar a configuração do emulador para deploy.
 2. Ainda com a versão antiga do aplicativo, validar leitura/gravação normal do proprietário e a aplicação de uma proposta fictícia revisada, preservando recibos. Se não funcionar, interromper a liberação e conferir as regras antes de mudar o código. A proposta permite o envelope legado do proprietário e os campos atuais; isso deve ser confirmado contra o ambiente real.
 3. Publicar o código aprovado via merge/release no fluxo habitual do GitHub Pages. Conferir commit da implantação e versão v1.9.62. O rollback de código é o baseline indicado acima.
 4. Proprietário entra, confirma os módulos, perfil, XP, moedas, campanhas e histórico; compara o backup/contagens e confirma que cache legado continua preservado. Testa um registro fictício reversível e a Agenda da própria conta.
