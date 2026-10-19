@@ -213,7 +213,30 @@ export function normalizePrimaryEvent(event, week, timeZone, allowOutsideWeek = 
     };
 }
 
-export function createCalendarSync({ clientId, getState, saveState, getUser, onChange = () => {}, enableInbound = false }) {
+// Each auth event gets a separate engine: pending OAuth/HTTP responses can never
+// acquire the next account's token, configuration, state or UI callbacks.
+export function createCalendarSync(options) {
+    let generation = 0, engine;
+    const replace = user => {
+        const revision = ++generation;
+        const check = () => { if (revision !== generation) throw Error('A conta do aplicativo mudou. Conecte novamente.'); };
+        engine = createCalendarSession({ ...options,
+            getState: () => { check(); return options.getState(); },
+            getUser: () => { check(); return options.getUser(); },
+            saveState: () => { check(); return options.saveState(); },
+            onChange: () => { if (revision === generation) options.onChange?.(); },
+            check
+        });
+        engine.setOwner(user);
+    };
+    replace(null);
+    const facade = {};
+    for (const method of ['view','connect','pause','schedule','syncNow','refreshInbox','getInbox','ignoreInboxEvent','markInboxConverted']) facade[method] = (...args) => engine[method](...args);
+    facade.setOwner = user => { engine.setOwner(null); replace(user); };
+    return facade;
+}
+
+function createCalendarSession({ clientId, getState, saveState, getUser, onChange = () => {}, enableInbound = false, check }) {
     let token = '';
     let expiresAt = 0;
     let activeUid = '';
@@ -236,11 +259,13 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
     const view = () => ({ status: config().enabled && !connected() && !running ? 'Reconectar' : status, error, enabled: Boolean(config().enabled), connected: connected(), busy: running, lastSyncedAt, calendarId: config().calendarId || '', inboundEnabled: enableInbound, pendingInbox: getInbox().filter(item => item.status === 'pending').length });
 
     async function api(path, options = {}) {
+        check();
         if (!connected()) throw new Error('Autorização expirada. Clique em Reconectar.');
         const response = await fetch(`${API}${path}`, {
             ...options,
             headers: { Authorization: `Bearer ${token}`, ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers }
         });
+        check();
         if (response.status === 401) {
             token = '';
             throw new Error('Autorização expirada. Clique em Reconectar.');
@@ -252,13 +277,16 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
             err.status = response.status;
             throw err;
         }
-        return response.status === 204 ? null : response.json();
+        const data = response.status === 204 ? null : await response.json();
+        check();
+        return data;
     }
 
     async function verifyIdentity(expectedEmail) {
         const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${token}` } });
         if (!response.ok) throw new Error('Não foi possível conferir a conta Google escolhida.');
         const identity = await response.json();
+        check();
         if (!identity.email || identity.email.toLowerCase() !== String(expectedEmail || '').toLowerCase()) {
             token = '';
             throw new Error(`Escolha a mesma conta Google usada no Missão Tática (${expectedEmail}).`);
@@ -414,6 +442,7 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
             error = failures.length ? 'Algumas cores não puderam ser atualizadas. Reconecte o Google Agenda e tente novamente.' : '';
             return items;
         } catch (e) {
+            try { check(); } catch { return []; }
             console.error('Falha ao ler a agenda principal', e);
             error = e.message || 'Não foi possível ler a agenda principal.';
             status = connected() ? 'Erro de sincronização' : 'Reconectar';
@@ -523,6 +552,7 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
             error = colorFailures.length ? 'Algumas cores não puderam ser atualizadas no Google Agenda.' : '';
             if (`${getState().currentPlanningWeekStart}|${JSON.stringify([...buildWeekEvents(getState(), owner).values()])}` !== fingerprint) schedule();
         } catch (e) {
+            try { check(); } catch { return; }
             console.error('Falha na sincronização com Google Agenda', e);
             error = e.message || 'Não foi possível sincronizar.';
             status = connected() ? 'Erro de sincronização' : 'Reconectar';
@@ -550,14 +580,18 @@ export function createCalendarSync({ clientId, getState, saveState, getUser, onC
                 });
                 client.requestAccessToken({ prompt: '' });
             });
+            check();
             token = result.access_token;
             expiresAt = Date.now() + Math.max(0, Number(result.expires_in) - 60) * 1000;
             await verifyIdentity(user.email);
+            check();
             if (getUser()?.uid !== user.uid) throw new Error('A conta do aplicativo mudou. Conecte novamente.');
             storeConfig({ enabled: true });
             lastSyncedFingerprint = '';
             await syncNow({ force: true });
         } catch (e) {
+            try { check(); } catch { return; }
+            token = ''; expiresAt = 0;
             error = e.message || 'Não foi possível conectar.';
             status = 'Desconectado'; emit();
         }

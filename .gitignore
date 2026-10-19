@@ -33,3 +33,11 @@ oauth-client*.json
 
 # Backups pessoais exportados pela aplicação
 *backup*.json
+
+# Emuladores locais de desenvolvimento
+.firebaserc
+.firebase/
+security-tests/node_modules
+
+# Cópia privada para implantação (contém o email administrativo)
+firestore.default.deployment.rules

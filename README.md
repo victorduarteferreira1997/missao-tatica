@@ -4,6 +4,16 @@ Aplicação pessoal de planejamento semanal com Missões, Semana, Radar, Estudos
 Finanças, Corpo, Pomodoro e gamificação por campanhas. Inclui sincronização
 bidirecional com o Google Agenda, recompensas configuráveis e backups JSON.
 
+## Desenvolvimento multiusuário — ainda não publicado
+
+Esta branch implementa a Fase 1 em **v1.9.62**. A versão oficial de referência
+continua sendo v1.9.61. Não fazer merge, deploy ou alteração de regras sem aprovação.
+
+- [Arquitetura e validação](docs/multiuser/README.md)
+- [Autorização da Sara](docs/multiuser/AUTORIZAR_SARA.md)
+- [Implantação e reversão](docs/multiuser/IMPLANTACAO.md)
+- [Diagnóstico e baseline](docs/multiuser/DIAGNOSTICO.md)
+
 ## Acesso
 
 - [Aplicação oficial](https://victorduarteferreira1997.github.io/missao-tatica/)

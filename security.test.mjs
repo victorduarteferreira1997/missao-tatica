@@ -13,10 +13,10 @@ assert.ok(appCheckInitialization >= 0, 'O App Check deve ser inicializado.');
 assert.ok(appCheckInitialization < authInitialization, 'O App Check deve iniciar antes do Authentication.');
 assert.ok(appCheckInitialization < firestoreInitialization, 'O App Check deve iniciar antes do Firestore.');
 
-const ownerGuard = app.indexOf('if (!isAuthorizedAppOwner(user))');
-const interfaceReveal = app.indexOf("wrapper.style.display = 'block'");
-assert.ok(ownerGuard >= 0, 'A validação do proprietário deve existir.');
-assert.ok(interfaceReveal >= 0 && ownerGuard < interfaceReveal, 'O proprietário deve ser validado antes de a interface aparecer.');
+const ownerGuard = app.indexOf('if (!authorized)');
+const interfaceReveal = app.indexOf("document.getElementById('app-wrapper').style.display = 'block'");
+assert.ok(ownerGuard >= 0, 'A autorização por UID deve existir.');
+assert.ok(interfaceReveal >= 0 && ownerGuard < interfaceReveal, 'A conta deve ser autorizada antes de a interface aparecer.');
 assert.match(app, /await signOut\(auth\)/, 'Contas não autorizadas devem ser desconectadas.');
 
 const toastStart = app.indexOf('window.showToast = function');

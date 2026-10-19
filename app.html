@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.61-calendar-inbox">
+    <meta name="app-build" content="v1.9.62-multiuser-development">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -83,6 +83,8 @@
             <button onclick="window.loginRedirect()" class="w-full mt-3 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold py-2 px-4 rounded-xl text-xs transition-colors">
                 Login alternativo por redirecionamento
             </button>
+            <button id="auth-retry-button" type="button" style="display:none" onclick="window.retryAccountLoad()" class="w-full mt-3 border border-slate-700 rounded-xl px-4 py-2 text-sm">Tentar carregar novamente</button>
+            <div id="auth-recovery-copies" class="mt-3 text-left"></div>
             <p id="auth-access-message" class="hidden mt-4 rounded-xl border px-3 py-2 text-xs font-bold leading-relaxed" role="alert"></p>
         </div>
     </div>
@@ -115,13 +117,15 @@
         import { createAiBrowserStore } from './ai/bridge_rest.v1.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { initializeAppCheck, ReCaptchaEnterpriseProvider, getToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
+        import { createAccountStorage, createAccountRecovery, validateAccountState, AUTH_TRANSITION_KEY } from './account_storage.v1.js';
+        import { authorizeAccount } from './account_access.v1.js';
         import { getAuth, signInWithPopup, signInWithRedirect, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDocFromServer, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.61';
+        const APP_VERSION = 'v1.9.62';
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
             authDomain: "missao-tatica.firebaseapp.com",
@@ -398,15 +402,25 @@
         let saveTimeout;
         let currentSyncStatus = 'Desconectado';
 
-        let state;
-        try {
-            const savedState = localStorage.getItem('planeamento_semanal_v11');
-            state = savedState ? JSON.parse(savedState) : null;
-        } catch (e) {
-            console.error('Erro ao ler o estado local. Iniciando estado seguro.', e);
-            state = null;
+        let state = null; // No personal cache is read before authorization.
+        let sessionGeneration = 0, sessionReady = false;
+        const accountStorage = createAccountStorage(localStorage, APP_OWNER_UID);
+        const accountRecovery = createAccountRecovery(localStorage, APP_OWNER_UID);
+        const isSession = (user, generation = sessionGeneration) => Boolean(user && currentUser === user && generation === sessionGeneration);
+        window.guardAccountCallback = callback => {
+            const generation = sessionGeneration;
+            return (...args) => { if (generation === sessionGeneration) return callback(...args); };
+        };
+        function saveAccountCache() {
+            if (!currentUser || !sessionReady || state?.ownerUid !== currentUser.uid) return false;
+            try { accountStorage.save(currentUser.uid, state); return true; }
+            catch (error) {
+                window.updateSyncStatus(error.message || 'Erro na cópia local');
+                window.showAlertModal(error.message || 'Não foi possível preservar a cópia local. Baixe um backup antes de continuar.');
+                return false;
+            }
         }
-        
+
         const calendarSync = createCalendarSync({
             clientId: '256467055884-dlrophq01snosvsppm165f6mbqovf2aj.apps.googleusercontent.com',
             getState: () => state,
@@ -457,7 +471,10 @@
             pomodoroEvaluationData: null
         };
 
+        const initialUiState = JSON.stringify(uiState);
         let pomodoro = { isRunning: false, timeLeft: 25 * 60, mode: 'focus', cycle: 1, intervalId: null, currentFocusStartedAt: null, currentFocusTaskId: null, currentFocusTaskText: null, currentFocusTaskDay: null, currentFocusTaskCategory: null, focusLock: null, independent: state?.focusContext === 'independent' };
+
+        const initialPomodoro = JSON.stringify(pomodoro);
 
         // Função definida cedo para evitar crash no validateState quando já existem tarefas salvas.
         window.getTaskCategory = function(categoryId) {
@@ -1656,61 +1673,73 @@
         };
 
         window.logout = async function() {
+            const user = currentUser, generation = sessionGeneration;
+            let logoutTimer;
             try {
                 if (currentUser && typeof window.saveStateNow === 'function') {
-                    await window.saveStateNow(true);
+                    // Preserve locally first; a stalled network request must not prevent logout.
+                    await Promise.race([window.saveStateNow(true), new Promise(resolve => {
+                        logoutTimer = setTimeout(() => resolve(false), 2500);
+                    })]);
                 }
-                await signOut(auth);
+                if (isSession(user, generation)) { clearAccountSession(); await signOut(auth); }
             } catch (error) { console.error("Erro no logout", error); }
+            finally { clearTimeout(logoutTimer); }
         };
 
-        async function loadFromFirestore(uid) {
+        async function loadFromFirestore(user, generation) {
+            const uid = user.uid;
             window.updateSyncStatus('Carregando...');
-            let cloudReady = false;
             try {
-                const docRef = doc(db, 'users', uid, 'state', 'main');
-                const docSnap = await getDoc(docRef);
-                cloudStateStore.observe(currentUser, docSnap.exists()?docSnap.data():null);
-                if (docSnap.exists()) {
-                    const cloudState = JSON.parse(docSnap.data().data);
-                    if(docSnap.data().aiApplications)cloudState.aiAppliedProposals=Object.fromEntries(Object.entries(docSnap.data().aiApplications).map(([id,r])=>[id,r.taskId]));
-                    const localState = state ? JSON.parse(JSON.stringify(state)) : null;
-                    const localSavedAt = Date.parse(localState?.lastSavedAt || localState?.updatedAt || 0);
-                    const cloudSavedAt = Date.parse(cloudState?.lastSavedAt || cloudState?.updatedAt || docSnap.data().updatedAt || 0);
-                    const localBelongsToThisUser = localState?.ownerUid && String(localState.ownerUid) === String(uid);
-
-                    if ((docSnap.data().revision || docSnap.data().aiApplications) && localBelongsToThisUser && localSavedAt > cloudSavedAt + 1500) {
-                        localStorage.setItem('missao_tatica_conflict_backup_'+uid,JSON.stringify(localState));
-                        window.showAlertModal('Os dados da nuvem foram carregados. Sua cópia local mais recente foi preservada; use Baixar cópia local preservada no rodapé para recuperar alterações não sincronizadas.');
+                // Server-only read: offline/cache failures never seed or overwrite a cloud account.
+                const docSnap = await getDocFromServer(doc(db, 'users', uid, 'state', 'main'));
+                if (!isSession(user, generation)) return false;
+                const row = docSnap.exists() ? docSnap.data() : null;
+                if (row?.ownerUid && row.ownerUid !== uid) throw Error('Titular inválido na nuvem.');
+                cloudStateStore.observe(user, row);
+                const localState = accountStorage.load(uid);
+                if (row) {
+                    const cloudState = validateAccountState(JSON.parse(row.data), uid, { legacyOwner: true, ownerUid: APP_OWNER_UID });
+                    if (row.aiApplications) cloudState.aiAppliedProposals = Object.fromEntries(Object.entries(row.aiApplications).map(([id,r])=>[id,r.taskId]));
+                    // Cloud is authoritative; preserve any different local snapshot for recovery.
+                    if (localState && JSON.stringify(localState) !== JSON.stringify(cloudState)) {
+                        accountRecovery.preserve(uid, localState);
+                        if (Date.parse(localState.lastSavedAt || localState.updatedAt || 0) > Date.parse(cloudState.lastSavedAt || row.updatedAt || 0) + 1500)
+                            window.showAlertModal('Os dados da nuvem foram carregados. A cópia local foi preservada; use Baixar cópia local preservada no rodapé para recuperar alterações não sincronizadas.');
                     }
-                    // Proteção contra perda de dados: se o navegador tem um estado local mais novo
-                    // do mesmo usuário, ele não é sobrescrito por uma cópia antiga da nuvem.
-                    if (!docSnap.data().revision && !docSnap.data().aiApplications && localBelongsToThisUser && localSavedAt && cloudSavedAt && localSavedAt > cloudSavedAt + 1500) {
-                        state = localState;
-                        window.validateState();
-                        localStorage.setItem('planeamento_semanal_v11', JSON.stringify(state));
-                        cloudReady = await writeStateToFirestore(currentUser);
-                    } else {
-                        state = { ...state, ...cloudState, prestige: cloudState.prestige || null };
-                        state.ownerUid = uid;
-                        window.validateState();
-                        localStorage.setItem('planeamento_semanal_v11', JSON.stringify(state));
-                        window.updateSyncStatus('Conectado');
-                        cloudReady = true;
-                    }
+                    state = cloudState; // Never merge with a previous account or stale defaults.
                 } else {
+                    state = localState;
+                    window.validateState();
                     state.ownerUid = uid;
-                    window.validateState(); window.saveToFirestore();
                 }
-            } catch(e) { window.updateSyncStatus('Erro de conexão'); }
-            render();
-            return cloudReady;
+                window.validateState();
+                sessionReady = true;
+                if (!saveAccountCache()) throw Error('Falha na cópia local.');
+                if (!row) {
+                    window.touchState('account-initialization');
+                    const initialized = await writeStateToFirestore(user);
+                    if (!isSession(user, generation)) return false;
+                    if (!initialized) throw Error('Gravação inicial não confirmada.');
+                }
+                window.updateSyncStatus('Conectado');
+                return true;
+            } catch (error) {
+                if (isSession(user, generation)) {
+                    sessionReady = false;
+                    window.updateSyncStatus('Erro de conexão');
+                    setAuthAccessMessage(error.code === 'recovery-full' ? error.message : 'Não foi possível conferir os dados desta conta. Sua cópia foi preservada. Tente carregar novamente.', true);
+                    document.getElementById('auth-recovery-copies').innerHTML = window.renderLocalConflictBackupButton();
+                    document.getElementById('auth-retry-button').style.display = 'block';
+                }
+                return false;
+            }
         }
 
         const cloudStateStore = createCloudStateStore({getUser:()=>currentUser,
             transact:(user,work)=>runTransaction(db,async transaction=>{
                 const ref=doc(db,'users',user.uid,'state','main');
-                return work({get:async()=>{const snap=await transaction.get(ref);return snap.exists()?snap.data():null;},set:value=>transaction.set(ref,value,{merge:true})});
+                return work({get:async()=>{const snap=await transaction.get(ref);return snap.exists()?snap.data():null;},set:value=>transaction.set(ref,{...value,ownerUid:user.uid},{merge:true})});
             }),
             onAdopt:(saved,uid,receipt)=>{if(currentUser?.uid!==uid)return;for(const task of saved.tasks.filter(t=>t.aiV2ProposalId)){if(!state.tasks.some(t=>String(t.id)===String(task.id))&&!state.aiAppliedProposals?.[task.aiV2ProposalId])state.tasks.push(task);}
                 if(receipt?.kind&&receipt.kind!=='mission.create'&&!state.aiAppliedProposals?.[receipt.proposalId]){
@@ -1718,29 +1747,30 @@
                     if(receipt.kind==='study.plan.create'){state.studyData=state.studyData||{};state.studyData.studyPlan=state.studyData.studyPlan||{};for(const [parent,key,source] of [[state.studyData.studyPlan,'tracks',saved.studyData.studyPlan.tracks],[state.studyData,'subjects',saved.studyData.subjects],[state.studyData.studyPlan,'weeklyBlocks',saved.studyData.studyPlan.weeklyBlocks]]){const items=parent[key]=parent[key]||[];for(const item of source.filter(i=>i.aiV2ProposalId===receipt.proposalId)){if(!items.some(i=>String(i.id)===String(item.id)))items.push(item);}}}
                 }
                 state.aiAppliedProposals={...(state.aiAppliedProposals||{}),...(saved.aiAppliedProposals||{})};state.lastSavedAt=saved.lastSavedAt;state.updatedAt=saved.updatedAt;
-                localStorage.setItem('planeamento_semanal_v11',JSON.stringify(state));render();}
+                saveAccountCache();render();}
         });
         const confirmedStateWriter = createConfirmedStateWriter({
             getUser: () => currentUser,
             writeAccount: user => setDoc(doc(db, 'users', user.uid), { email: user.email, displayName: user.displayName || '', updatedAt: new Date().toISOString(), app: 'missao-tatica' }, { merge: true }),
-            writeSnapshot: (user, payload, savedAt) => AI_V2_CONFIG.applyEnabled===true?cloudStateStore.write(user,payload,savedAt):setDoc(doc(db, 'users', user.uid, 'state', 'main'), { data: payload, updatedAt: savedAt || new Date().toISOString() }, { merge: true }),
+            writeSnapshot: (user, payload, savedAt) => AI_V2_CONFIG.applyEnabled===true?cloudStateStore.write(user,payload,savedAt):setDoc(doc(db, 'users', user.uid, 'state', 'main'), { data: payload, ownerUid: user.uid, updatedAt: savedAt || new Date().toISOString() }, { merge: true }),
             onStatus: status => window.updateSyncStatus(status),
-            onSaved: (snapshot, uid) => window.onAiV2Saved?.(snapshot, uid),
-            onError: error => {console.error('Falha ao salvar ou sincronizar dados.');if(AI_V2_CONFIG.applyEnabled===true&&error?.message)window.updateSyncStatus(error.message);}
+            onSaved: (snapshot, uid) => { if (uid === APP_OWNER_UID) return window.onAiV2Saved?.(snapshot, uid); },
+            onError: (error, user) => { console.error('Falha ao salvar ou sincronizar dados.'); if (AI_V2_CONFIG.applyEnabled === true && isSession(user) && error?.message) window.updateSyncStatus(error.message); }
         });
         async function writeStateToFirestore(userSnapshot = currentUser) {
+            if (!sessionReady || state?.ownerUid !== userSnapshot?.uid) return false;
             return confirmedStateWriter(userSnapshot, state);
         }
 
         window.saveToFirestore = function() {
-            if (!currentUser) return;
-            const userSnapshot = currentUser;
+            if (!currentUser || !sessionReady) return;
+            const userSnapshot = currentUser, generation = sessionGeneration, snapshot = JSON.parse(JSON.stringify(state));
             window.updateSyncStatus('Salvando...');
             clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(async () => {
+            saveTimeout = setTimeout(window.guardAccountCallback(async () => {
                 saveTimeout = null;
-                await writeStateToFirestore(userSnapshot);
-            }, 1000);
+                if (isSession(userSnapshot, generation) && sessionReady) await confirmedStateWriter(userSnapshot, snapshot);
+            }), 1000);
         };
 
         window.touchState = function(reason = '') {
@@ -1748,28 +1778,32 @@
             const now = new Date().toISOString();
             state.updatedAt = now;
             state.lastSavedAt = now;
-            if (currentUser?.uid) state.ownerUid = currentUser.uid;
+            // Ownership is assigned only on verified load, never relabelled during saves.
             if (reason) state.lastSaveReason = reason;
         };
 
         window.saveState = function(skipRender = false, reason = '') {
+            if (!sessionReady || state?.ownerUid !== currentUser?.uid) return false;
             window.stampCampaignRecords();
             if (typeof window.checkLevelUp === 'function') window.checkLevelUp();
             window.touchState(reason);
-            localStorage.setItem('planeamento_semanal_v11', JSON.stringify(state));
+            if (!saveAccountCache()) return false;
             window.saveToFirestore();
             calendarSync.schedule();
             if(!skipRender) render();
         };
 
         window.saveStateNow = async function(skipRender = false, reason = '') {
+            if (!sessionReady || state?.ownerUid !== currentUser?.uid) return false;
+            const user = currentUser, generation = sessionGeneration;
             window.stampCampaignRecords();
             if (typeof window.checkLevelUp === 'function') window.checkLevelUp();
             window.touchState(reason);
-            localStorage.setItem('planeamento_semanal_v11', JSON.stringify(state));
+            if (!saveAccountCache()) return false;
             clearTimeout(saveTimeout);
             saveTimeout = null;
-            const saved = await writeStateToFirestore(currentUser);
+            const saved = await writeStateToFirestore(user);
+            if (!isSession(user, generation)) return false;
             calendarSync.schedule();
             if(!skipRender) render();
             return saved;
@@ -1782,49 +1816,90 @@
             }
         };
 
-        onAuthStateChanged(auth, async (user) => {
-            window.resetAiInbox?.();
-            window.resetAiAccess?.();
+        function clearAccountSession() {
+            document.getElementById('auth-recovery-copies').innerHTML = '';
+            document.getElementById('auth-retry-button').style.display = 'none';
+            document.getElementById('app-wrapper').style.display = 'none';
+            document.getElementById('app').innerHTML = '';
+            const toasts = document.getElementById('toast-container'); if (toasts) toasts.innerHTML = '';
+            sessionGeneration++;
+            sessionReady = false;
+            currentUser = null;
+            clearTimeout(saveTimeout); saveTimeout = null;
+            confirmedStateWriter.reset();
+            clearInterval(clockInterval); clockInterval = null;
+            clearInterval(pomodoro.intervalId);
+            clearInterval(uiState.breathingInterval);
+            calendarSync.setOwner(null);
+            window.resetAiInbox?.(); window.resetAiAccess?.();
+            uiState = JSON.parse(initialUiState);
+            pomodoro = JSON.parse(initialPomodoro);
+            state = null; window.validateState();
+            document.getElementById('app').innerHTML = '';
             const overlay = document.getElementById('auth-overlay');
-            const wrapper = document.getElementById('app-wrapper');
-            if (user) {
-                if (!isAuthorizedAppOwner(user)) {
+            overlay.style.display = 'flex'; overlay.style.opacity = '1';
+            document.getElementById('app-wrapper').style.display = 'none';
+            window.updateSyncStatus('Desconectado');
+        }
+        window.addEventListener('storage', event => {
+            if (event.key !== AUTH_TRANSITION_KEY || !currentUser) return;
+            try {
+                if (JSON.parse(event.newValue || 'null')?.uid !== currentUser.uid) {
+                    clearAccountSession();
+                    setAuthAccessMessage('A conta mudou em outra aba. Entre novamente para continuar.');
+                }
+            } catch { clearAccountSession(); }
+        });
+        async function handleAccountAuth(firebaseUser) {
+            clearAccountSession();
+            const generation = sessionGeneration;
+            // A distinct wrapper per auth event invalidates old writers, even for the same UID.
+            const user = firebaseUser ? { uid: firebaseUser.uid, email: firebaseUser.email || '', displayName: firebaseUser.displayName || '', getIdToken: (...args) => firebaseUser.getIdToken(...args) } : null;
+            try { localStorage.setItem(AUTH_TRANSITION_KEY, JSON.stringify({uid:user?.uid || null, generation, at:Date.now()})); } catch { /* authorization still fails closed */ }
+            if (!user) { if (!authAccessDenied) setAuthAccessMessage(''); return; }
+            currentUser = user;
+            setAuthAccessMessage('Conferindo autorização e dados da conta…');
+            try {
+                const authorized = await authorizeAccount(user, { ownerUid: APP_OWNER_UID, readAccess: async uid => {
+                    const access = await getDocFromServer(doc(db, 'appAccess', uid));
+                    return access.exists() ? access.data() : null;
+                }});
+                if (!isSession(user, generation)) return;
+                if (!authorized) {
                     authAccessDenied = true;
-                    currentUser = null;
-                    window.updateSyncStatus('Acesso negado');
-                    calendarSync.setOwner(null);
-                    wrapper.style.display = 'none';
-                    overlay.style.display = 'flex';
-                    overlay.style.opacity = '1';
-                    setAuthAccessMessage('Acesso restrito ao proprietário do Missão Tática. Entre com a conta autorizada.', true);
-                    try {
-                        await signOut(auth);
-                    } catch (error) {
-                        console.error('Falha ao desconectar conta não autorizada', error);
-                    }
+                    const uid = user.uid;
+                    clearAccountSession();
+                    setAuthAccessMessage('Esta conta ainda não está autorizada. UID para o administrador autorizar no Firebase: '+uid, true);
+                    // Keep the UID message visible after sign-out. No state document was read.
+                    await signOut(auth);
                     return;
                 }
                 authAccessDenied = false;
+                const cloudReady = await loadFromFirestore(user, generation);
+                if (!isSession(user, generation) || !cloudReady) return;
                 setAuthAccessMessage('');
-                currentUser = user; window.updateSyncStatus('Conectado');
-                overlay.style.opacity = '0'; setTimeout(() => { overlay.style.display = 'none'; }, 300);
-                wrapper.style.display = 'block';
-                const cloudReady = await loadFromFirestore(user.uid);
-                window.refreshAiAccess?.(cloudReady);
+                document.getElementById('auth-overlay').style.display = 'none';
+                document.getElementById('app-wrapper').style.display = 'block';
                 calendarSync.setOwner(user);
-                startClock();
-            } else {
-                currentUser = null; window.updateSyncStatus('Desconectado');
-                calendarSync.setOwner(null);
-                overlay.style.display = 'flex'; overlay.style.opacity = '1'; wrapper.style.display = 'none';
-                if (!authAccessDenied) setAuthAccessMessage('');
+                pomodoro.independent = state.focusContext === 'independent';
+                render(); startClock();
+                if (isAuthorizedAppOwner(user)) window.refreshAiAccess?.(true);
+            } catch {
+                if (isSession(user, generation)) {
+                    clearAccountSession();
+                    setAuthAccessMessage('Não foi possível conferir a autorização. Tente carregar novamente.', true);
+                    document.getElementById('auth-retry-button').style.display = 'block';
+                }
             }
-        });
+        }
+        onAuthStateChanged(auth, handleAccountAuth);
+        window.retryAccountLoad = () => auth.currentUser ? handleAccountAuth(auth.currentUser) : window.login();
 
         // ------------------------------------------
         // EXPORT & IMPORT DE JSON
         // ------------------------------------------
         window.exportData = function() {
+            if (!sessionReady || state?.ownerUid !== currentUser?.uid) return;
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
             const dlAnchorElem = document.createElement('a');
             dlAnchorElem.setAttribute("href", dataStr);
@@ -1832,22 +1907,71 @@
             dlAnchorElem.click();
         };
 
-        window.renderLocalConflictBackupButton=()=>currentUser&&localStorage.getItem('missao_tatica_conflict_backup_'+currentUser.uid)?'<button type="button" onclick="window.exportLocalConflictBackup()" class="text-xs text-amber-300">Baixar cópia local preservada</button>':'';
-        window.exportLocalConflictBackup=()=>{if(!currentUser)return;const data=localStorage.getItem('missao_tatica_conflict_backup_'+currentUser.uid);if(!data)return;const a=document.createElement('a');a.setAttribute('href','data:text/json;charset=utf-8,'+encodeURIComponent(data));a.setAttribute('download','missao_tatica_copia_local_preservada.json');a.click();};
-        window.triggerImport = function() { document.getElementById('import-file').click(); };
+        window.renderLocalConflictBackupButton = () => {
+            if (!currentUser) return '';
+            let copies; try { copies = accountRecovery.list(currentUser.uid); } catch { return ''; }
+            if (!copies.length) return '';
+            return `<details class="text-xs text-amber-300"><summary class="cursor-pointer py-2">Cópias locais preservadas (${copies.length})</summary><div class="flex flex-col gap-2">${copies.map((copy,index) => `<button type="button" onclick="window.exportLocalConflictBackup(${index})" class="text-left underline">Baixar cópia ${index+1} · ${window.escapeHtml(copy.lastSavedAt || copy.updatedAt || 'Sem data')}</button>`).join('')}<button type="button" onclick="window.clearLocalConflictBackups()" class="text-left text-slate-400">Limpar cópias após baixar</button></div></details>`;
+        };
+        window.exportLocalConflictBackup = (index = 0) => {
+            if (!currentUser || !Number.isInteger(index) || index < 0) return;
+            const copy = accountRecovery.list(currentUser.uid)[index]; if (!copy) return;
+            const a = document.createElement('a');
+            a.setAttribute('href', 'data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(copy)));
+            a.setAttribute('download', 'missao_tatica_copia_local_preservada_'+(index+1)+'.json'); a.click();
+        };
+        window.clearLocalConflictBackups = () => {
+            if (!currentUser) return;
+            const user = currentUser, generation = sessionGeneration;
+            const message = 'Você já baixou as cópias que precisa guardar? Limpar o histórico de recuperação apaga essas cópias deste navegador. Os dados atuais da conta serão mantidos.';
+            const clear = () => {
+                if (!isSession(user, generation)) return;
+                accountRecovery.clear(user.uid);
+                document.getElementById('auth-recovery-copies').innerHTML = '';
+                if (sessionReady) render();
+            };
+            if (sessionReady) window.showConfirmModal(message, clear);
+            else {
+                uiState.recoveryCleanup = clear;
+                document.getElementById('auth-recovery-copies').innerHTML = `<section role="alertdialog" aria-labelledby="recovery-clear-title" class="rounded-xl border border-amber-800 p-3 text-sm"><h2 id="recovery-clear-title">Limpar cópias de recuperação?</h2><p>${window.escapeHtml(message)}</p><div class="mt-3 flex gap-3"><button type="button" onclick="window.cancelLocalRecoveryCleanup()">Cancelar</button><button type="button" onclick="window.confirmLocalRecoveryCleanup()">Já baixei as cópias. Limpar histórico</button></div></section>`;
+            }
+        };
+        window.cancelLocalRecoveryCleanup = () => {
+            uiState.recoveryCleanup = null;
+            document.getElementById('auth-recovery-copies').innerHTML = window.renderLocalConflictBackupButton();
+        };
+        window.confirmLocalRecoveryCleanup = () => {
+            const callback = uiState.recoveryCleanup; uiState.recoveryCleanup = null;
+            callback?.();
+        };
+        window.triggerImport = function() { if (sessionReady) document.getElementById('import-file').click(); };
 
         window.importData = function(event) {
+            const user = currentUser, generation = sessionGeneration;
             const file = event.target.files[0];
-            if (!file) return;
+            if (!file || !sessionReady) return;
             const reader = new FileReader();
             reader.onload = function(e) {
+                if (!isSession(user, generation) || !sessionReady) return;
                 try {
-                    const importedState = JSON.parse(e.target.result);
-                    if (importedState && importedState.tasks) {
-                        importedState.aiAppliedProposals={...(importedState.aiAppliedProposals||{}),...(state.aiAppliedProposals||{})};state = importedState; window.validateState(); window.saveState();
-                        window.showToast("Importação Concluída", "Os seus dados foram recuperados com sucesso.", "upload-cloud", "text-emerald-400");
-                    } else { window.showAlertModal("Arquivo JSON inválido para esta aplicação."); }
-                } catch(err) { window.showAlertModal("Erro ao processar o arquivo."); }
+                    const candidate = JSON.parse(e.target.result);
+                    // Unlabelled legacy backups are restricted to the original owner and
+                    // require a separate confirmation. Foreign labelled backups are rejected.
+                    const legacy = !candidate?.ownerUid && user.uid === APP_OWNER_UID;
+                    const importedState = validateAccountState(candidate, user.uid, { legacyOwner: legacy, ownerUid: APP_OWNER_UID });
+                    window.showConfirmModal(legacy ? 'Backup antigo sem titular. Confirma que este arquivo é seu? A restauração substituirá os dados desta conta.' : 'Restaurar o backup desta conta? Os dados atuais serão substituídos.', () => {
+                        if (!isSession(user, generation) || !sessionReady) return;
+                        try { accountRecovery.preserve(user.uid, state); }
+                        catch (error) { window.showAlertModal(error.message || 'Não foi possível preservar a cópia anterior.'); return; }
+                        importedState.aiAppliedProposals = {...(importedState.aiAppliedProposals||{}), ...(state.aiAppliedProposals||{})};
+                        state = importedState; window.validateState();
+                        window.saveStateNow(false, 'backup-restore').then(saved => {
+                            if (!isSession(user, generation)) return;
+                            if (saved) window.showToast('Importação concluída', 'Backup salvo nesta conta.', 'upload-cloud', 'text-emerald-400');
+                            else window.showAlertModal('A restauração ficou na cópia local, mas não foi confirmada na nuvem. Preserve um backup e reconecte.');
+                        });
+                    });
+                } catch(err) { window.showAlertModal(err.message || 'Arquivo inválido para esta conta.'); }
             };
             reader.readAsText(file); event.target.value = '';
         };
@@ -2505,7 +2629,7 @@
             while (state.xp >= nextMax && state.level < RANKS.length) { state.level += 1; nextMax = window.getXpForCurrentLevel(); levelChanged = true; }
             window.trackCampaignLevels(beforeLevel);
             window.syncPrestigeMilestones(true);
-            if (levelChanged) { state.energy = Math.min(100, state.energy + 50); uiState.showLevelUp = true; setTimeout(() => { uiState.showLevelUp = false; render(); }, 4000); }
+            if (levelChanged) { state.energy = Math.min(100, state.energy + 50); uiState.showLevelUp = true; setTimeout(window.guardAccountCallback(() => { uiState.showLevelUp = false; render(); }), 4000); }
         };
 
         window.changeEnergy = function(amount) {
@@ -2879,7 +3003,9 @@
 
             if (!preserveCombo) window.breakCombo();
             uiState.deleteTaskPrompt = { show: false, taskId: null };
+            const deletionSession = currentUser;
             await window.saveStateNow();
+            if (currentUser !== deletionSession) return;
             window.showToast('Missão excluída', preserveCombo ? 'Substituição registrada. Frenesi preservado.' : 'Exclusão registrada. Frenesi ajustado.', 'trash-2', preserveCombo ? 'text-cyan-300' : 'text-orange-300');
         };
 
@@ -3107,7 +3233,7 @@
         window.addQuickTask = function() {
             const text = document.getElementById('quick-task-input')?.value.trim(); if (!text) return;
             state.quickTasks.push({ id: Date.now(), text: text, done: false }); window.saveState();
-            setTimeout(() => { const el = document.getElementById('quick-task-input'); if (el) el.focus(); }, 10);
+            setTimeout(window.guardAccountCallback(() => { const el = document.getElementById('quick-task-input'); if (el) el.focus(); }), 10);
         };
         window.toggleQuickTask = function(id) {
             const qt = state.quickTasks.find(q => q.id === id);
@@ -3586,7 +3712,7 @@
             uiState.createTaskDraft = null;
             if (!uiState.showCreateTaskModal) uiState.calendarInboxEventId = null;
             render();
-            setTimeout(() => { window.updateTaskNatureButtons?.('ct'); window.updatePreviewCalc?.(); }, 50);
+            setTimeout(window.guardAccountCallback(() => { window.updateTaskNatureButtons?.('ct'); window.updatePreviewCalc?.(); }), 50);
         };
 
         window.openCalendarInboxItem = function(eventId) {
@@ -3597,7 +3723,7 @@
             uiState.showCreateTaskModal = true;
             uiState.createTaskDraft = null;
             render();
-            setTimeout(() => {
+            setTimeout(window.guardAccountCallback(() => {
                 const values = {
                     'ct-text': item.summary,
                     'ct-activity-type': item.activityType || 'task',
@@ -3610,7 +3736,7 @@
                 window.updateTaskNatureButtons?.('ct');
                 window.updatePreviewCalc?.();
                 window.handleActivityTypeChange('ct');
-            }, 50);
+            }), 50);
         };
 
         window.escapeHtml = function(value) {
@@ -3633,6 +3759,9 @@
             store: createAiBrowserStore({getUser: () => currentUser, getAppCheckToken: async () => (await getToken(appCheck, false)).token})
         });
 
+        const renderOwnerAiInboxButton = window.renderAiInboxButton;
+        window.renderAiInboxButton = () => isAuthorizedAppOwner(currentUser) ? renderOwnerAiInboxButton() : '';
+
         installAiAccess(window, {
             document, config: AI_V2_CONFIG, getState: () => state, getUser: () => currentUser,
             store: createV2BrowserStore({getUser: () => currentUser, getAppCheckToken: async () => (await getToken(appCheck, false)).token}),
@@ -3641,11 +3770,12 @@
         installAiV2Proposals(window, {config: AI_V2_CONFIG, getUser: () => currentUser, render, document,
             getCategories:()=>window.getTaskCategories(),previewEntity:(row)=>radarTarget(state,row,row.fields).then(result=>result.entity.fields),saveConfirmed:()=>window.saveStateNow(true,'ai-v2-before-apply'),
             applyMission:(row,fields)=>{const user=currentUser;return confirmedStateWriter.exclusive(()=>{
+                if (!isAuthorizedAppOwner(user) || !isSession(user) || !sessionReady) throw Error('Integração IA restrita ao proprietário.');
                 const stamp=new Date().toISOString(),campaign=window.normalizePrestige().campaign;
-                if(row.kind&&row.kind!=='mission.create')return cloudStateStore.applyMutation(user,row.id,s=>applyEntity(s,row,fields,{createdAt:stamp,campaign}),stamp).then(result=>{try{Promise.resolve(window.onAiV2Saved?.(JSON.parse(result.payload),user.uid)).catch(()=>{});}catch{}return result;});
+                if(row.kind&&row.kind!=='mission.create')return cloudStateStore.applyMutation(user,row.id,s=>applyEntity(s,row,fields,{createdAt:stamp,campaign}),stamp).then(result=>{if(!isSession(user))return result;try{Promise.resolve(window.onAiV2Saved?.(JSON.parse(result.payload),user.uid)).catch(()=>{});}catch{}return result;});
                 const cost=window.calculateTaskCost('media',2,fields.durationMinutes,'drain','normal');
                 const task={id:Number.parseInt(row.id.slice(0,13),16),aiV2ProposalId:row.id,day:fields.day,planningWeekStart:fields.weekStart,category:fields.category,text:fields.title,activityType:'task',xp:cost.xp,energyCost:cost.hp,completed:false,priority:'media',time:fields.durationMinutes+' min',complexity:2,impactType:'drain',missionNature:'normal',startTime:fields.startTime,endTime:fields.endTime,order:window.getNextTaskOrder(fields.day),subtasks:fields.subtasks.map((text,i)=>({id:Number.parseInt(row.id.slice(0,13),16)+i+1,text,completed:false,createdAt:stamp})),isRecurring:false,recurrenceDays:[],recurrenceGroupId:null,createdAt:stamp,campaignId:window.normalizePrestige().campaign};
-                return cloudStateStore.apply(user,row.id,task,stamp).then(result=>{try{Promise.resolve(window.onAiV2Saved?.(JSON.parse(result.payload),user.uid)).catch(()=>{});}catch{}return result;});
+                return cloudStateStore.apply(user,row.id,task,stamp).then(result=>{if(!isSession(user))return result;try{Promise.resolve(window.onAiV2Saved?.(JSON.parse(result.payload),user.uid)).catch(()=>{});}catch{}return result;});
             });},
             store: createV2ProposalsBrowserStore({getUser: () => currentUser, getAppCheckToken: async () => (await getToken(appCheck, false)).token})});
 
@@ -3657,7 +3787,7 @@
             uiState.editTaskDraft = null;
             uiState.showEditTaskModal = true;
             render();
-            setTimeout(() => { window.updateTaskNatureButtons?.('et'); window.updateEditPreviewCalc?.(); }, 50);
+            setTimeout(window.guardAccountCallback(() => { window.updateTaskNatureButtons?.('et'); window.updateEditPreviewCalc?.(); }), 50);
         };
 
         window.closeEditTaskModal = function() {
@@ -4691,7 +4821,7 @@
             }
 
             if(state.energy < 20) {
-                setTimeout(() => window.showAlertModal("Bateria Executiva Crítica (<20 HP). O sistema recomenda transição para atividades passivas ou encerramento."), 1000);
+                setTimeout(window.guardAccountCallback(() => window.showAlertModal("Bateria Executiva Crítica (<20 HP). O sistema recomenda transição para atividades passivas ou encerramento.")), 1000);
             }
             window.clearWorkDraft('study', 'log');
             window.saveState();
@@ -5143,10 +5273,10 @@
             uiState.showStudyModal = true;
             uiState.studyTab = 'planning';
             render();
-            setTimeout(() => {
+            setTimeout(window.guardAccountCallback(() => {
                 document.getElementById('study-plan-editor-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 document.getElementById('study-block-title')?.focus();
-            }, 80);
+            }), 80);
         };
 
         window.cancelEditStudyPlanBlock = function() {
@@ -5258,8 +5388,8 @@
 
         window.restoreStudyPlanViewPosition = function(snapshot) {
             if (!snapshot) return;
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
+            requestAnimationFrame(window.guardAccountCallback(() => {
+                requestAnimationFrame(window.guardAccountCallback(() => {
                     const modalScroll = document.getElementById('study-modal-scroll');
                     if (snapshot.modalWasOpen && modalScroll) {
                         modalScroll.scrollTop = snapshot.modalScrollTop;
@@ -5271,10 +5401,10 @@
                         .find(card => String(card.dataset.studyBlockId) === String(snapshot.blockId));
                     if (matchingCard) {
                         matchingCard.classList.add('ring-2', 'ring-yellow-500/40');
-                        setTimeout(() => matchingCard.classList.remove('ring-2', 'ring-yellow-500/40'), 900);
+                        setTimeout(window.guardAccountCallback(() => matchingCard.classList.remove('ring-2', 'ring-yellow-500/40')), 900);
                     }
-                });
-            });
+                }));
+            }));
         };
 
         window.updateStudyBlockStatus = function(blockId, status, event = null) {
@@ -5363,7 +5493,7 @@
             uiState.showStudyModal = true;
             uiState.studyTab = 'log';
             render();
-            setTimeout(() => {
+            setTimeout(window.guardAccountCallback(() => {
                 const subjectEl = document.getElementById('session-subject');
                 const typeEl = document.getElementById('session-type');
                 const durationEl = document.getElementById('session-duration');
@@ -5375,7 +5505,7 @@
                 block.status = block.status === 'planned' ? 'partial' : block.status;
                 block.updatedAt = new Date().toISOString();
                 window.saveStudyPlanningState(true);
-            }, 80);
+            }), 80);
         };
 
         window.applyStudyTemplate = function(templateType = 'balanced') {
@@ -5851,11 +5981,11 @@
             uiState.operationalDemandDraft = null;
             uiState.showOperationalDemandModal = true;
             render();
-            setTimeout(() => {
+            setTimeout(window.guardAccountCallback(() => {
                 const titleInput = document.getElementById('op-demand-title');
                 if (titleInput) titleInput.focus();
                 if (typeof window.syncOperationalWaitingFields === 'function') window.syncOperationalWaitingFields();
-            }, 40);
+            }), 40);
         };
 
         window.closeOperationalDemandModal = function() {
@@ -6863,7 +6993,7 @@
                     ? calendarSync.getInbox({ includeHandled: true }).find(item => item.id === uiState.calendarInboxEventId)
                     : null;
                 html += window.renderCreateTaskModal(calendarInboxSource);
-                setTimeout(() => { window.updateTaskNatureButtons('ct'); window.updatePreviewCalc(); }, 0);
+                setTimeout(window.guardAccountCallback(() => { window.updateTaskNatureButtons('ct'); window.updatePreviewCalc(); }), 0);
             }
 
             // MODAL EDITAR TAREFA
