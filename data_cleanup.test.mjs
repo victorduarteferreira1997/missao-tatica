@@ -65,32 +65,32 @@ function engine() {
     ].join('\n'), ctx);
     ctx.window.getCurrentCalendarWeekStartKey = () => '2026-10-05';
     ctx.window.saveStudyPlanningState = () => ctx.window.saveState();
-    ctx.window.saveStateNow = async()=>{ctx.window.saveState();return true;};
+    ctx.window.saveStateNow = async(skipRender,reason)=>{ctx.window.saveState(skipRender,reason);return true;};
     ctx.window.validateState(); ctx.pomodoro.timeLeft = 900;
     ctx.window.openDataManager(); ctx.persisted = () => JSON.parse(persisted);
     return ctx;
 }
-function clean(ctx, ids) {
+async function clean(ctx, ids) {
     ctx.uiState.dataManager.selected = ids; ctx.window.reviewDataCleanup();
-    assert.equal(typeof ctx.window.confirmCallback, 'function'); ctx.window.confirmCallback();
+    assert.equal(typeof ctx.window.confirmCallback, 'function'); await ctx.window.confirmCallback();
 }
 
-test('abrir, selecionar, revisar e cancelar não alteram os dados', () => {
+test('abrir, selecionar, revisar e cancelar não alteram os dados', async () => {
     const ctx = engine(); const before = JSON.stringify(ctx.state);
     ctx.window.setDataCleanupSelection('study', true); ctx.window.setDataCleanupSelection('invalid', true);
     assert.deepEqual(plain(ctx.uiState.dataManager.selected), ['study']);
     ctx.window.reviewDataCleanup(); assert.equal(JSON.stringify(ctx.state), before);
-    ctx.window.closeDataManager(); ctx.window.confirmCallback(); assert.equal(JSON.stringify(ctx.state), before);
+    ctx.window.closeDataManager(); await ctx.window.confirmCallback(); assert.equal(JSON.stringify(ctx.state), before);
     ctx.window.openDataManager(); assert.deepEqual(plain(ctx.uiState.dataManager.selected), []);
     ctx.window.reviewDataCleanup(); assert.match(ctx.window.alertMessage, /Selecione ao menos/);
 });
 
-test('cada módulo apaga cadastro e histórico preservando os demais módulos e o jogo', () => {
+test('cada módulo apaga cadastro e histórico preservando os demais módulos e o jogo', async () => {
     for (const id of ['missions', 'study', 'finance', 'health', 'focus', 'rituals', 'recharge', 'radar', 'rewards', 'profile']) {
         const ctx = engine(); const before = plain(ctx.state);
         ctx.uiState.rewardEditor = {id:'r2'}; ctx.uiState.rewardDraft = {title:'Rascunho'}; ctx.uiState.rewardSections = {create:true};
         const module = ctx.window.cleanupModulesForTest.find(m => m.id === id);
-        clean(ctx, [id]); const saved = ctx.persisted();
+        await clean(ctx, [id]); const saved = ctx.persisted();
         for (const other of ctx.window.cleanupModulesForTest.filter(m => m.id !== id)) {
             for (const key of other.keys) assert.deepEqual(saved[key], before[key], `${id} não pode alterar ${key}`);
         }
@@ -103,8 +103,8 @@ test('cada módulo apaga cadastro e histórico preservando os demais módulos e 
     }
 });
 
-test('gamificação zerada não reaproveita IDs nem ganhos de registros mantidos', () => {
-    const ctx = engine(); const before = plain(ctx.state); clean(ctx, ['game']); const saved = ctx.persisted();
+test('gamificação zerada não reaproveita IDs nem ganhos de registros mantidos', async () => {
+    const ctx = engine(); const before = plain(ctx.state); await clean(ctx, ['game']); const saved = ctx.persisted();
     assert.equal(saved.xp, 0); assert.equal(saved.level, 1); assert.equal(saved.coins, 0); assert.equal(saved.energy, 100);
     assert.equal(saved.economy.tacticalReserve, 0); assert.deepEqual(saved.economy.history, []); assert.deepEqual(saved.economy.resetLog, []);
     for (const key of ['campaigns', 'badgeEvents', 'bonusClaimedBadgeIds']) assert.deepEqual(saved.prestige[key], []);
@@ -114,18 +114,18 @@ test('gamificação zerada não reaproveita IDs nem ganhos de registros mantidos
     assert.equal(ctx.window.revertCampaignXp(100, saved.tasks[0].rewardedCampaign), 0); assert.equal(ctx.pomodoro.focusLock, null);
 });
 
-test('todos os módulos mais gamificação mantêm perfil e identidade de sincronização', () => {
+test('todos os módulos mais gamificação mantêm perfil e identidade de sincronização', async () => {
     const ctx = engine(); const before = plain(ctx.state);
-    clean(ctx, ctx.window.cleanupModulesForTest.filter(m => m.id !== 'profile').map(m => m.id)); const saved = ctx.persisted();
+    await clean(ctx, ctx.window.cleanupModulesForTest.filter(m => m.id !== 'profile').map(m => m.id)); const saved = ctx.persisted();
     assert.deepEqual(saved.userProfile, before.userProfile); assert.deepEqual(saved.calendarSync, before.calendarSync);
     assert.equal(saved.xp, 0); assert.equal(saved.prestige.campaigns.length, 0);
     assert.equal(saved.studyData.subjects.length, 0); assert.equal(saved.financeData.debts.length, 0);
 });
 
-test('selecionar tudo reinicia perfil, jogo e módulos com padrões novos', () => {
+test('selecionar tudo reinicia perfil, jogo e módulos com padrões novos', async () => {
     const ctx = engine(); const before = plain(ctx.state); ctx.window.selectAllDataCleanup(true);
     assert.equal(ctx.uiState.dataManager.selected.length, 11); assert.match(ctx.window.renderDataManager(), /Reinício completo/);
-    ctx.window.reviewDataCleanup(); assert.match(ctx.window.confirmMessage, /Reiniciar todo/); ctx.window.confirmCallback();
+    ctx.window.reviewDataCleanup(); assert.match(ctx.window.confirmMessage, /Reiniciar todo/); await ctx.window.confirmCallback();
     const saved = ctx.persisted();
     assert.equal(saved.userProfile.configured, false); assert.equal(saved.userProfile.displayName, '');
     assert.equal(saved.xp, 0); assert.equal(saved.level, 1); assert.equal(saved.coins, 0); assert.equal(saved.combo, 0);
@@ -142,14 +142,14 @@ test('selecionar tudo reinicia perfil, jogo e módulos com padrões novos', () =
     assert.equal(ctx.window.buildDataCleanupState(['invalid']), null);
 });
 
-test('limpeza de missões libera vínculos locais com a agenda preservando compromissos externos', () => {
-    const ctx = engine(); clean(ctx, ['missions']); const saved = ctx.persisted();
+test('limpeza de missões libera vínculos locais com a agenda preservando compromissos externos', async () => {
+    const ctx = engine(); await clean(ctx, ['missions']); const saved = ctx.persisted();
     assert.equal(saved.calendarInboxItems[0].status, 'pending'); assert.equal(saved.calendarInboxItems[0].linkedTaskId, null);
     assert.equal(saved.calendarInboxItems[1].status, 'ignored'); assert.match(ctx.window.confirmMessage, /agenda principal permanecem/);
     assert.equal(ctx.pomodoro.focusLock, null); assert.equal(ctx.pomodoro.timeLeft, 45 * 60);
 });
 
-test('ações pendentes, sincronização e confirmações antigas bloqueiam exclusões', () => {
+test('ações pendentes, sincronização e confirmações antigas bloqueiam exclusões', async () => {
     for (const block of ['running', 'evaluation', 'finance', 'calendar', 'loading']) {
         const ctx = engine(); ctx.uiState.dataManager.selected = ['finance'];
         if (block === 'running') ctx.pomodoro.isRunning = true;
@@ -161,12 +161,12 @@ test('ações pendentes, sincronização e confirmações antigas bloqueiam excl
         assert.equal(ctx.window.confirmCallback, undefined); assert.equal(JSON.stringify(ctx.state), before);
     }
     const ctx = engine(); ctx.uiState.dataManager.selected = ['study']; ctx.window.reviewDataCleanup();
-    ctx.calendarSync.view = () => ({ busy: true }); ctx.window.confirmCallback(); assert.equal(ctx.state.studyData.subjects.length, 1);
-    ctx.calendarSync.view = () => ({ busy: false }); ctx.window.reviewDataCleanup(); ctx.window.confirmCallback();
-    const saved = JSON.stringify(ctx.state); ctx.window.confirmCallback(); assert.equal(JSON.stringify(ctx.state), saved);
+    ctx.calendarSync.view = () => ({ busy: true }); await ctx.window.confirmCallback(); assert.equal(ctx.state.studyData.subjects.length, 1);
+    ctx.calendarSync.view = () => ({ busy: false }); ctx.window.reviewDataCleanup(); await ctx.window.confirmCallback();
+    const saved = JSON.stringify(ctx.state); await ctx.window.confirmCallback(); assert.equal(JSON.stringify(ctx.state), saved);
 });
 
-test('painel oferece revisão, backup e seleções acessíveis; rodapé inicial permanece recolhido', () => {
+test('painel oferece revisão, backup e seleções acessíveis; rodapé inicial permanece recolhido', async () => {
     const ctx = engine(); let html = ctx.window.renderDataManager();
     assert.match(html, /role="dialog" aria-modal="true"/); assert.match(html, /disabled/); assert.ok(!/<input[^>]*\schecked(?:\s|>)/.test(html));
     assert.match(html, /Exportar backup completo/); assert.match(html, /importação substitui todos os dados/);
@@ -178,18 +178,18 @@ test('painel oferece revisão, backup e seleções acessíveis; rodapé inicial 
     assert.ok(!footer.includes('cleanup-finance')); assert.match(footer, /window.openDataManager/);
 });
 
-test('seleção combinada limpa somente Estudos, Finanças e Corpo; dados novos fora dela continuam', () => {
+test('seleção combinada limpa somente Estudos, Finanças e Corpo; dados novos fora dela continuam', async () => {
     const ctx = engine(); const before = plain(ctx.state);
     ctx.uiState.dataManager.selected = ['study', 'finance', 'health']; ctx.window.reviewDataCleanup();
     ctx.state.tasks.push({ id: 't2', text: 'Criada após revisar', day: 'monday', category: 'work', campaignId: 3 });
-    ctx.window.confirmCallback(); const saved = ctx.persisted();
+    await ctx.window.confirmCallback(); const saved = ctx.persisted();
     assert.equal(saved.studyData.subjects.length, 0); assert.equal(saved.financeData.incomes.length, 0); assert.equal(saved.healthData.workouts.length, 0);
     assert.equal(saved.tasks.length, 2); assert.equal(saved.tasks[1].text, 'Criada após revisar');
     assert.deepEqual(saved.routineData, before.routineData); assert.deepEqual(saved.userProfile, before.userProfile);
     assert.equal(saved.xp, before.xp); assert.deepEqual(saved.prestige, before.prestige);
 });
 
-test('backup JSON real inclui o aplicativo inteiro e restaura os dados após reinício', () => {
+test('backup JSON real inclui o aplicativo inteiro e restaura os dados após reinício', async () => {
     const ctx = engine(); let exported;
     ctx.document.createElement = () => ({ attrs: {}, setAttribute(key, value) { this.attrs[key] = value; }, click() { exported = this.attrs; } });
     ctx.FileReader = class { readAsText(file) { this.onload({ target: { result: file.text } }); } };
@@ -198,9 +198,9 @@ test('backup JSON real inclui o aplicativo inteiro e restaura os dados após rei
     assert.match(exported.download, /missao_tatica_backup_.*\.json/);
     const backup = decodeURIComponent(exported.href.split(',')[1]);
     const before = JSON.parse(backup);
-    clean(ctx, ctx.window.cleanupModulesForTest.map(m => m.id)); assert.equal(ctx.state.xp, 0);
+    await clean(ctx, ctx.window.cleanupModulesForTest.map(m => m.id)); assert.equal(ctx.state.xp, 0);
     const event = { target: { files: [{ text: backup }], value: 'backup.json' } };
-    ctx.window.importData(event); ctx.window.confirmCallback();
+    ctx.window.importData(event); await ctx.window.confirmCallback();
     const restored = ctx.persisted();
     assert.equal(restored.xp, before.xp); assert.deepEqual(restored.financeData, before.financeData);
     assert.deepEqual(restored.healthData, before.healthData); assert.deepEqual(restored.userProfile, before.userProfile);
@@ -220,37 +220,37 @@ function trackDeletionFixture() {
     ctx.window.stampCampaignRecords();
     return ctx;
 }
-test('exclusão de trilha exige arquivo e confirmação; manter matérias preserva histórico e vínculos vazios após recarregar', () => {
+test('exclusão de trilha exige arquivo e confirmação; manter matérias preserva histórico e vínculos vazios após recarregar', async () => {
     const ctx = trackDeletionFixture(), before = plain(ctx.state);
     ctx.window.requestPermanentStudyTrackDeletion('ingles','cascade');assert.equal(ctx.window.confirmCallback,undefined);
     ctx.window.requestPermanentStudyTrackDeletion('custom','invalid');assert.equal(ctx.window.confirmCallback,undefined);
     ctx.window.requestPermanentStudyTrackDeletion('custom','keep');assert.deepEqual(plain(ctx.state),before);
     assert.match(ctx.window.confirmMessage,/somente a trilha/);assert.match(ctx.window.confirmMessage,/1 matéria\(s\) e 1 bloco\(s\)/);
-    ctx.window.confirmCallback();
+    await ctx.window.confirmCallback();
     assert.ok(!ctx.state.studyData.studyPlan.tracks.some(row=>row.id==='custom'));
     assert.equal(ctx.state.studyData.subjects[0].trackId,null);assert.equal(ctx.state.studyData.studyPlan.weeklyBlocks[0].trackId,null);
     for(const key of ['sessions','reviews','errorLog','cycles'])assert.deepEqual(plain(ctx.state.studyData[key]),before.studyData[key]);
     ctx.window.validateState();assert.equal(ctx.state.studyData.studyPlan.weeklyBlocks[0].trackId,null);
     assert.equal(ctx.state.xp,before.xp);assert.equal(ctx.state.coins,before.coins);
 });
-test('exclusão completa remove só registros vinculados, ajusta ciclos e preserva recompensas, recibos e outros módulos', () => {
+test('exclusão completa remove só registros vinculados, ajusta ciclos e preserva recompensas, recibos e outros módulos', async () => {
     const ctx = trackDeletionFixture(), before = plain(ctx.state);ctx.state.aiApplications = {'receipt':'keep'};
     ctx.window.requestPermanentStudyTrackDeletion('custom','cascade');
     assert.match(ctx.window.confirmMessage,/Trilhas: 1 · Matérias: 1 · Blocos de planejamento: 1 · Sessões: 1 · Revisões: 1 · Erros: 1/);
-    assert.match(ctx.window.confirmMessage,/2 ciclos serão ajustados/);ctx.window.confirmCallback();
+    assert.match(ctx.window.confirmMessage,/2 ciclos serão ajustados/);await ctx.window.confirmCallback();
     const data=ctx.state.studyData;
     assert.deepEqual(data.subjects.map(row=>row.id),['other-subject']);assert.deepEqual(data.sessions.map(row=>row.id),['other-session']);
     assert.deepEqual(data.reviews.map(row=>row.id),['other-review']);assert.deepEqual(data.errorLog.map(row=>row.id),['other-error']);
     assert.deepEqual(data.studyPlan.weeklyBlocks.map(row=>row.id),['other-block']);assert.equal(data.studyPlan.weeklyBlocks[0].linkedSessionId,null);
     assert.deepEqual(plain(data.cycles),[{id:'mixed',subjectIds:['other-subject']},{id:'unrelated',subjectIds:['other-subject']}]);
     for(const key of ['xp','coins','energy','prestige','tasks','financeData','healthData','operationalControl'])assert.deepEqual(plain(ctx.state[key]),before[key]);
-    assert.deepEqual(ctx.state.aiApplications,{'receipt':'keep'});const saved=JSON.stringify(ctx.state);ctx.window.confirmCallback();assert.equal(JSON.stringify(ctx.state),saved);
+    assert.deepEqual(ctx.state.aiApplications,{'receipt':'keep'});const saved=JSON.stringify(ctx.state);await ctx.window.confirmCallback();assert.equal(JSON.stringify(ctx.state),saved);
 });
-test('trilha padrão excluída não reaparece após validação; mudanças depois da prévia impedem exclusão', () => {
+test('trilha padrão excluída não reaparece após validação; mudanças depois da prévia impedem exclusão', async () => {
     const ctx=trackDeletionFixture();ctx.window.requestPermanentStudyTrackDeletion('custom','cascade');
-    ctx.state.studyData.sessions.push({id:'new',subjectId:'s1'});const before=JSON.stringify(ctx.state);ctx.window.confirmCallback();
+    ctx.state.studyData.sessions.push({id:'new',subjectId:'s1'});const before=JSON.stringify(ctx.state);await ctx.window.confirmCallback();
     assert.equal(JSON.stringify(ctx.state),before);assert.match(ctx.window.alertMessage,/mudaram/);
-    ctx.state.studyData.studyPlan.tracks.find(row=>row.id==='ingles').active=false;ctx.window.requestPermanentStudyTrackDeletion('ingles','keep');ctx.window.confirmCallback();
+    ctx.state.studyData.studyPlan.tracks.find(row=>row.id==='ingles').active=false;ctx.window.requestPermanentStudyTrackDeletion('ingles','keep');await ctx.window.confirmCallback();
     ctx.window.validateState();ctx.window.validateState();assert.ok(!ctx.state.studyData.studyPlan.tracks.some(row=>row.id==='ingles'));
     assert.ok(ctx.state.studyData.studyPlan.removedDefaultTrackIds.includes('ingles'));
 });

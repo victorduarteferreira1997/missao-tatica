@@ -1,3 +1,18 @@
+## Reinício confirmado e campanha no perfil · v1.9.63 · 19/10/2026
+
+- A limpeza completa mantém `aiAppliedProposals`, o índice técnico dos comprovantes
+  imutáveis da IA. Apaga as missões e o progresso selecionados sem invalidar a
+  gravação transacional nem permitir recriar uma proposta já cadastrada.
+- A limpeza aguarda `saveStateNow` antes de anunciar sucesso. Uma tela de progresso
+  impede configurar o perfil antes da confirmação; falhas exibem aviso sem declarar
+  a conclusão. Nenhuma limpeza é executada automaticamente durante a publicação.
+- O perfil inicial oferece todos os temas de campanha, agrupados por categoria,
+  com prévia de título e linguagem. Salvar escolhe o tema da campanha corrente;
+  editar perfil já configurado não troca o tema nem reinicia o progresso.
+- Validação: 299 testes aprovados e Chromium com Firebase/Google simulados.
+  O navegador verifica limpeza com comprovantes da IA, escolha de campanha e
+  recarregamento real da página sem reaparecimento das missões anteriores.
+
 ## Exclusão de demandas do RADAR · 16/10/2026
 
 - Ações de demandas ativas e encerradas incluem Excluir, com confirmação do título

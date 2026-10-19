@@ -196,3 +196,27 @@ test('recovery cleanup confirmation is invalidated when accounts switch',async()
  recovery.preserve(owner,{ownerUid:owner,tasks:[{id:1}]});await b.c.authCallback(user(owner));b.window.clearLocalConflictBackups();const callback=b.getUI().confirm.onConfirm;
  await b.c.authCallback(user(sara));callback();assert.ok(recovery.list(owner).some(s=>s.tasks[0]?.id===1));
 });
+
+
+test('full reset with prior AI receipts is confirmed in the cloud and stays empty on reopen',async()=>{
+ const receipt={taskId:'old-ai-task',createdAt:'2026-10-14'},initial=row(owner,{tasks:[{id:'old-ai-task',text:'Antiga',day:'monday'}],xp:90000,userProfile:{displayName:'Teste',gender:'neutro',configured:true}});
+ initial.aiApplications={proof:receipt};
+ const b=fixture({[path(owner)]:initial});await b.c.authCallback(user(owner));
+ const notices=[];b.window.showToast=(...args)=>notices.push(args);
+ b.window.openDataManager();b.window.selectAllDataCleanup(true);b.window.reviewDataCleanup();
+ const confirmation=b.getUI().confirm.onConfirm;assert.equal(typeof confirmation,'function');
+ const pending=confirmation();assert.equal(b.getUI().dataCleanupSaving,true);assert.equal(notices.length,0);
+ await pending;assert.equal(b.getUI().dataCleanupSaving,false);assert.equal(notices[0][0],'Missão Tática reiniciado');
+ const saved=JSON.parse(b.rows.get(path(owner)).data);assert.deepEqual(saved.tasks,[]);assert.equal(saved.xp,0);assert.equal(saved.userProfile.configured,false);
+ assert.deepEqual(saved.aiAppliedProposals,{proof:'old-ai-task'});assert.deepEqual(b.rows.get(path(owner)).aiApplications,{proof:receipt});
+ await b.c.authCallback(user(owner));assert.equal(b.getState().tasks.length,0);assert.equal(b.getState().userProfile.configured,false);assert.equal(b.getState().xp,0);
+});
+test('reset never announces success before confirmation and reports a failed cloud write',async()=>{
+ const b=fixture({[path(owner)]:row(owner,{tasks:[{id:'keep',text:'Nuvem',day:'monday'}]})});await b.c.authCallback(user(owner));
+ const wait=deferred(),notices=[];b.window.showToast=(...args)=>notices.push(args);b.c.runTransaction=async()=>{await wait.promise;throw Error('offline');};
+ b.window.openDataManager();b.window.selectAllDataCleanup(true);b.window.reviewDataCleanup();
+ const pending=b.getUI().confirm.onConfirm();await tick();assert.equal(notices.length,0);assert.equal(b.getUI().dataCleanupSaving,true);
+ assert.match(b.elements.app.innerHTML,/Salvando limpeza na nuvem/);assert.equal(b.elements.app.innerHTML.includes('id="profile-heading"'),false);
+ wait.resolve();await pending;assert.equal(notices.length,0);assert.equal(b.getUI().dataCleanupSaving,false);assert.match(b.getUI().alert.message,/limpeza não foi confirmada/);
+ assert.equal(JSON.parse(b.rows.get(path(owner)).data).tasks[0].id,'keep');
+});

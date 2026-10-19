@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.62-multiuser-development">
+    <meta name="app-build" content="v1.9.63-reset-profile">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -125,7 +125,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.62';
+        const APP_VERSION = 'v1.9.63';
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
             authDomain: "missao-tatica.firebaseapp.com",
@@ -2046,7 +2046,7 @@
             if (uiState.dataManager) uiState.dataManager.preferencesOpen = open;
         };
         window.dataCleanupBlocked = function() {
-            return window.campaignTransitionBlocked() || calendarSync.view().busy || currentSyncStatus === 'Carregando...';
+            return uiState.dataCleanupSaving || window.campaignTransitionBlocked() || calendarSync.view().busy || currentSyncStatus === 'Carregando...';
         };
         // Constrói uma cópia: revisar ou cancelar nunca altera os dados existentes.
         window.buildDataCleanupState = function(ids, original = state) {
@@ -2056,6 +2056,8 @@
             const has = id => selected.some(m => m.id === id);
             const next = all ? {
                 activeTab: 'monday', currentFilter: 'all', currentPlanningWeekStart: original.currentPlanningWeekStart,
+                // Technical receipts prevent deleted AI proposals from being recreated; they are not mission history.
+                aiAppliedProposals: { ...(original.aiAppliedProposals || {}) },
                 ownerUid: original.ownerUid, calendarSync: original.calendarSync ? JSON.parse(JSON.stringify(original.calendarSync)) : undefined,
                 calendarSyncTest: original.calendarSyncTest ? JSON.parse(JSON.stringify(original.calendarSyncTest)) : undefined,
                 calendarInboxItems: []
@@ -2103,7 +2105,7 @@
             const expectedState = state;
             const expectedManager = uiState.dataManager;
             const message = `${all ? 'Reiniciar todo o Missão Tática?' : 'Apagar os dados das áreas selecionadas?'}\n\n${selected.map(m => m.name).join(' · ')}\n\n${ids.includes('game') ? 'XP, moedas, medalhas e histórico de todas as campanhas serão zerados.' : 'XP, moedas, medalhas e histórico de campanhas serão preservados.'}${ids.includes('missions') || ids.includes('study') ? '\nEventos correspondentes da semana visível no calendário Missão Tática poderão ser removidos na próxima sincronização. Compromissos da sua agenda principal permanecem.' : ''}\n\n${all ? 'As configurações iniciais serão restauradas. A conexão com o Google será mantida.' : 'As áreas não selecionadas serão preservadas.'}\nEsta limpeza é permanente. Um backup JSON restaura o aplicativo inteiro, substituindo os dados atuais.`;
-            window.showConfirmModal(message, () => {
+            window.showConfirmModal(message, async () => {
                 if (state !== expectedState || uiState.dataManager !== expectedManager) return;
                 if (window.dataCleanupBlocked()) { window.showAlertModal('Há uma ação ou sincronização em andamento. Aguarde e revise a limpeza novamente.'); return; }
                 // Recalcula a cópia a partir do estado atual; novas entradas nunca se perdem fora da seleção.
@@ -2149,8 +2151,20 @@
                     uiState.healthSections = {}; uiState.healthPages = {};
                 }
                 if (all) uiState.mainView = 'day';
-                window.saveState(false, all ? 'data-reset-all' : 'data-cleanup-modules');
-                window.showToast(all ? 'Missão Tática reiniciado' : 'Limpeza concluída', all ? 'Dados apagados. Configure seu perfil para recomeçar.' : `${selected.map(m => m.name).join(', ')}: dados apagados.`, 'check-circle', 'text-emerald-300');
+                const user = currentUser, generation = sessionGeneration;
+                uiState.dataCleanupSaving = true;
+                render();
+                let saved = false;
+                try { saved = await window.saveStateNow(true, all ? 'data-reset-all' : 'data-cleanup-modules'); }
+                catch (error) { console.error('Falha ao confirmar limpeza na nuvem.'); }
+                if (!isSession(user, generation)) return;
+                uiState.dataCleanupSaving = false;
+                if (!saved) {
+                    window.showAlertModal('A limpeza não foi confirmada na nuvem. Mantenha esta aba aberta e tente a limpeza novamente quando a conexão voltar. Se houver aviso de alteração em outra aba, reabra o app e revise a limpeza.');
+                    return;
+                }
+                render();
+                window.showToast(all ? 'Missão Tática reiniciado' : 'Limpeza concluída', all ? 'Dados apagados e salvos na nuvem. Configure seu perfil para recomeçar.' : `${selected.map(m => m.name).join(', ')}: limpeza salva na nuvem.`, 'check-circle', 'text-emerald-300');
             });
         };
         window.renderDataManager = function() {
@@ -2594,7 +2608,8 @@
             const name = window.escapeHtml(state.userProfile?.displayName || '');
             const gender = state.userProfile?.gender || '';
             const theme = window.getCampaignDefinition();
-            return `<div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[1000] backdrop-blur-md font-sans"><section role="dialog" aria-modal="true" aria-labelledby="profile-heading" class="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-lg w-full shadow-xl modal-enter"><div class="flex justify-between gap-4"><div><h3 id="profile-heading" class="text-xl font-black text-white">Seu perfil</h3><p class="text-sm text-slate-400 mt-2">Escolha como seu nome e seus títulos aparecem.</p></div>${needsSetup ? '' : '<button type="button" aria-label="Fechar perfil" onclick="window.closeProfileModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>'}</div><div class="space-y-5 mt-6"><div><label for="profile-display-name" class="text-sm font-semibold text-slate-300">Como você quer ser chamado?</label><input id="profile-display-name" type="text" maxlength="60" autocomplete="nickname" oninput="window.updateProfilePreview()" value="${name}" placeholder="Seu nome ou apelido" class="w-full mt-2 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none focus:border-indigo-400"></div><fieldset><legend class="text-sm font-semibold text-slate-300">Linguagem dos títulos</legend><p class="text-xs text-slate-400 mt-1">É uma preferência de apresentação. Não altera XP nem conquistas. Sem gênero exibe nível e tema no lugar do título pessoal.</p><div class="grid grid-cols-3 gap-2 mt-3">${[['feminino', 'Feminina'], ['masculino', 'Masculina'], ['neutro', 'Sem gênero']].map(([value, label]) => `<label class="flex items-center gap-2 bg-slate-950 border border-slate-700 rounded-lg p-3 cursor-pointer text-sm text-slate-200"><input type="radio" name="profile-gender" value="${value}" onchange="window.updateProfilePreview()" class="accent-indigo-500" ${gender === value ? 'checked' : ''}>${label}</label>`).join('')}</div></fieldset><div class="rounded-xl border border-slate-700 bg-slate-800/40 p-4"><p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Prévia do perfil</p><p id="profile-preview-name" class="text-lg font-bold text-white mt-3">${name || 'Seu nome'}</p><p id="profile-preview-title" class="text-sm mt-1" style="color:${theme.color}">${window.escapeHtml(window.getRankName())}</p><p class="text-xs text-slate-400 mt-2">${theme.name} · Campanha ${window.normalizePrestige().campaign}</p></div><div class="flex justify-end gap-3">${needsSetup ? '' : '<button type="button" onclick="window.closeProfileModal()" class="text-sm font-semibold text-slate-300 border border-slate-700 px-4 py-2.5 rounded-lg">Cancelar</button>'}<button type="button" onclick="window.saveUserProfile()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-4 py-2.5 rounded-lg">Salvar perfil</button></div></div></section></div>`;
+            const campaignField = needsSetup ? `<div><label for="profile-campaign-theme" class="text-sm font-semibold text-slate-300">Sua campanha</label><p class="text-xs text-slate-400 mt-1">Escolha o tema dos seus níveis e títulos.</p><select id="profile-campaign-theme" onchange="window.updateProfilePreview()" class="w-full mt-2 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white">${CAMPAIGN_CATEGORIES.map(category => `<optgroup label="${category.name}">${CAMPAIGN_THEMES.filter(item => item.category === category.id).map(item => `<option value="${item.id}" ${item.id === theme.id ? 'selected' : ''}>${item.name}</option>`).join('')}</optgroup>`).join('')}</select></div>` : '';
+            return `<div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[1000] backdrop-blur-md font-sans"><section role="dialog" aria-modal="true" aria-labelledby="profile-heading" class="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl modal-enter"><div class="flex justify-between gap-4"><div><h3 id="profile-heading" class="text-xl font-black text-white">Seu perfil</h3><p class="text-sm text-slate-400 mt-2">Escolha como seu nome e seus títulos aparecem.</p></div>${needsSetup ? '' : '<button type="button" aria-label="Fechar perfil" onclick="window.closeProfileModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>'}</div><div class="space-y-5 mt-6"><div><label for="profile-display-name" class="text-sm font-semibold text-slate-300">Como você quer ser chamado?</label><input id="profile-display-name" type="text" maxlength="60" autocomplete="nickname" oninput="window.updateProfilePreview()" value="${name}" placeholder="Seu nome ou apelido" class="w-full mt-2 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none focus:border-indigo-400"></div><fieldset><legend class="text-sm font-semibold text-slate-300">Linguagem dos títulos</legend><p class="text-xs text-slate-400 mt-1">É uma preferência de apresentação. Não altera XP nem conquistas. Sem gênero exibe nível e tema no lugar do título pessoal.</p><div class="grid grid-cols-3 gap-2 mt-3">${[['feminino', 'Feminina'], ['masculino', 'Masculina'], ['neutro', 'Sem gênero']].map(([value, label]) => `<label class="flex items-center gap-2 bg-slate-950 border border-slate-700 rounded-lg p-3 cursor-pointer text-sm text-slate-200"><input type="radio" name="profile-gender" value="${value}" onchange="window.updateProfilePreview()" class="accent-indigo-500" ${gender === value ? 'checked' : ''}>${label}</label>`).join('')}</div></fieldset>${campaignField}<div class="rounded-xl border border-slate-700 bg-slate-800/40 p-4"><p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Prévia do perfil</p><p id="profile-preview-name" class="text-lg font-bold text-white mt-3">${name || 'Seu nome'}</p><p id="profile-preview-title" class="text-sm mt-1" style="color:${theme.color}">${window.escapeHtml(window.getRankName())}</p><p id="profile-preview-campaign" class="text-xs text-slate-400 mt-2">${theme.name} · Campanha ${window.normalizePrestige().campaign}</p></div><div class="flex justify-end gap-3">${needsSetup ? '' : '<button type="button" onclick="window.closeProfileModal()" class="text-sm font-semibold text-slate-300 border border-slate-700 px-4 py-2.5 rounded-lg">Cancelar</button>'}<button type="button" onclick="window.saveUserProfile()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-4 py-2.5 rounded-lg">Salvar perfil</button></div></div></section></div>`;
         };
         window.openProfileModal = function() { uiState.showProfileModal = true; render(); };
         window.closeProfileModal = function() {
@@ -2607,8 +2622,11 @@
             const name = (document.getElementById('profile-display-name')?.value || '').trim().slice(0, 60);
             const title = document.getElementById('profile-preview-title');
             const nameElement = document.getElementById('profile-preview-name');
-            const rank = window.getCampaignRanks()[Math.max(0, Math.min(14, state.level - 1))];
-            if (title) title.textContent = window.formatCampaignTitle(rank.name, rank.level, state.prestige?.themeId, gender);
+            const theme = window.getCampaignDefinition(!state.userProfile?.configured ? document.getElementById('profile-campaign-theme')?.value : state.prestige?.themeId);
+            const rank = theme.ranks[Math.max(0, Math.min(14, state.level - 1))];
+            if (title) { title.textContent = window.formatCampaignTitle(rank.name, rank.level, theme.id, gender); title.style.color = theme.color; }
+            const campaign = document.getElementById('profile-preview-campaign');
+            if (campaign) campaign.textContent = `${theme.name} · Campanha ${window.normalizePrestige().campaign}`;
             if (nameElement) nameElement.textContent = name || 'Seu nome';
         };
         window.saveUserProfile = function() {
@@ -2616,6 +2634,11 @@
             const gender = document.querySelector('input[name="profile-gender"]:checked')?.value || '';
             if (!name) { window.showAlertModal('Digite como você gostaria de ser chamado(a).'); return; }
             if (!['masculino', 'feminino', 'neutro'].includes(gender)) { window.showAlertModal('Escolha a linguagem dos seus títulos.'); return; }
+            if (!state.userProfile?.configured) {
+                const themeId = document.getElementById('profile-campaign-theme')?.value;
+                if (!CAMPAIGN_THEMES.some(theme => theme.id === themeId)) { window.showAlertModal('Escolha o tema da sua campanha.'); return; }
+                window.normalizePrestige().themeId = themeId;
+            }
             state.userProfile = { ...state.userProfile, displayName: name, gender, configured: true, updatedAt: new Date().toISOString() };
             uiState.showProfileModal = false;
             window.saveState();
@@ -6533,11 +6556,12 @@
 
 
             html += window.renderDataManager();
+            if (uiState.dataCleanupSaving) html += '<div class="fixed inset-0 bg-slate-950/95 z-[1200] p-4 flex items-center justify-center"><section role="dialog" aria-modal="true" aria-labelledby="cleanup-saving-title" aria-busy="true" class="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full text-center"><h2 id="cleanup-saving-title" class="text-lg font-bold text-white">Salvando limpeza na nuvem…</h2><p role="status" class="text-sm text-slate-400 mt-3">Aguarde a confirmação antes de fechar esta aba ou configurar seu perfil.</p></section></div>';
             html += window.renderStudyTrackDeletion();
             html += window.renderPlanningReview?.() || '';
 
             const profileNeedsSetup = !state?.userProfile?.configured;
-            if (profileNeedsSetup || uiState.showProfileModal) {
+            if (!uiState.dataCleanupSaving && (profileNeedsSetup || uiState.showProfileModal)) {
                 html += window.renderProfileModal(profileNeedsSetup);
             }
 
