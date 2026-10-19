@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.63-reset-profile">
+    <meta name="app-build" content="v1.9.64-ai-proposal-review">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -113,7 +113,7 @@
         import { createV2BrowserStore } from './ai/v2/browser.js';
         import { installAiAccess } from './ui/ai_access.v2.js';
         import { createV2ProposalsBrowserStore } from './ai/v2/proposals_browser.js';
-        import { installAiV2Proposals } from './ui/ai_proposals.v2.js';
+        import { installAiV2Proposals } from './ui/ai_proposals.v2.js?v=1.9.64';
         import { createAiBrowserStore } from './ai/bridge_rest.v1.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { initializeAppCheck, ReCaptchaEnterpriseProvider, getToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
@@ -125,7 +125,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.63';
+        const APP_VERSION = 'v1.9.64';
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
             authDomain: "missao-tatica.firebaseapp.com",
