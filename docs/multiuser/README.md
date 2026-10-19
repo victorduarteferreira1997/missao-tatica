@@ -1,6 +1,8 @@
 # Fase 1 — suporte multiusuário
 
-Implementação de desenvolvimento v1.9.62. Nenhuma mudança de produção foi realizada.
+Fase 1 v1.9.62. Publicação autorizada expressamente pelo proprietário em 19/10/2026, com dispensa do backup obrigatório. As regras de `(default)` foram aplicadas manualmente por ele, que confirmou o salvamento na nuvem pelo cliente anterior antes do merge do PR #3. O código foi integrado à main no commit `39fec004e200799f3f9532b4f5f50ddc603f2cc2`. A autorização do UID da Sara e a validação real com as duas contas continuam pendentes.
+
+Os imports do motor da Agenda e do escritor de estado recebem `?v=1.9.62` para evitar que um navegador misture o HTML atualizado com módulos antigos mantidos no cache do GitHub Pages. Nenhuma permissão Google adicional foi introduzida.
 
 ## Arquitetura
 
@@ -67,7 +69,7 @@ Não abrir uma cópia normal da branch e entrar com contas reais para testar: o 
 
 O usuário forneceu manualmente o conteúdo das regras de `(default)` em 19/10/2026. A política anterior exige UID e email do proprietário e acesso somente a seus próprios caminhos. A proposta mantém essas condições e foi testada com o formato de gravação do cliente v1.9.61, inclusive perfil, transação sem `ownerUid` externo e inclusão de recibos de IA. Foi testada também a recusa do proprietário com email ausente/incorreto, inclusive contra tentativa de contornar pela lista de membros. O arquivo `ai/firestore.rules` permanece inalterado.
 
-Não houve leitura administrativa direta do release ativo; a análise usa o texto enviado pelo usuário. A liberação continua pendente de backup, substituição privada do marcador de email e testes reais autorizados. **Não publicar o template do repositório sem configurar `__OWNER_EMAIL__`**: ele bloquearia o acesso do proprietário. O email real fica somente na cópia privada de implantação (`firestore.default.deployment.rules`, ignorada pelo git) ou no editor privado do Console. O teste substitui o marcador por `owner@example.test` em memória; nenhum email pessoal foi publicado no código.
+Não houve leitura administrativa direta do release ativo; a análise usa o texto enviado pelo usuário. O proprietário dispensou o backup obrigatório, a cópia privada das regras foi configurada e ele confirmou a atualização/salvamento. A liberação completa da conta da Sara e os testes reais de Agenda/IA continuam pendentes. **Não publicar o template do repositório sem configurar `__OWNER_EMAIL__`**: ele bloquearia o acesso do proprietário. O email real fica somente na cópia privada de implantação (`firestore.default.deployment.rules`, ignorada pelo git) ou no editor privado do Console. O teste substitui o marcador por `owner@example.test` em memória; nenhum email pessoal foi publicado no código.
 
 O cache local é separado por identidade, mas não criptografado. Pessoas com acesso às ferramentas do mesmo perfil de navegador podem inspecionar o armazenamento daquele perfil; usar perfis de navegador distintos em equipamentos compartilhados se essa privacidade local for necessária. O isolamento remoto é imposto pelas regras, independentemente do conteúdo do navegador.
 

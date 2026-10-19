@@ -1,4 +1,6 @@
-# Implantação e reversão — execução ainda não autorizada
+# Implantação e reversão
+
+Registro de 19/10/2026: o proprietário autorizou expressamente atualizar as permissões e publicar a versão multiusuário, dispensando o backup obrigatório dos dados. Informou a publicação manual das regras e confirmou uma gravação na nuvem no aplicativo existente. O PR #3 foi integrado à main no commit `39fec004e200799f3f9532b4f5f50ddc603f2cc2`. A autorização do UID da Sara e a validação com as contas reais seguem pendentes. A sequência abaixo é mantida como procedimento de referência, considerando essa autorização já concedida.
 
 ## Antes de liberar
 
@@ -7,7 +9,7 @@
 3. O proprietário exporta um backup JSON completo pela aplicação atual e verifica se contém todos os módulos e o titular correto. Guardar também uma cópia local original e um backup administrativo apropriado dos documentos que serão alterados, se disponível. Não colar os arquivos privados em PRs. O commit do código não substitui backup de banco.
 4. Executar os testes documentados. Se possível, testar em um projeto Firebase separado já disponível, sem contratar serviço ou alterar configuração real de produção. Um preview normal do HTML aponta para o Firebase existente; os runners fornecidos são a opção isolada já validada.
 5. Confirmar GitHub Pages ligado exclusivamente à fonte de produção prevista e que não há workflow externo que publique esta branch. A configuração Pages não foi acessível via API pública; o único workflow identificado é o Pages dinâmico. Não mudar a fonte de publicação para esta branch durante revisão.
-6. Obter autorização explícita do proprietário para a liberação. Não houve deploy de regras, mudanças de dados, merge nem publicação nesta entrega.
+6. Autorização explícita já concedida nesta sessão. O proprietário confirmou as regras e o salvamento; prosseguir com a publicação do código, conferir a versão e realizar os testes reais restantes.
 
 ## Sequência de liberação a executar somente após aprovação
 
@@ -32,4 +34,4 @@
 
 ## Evidência de entrega
 
-Os resultados automatizados estão em `README.md` desta pasta. Logs locais do emulador/navegador são ignorados pelo git, pois não são artefatos de produção. O estado final do código e a lista exata de arquivos estão nos commits/PR da branch. Produção e suas regras permanecem sem alterações durante o desenvolvimento.
+Os resultados automatizados estão em `README.md` desta pasta. Logs locais do emulador/navegador são ignorados pelo git, pois não são artefatos de produção. O estado final do código e a lista exata de arquivos estão nos commits/PR da branch. Durante o desenvolvimento isolado não houve alterações em produção. Após autorização, o proprietário confirmou a aplicação manual das regras e foi realizado o merge registrado acima. A confirmação das regras é um relato do proprietário; não houve acesso administrativo direto ao Firebase por este ambiente.
