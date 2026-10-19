@@ -33,3 +33,8 @@ oauth-client*.json
 
 # Backups pessoais exportados pela aplicação
 *backup*.json
+
+# Emuladores locais de desenvolvimento
+.firebaserc
+.firebase/
+security-tests/node_modules

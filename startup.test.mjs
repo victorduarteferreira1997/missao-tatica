@@ -1,48 +1,19 @@
 import {AI_OWNER_UID} from './ai/contract.v1.js';
-import {AI_V2_CONFIG} from './ai/config.v2.js';
-import {applyEntity,radarTarget} from './ai/v2/entity_apply.js';
-import {createCloudStateStore} from './ai/v2/cloud_state.js';
-import {createConfirmedStateWriter} from './ai/v2/saved_state.js';
-import {createV2BrowserStore} from './ai/v2/browser.js';
-import {installAiAccess} from './ui/ai_access.v2.js';
-import {createV2ProposalsBrowserStore} from './ai/v2/proposals_browser.js';
-import {installAiV2Proposals} from './ui/ai_proposals.v2.js';
+import {accountStateKey,AUTH_TRANSITION_KEY} from './account_storage.v1.js';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {runInNewContext} from 'node:vm';
 import test from 'node:test';
-import {createCalendarSync} from './calendar_sync.v2.js';
-import {installPlanningTools} from './ui/planning_tools.v1.js';
-import {installFormDialogs} from './ui/form_dialogs.v1.js';
-import {installTaskForms} from './ui/task_forms.v2.js';
-import {installPlanningViews} from './ui/planning_views.v3.js';
-import {installAiInbox} from './ui/ai_inbox.v3.js';
-import {AI_CONFIG} from './ai/config.v1.js';
-import {createAiBrowserStore} from './ai/bridge_rest.v1.js';
-const app=await readFile(new URL('./app.html',import.meta.url),'utf8');
-const moduleSource=app.match(/<script\s+type="module">([\s\S]*?)<\/script>/)[1].replace(/^\s*import .+;\s*$/gm,'');
-const plain=v=>JSON.parse(JSON.stringify(v));
-class FixedDate extends Date{constructor(...args){super(...(args.length?args:['2026-10-06T22:30:00Z']));}static now(){return Date.parse('2026-10-06T22:30:00Z');}}
-function boot(saved=null,applyEnabled=false){
- const elements={};const element=()=>({style:{},classList:{add(){},remove(){}},querySelector(){return null;},querySelectorAll(){return [];},addEventListener(){},innerHTML:''});
- for(const id of ['app','auth-overlay','app-wrapper','sync-text','sync-indicator','auth-access-message'])elements[id]=element();
- const stored=new Map(saved?[['planeamento_semanal_v11',JSON.stringify(saved)]]:[]),writes=[];
- const document={activeElement:null,getElementById:id=>elements[id]||null,querySelector(){return null;},querySelectorAll(){return [];},addEventListener(){}};
- const window={lucide:{createIcons(){}},location:{origin:'https://victorduarteferreira1997.github.io',pathname:'/missao-tatica/app.html'},addEventListener(){}};
- const c={window,document,Date:FixedDate,console,TextEncoder,Uint8Array,Uint32Array,DataView,URL,Blob,Intl,localStorage:{getItem:key=>stored.get(key)||null,setItem:(key,value)=>{stored.set(key,value);writes.push(key);}},
- setTimeout:()=>1,clearTimeout(){},setInterval:()=>1,clearInterval(){},lucide:window.lucide,initializeApp:()=>({}),initializeAppCheck(){},ReCaptchaEnterpriseProvider:class{},getAuth:()=>({}),getFirestore:()=>({}),GoogleAuthProvider:class{},signInWithPopup(){},signInWithRedirect(){},signOut:async()=>{},onAuthStateChanged:(auth,callback)=>c.authCallback=callback,doc(){},getDoc(){throw Error('A inicialização não deve ler a nuvem sem login.');},setDoc(){throw Error('O teste não deve gravar na nuvem.');},createCalendarSync:options=>{c.calendarOnChange=options.onChange;return createCalendarSync(options);},installPlanningTools,installFormDialogs,installTaskForms,installPlanningViews,installAiInbox,AI_CONFIG,createAiBrowserStore,AI_V2_CONFIG:{...AI_V2_CONFIG,applyEnabled},createCloudStateStore,applyEntity,radarTarget,createConfirmedStateWriter,createV2BrowserStore,installAiAccess,createV2ProposalsBrowserStore,installAiV2Proposals:(w,options)=>{c.v2ProposalsOptions=options;return installAiV2Proposals(w,options);}};
- runInNewContext(moduleSource+'\nwindow.startupForTest = {getState:()=>state,getUI:()=>uiState,getTimer:()=>pomodoro,render};',c,{timeout:3000});
- return {c,window,elements,stored,writes,state:window.startupForTest.getState(),ui:window.startupForTest.getUI(),render:window.startupForTest.render};
-}
+import {app,plain,boot} from './test-support/app_boot.mjs';
 test('módulo completo inicializa conta nova e mantém a tela de login sem ler ou gravar na nuvem',async()=>{
  const b=boot();assert.equal(b.state.xp,0);assert.equal(b.state.tasks.length,0);assert.deepEqual(plain(b.state.rewardOverrides),{});
- await b.c.authCallback(null);assert.equal(b.elements['auth-overlay'].style.display,'flex');assert.equal(b.elements['app-wrapper'].style.display,'none');assert.equal(b.writes.length,0);
+ await b.c.authCallback(null);assert.equal(b.elements['auth-overlay'].style.display,'flex');assert.equal(b.elements['app-wrapper'].style.display,'none');assert.deepEqual(b.writes,[AUTH_TRANSITION_KEY]);
 });
 test('módulo completo migra estado anterior com alvo oficial antes dos helpers de tela sem perder registros',()=>{
  const previous={ownerUid:'test-owner',activeTab:'monday',xp:25100,level:10,coins:100,energy:72,combo:0,unlockedBadges:[],tasks:[],quickTasks:[],stats:{},customRewards:[],rewardPurchases:[{id:'old',title:'30 min de Videogame',cost:220,date:'2026-10-01'}],
  economy:{weekStartKey:'2026-10-05',tacticalReserve:200,weeklyCoinsEarned:100,targetReward:{type:'default',id:'r2',title:'30 min de Videogame',cost:220}},rewardOverrides:{r2:{name:'Videogame',durationMinutes:120,cost:450,desc:'Sessão escolhida',version:'test'}},userProfile:{displayName:'Pessoa teste',gender:'feminino',configured:true},financeData:{incomes:[{id:'income',amount:14000,date:'2026-10-01'}],fixedExpenses:[],variableExpenses:[],debts:[],goals:[],categoryBudgets:[],moneyJournal:[]}};
  const b=boot(previous);assert.equal(b.state.xp,previous.xp);assert.equal(b.state.coins,100);assert.equal(b.state.economy.tacticalReserve,200);assert.equal(b.state.economy.targetReward.cost,450);assert.equal(b.state.economy.targetReward.title,'Videogame · 2 h');assert.deepEqual(plain(b.state.rewardPurchases),previous.rewardPurchases.map(r=>({...r,campaignId:null})));assert.deepEqual(plain(b.state.financeData.incomes),previous.financeData.incomes.map(r=>({...r,campaignId:null})));
- b.window.saveState(true,'release-startup');const persisted=JSON.parse(b.stored.get('planeamento_semanal_v11'));assert.equal(persisted.rewardOverrides.r2.cost,450);assert.equal(persisted.financeData.incomes[0].amount,14000);assert.equal(persisted.lastSaveReason,'release-startup');
+ b.window.saveState(true,'release-startup');const persisted=JSON.parse(b.stored.get(accountStateKey(AI_OWNER_UID)));assert.equal(persisted.rewardOverrides.r2.cost,450);assert.equal(persisted.financeData.incomes[0].amount,14000);assert.equal(persisted.lastSaveReason,'release-startup');
 });
 test('integração completa monta Missões, Semana, Radar e todas as janelas sem dados pessoais',()=>{
  const b=boot();b.state.userProfile={displayName:'Teste',gender:'feminino',configured:true};
@@ -250,7 +221,7 @@ test('excluir demanda ativa ou encerrada preserva missões, histórico, pré-req
   const expectedTasks=before.tasks.map(task=>({...task,...(task.radarDemandId==='radar-delete'?{radarDemandId:null}:{})}));assert.deepEqual(plain(b.state.tasks),expectedTasks);
   const expectedHistory=before.planning.history.map(week=>({...week,tasks:week.tasks.map(task=>({...task,...(task.radarDemandId==='radar-delete'?{radarDemandId:null}:{})}))}));assert.deepEqual(plain(b.state.planning.history),expectedHistory);
   for(const key of ['xp','coins','energy','prestige','studyData','financeData','healthData','aiAppliedProposals'])assert.deepEqual(plain(b.state[key]),before[key]);
-  assert.equal(b.ui.mainView,'control');const saved=JSON.parse(b.stored.get('planeamento_semanal_v11'));assert.ok(!saved.operationalControl.demands.some(row=>row.id==='radar-delete'));assert.equal(saved.tasks[0].radarDemandId,null);
+  assert.equal(b.ui.mainView,'control');const saved=JSON.parse(b.stored.get(accountStateKey(AI_OWNER_UID)));assert.ok(!saved.operationalControl.demands.some(row=>row.id==='radar-delete'));assert.equal(saved.tasks[0].radarDemandId,null);
   const after=JSON.stringify(b.state);confirm();assert.equal(JSON.stringify(b.state),after);
  }
 });

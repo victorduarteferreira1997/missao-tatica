@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "firebase emulators:exec --project demo-missao-tatica-phase1 --only firestore --config ../firebase.multiuser.test.json 'node --test rules.test.mjs'",
+    "test:browser": "TZ=America/Sao_Paulo node ../test-support/browser_accounts.mjs"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "4.0.1",
+    "firebase": "11.6.1",
+    "firebase-tools": "14.26.0",
+    "playwright": "1.56.1"
+  }
+}

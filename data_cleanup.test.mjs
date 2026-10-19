@@ -1,3 +1,4 @@
+import {validateAccountState} from './account_storage.v1.js';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
@@ -13,6 +14,9 @@ function engine() {
     let persisted;
     const arrays = keys => Object.fromEntries(keys.map(key => [key, [{ id: key, amount: 20, campaignId: 1 }]]));
     const ctx = {
+        currentUser:{uid: 'test-owner'}, sessionGeneration:1, sessionReady:true, APP_OWNER_UID:'test-owner',validateAccountState,
+        isSession:(user,generation)=>user===ctx.currentUser && generation===ctx.sessionGeneration,
+        saveAccountCache:()=>{persisted=JSON.stringify(ctx.state);return true;},
         state: {
             activeTab: 'monday', currentFilter: 'all', currentPlanningWeekStart: '2026-10-05',
             ownerUid: 'test-owner', xp: 25100, level: 10, coins: 90, combo: 3, energy: 61,
@@ -40,7 +44,7 @@ function engine() {
         calendarSync: { view: () => ({ busy: false }), schedule() {} },
         document: { getElementById: () => null }, localStorage: { setItem(key, value) { persisted = value; } },
         render() {}, clearInterval() {}, setTimeout() {},
-        window: { showToast() {}, showAlertModal(message) { this.alertMessage = message; },
+        window: { guardAccountCallback:fn=>fn, showToast() {}, showAlertModal(message) { this.alertMessage = message; },
             showConfirmModal(message, callback) { this.confirmMessage = message; this.confirmCallback = callback; },
             touchState(reason) { ctx.state.lastSaveReason = reason; }, saveToFirestore() {} }
     };
@@ -61,6 +65,7 @@ function engine() {
     ].join('\n'), ctx);
     ctx.window.getCurrentCalendarWeekStartKey = () => '2026-10-05';
     ctx.window.saveStudyPlanningState = () => ctx.window.saveState();
+    ctx.window.saveStateNow = async()=>{ctx.window.saveState();return true;};
     ctx.window.validateState(); ctx.pomodoro.timeLeft = 900;
     ctx.window.openDataManager(); ctx.persisted = () => JSON.parse(persisted);
     return ctx;
@@ -195,7 +200,7 @@ test('backup JSON real inclui o aplicativo inteiro e restaura os dados após rei
     const before = JSON.parse(backup);
     clean(ctx, ctx.window.cleanupModulesForTest.map(m => m.id)); assert.equal(ctx.state.xp, 0);
     const event = { target: { files: [{ text: backup }], value: 'backup.json' } };
-    ctx.window.importData(event);
+    ctx.window.importData(event); ctx.window.confirmCallback();
     const restored = ctx.persisted();
     assert.equal(restored.xp, before.xp); assert.deepEqual(restored.financeData, before.financeData);
     assert.deepEqual(restored.healthData, before.healthData); assert.deepEqual(restored.userProfile, before.userProfile);

@@ -12,7 +12,7 @@ function engine(){
  uiState:{healthTab:'dashboard',confirm:{},alert:{},customPrompt:{}},pomodoro:{isRunning:false,timeLeft:1500,mode:'focus',cycle:1},Date:FixedDate,render(){},
  setInterval(callback){c.tick=callback;return 1;},clearInterval(){},Audio:function(){this.play=()=>{};},
  document:{activeElement:null,getElementById:id=>elements[id]||null},
- window:{showToast(){},showAlertModal(message){c.alert=message;},checkLevelUp(){},checkGameTriggers(){},saveState(){c.saves=(c.saves||0)+1;},
+ window:{guardAccountCallback:fn=>fn,showToast(){},showAlertModal(message){c.alert=message;},checkLevelUp(){},checkGameTriggers(){},saveState(){c.saves=(c.saves||0)+1;},
  newFinanceRecordId:()=>`fin-${++id}`,normalizePrestige:()=>c.state.prestige,formatTime:seconds=>`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`,
  getComboMultiplier:()=>1,awardTacticalCoins(){c.state.coins+=10;return 10;},recordCampaignStat(){},bindFormDialog(root,options){c.binding=options;}}};
  runInNewContext([

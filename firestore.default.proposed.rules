@@ -1,0 +1,67 @@
+// PROPOSED ONLY. Target: Firestore (default). Never deploy this file to
+// missao-tatica-ai. Export and compare the active default rules before rollout.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function originalOwner() {
+      return request.auth != null && request.auth.uid == '1LDBfIQ5vQTUtaE5j0k4Sp9w7Rj2';
+    }
+    function authorized(uid) {
+      return database == '(default)' && request.auth != null && request.auth.uid == uid
+        && (originalOwner() ||
+          (exists(/databases/$(database)/documents/appAccess/$(uid)) &&
+           get(/databases/$(database)/documents/appAccess/$(uid)).data.enabled == true &&
+           get(/databases/$(database)/documents/appAccess/$(uid)).data.role == 'member'));
+    }
+    function validOwner(uid) {
+      return request.resource.data.get('ownerUid', originalOwner() ? uid : '') == uid;
+    }
+    function validSnapshot(uid) {
+      return validOwner(uid) && request.resource.data.data is string
+        && request.resource.data.data.size() <= 1048000
+        && request.resource.data.updatedAt is string
+        && (originalOwner() || !request.resource.data.keys().hasAny(['aiApplications']));
+    }
+    function validRevision() {
+      return request.resource.data.revision is int && request.resource.data.revision > 0
+        && request.resource.data.revision == resource.data.get('revision', 0) + 1;
+    }
+    function preserveReceipts() {
+      return !resource.data.keys().hasAny(['aiApplications']) ||
+        (request.resource.data.aiApplications is map &&
+         request.resource.data.aiApplications.diff(resource.data.aiApplications).removedKeys().size() == 0 &&
+         request.resource.data.aiApplications.diff(resource.data.aiApplications).changedKeys().size() == 0);
+    }
+    match /appAccess/{uid} {
+      // Login can discover only its own authorization. Clients cannot self-enroll.
+      allow get: if database == '(default)' && request.auth != null && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
+    }
+    match /users/{uid} {
+      allow get: if authorized(uid);
+      allow create: if authorized(uid) && request.resource.data.keys().hasOnly(['email','displayName','updatedAt','app'])
+        && request.resource.data.app == 'missao-tatica'
+        && request.resource.data.email is string && request.resource.data.displayName is string
+        && request.resource.data.updatedAt is string;
+      allow update: if authorized(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email','displayName','updatedAt','app'])
+        && request.resource.data.app == 'missao-tatica'
+        && request.resource.data.email is string && request.resource.data.displayName is string
+        && request.resource.data.updatedAt is string;
+      allow list, delete: if false;
+      match /state/main {
+        allow get: if authorized(uid);
+        allow create: if authorized(uid) && validSnapshot(uid)
+          && request.resource.data.keys().hasOnly(['data','updatedAt','revision','ownerUid','aiApplications'])
+          && (request.resource.data.get('revision', 0) == 1 || (originalOwner() && !request.resource.data.keys().hasAny(['revision'])))
+          && (!request.resource.data.keys().hasAny(['aiApplications']) || request.resource.data.aiApplications is map);
+        allow update: if authorized(uid) && validSnapshot(uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['data','updatedAt','revision','ownerUid','aiApplications'])
+          && (validRevision() || (originalOwner() && !request.resource.data.keys().hasAny(['revision'])))
+          && preserveReceipts();
+        allow list, delete: if false;
+      }
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

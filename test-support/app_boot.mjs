@@ -1,0 +1,37 @@
+import {createAccountStorage,validateAccountState,AUTH_TRANSITION_KEY} from '../account_storage.v1.js';
+import {authorizeAccount} from '../account_access.v1.js';
+import {AI_OWNER_UID} from '../ai/contract.v1.js';
+import {AI_V2_CONFIG} from '../ai/config.v2.js';
+import {applyEntity,radarTarget} from '../ai/v2/entity_apply.js';
+import {createCloudStateStore} from '../ai/v2/cloud_state.js';
+import {createConfirmedStateWriter} from '../ai/v2/saved_state.js';
+import {createV2BrowserStore} from '../ai/v2/browser.js';
+import {installAiAccess} from '../ui/ai_access.v2.js';
+import {createV2ProposalsBrowserStore} from '../ai/v2/proposals_browser.js';
+import {installAiV2Proposals} from '../ui/ai_proposals.v2.js';
+import {readFile} from 'node:fs/promises';
+import {runInNewContext} from 'node:vm';
+import {createCalendarSync} from '../calendar_sync.v2.js';
+import {installPlanningTools} from '../ui/planning_tools.v1.js';
+import {installFormDialogs} from '../ui/form_dialogs.v1.js';
+import {installTaskForms} from '../ui/task_forms.v2.js';
+import {installPlanningViews} from '../ui/planning_views.v3.js';
+import {installAiInbox} from '../ui/ai_inbox.v3.js';
+import {AI_CONFIG} from '../ai/config.v1.js';
+import {createAiBrowserStore} from '../ai/bridge_rest.v1.js';
+export const app=await readFile(new URL('../app.html',import.meta.url),'utf8');
+const moduleSource=app.match(/<script\s+type="module">([\s\S]*?)<\/script>/)[1].replace(/^\s*import .+;\s*$/gm,'');
+export const plain=v=>JSON.parse(JSON.stringify(v));
+class FixedDate extends Date{constructor(...args){super(...(args.length?args:['2026-10-06T22:30:00Z']));}static now(){return Date.parse('2026-10-06T22:30:00Z');}}
+export function boot(saved=null,applyEnabled=false,seedSession=true){
+ const elements={},events=new Map(),timers=new Map();let timerId=0;const element=()=>({style:{},classList:{add(){},remove(){}},querySelector(){return null;},querySelectorAll(){return [];},addEventListener(){},innerHTML:''});
+ for(const id of ['app','auth-overlay','app-wrapper','sync-text','sync-indicator','auth-access-message','auth-retry-button'])elements[id]=element();
+ const stored=new Map(),writes=[];
+ const document={activeElement:null,getElementById:id=>elements[id]||null,querySelector(){return null;},querySelectorAll(){return [];},addEventListener(){}};
+ const window={lucide:{createIcons(){}},location:{origin:'https://victorduarteferreira1997.github.io',pathname:'/missao-tatica/app.html'},addEventListener:(name,callback)=>events.set(name,callback)};
+ const c={window,document,Date:FixedDate,console,TextEncoder,Uint8Array,Uint32Array,DataView,URL,Blob,Intl,localStorage:{getItem:key=>stored.get(key)||null,setItem:(key,value)=>{stored.set(key,value);writes.push(key);}},
+ setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),setInterval:()=>1,clearInterval(){},lucide:window.lucide,initializeApp:()=>({}),initializeAppCheck(){},ReCaptchaEnterpriseProvider:class{},getAuth:()=>c.firebaseAuth={currentUser:null},getFirestore:()=>({}),GoogleAuthProvider:class{},signInWithPopup(){},signInWithRedirect(){},signOut:async()=>{},onAuthStateChanged:(auth,callback)=>c.authCallback=user=>{auth.currentUser=user;return callback(user);},doc:(db,...parts)=>parts.join('/'),getDocFromServer:(...args)=>c.getDoc(...args),createAccountStorage,validateAccountState,AUTH_TRANSITION_KEY,authorizeAccount,AI_OWNER_UID,getDoc(){throw Error('A inicialização não deve ler a nuvem sem login.');},setDoc(){throw Error('O teste não deve gravar na nuvem.');},createCalendarSync:options=>{c.calendarOnChange=options.onChange;return createCalendarSync(options);},installPlanningTools,installFormDialogs,installTaskForms,installPlanningViews,installAiInbox,AI_CONFIG,createAiBrowserStore,AI_V2_CONFIG:{...AI_V2_CONFIG,applyEnabled},createCloudStateStore,applyEntity,radarTarget,createConfirmedStateWriter,createV2BrowserStore,installAiAccess,createV2ProposalsBrowserStore,installAiV2Proposals:(w,options)=>{c.v2ProposalsOptions=options;return installAiV2Proposals(w,options);}};
+ runInNewContext(moduleSource+'\nwindow.startupForTest = {getState:()=>state,getUI:()=>uiState,getTimer:()=>pomodoro,render,seedTestAccount:(saved)=>{currentUser={uid:AI_OWNER_UID};state=saved||state;state.ownerUid=AI_OWNER_UID;accountStorage.load(currentUser.uid);sessionReady=true;window.validateState();}};',c,{timeout:3000});
+ if(seedSession)window.startupForTest.seedTestAccount(saved);
+ return {c,window,elements,stored,writes,events,timers,state:window.startupForTest.getState(),ui:window.startupForTest.getUI(),render:window.startupForTest.render};
+}
