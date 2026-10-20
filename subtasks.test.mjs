@@ -28,3 +28,7 @@ test('legado sem ID recebe ID somente no editor salvo; registros com ID e campos
 test('linhas vazias não são salvas silenciosamente e editor oferece alça e alternativas acessíveis',()=>{
  const f=fixture();f.w.openSubtaskEditor('missão-teste');f.w.insertSubtaskDraft(1);f.w.saveSubtaskEditor();assert.match(f.w.error,/Preencha o texto/);assert.equal(f.writes.length,0);const html=f.w.renderSubtaskEditor();assert.match(html,/draggable="true"/);assert.match(html,/Mover para cima/);assert.match(html,/Mover para baixo/);assert.match(html,/role="dialog"/);assert.match(html,/aria-label="Mover subtarefa/);
 });
+
+test('texto em lote após organizar subtarefas conserva conclusão e identidade ao editar, inserir e reordenar',()=>{
+ const f=fixture();f.w.openSubtaskEditor(null);f.w.toggleSubtaskDraft(0);f.w.saveSubtaskEditor();const first={...f.ui.createTaskSubtasks[0]},second={...f.ui.createTaskSubtasks[1]};f.w.syncCreateSubtaskText('A revisado\nNova linha\nB');assert.equal(f.ui.createTaskSubtasks[0].id,first.id);assert.equal(f.ui.createTaskSubtasks[0].completed,true);assert.equal(f.ui.createTaskSubtasks[2].id,second.id);assert.equal(f.ui.createTaskSubtasks[1].completed,false);f.w.syncCreateSubtaskText('B\nA revisado');assert.equal(f.ui.createTaskSubtasks[1].id,first.id);assert.equal(f.ui.createTaskSubtasks[1].completed,true);assert.equal(f.ui.createTaskSubtasks[0].id,second.id);assert.equal(f.writes.length,0);
+});

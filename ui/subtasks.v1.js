@@ -5,6 +5,13 @@ export function installSubtasks(window,{document,getState,getUiState,render,save
  let nextId=Date.now()*1000;
  const make=text=>({id:++nextId,text,completed:false,createdAt:new Date().toISOString()});
  const active=()=>{const d=getUiState().subtaskEditor;return d&&d.state===getState()?d:null;};
+ window.syncCreateSubtaskText=value=>{
+  const ui=getUiState(),old=ui.createTaskSubtasks||[],lines=String(value).split('\n').map(text=>text.trim()).filter(Boolean),used=new Set();
+  // Reserve unchanged lines first, then reuse the edited line's identity. This
+  // keeps completion/metadata when text is edited, inserted or reordered in bulk.
+  const exact=lines.map(text=>{const index=old.findIndex((row,i)=>!used.has(i)&&row.text===text);if(index<0)return null;used.add(index);return old[index];});
+  ui.createTaskSubtasks=lines.map((text,index)=>{let previous=exact[index];if(!previous&&old[index]&&!used.has(index)){previous=old[index];used.add(index);}return previous?{...previous,text}:make(text);});
+ };
  window.openSubtaskEditor=taskId=>{
   const creating=taskId==null,task=creating?null:getState().tasks.find(t=>String(t.id)===String(taskId));if(!creating&&!task)return;
   const ui=getUiState(),text=document.getElementById('ct-subtasks')?.value||'',lines=text.split('\n').map(s=>s.trim()).filter(Boolean);

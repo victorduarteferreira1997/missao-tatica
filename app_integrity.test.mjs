@@ -24,7 +24,7 @@ const installPlanner = (target, options = {}) => installPlanningViews(target, {
 assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v4\.js'/);
 assert.match(app, /html \+= window\.renderWeeklyPlanningOverview\(\)/);
 assert.ok(!app.includes('window.renderDailyMissionBoard ='), 'As visões devem existir apenas no módulo do planejamento.');
-assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v4\.js'/);
+assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v4\.js\?v=1\.9\.65'/);
 assert.match(app, /installTaskForms\(window, \{ daysOfWeek, getState: \(\) => state, getUiState: \(\) => uiState \}\)/);
 const installFormDialogs = target => installDialogModule(target, {});
 assert.match(app, /import \{ installFormDialogs \} from '\.\/ui\/form_dialogs\.v1\.js'/);

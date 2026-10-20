@@ -74,6 +74,7 @@ try{
  await page.locator('#create-task-dialog details[data-create-section="subtasks"] summary').click();await page.getByRole('button',{name:'Organizar subtarefas',exact:true}).last().click();
  await page.getByRole('button',{name:'Inserir no início',exact:true}).click();await page.locator('#subtask-draft-0').fill('Validar ajustes');await page.locator('[data-subtask-index="0"]').getByRole('checkbox').check();
  await page.locator('[data-subtask-index="0"]').getByRole('button',{name:'Inserir abaixo',exact:true}).click();await page.locator('#subtask-draft-1').fill('Reassinar');await page.getByRole('button',{name:'Salvar subtarefas',exact:true}).click();
+ await page.locator('#ct-subtasks').fill('Validar ajustes revisados\nReassinar');
  await page.locator('#create-task-dialog button[type="submit"]').click();assert.equal(await page.evaluate(()=>window.saveStateNow(true)),true);
  let saved=await cloud();const created=saved.tasks.find(t=>t.text==='Validar três ajustes e reassinar RIPD');assert.ok(created);assert.equal(created.radarDemandId,'clienteAguardando');assert.deepEqual(created.dependsOnTaskIds,[]);assert.equal(created.subtasks[0].completed,true);assert.equal(saved.operationalControl.demands.find(d=>d.id==='clienteAguardando').workflowStatus,'waiting');
  const suppliers=page.locator('[data-radar-week-id="fornecedores"]');await suppliers.locator('summary').click();await suppliers.getByRole('button',{name:'Vincular missão existente',exact:true}).click();
