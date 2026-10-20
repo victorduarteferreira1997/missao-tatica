@@ -12,7 +12,7 @@
   persistidas; o editor não aplica mudanças até salvar.
 - Propostas mostram destino e data efetiva. A correção de cadastro editado da
   v1.9.64 e os comprovantes de idempotência permanecem cobertos por regressão.
-- 321 testes e dois fluxos de navegador aprovados, incluindo desktop, 390 px,
+- 322 testes e dois fluxos de navegador aprovados, incluindo desktop, 390 px,
   controles por toque, recarregamento e preservação. Serviços externos simulados.
 - [Diagnóstico, preservação e limitações](UX_RADAR_MISSOES.md).
 

@@ -31,7 +31,8 @@ no banco é executado por esta entrega. Os testes usam apenas registros fictíci
   Ela continua aplicada antes de salvar; bloqueios impedem início, conclusão e
   avanço por subtarefa enquanto há pré-requisito pendente.
 - `task.subtasks` continua sendo o array ordenado existente. A posição no array
-  é a ordem persistida. Objetos são preservados com seus IDs, `completed` e campos
+  é a ordem persistida. Editar a lista de texto na criação também mantém o
+  estado das linhas já organizadas. Objetos são preservados com seus IDs, `completed` e campos
   adicionais; não é criado um campo de ordenação paralelo.
 - `planning.history` é consultado junto das missões atuais, eliminando apenas
   representações repetidas **na projeção da interface**, sem apagar registros.
@@ -93,8 +94,8 @@ Nenhuma regra do Firebase ou implantação de Worker/D1 foi necessária.
 
 ## Validação
 
-- `npm test`: **321 testes aprovados, zero falhas**. Inclui a suíte existente e
-  19 regressões novas para projeções, vínculos, preservação, subtarefas e propostas.
+- `npm test`: **322 testes aprovados, zero falhas**. Inclui a suíte existente e
+  20 regressões novas para projeções, vínculos, preservação, subtarefas e propostas.
 - `npm run test:browser --prefix security-tests`: aprovado; edição real dos campos
   da proposta e confirmação da missão no mock de nuvem, fila aberta, contas
   isoladas, recuperação e regressões do salvamento.
