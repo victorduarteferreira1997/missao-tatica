@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.64-ai-proposal-review">
+    <meta name="app-build" content="v1.9.65-radar-missions">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -100,10 +100,12 @@
     <!-- Script Principal com Firebase em Módulo -->
     <script type="module">
         import { createCalendarSync } from './calendar_sync.v2.js?v=1.9.62';
-        import { installPlanningTools } from './ui/planning_tools.v1.js';
+        import { installPlanningTools } from './ui/planning_tools.v2.js';
+        import { installRadarMissions } from './ui/radar_missions.v1.js';
+        import { installSubtasks } from './ui/subtasks.v1.js';
         import { installFormDialogs } from './ui/form_dialogs.v1.js';
-        import { installTaskForms } from './ui/task_forms.v2.js';
-        import { installPlanningViews } from './ui/planning_views.v3.js';
+        import { installTaskForms } from './ui/task_forms.v4.js';
+        import { installPlanningViews } from './ui/planning_views.v4.js';
         import { installAiInbox } from './ui/ai_inbox.v3.js';
         import { AI_CONFIG } from './ai/config.v1.js';
         import { AI_V2_CONFIG } from './ai/config.v2.js';
@@ -113,7 +115,7 @@
         import { createV2BrowserStore } from './ai/v2/browser.js';
         import { installAiAccess } from './ui/ai_access.v2.js';
         import { createV2ProposalsBrowserStore } from './ai/v2/proposals_browser.js';
-        import { installAiV2Proposals } from './ui/ai_proposals.v2.js?v=1.9.64';
+        import { installAiV2Proposals } from './ui/ai_proposals.v2.js?v=1.9.65';
         import { createAiBrowserStore } from './ai/bridge_rest.v1.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { initializeAppCheck, ReCaptchaEnterpriseProvider, getToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
@@ -125,7 +127,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.64';
+        const APP_VERSION = 'v1.9.65';
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
             authDomain: "missao-tatica.firebaseapp.com",
@@ -1466,11 +1468,7 @@
                 if (!demand.lastReviewedAt) demand.lastReviewedAt = demand.updatedAt;
                 if (!demand.lastProgressAt) demand.lastProgressAt = demand.updatedAt;
                 if (demand.workflowStatus === 'closed' && !demand.closedAt) demand.closedAt = demand.updatedAt;
-                if (demand.workflowStatus !== 'waiting') {
-                    demand.waitingFor = '';
-                    demand.waitingSince = '';
-                    demand.followUpAt = '';
-                }
+                // Keep legacy follow-up metadata when changing status; dates remain visible in the week.
             });
 
             // Validação Módulo de Rituais
@@ -1618,6 +1616,8 @@
         }
 
         installPlanningTools(window,{document,getState:()=>state,getUiState:()=>uiState,render,save:()=>window.saveStudyPlanningState()});
+        installRadarMissions(window,{document,getState:()=>state,getUiState:()=>uiState,render,save:()=>window.saveStudyPlanningState()});
+        installSubtasks(window,{document,getState:()=>state,getUiState:()=>uiState,render,save:()=>window.saveStudyPlanningState()});
         window.isPlanningTransitionBlocked=()=>{if(pomodoro.isRunning||pomodoro.currentFocusStartedAt||uiState.pomodoroEvaluationData||calendarSync.view().busy){window.showAlertModal('Finalize o ciclo de foco ou a sincronização antes de fechar a semana.');return true;}return false;};
         window.validateState();
 
@@ -2781,6 +2781,7 @@
                 }
             }
             window.checkLevelUp(); window.saveState();
+            if (task.completed) window.offerRadarNextStep?.(task);
         };
 
         window.showToast = function(title, desc, iconName, colorClass) {
@@ -3237,6 +3238,7 @@
             const task = state.tasks.find(t => t.id == taskId);
             const subtask = task?.subtasks?.find(st => st.id == subtaskId);
             if (!subtask) return;
+            if (!subtask.completed && !task.completed && window.assertTaskDependencies?.(task) === false) return;
             const previousStatus = window.getMissionStatus(task);
             subtask.completed = !subtask.completed;
             if (subtask.completed && previousStatus === 'planned') {
@@ -3732,6 +3734,7 @@
         window.toggleCreateTaskModal = function() {
             window.clearAiDraft?.();
             uiState.showCreateTaskModal = !uiState.showCreateTaskModal;
+            uiState.createTaskSubtasks = null;
             uiState.createTaskDraft = null;
             if (!uiState.showCreateTaskModal) uiState.calendarInboxEventId = null;
             render();
@@ -4036,12 +4039,13 @@
             const missionNature = document.getElementById('ct-nature')?.value || 'normal';
             let cost = window.calculateTaskCost(document.getElementById('ct-priority').value, document.getElementById('ct-complexity').value, document.getElementById('ct-time').value, document.getElementById('ct-impact-type').value, missionNature);
             const rawSubtasks = document.getElementById('ct-subtasks')?.value || '';
-            const baseSubtasks = rawSubtasks.split('\n').map(t => t.trim()).filter(Boolean).map((subText, index) => ({
+            let baseSubtasks = rawSubtasks.split('\n').map(t => t.trim()).filter(Boolean).map((subText, index) => ({
                 id: Date.now() + index + Math.random(),
                 text: subText,
                 completed: false,
                 createdAt: new Date().toISOString()
             }));
+            if (uiState.createTaskSubtasks?.map(s=>s.text).join('\n') === baseSubtasks.map(s=>s.text).join('\n')) baseSubtasks = uiState.createTaskSubtasks.map(s=>({...s}));
             const activeCategories = window.getTaskCategories();
             const selectedCategory = document.getElementById('ct-category').value || activeCategories[0]?.id || 'life';
             const selectedDay = document.getElementById('ct-day').value;
@@ -4083,7 +4087,7 @@
                     startTime: calendarTime.startTime,
                     endTime: calendarTime.endTime,
                     order: window.getNextTaskOrder(targetDay),
-                    subtasks: window.cloneSubtasksForNewTask(baseSubtasks),
+                    subtasks: window.cloneSubtasksForNewTask(baseSubtasks).map((s,i)=>({...s,completed:Boolean(baseSubtasks[i]?.completed)})),
                     isRecurring,
                     recurrenceDays: isRecurring ? [...recurrenceDays] : [],
                     recurrenceGroupId,
@@ -6061,9 +6065,9 @@
                 source: document.getElementById('op-demand-source')?.value || 'manual',
                 workflowStatus,
                 attentionLevel: document.getElementById('op-demand-attention')?.value || 'controlled',
-                waitingFor: workflowStatus === 'waiting' ? (document.getElementById('op-demand-waiting-for')?.value || '').trim() : '',
-                waitingSince: workflowStatus === 'waiting' ? (document.getElementById('op-demand-waiting-since')?.value || '') : '',
-                followUpAt: workflowStatus === 'waiting' ? (document.getElementById('op-demand-followup')?.value || '') : '',
+                waitingFor: (document.getElementById('op-demand-waiting-for')?.value ?? existing?.waitingFor ?? '').trim(),
+                waitingSince: document.getElementById('op-demand-waiting-since')?.value ?? existing?.waitingSince ?? '',
+                followUpAt: document.getElementById('op-demand-followup')?.value ?? existing?.followUpAt ?? '',
                 createdAt: existing?.createdAt || now,
                 updatedAt: now,
                 lastReviewedAt: existing?.lastReviewedAt || now,
@@ -6555,6 +6559,8 @@
             }
 
 
+            html += window.renderRadarMissionDialogs?.() || '';
+            html += window.renderSubtaskEditor?.() || '';
             html += window.renderDataManager();
             if (uiState.dataCleanupSaving) html += '<div class="fixed inset-0 bg-slate-950/95 z-[1200] p-4 flex items-center justify-center"><section role="dialog" aria-modal="true" aria-labelledby="cleanup-saving-title" aria-busy="true" class="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full text-center"><h2 id="cleanup-saving-title" class="text-lg font-bold text-white">Salvando limpeza na nuvem…</h2><p role="status" class="text-sm text-slate-400 mt-3">Aguarde a confirmação antes de fechar esta aba ou configurar seu perfil.</p></section></div>';
             html += window.renderStudyTrackDeletion();
@@ -6828,13 +6834,16 @@
             </div>`;
 
             if (uiState.mainView === 'week') {
+                html += window.renderRadarWeekShortcut?.() || '';
                 const closedPlanningWeek = window.renderClosedPlanningWeek?.();
                 if (closedPlanningWeek) html += closedPlanningWeek;
                 else html += window.renderWeeklyPlanningOverview();
+                html += window.renderRadarWeek?.() || '';
             } else if (uiState.mainView === 'control') {
                 html += window.renderOperationalControl();
             } else {
 
+            html += window.renderRadarDailySummary?.() || '';
             // TABS DIÁRIAS
             html += `<div class="flex overflow-x-auto scrollbar-hide gap-1 bg-slate-900 p-1.5 rounded-xl border border-slate-800 mb-3 font-sans">`;
             daysOfWeek.forEach(day => {
@@ -7117,9 +7126,12 @@
                 });
             }
             window.bindEditTaskDialog(appDiv);
-            const viewBlocked = uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) || Boolean(uiState.studyTrackDeletion);
+            const viewBlocked = uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) || Boolean(uiState.studyTrackDeletion) || Boolean(uiState.subtaskEditor) || Boolean(uiState.radarLink) || Boolean(uiState.radarNext);
             window.restoreViewState?.(appDiv, viewSnapshot, {pageKey: viewPageKey, blocked: viewBlocked});
+            for (const prefix of ['ct','et']) if (document.getElementById(prefix+'-radar')) window.updateDependencySelection?.(prefix);
             window.bindPlanningReview?.(appDiv);
+            window.bindRadarMissionDialogs?.(appDiv);
+            window.bindSubtaskEditor?.(appDiv);
             if (uiState.studyTrackDeletion) window.bindFormDialog(appDiv, {id:'study-track-delete-dialog',initialFocus:'study-track-delete-close',close:window.closeStudyTrackDeletion,blocked:uiState.confirm.show || uiState.alert.show});
             if (uiState.confirm.show) window.bindFormDialog(appDiv, {id:'confirmation-dialog',initialFocus:'confirmation-cancel',close:()=>window.handleConfirmResult(false),blocked:uiState.alert.show});
             if (uiState.alert.show) window.bindFormDialog(appDiv, {id:'alert-dialog',initialFocus:'alert-close',close:window.closeAlertModal});
