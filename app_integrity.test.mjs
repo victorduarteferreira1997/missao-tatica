@@ -3,27 +3,28 @@ import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 import { installFormDialogs as installDialogModule } from './ui/form_dialogs.v1.js';
-import { installTaskForms } from './ui/task_forms.v2.js';
-import { installPlanningViews } from './ui/planning_views.v3.js';
+import { installTaskForms } from './ui/task_forms.v4.js';
+import { installPlanningViews } from './ui/planning_views.v4.js';
 
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
-const taskForms = await readFile(new URL('./ui/task_forms.v2.js', import.meta.url), 'utf8');
-const planningViews = await readFile(new URL('./ui/planning_views.v3.js', import.meta.url), 'utf8');
+const taskForms = await readFile(new URL('./ui/task_forms.v4.js', import.meta.url), 'utf8');
+const planningViews = await readFile(new URL('./ui/planning_views.v4.js', import.meta.url), 'utf8');
 const aiInbox = await readFile(new URL('./ui/ai_inbox.v3.js', import.meta.url), 'utf8');
 const aiAccess = await readFile(new URL('./ui/ai_access.v2.js', import.meta.url), 'utf8');
 const aiProposals = await readFile(new URL('./ui/ai_proposals.v2.js', import.meta.url), 'utf8');
 const aiEntityReview = await readFile(new URL('./ui/ai_entity_review.v1.js', import.meta.url), 'utf8');
-const planningTools = await readFile(new URL('./ui/planning_tools.v1.js', import.meta.url), 'utf8');
-const interfaceSource = planningTools + aiEntityReview + app + taskForms + planningViews + aiInbox + aiAccess + aiProposals;
+const planningTools = await readFile(new URL('./ui/planning_tools.v2.js', import.meta.url), 'utf8');
+const extraInterfaces = (await Promise.all(['./ui/radar_missions.v1.js','./ui/subtasks.v1.js'].map(path=>readFile(new URL(path,import.meta.url),'utf8')))).join('\n');
+const interfaceSource = extraInterfaces + planningTools + aiEntityReview + app + taskForms + planningViews + aiInbox + aiAccess + aiProposals;
 const installPlanner = (target, options = {}) => installPlanningViews(target, {
     document: { addEventListener() {} }, daysOfWeek: [], ICONS: { default: 'target' },
     getState: () => ({}), getUiState: () => ({}), extractMinutesFromTask: () => 30,
     ...options
 });
-assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v3\.js'/);
+assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v4\.js'/);
 assert.match(app, /html \+= window\.renderWeeklyPlanningOverview\(\)/);
 assert.ok(!app.includes('window.renderDailyMissionBoard ='), 'As visões devem existir apenas no módulo do planejamento.');
-assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v2\.js'/);
+assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v4\.js'/);
 assert.match(app, /installTaskForms\(window, \{ daysOfWeek, getState: \(\) => state, getUiState: \(\) => uiState \}\)/);
 const installFormDialogs = target => installDialogModule(target, {});
 assert.match(app, /import \{ installFormDialogs \} from '\.\/ui\/form_dialogs\.v1\.js'/);
@@ -628,7 +629,7 @@ for (const markup of [createMarkup, inboxMarkup, newDemandMarkup, closedDemandMa
     const actions = [...markup.matchAll(/window\.([A-Za-z_$][\w$]*)\(/g)];
     assert.ok(actions.length > 0, 'O diálogo deve renderizar ações verificáveis');
     for (const [, action] of actions) {
-        assert.ok(new RegExp(`window\\.${action}\\s*=`).test(app), `Ação renderizada sem implementação: ${action}`);
+        assert.ok(new RegExp(`window\\.${action}\\s*=`).test(interfaceSource), `Ação renderizada sem implementação: ${action}`);
     }
 }
 const sharedHandlerWindow = { escapeHtml: value => String(value), closeExample() { this.closed = true; }, saveExample() { this.saved = true; } };

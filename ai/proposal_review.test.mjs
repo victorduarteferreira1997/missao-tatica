@@ -22,3 +22,12 @@ test('invalid edits show a specific error beside submit and preserve the draft w
   const f=review();await f.open();f.w.editAiV2Proposal(key,value);await f.w.confirmAiV2Proposal();const html=f.w.renderAiV2Proposals();assert.match(html,pattern);assert.match(html,/role="alert"/);assert.match(html,/id="ai-v2-review-feedback"/);assert.match(html,/Revisar e cadastrar missão/);assert.equal(f.calls.length,0);
  }
 });
+
+test('data efetiva usa o dia escolhido, incluindo virada de mês/ano, sem alterar a semana-base',async()=>{
+ const {missionDateLabel}=await import('../ui/ai_proposal_labels.v1.js');
+ const fields={weekStart:'2026-10-19',day:'wednesday'},before=structuredClone(fields);assert.deepEqual(missionDateLabel(fields),{date:'2026-10-21',title:'Quarta-feira, 21/10/2026',week:'Semana de 19/10/2026 a 25/10/2026'});assert.deepEqual(fields,before);assert.equal(missionDateLabel({weekStart:'2026-12-28',day:'sunday'}).date,'2027-01-03');assert.equal(missionDateLabel({weekStart:'2026-10-20',day:'monday'}),null);
+});
+test('tipo de proposta determina o destino explícito sem conversão entre módulos',async()=>{
+ const {proposalDestination,renderProposalDestination}=await import('../ui/ai_proposal_labels.v1.js');for(const [kind,label]of [['mission.create','Missões'],['radar.create','RADAR'],['radar.update','RADAR'],['study.plan.create','Inteligência/Estudos']]){assert.equal(proposalDestination(kind),label);assert.ok(renderProposalDestination(kind).includes('Destino: '+label));}
+ const f=review();await f.open();assert.match(f.w.renderAiV2Proposals(),/Destino: Missões/);assert.match(f.w.renderAiV2Proposals(),/Segunda-feira, 19\/10\/2026/);f.w.editAiV2Proposal('day','wednesday');await f.w.confirmAiV2Proposal();assert.equal(f.calls.find(c=>c[0]==='apply')[1].day,'wednesday');
+});

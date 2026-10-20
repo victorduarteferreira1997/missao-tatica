@@ -1,3 +1,21 @@
+## RADAR, missões e subtarefas · v1.9.65 · 20/10/2026
+
+- Semana com follow-ups por prazo/revisão/retorno, sem exigir missão, com um cartão
+  por RADAR e aviso dos ativos sem execução disponível. Atalho na semana e sinal
+  no dia tornam essas frentes visíveis.
+- Criar, vincular e desvincular missões atuais/históricas preserva registros e
+  dependências. Concluir missão mantém RADAR e oferece decisões explícitas.
+- Dependências opcionais têm pergunta e explicação próprias, nomes visíveis e
+  bloqueio até concluir os pré-requisitos, com prevenção de ciclos preservada.
+- Subtarefas têm rascunho com edição, inserção em qualquer posição, exclusão,
+  conclusão, arraste e botões de ordenação. A ordem do array e as conclusões são
+  persistidas; o editor não aplica mudanças até salvar.
+- Propostas mostram destino e data efetiva. A correção de cadastro editado da
+  v1.9.64 e os comprovantes de idempotência permanecem cobertos por regressão.
+- 321 testes e dois fluxos de navegador aprovados, incluindo desktop, 390 px,
+  controles por toque, recarregamento e preservação. Serviços externos simulados.
+- [Diagnóstico, preservação e limitações](UX_RADAR_MISSOES.md).
+
 ## Cadastro de propostas editadas · v1.9.64 · 19/10/2026
 
 - O título editado é aparado antes da validação, assim como as subtarefas. Espaços
