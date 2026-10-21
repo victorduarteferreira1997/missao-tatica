@@ -105,6 +105,7 @@ export function buildWeekEvents(state, ownerUid, timeZone = Intl.DateTimeFormat(
     }
 
     for (const task of state.tasks || []) {
+        if (task.recurrenceCancelled) continue;
         if (task.activityType === 'meeting' && (task.meetingOutcome === 'not_held' || task.googleCalendarSourceStatus === 'cancelled')) continue;
         if ((task.googleCalendarWeekStart || task.planningWeekStart || state.planning?.legacyWeek) && (task.googleCalendarWeekStart || task.planningWeekStart || state.planning?.legacyWeek) !== week) continue;
         // Uma missão convertida da agenda principal já possui um evento no Google.
@@ -235,6 +236,15 @@ export function createCalendarSync(options) {
     facade.setOwner = user => { engine.setOwner(null); replace(user); };
     return facade;
 }
+
+// Exact IDs of withdrawn app-created occurrences, even outside the selected week.
+export function cancelledRecurrenceEvents(state, ownerUid) {
+    return (state.tasks || []).filter(task=>task.recurrenceCancelled && task.googleCalendarSource!=='primary').map(task=>{
+        const week=task.planningWeekStart || state.planning?.legacyWeek || state.currentPlanningWeekStart;
+        return {week,id:`mt${hash(`${ownerUid}|${week}|task|${task.id}`)}`};
+    }).sort((a,b)=>`${a.week}|${a.id}`.localeCompare(`${b.week}|${b.id}`));
+}
+const syncFingerprint=(state,owner)=>`${state.currentPlanningWeekStart}|${JSON.stringify([...buildWeekEvents(state,owner).values()])}|${JSON.stringify(cancelledRecurrenceEvents(state,owner))}`;
 
 function createCalendarSession({ clientId, getState, saveState, getUser, onChange = () => {}, enableInbound = false, check }) {
     let token = '';
@@ -515,7 +525,8 @@ function createCalendarSession({ clientId, getState, saveState, getUser, onChang
         const week = state.currentPlanningWeekStart;
         const owner = getUser().uid;
         const desired = buildWeekEvents(state, owner);
-        const fingerprint = `${week}|${JSON.stringify([...desired.values()])}`;
+        const fingerprint = syncFingerprint(state,owner);
+        const withdrawn = cancelledRecurrenceEvents(state,owner);
         if (!force && fingerprint === lastSyncedFingerprint) {
             if (enableInbound) await refreshInbox();
             return;
@@ -541,6 +552,14 @@ function createCalendarSession({ clientId, getState, saveState, getUser, onChang
             for (const [eventId] of managed) {
                 if (!desired.has(eventId)) await api(`/calendars/${encodeURIComponent(id)}/events/${encodeURIComponent(eventId)}`, { method: 'DELETE' });
             }
+            // Only known withdrawn IDs owned by this user can be removed from other weeks.
+            for (const otherWeek of new Set(withdrawn.filter(row=>row.week!==week).map(row=>row.week))) {
+                const ids=new Set(withdrawn.filter(row=>row.week===otherWeek).map(row=>row.id));
+                for(const event of await listWeek(id,otherWeek)) {
+                    if(ids.has(event.id) && event.extendedProperties?.private?.mtOwner===owner && event.extendedProperties?.private?.mtSource==='task')
+                        await api(`/calendars/${encodeURIComponent(id)}/events/${encodeURIComponent(event.id)}`,{method:'DELETE'});
+                }
+            }
             lastSyncedFingerprint = fingerprint;
             let colorFailures = [];
             if (enableInbound) {
@@ -550,7 +569,7 @@ function createCalendarSession({ clientId, getState, saveState, getUser, onChang
             lastSyncedAt = new Date().toISOString();
             status = colorFailures.length ? 'Sincronizado com aviso' : 'Sincronizado';
             error = colorFailures.length ? 'Algumas cores não puderam ser atualizadas no Google Agenda.' : '';
-            if (`${getState().currentPlanningWeekStart}|${JSON.stringify([...buildWeekEvents(getState(), owner).values()])}` !== fingerprint) schedule();
+            if (syncFingerprint(getState(),owner) !== fingerprint) schedule();
         } catch (e) {
             try { check(); } catch { return; }
             console.error('Falha na sincronização com Google Agenda', e);

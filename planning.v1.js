@@ -1,3 +1,4 @@
+import {recurrenceRule,reconcileRecurrenceWeek,occurrenceDate} from './recurrence.v1.js';
 // Pure planning rules. No network, credentials, rewards or automatic scheduling.
 export const PLANNING_LIMITS=Object.freeze({historyWeeks:12,historyBytes:320000,weekItems:500,dependencies:20});
 const clone=value=>JSON.parse(JSON.stringify(value));
@@ -85,7 +86,7 @@ export function buildWeekTransition(state,{now=new Date().toISOString(),newId=nu
  const owned=tasks.filter(row=>row.googleCalendarSource!=='primary'),ownedIds=new Set(owned.map(row=>sid(row.id)));
  const nextTasks=list(state.tasks).filter(row=>!ownedIds.has(sid(row.id))).map(clone),usedIds=new Set([...nextTasks,...tasks,...history.flatMap(row=>list(row.tasks))].map(row=>sid(row.id))),mapping=new Map(),newRecurringIds=new Set(),carriedIds=new Set();
  let generatedId=Date.now();const makeId=newId||(()=>{while(usedIds.has(sid(generatedId)))generatedId++;return generatedId++;});
- for(const task of owned.filter(row=>row.isRecurring||list(row.recurrenceDays).length)){
+ for(const task of owned.filter(row=>!recurrenceRule(state,row)&&(row.isRecurring||list(row.recurrenceDays).length))){
   const existing=nextTasks.find(row=>row.recurrenceGroupId&&row.recurrenceGroupId===task.recurrenceGroupId&&row.day===task.day&&taskWeek(row,state)===target);
   if(existing){mapping.set(sid(task.id),existing.id);continue;}
   let id=makeId();if(!Number.isFinite(id)||usedIds.has(sid(id)))throw Error('Não foi possível gerar um identificador de missão. Tente novamente.');usedIds.add(sid(id));mapping.set(sid(task.id),id);newRecurringIds.add(sid(id));
@@ -93,8 +94,17 @@ export function buildWeekTransition(state,{now=new Date().toISOString(),newId=nu
   for(const key of Object.keys(copy))if(key.startsWith('rewarded')||key==='aiV2ProposalId'||key==='aiProposalId')delete copy[key];
   delete copy.meetingOutcome;delete copy.completedAt;copy.campaignId=state.prestige?.campaign||1;nextTasks.push(copy);
  }
+ // Controlled rules generate only eligible dates, including partial weeks and one-day series.
+ const nextState={...state,tasks:nextTasks,currentPlanningWeekStart:target};
+ for(const groupId of Object.keys(state.planning?.recurrenceRules||{})){
+  const before=new Set(nextTasks.map(t=>sid(t.id)));
+  reconcileRecurrenceWeek(nextState,groupId,target,{now,sources:[...nextTasks,...owned],makeId:()=>{const id=makeId();if(!Number.isFinite(id)||usedIds.has(sid(id)))throw Error('Não foi possível gerar um identificador de missão. Tente novamente.');usedIds.add(sid(id));return id;}});
+  for(const t of nextTasks.filter(t=>!before.has(sid(t.id))))newRecurringIds.add(sid(t.id));
+  for(const old of owned.filter(t=>String(t.recurrenceGroupId)===String(groupId))){const next=nextTasks.find(t=>String(t.recurrenceGroupId)===String(groupId)&&t.day===old.day&&!t.recurrenceCancelled&&taskWeek(t,nextState)===target);if(next)mapping.set(sid(old.id),next.id);}
+ }
+ if(nextTasks.filter(t=>taskWeek(t,nextState)===target).length>PLANNING_LIMITS.weekItems)throw Error('A próxima semana excede 500 itens. Revise as repetições antes de fechar.');
  let carried=0;
- for(const task of owned.filter(row=>!row.isRecurring&&!list(row.recurrenceDays).length&&!row.completed&&!cancelled(row))){
+ for(const task of owned.filter(row=>!row.recurrenceCancelled&&!row.isRecurring&&!list(row.recurrenceDays).length&&!row.completed&&!cancelled(row))){
   const copy={...clone(task),planningWeekStart:target,startTime:'',endTime:'',carryover:{firstWeek:task.carryover?.firstWeek||week,lastWeek:week,count:(task.carryover?.count||0)+1}};nextTasks.push(copy);carriedIds.add(sid(copy.id));carried++;
  }
  const entering=nextTasks.filter(row=>taskWeek(row,state)===target);

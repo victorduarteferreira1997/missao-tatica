@@ -22,7 +22,7 @@ A integração privada com IA continua exclusiva do proprietário.
 - [Aplicação oficial](https://victorduarteferreira1997.github.io/missao-tatica/)
 - [Endereço direto](https://victorduarteferreira1997.github.io/missao-tatica/app.html)
 
-A versão atual é **v1.9.65**. A raiz, `teste_novos_modulos.html` e as prévias
+A versão atual é **v1.9.66**. A raiz, `teste_novos_modulos.html` e as prévias
 estáticas v1.9.11/v1.9.13 encaminham para a aplicação oficial. Parâmetros e
 fragmentos dos favoritos são preservados.
 
@@ -36,6 +36,15 @@ O editor de subtarefas preserva IDs e conclusões, permite inserção, edição,
 exclusão, arraste e botões para ordenar. Propostas da IA exibem destino e data real.
 
 [Diagnóstico, preservação, arquivos, testes e limitações](docs/UX_RADAR_MISSOES.md).
+
+## Repetição com data final · v1.9.66
+
+Em **Nova missão / Editar missão → Repetição**, escolha os dias e uma data final
+opcional. O término é inclusivo e vale também para uma repetição em um único dia.
+**Encerrar repetição…** preserva hoje, o passado e o trabalho iniciado, sem alterar
+RADAR ou recompensas. As regras são persistentes e respeitadas na passagem de semana.
+A edição da série informa sua data de vigência e preserva as ocorrências concluídas.
+[Comportamento, compatibilidade e testes](docs/RECORRENCIA_MISSOES.md).
 
 ## Revisão das propostas da IA · v1.9.64
 
