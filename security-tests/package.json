@@ -5,7 +5,8 @@
     "test": "firebase emulators:exec --project demo-missao-tatica-phase1 --only firestore --config ../firebase.multiuser.test.json 'node --test rules.test.mjs'",
     "test:browser": "TZ=America/Sao_Paulo node ../test-support/browser_accounts.mjs",
     "test:browser:radar": "TZ=America/Sao_Paulo node ../test-support/browser_radar.mjs",
-    "test:browser:recurrence": "TZ=America/Sao_Paulo node ../test-support/browser_recurrence.mjs"
+    "test:browser:recurrence": "TZ=America/Sao_Paulo node ../test-support/browser_recurrence.mjs",
+    "test:browser:daily": "TZ=America/Sao_Paulo node ../test-support/browser_daily_missions.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "4.0.1",
