@@ -6,7 +6,8 @@
     "test:browser": "TZ=America/Sao_Paulo node ../test-support/browser_accounts.mjs",
     "test:browser:radar": "TZ=America/Sao_Paulo node ../test-support/browser_radar.mjs",
     "test:browser:recurrence": "TZ=America/Sao_Paulo node ../test-support/browser_recurrence.mjs",
-    "test:browser:daily": "TZ=America/Sao_Paulo node ../test-support/browser_daily_missions.mjs"
+    "test:browser:daily": "TZ=America/Sao_Paulo node ../test-support/browser_daily_missions.mjs",
+    "test:browser:maintenance": "TZ=America/Sao_Paulo node ../test-support/browser_mission_maintenance.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "4.0.1",

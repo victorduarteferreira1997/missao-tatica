@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.67-daily-completed">
+    <meta name="app-build" content="v1.9.68-planning-without-penalty">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -129,7 +129,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.67';
+        const APP_VERSION = 'v1.9.68';
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
             authDomain: "missao-tatica.firebaseapp.com",
@@ -2957,7 +2957,23 @@
             const task = state.tasks.find(t => t.id == taskId);
             if (Recurrence.hasRecurrence(task)) { selectEl.value=''; window.showAlertModal('Para alterar os dias de uma missão recorrente, use Editar missão > Repetição.'); return; }
             if (task?.googleCalendarSource === 'primary') { selectEl.value = ''; window.showAlertModal('Altere o dia no Google Agenda e sincronize novamente.'); return; }
-            if (task) { task.day = targetDay; task.order = window.getNextTaskOrder(targetDay); window.changeEnergy(10); window.recordCampaignStat('tasksMoved'); state.stats.tasksMoved = (state.stats.tasksMoved || 0) + 1; window.unlockBadge('estrategista'); window.spawnFloatingText(event, `+10 HP`, 'text-emerald-400'); window.breakCombo(); window.saveState(); }
+            if (task) {
+                const nextWeek = targetDay === 'next_week';
+                if (!nextWeek && !daysOfWeek.some(day => day.id === targetDay)) { selectEl.value = ''; return; }
+                if (!nextWeek && task.day === targetDay) { selectEl.value = ''; return; }
+                if (nextWeek) {
+                    const targetWeek = window.nextPlanningWeek();
+                    if (!window.assertPlanningWeekWritable(targetWeek)) { selectEl.value = ''; return; }
+                    task.planningWeekStart = targetWeek;
+                    if (task.googleCalendarWeekStart) task.googleCalendarWeekStart = targetWeek;
+                } else task.day = targetDay;
+                const orders = state.tasks.filter(other => other !== task && other.day === task.day && window.taskPlanningWeek(other) === window.taskPlanningWeek(task)).map(other => Number.isFinite(other.order) ? other.order : 0);
+                task.order = Math.max(0, ...orders) + 1;
+                window.changeEnergy(10); window.recordCampaignStat('tasksMoved'); state.stats.tasksMoved = (state.stats.tasksMoved || 0) + 1;
+                window.unlockBadge('estrategista'); window.spawnFloatingText(event, `+10 HP`, 'text-emerald-400');
+                window.saveState();
+                window.showToast('Missão reagendada', nextWeek ? 'Movida para o mesmo dia da próxima semana. Frenesi preservado.' : 'Dia atualizado. Frenesi preservado.', 'calendar-days', 'text-cyan-300');
+            }
             selectEl.value = "";
         };
 
@@ -2974,17 +2990,20 @@
             render();
         };
 
-        window.confirmDeleteMainTask = async function(reason = 'cancelada', event = null) {
+        window.confirmDeleteMainTask = async function(reason = 'excluida', event = null) {
             if (event) { event.stopPropagation(); event.preventDefault(); }
-            const taskId = uiState.deleteTaskPrompt?.taskId;
+            if (!uiState.deleteTaskPrompt?.show) return;
+            const taskId = uiState.deleteTaskPrompt.taskId;
             const task = state.tasks.find(t => String(t.id) === String(taskId));
             if (!task) { uiState.deleteTaskPrompt = { show: false, taskId: null }; render(); return; }
             const reasonLabels = {
+                excluida: 'Excluída do planejamento',
                 substituida: 'Substituída por outra missão',
                 nao_fiz: 'Não fiz / não vou conseguir fazer',
                 cancelada: 'Cancelada ou perdeu prioridade'
             };
-            const preserveCombo = reason === 'substituida';
+            // Motivos antigos permanecem compatíveis; organizar o planejamento não é falhar.
+            const preserveCombo = true;
             if (!Array.isArray(state.taskDeletionLog)) state.taskDeletionLog = [];
             const recurrenceGroupId = task.recurrenceGroupId || null;
             const deletedDay = task.day;
@@ -3033,12 +3052,12 @@
                 }
             }
 
-            if (!preserveCombo) window.breakCombo();
             uiState.deleteTaskPrompt = { show: false, taskId: null };
             const deletionSession = currentUser;
-            await window.saveStateNow();
-            if (currentUser !== deletionSession) return;
-            window.showToast('Missão excluída', preserveCombo ? 'Substituição registrada. Frenesi preservado.' : 'Exclusão registrada. Frenesi ajustado.', 'trash-2', preserveCombo ? 'text-cyan-300' : 'text-orange-300');
+            const deletionState = state;
+            const saved = await window.saveStateNow();
+            if (currentUser !== deletionSession || state !== deletionState) return;
+            window.showToast(saved ? 'Missão excluída' : 'Exclusão aguardando sincronização', saved ? 'Planejamento atualizado. Frenesi preservado.' : 'A alteração está neste dispositivo, mas ainda não foi confirmada na nuvem. Confira o status de salvamento.', 'trash-2', saved ? 'text-cyan-300' : 'text-amber-300');
         };
 
         window.getTaskCategories = function(includeInactive = false) {
@@ -6607,37 +6626,27 @@
             if (uiState.deleteTaskPrompt?.show) {
                 const delTask = state.tasks.find(t => String(t.id) === String(uiState.deleteTaskPrompt.taskId));
                 if (delTask) {
+                    const dependents = [...new Map([...state.tasks, ...(state.planning?.history || []).flatMap(week => week.tasks || [])]
+                        .filter(task => (task.dependsOnTaskIds || []).some(id => String(id) === String(delTask.id)))
+                        .map(task => [String(task.id), task])).values()];
+                    const recurring = Recurrence.hasRecurrence(delTask);
+                    const repeatDay = daysOfWeek.find(day => day.id === delTask.day)?.label || delTask.day;
                     html += `
-                    <div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[1000] backdrop-blur-md font-mono">
-                        <div class="bg-slate-900 border border-red-900/60 rounded-2xl p-6 max-w-lg w-full shadow-[0_0_50px_rgba(127,29,29,0.18)] modal-enter">
-                            <div class="flex items-start justify-between gap-4 mb-5">
-                                <div>
-                                    <h3 class="text-xl font-black text-white flex items-center gap-2"><i data-lucide="trash-2" class="text-red-400"></i> Excluir missão</h3>
-                                    <p class="text-slate-400 text-xs mt-1 leading-relaxed">Escolha o motivo. Substituição preserva o Frenesi; cancelamento ou não execução quebram o combo.</p>
-                                </div>
-                                <button onclick="window.cancelDeleteTaskPrompt()" class="text-slate-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+                    <div class="fixed inset-0 bg-black/80 flex items-center justify-center p-3 sm:p-4 z-[1000] backdrop-blur-sm font-sans">
+                        <section id="delete-mission-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-mission-heading" aria-describedby="delete-mission-description" class="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl modal-enter">
+                            <header class="border-b border-slate-800 px-5 py-4"><h3 id="delete-mission-heading" class="text-lg font-semibold text-slate-100">Excluir missão?</h3><p id="delete-mission-description" class="mt-2 text-sm text-slate-300">Seu Frenesi será preservado. Excluir não conta como conclusão e não gera recompensa.</p></header>
+                            <div class="min-h-0 overflow-y-auto space-y-3 px-5 py-4">
+                                <p class="break-words rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm font-medium text-slate-100">${window.escapeHtml(delTask.text)}</p>
+                                ${delTask.completed ? '<p class="text-sm text-slate-400">As recompensas já registradas pela conclusão serão mantidas.</p>' : ''}
+                                ${recurring ? `<p class="rounded-lg border border-amber-900/60 bg-amber-950/20 p-3 text-sm text-amber-200">Esta missão se repete. Excluir também retira ${window.escapeHtml(repeatDay)} das próximas repetições desta série. Os outros dias da repetição permanecem. Para encerrar a série, use Editar missão → Repetição.</p>` : ''}
+                                ${dependents.length ? `<div class="rounded-lg border border-amber-900/60 bg-amber-950/20 p-3 text-sm text-amber-200"><p>${dependents.length === 1 ? 'Uma missão depende desta.' : `${dependents.length} missões dependem desta.`} A exclusão não remove essas dependências nem libera missões automaticamente. Revise os pré-requisitos depois.</p><ul class="mt-2 list-disc space-y-1 pl-5">${dependents.slice(0, 3).map(task => `<li>${window.escapeHtml(task.text)}</li>`).join('')}</ul></div>` : ''}
+                                ${delTask.radarDemandId ? '<p class="text-sm text-slate-400">O status do RADAR e suas outras missões serão mantidos.</p>' : ''}
                             </div>
-                            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-4">
-                                <div class="text-[10px] uppercase tracking-widest text-slate-500 font-black mb-1">Missão</div>
-                                <div class="font-bold text-white">${window.escapeHtml(delTask.text)}</div>
-                                <div class="text-[11px] text-slate-500 mt-1">${window.getTaskCategoryLabel(delTask.category)} • ${delTask.startTime ? window.getCalendarTimeLabel(delTask, extractMinutesFromTask(delTask)) : 'Sem horário'}</div>
-                            </div>
-                            <div class="grid grid-cols-1 gap-3">
-                                <button onclick="window.confirmDeleteMainTask('substituida', event)" class="text-left bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-900/60 rounded-xl p-4 transition-colors">
-                                    <div class="font-black text-cyan-200 flex items-center gap-2"><i data-lucide="replace" class="w-4 h-4"></i> Substituída por outra missão</div>
-                                    <div class="text-[11px] text-cyan-100/70 mt-1">Exclui sem quebrar o Frenesi.</div>
-                                </button>
-                                <button onclick="window.confirmDeleteMainTask('nao_fiz', event)" class="text-left bg-orange-950/25 hover:bg-orange-900/45 border border-orange-900/60 rounded-xl p-4 transition-colors">
-                                    <div class="font-black text-orange-200 flex items-center gap-2"><i data-lucide="activity" class="w-4 h-4"></i> Não fiz / não vou conseguir fazer</div>
-                                    <div class="text-[11px] text-orange-100/70 mt-1">Exclui e quebra o Frenesi.</div>
-                                </button>
-                                <button onclick="window.confirmDeleteMainTask('cancelada', event)" class="text-left bg-red-950/25 hover:bg-red-900/45 border border-red-900/60 rounded-xl p-4 transition-colors">
-                                    <div class="font-black text-red-200 flex items-center gap-2"><i data-lucide="ban" class="w-4 h-4"></i> Cancelada ou perdeu prioridade</div>
-                                    <div class="text-[11px] text-red-100/70 mt-1">Exclui e quebra o Frenesi.</div>
-                                </button>
-                            </div>
-                            <button onclick="window.cancelDeleteTaskPrompt()" class="w-full mt-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl transition-colors">Voltar sem excluir</button>
-                        </div>
+                            <footer class="flex shrink-0 flex-wrap justify-end gap-2 border-t border-slate-800 px-5 py-3">
+                                <button id="delete-mission-cancel" type="button" onclick="window.cancelDeleteTaskPrompt()" class="min-h-11 rounded-lg border border-slate-600 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800">Manter missão</button>
+                                <button id="delete-mission-confirm" type="button" onclick="window.confirmDeleteMainTask('excluida', event)" class="min-h-11 rounded-lg bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-600">Excluir missão</button>
+                            </footer>
+                        </section>
                     </div>`;
                 }
             }
@@ -7159,12 +7168,13 @@
                 });
             }
             window.bindEditTaskDialog(appDiv);
-            const viewBlocked = uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) || Boolean(uiState.studyTrackDeletion) || Boolean(uiState.subtaskEditor) || Boolean(uiState.radarLink) || Boolean(uiState.radarNext);
+            const viewBlocked = uiState.deleteTaskPrompt?.show || uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) || Boolean(uiState.studyTrackDeletion) || Boolean(uiState.subtaskEditor) || Boolean(uiState.radarLink) || Boolean(uiState.radarNext);
             window.restoreViewState?.(appDiv, viewSnapshot, {pageKey: viewPageKey, blocked: viewBlocked});
             for (const prefix of ['ct','et']) if (document.getElementById(prefix+'-radar')) window.updateDependencySelection?.(prefix);
             window.bindPlanningReview?.(appDiv);
             window.bindRadarMissionDialogs?.(appDiv);
             window.bindSubtaskEditor?.(appDiv);
+            if (uiState.deleteTaskPrompt?.show) window.bindFormDialog(appDiv, {id:'delete-mission-dialog',initialFocus:'delete-mission-cancel',close:window.cancelDeleteTaskPrompt,blocked:uiState.confirm.show || uiState.alert.show});
             if (uiState.studyTrackDeletion) window.bindFormDialog(appDiv, {id:'study-track-delete-dialog',initialFocus:'study-track-delete-close',close:window.closeStudyTrackDeletion,blocked:uiState.confirm.show || uiState.alert.show});
             if (uiState.confirm.show) window.bindFormDialog(appDiv, {id:'confirmation-dialog',initialFocus:'confirmation-cancel',close:()=>window.handleConfirmResult(false),blocked:uiState.alert.show});
             if (uiState.alert.show) window.bindFormDialog(appDiv, {id:'alert-dialog',initialFocus:'alert-close',close:window.closeAlertModal});

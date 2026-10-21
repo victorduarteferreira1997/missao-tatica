@@ -1,3 +1,18 @@
+## v1.9.68 — 21/10/2026
+
+- Excluir/cancelar uma missão e mover seu dia preservam o Frenesi, incluindo chamadas
+  compatíveis com os motivos antigos. Nenhum log anterior é reescrito.
+- Confirmação simples com duas ações, foco inicial em Manter missão, Escape e avisos
+  de dependências, repetição, recompensas já obtidas e vínculo com RADAR.
+- Exclusão não concede conclusão, XP ou moedas e não remove dependências de terceiros.
+- Próxima semana altera a semana de planejamento e mantém um dia válido, evitando
+  registros invisíveis com o valor next_week no campo day.
+- Mensagem distingue exclusão confirmada na nuvem de alteração ainda não sincronizada.
+- Sem migração ou recálculo retroativo do combo. Benefícios já existentes do
+  reagendamento são mantidos; o cancelamento não interfere nas regras de conclusão.
+- Validação: 354 testes automatizados e fluxo de navegador em desktop e celular,
+  com serviços externos simulados, exclusão, reagendamento e recarregamento.
+
 ## v1.9.67 — 21/10/2026
 
 - Pendentes primeiro e seção recolhível **Concluídas (N)** no final do dia/filtro.
