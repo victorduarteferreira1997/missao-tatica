@@ -94,6 +94,18 @@ await sync.syncNow({ force: true });
 assert.equal(remote.has(taskId), false);
 assert.ok(requests.some(request => request.startsWith('DELETE ') && request.endsWith(taskId)));
 
+// Ending a series removes only its known app-created events in another week.
+const futureWeek='2026-10-12',futureTask={id:701,day:'monday',planningWeekStart:futureWeek,text:'Ocorrência futura',time:'30 min'};
+const futureEvent=[...buildWeekEvents({...state,currentPlanningWeekStart:futureWeek,tasks:[futureTask],studyData:{}},owner.uid).values()][0];
+remote.set(futureEvent.id,futureEvent);
+state.tasks.push({...futureTask,recurrenceCancelled:'stopped'});
+await sync.syncNow();
+assert.equal(remote.has(futureEvent.id),false,'a outra semana é limpa mesmo sem mudar a semana selecionada');
+remote.set(futureEvent.id,{...futureEvent,extendedProperties:{private:{...futureEvent.extendedProperties.private,mtOwner:'other-owner'}}});
+await sync.syncNow({force:true});
+assert.equal(remote.has(futureEvent.id),true,'metadados de outro proprietário impedem a exclusão');
+remote.delete(futureEvent.id);state.tasks=[];
+
 state.currentPlanningWeekStart = '2026-10-05';
 await sync.syncNow({ force: true });
 assert.equal(remote.size, 2); // a semana anterior continua no calendário

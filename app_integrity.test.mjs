@@ -1,30 +1,31 @@
+import * as Recurrence from './recurrence.v1.js';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 import { installFormDialogs as installDialogModule } from './ui/form_dialogs.v1.js';
-import { installTaskForms } from './ui/task_forms.v4.js';
-import { installPlanningViews } from './ui/planning_views.v4.js';
+import { installTaskForms } from './ui/task_forms.v5.js';
+import { installPlanningViews } from './ui/planning_views.v5.js';
 
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
-const taskForms = await readFile(new URL('./ui/task_forms.v4.js', import.meta.url), 'utf8');
-const planningViews = await readFile(new URL('./ui/planning_views.v4.js', import.meta.url), 'utf8');
+const taskForms = await readFile(new URL('./ui/task_forms.v5.js', import.meta.url), 'utf8');
+const planningViews = await readFile(new URL('./ui/planning_views.v5.js', import.meta.url), 'utf8');
 const aiInbox = await readFile(new URL('./ui/ai_inbox.v3.js', import.meta.url), 'utf8');
 const aiAccess = await readFile(new URL('./ui/ai_access.v2.js', import.meta.url), 'utf8');
 const aiProposals = await readFile(new URL('./ui/ai_proposals.v2.js', import.meta.url), 'utf8');
 const aiEntityReview = await readFile(new URL('./ui/ai_entity_review.v1.js', import.meta.url), 'utf8');
-const planningTools = await readFile(new URL('./ui/planning_tools.v2.js', import.meta.url), 'utf8');
-const extraInterfaces = (await Promise.all(['./ui/radar_missions.v1.js','./ui/subtasks.v1.js'].map(path=>readFile(new URL(path,import.meta.url),'utf8')))).join('\n');
+const planningTools = await readFile(new URL('./ui/planning_tools.v3.js', import.meta.url), 'utf8');
+const extraInterfaces = (await Promise.all(['./ui/radar_missions.v1.js','./ui/subtasks.v1.js','./ui/recurrence.v1.js'].map(path=>readFile(new URL(path,import.meta.url),'utf8')))).join('\n');
 const interfaceSource = extraInterfaces + planningTools + aiEntityReview + app + taskForms + planningViews + aiInbox + aiAccess + aiProposals;
 const installPlanner = (target, options = {}) => installPlanningViews(target, {
     document: { addEventListener() {} }, daysOfWeek: [], ICONS: { default: 'target' },
     getState: () => ({}), getUiState: () => ({}), extractMinutesFromTask: () => 30,
     ...options
 });
-assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v4\.js'/);
+assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v5\.js'/);
 assert.match(app, /html \+= window\.renderWeeklyPlanningOverview\(\)/);
 assert.ok(!app.includes('window.renderDailyMissionBoard ='), 'As visões devem existir apenas no módulo do planejamento.');
-assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v4\.js\?v=1\.9\.65'/);
+assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v5\.js\?v=1\.9\.66'/);
 assert.match(app, /installTaskForms\(window, \{ daysOfWeek, getState: \(\) => state, getUiState: \(\) => uiState \}\)/);
 const installFormDialogs = target => installDialogModule(target, {});
 assert.match(app, /import \{ installFormDialogs \} from '\.\/ui\/form_dialogs\.v1\.js'/);
@@ -94,13 +95,13 @@ assert.ok(focusPanel.indexOf('onclick="window.closeTaskFocus()"') >= 0
     && focusPanel.indexOf('onclick="window.closeTaskFocus()"') < focusPanel.indexOf('if (allPending.length > 0 || window.isIndependentPomodoro())'),
     'O retorno deve aparecer mesmo quando não houver missões pendentes.');
 
-const createDays = [{ id: 'mon', label: 'Segunda' }, { id: 'tue', label: 'Terça' }];
+const createDays = [{ id: 'monday', label: 'Segunda' }, { id: 'tuesday', label: 'Terça' }];
 const createWindow = {
     getTaskCategories: () => [{ id: 'work', label: 'Trabalho' }],
     escapeHtml: value => String(value)
 };
 installFormDialogs(createWindow);
-installTaskForms(createWindow, { daysOfWeek: createDays, getState: () => ({ activeTab: 'mon' }), getUiState: () => ({}) });
+installTaskForms(createWindow, { daysOfWeek: createDays, getState: () => ({ activeTab: 'monday' }), getUiState: () => ({}) });
 const createMarkup = createWindow.renderCreateTaskModal();
 const createIds = [...createMarkup.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
 assert.equal(new Set(createIds).size, createIds.length, 'O formulário não pode repetir IDs.');
@@ -125,11 +126,11 @@ const createFields = {
     'ct-nature': { value: 'normal' }, 'ct-priority': { value: 'media' },
     'ct-complexity': { value: '2' }, 'ct-time': { value: '30' },
     'ct-impact-type': { value: 'drain' }, 'ct-category': { value: 'work' },
-    'ct-day': { value: 'mon' }, 'ct-subtasks': { value: 'Ler\n\nRevisar' },
-    'ct-repeat-mon': { checked: false }, 'ct-repeat-tue': { checked: false },
+    'ct-day': { value: 'monday' }, 'ct-subtasks': { value: 'Ler\n\nRevisar' },
+    'ct-repeat-monday': { checked: false }, 'ct-repeat-tuesday': { checked: false },
     'ct-title-error': { classList: { remove() {} } }
 };
-const creationState = { tasks: [] };
+const creationState = { tasks: [], currentPlanningWeekStart:'2026-10-19' };
 const creationUi = { showCreateTaskModal: true, calendarInboxEventId: null, createTaskDraft: { fields: [] } };
 let convertedEvent = null;
 let recurrenceCalls = 0;
@@ -141,7 +142,7 @@ Object.assign(createWindow, {
     getRecurringDaysLabel: () => 'Segunda, terça', showToast() {}, saveState() {}
 });
 runInNewContext(app.slice(costStart, costEnd) + saveNewSource, {
-    window: createWindow, state: creationState, uiState: creationUi, daysOfWeek: createDays,
+    Recurrence, window: createWindow, state: creationState, uiState: creationUi, daysOfWeek: createDays,
     TASK_NATURES: { normal: {}, neutral: {}, recharge: {} },
     document: { getElementById: id => createFields[id] },
     calendarSync: { getInbox: () => [{ id: 'event-1', status: 'pending', startTime: '10:00', endTime: '10:30' }], markInboxConverted(id) { convertedEvent = id; } }
@@ -157,7 +158,7 @@ for (const nature of ['normal', 'neutral', 'recharge']) {
     createWindow.saveNewTask();
     const task = creationState.tasks.at(-1);
     assert.equal(task.missionNature, nature);
-    assert.equal(task.day, 'mon');
+    assert.equal(task.day, 'monday');
     assert.equal(task.startTime, '10:00');
     assert.equal(task.subtasks.length, 2);
     assert.equal(task.complexity, 2);
@@ -166,11 +167,11 @@ for (const nature of ['normal', 'neutral', 'recharge']) {
     if (nature === 'neutral') assert.equal(task.xp + task.energyCost, 0);
     if (nature === 'recharge') assert.ok(task.xp === 0 && task.energyCost < 0);
 }
-createFields['ct-repeat-mon'].checked = true;
-createFields['ct-repeat-tue'].checked = true;
+createFields['ct-repeat-monday'].checked = true;
+createFields['ct-repeat-tuesday'].checked = true;
 createWindow.saveNewTask();
 assert.equal(recurrenceCalls, 1);
-assert.equal(creationState.tasks.at(-1).day, 'tue');
+assert.equal(creationState.tasks.at(-1).day, 'tuesday');
 const countBeforeInbox = creationState.tasks.length;
 creationUi.calendarInboxEventId = 'event-1';
 createWindow.saveNewTask();
@@ -183,7 +184,7 @@ const captureDraftEnd = app.indexOf('// Preservar a expansão', captureDraftStar
 const restoreDraftStart = app.indexOf('if (uiState.showCreateTaskModal && uiState.createTaskDraft)');
 const restoreDraftEnd = app.indexOf('lucide.createIcons();', restoreDraftStart);
 const draftUi = { showCreateTaskModal: true };
-const draftFields = [{ id: 'ct-text', value: 'Título em edição' }, { id: 'ct-repeat-tue', type: 'checkbox', value: 'on', checked: true }];
+const draftFields = [{ id: 'ct-text', value: 'Título em edição' }, { id: 'ct-repeat-tuesday', type: 'checkbox', value: 'on', checked: true }];
 const draftSections = [{ dataset: { createSection: 'recurrence' }, open: true }];
 const draftApp = {
     querySelector: () => ({ querySelectorAll: selector => selector.startsWith('input') ? draftFields : draftSections }),
@@ -343,14 +344,14 @@ assert.equal(entryDetails.open, true, 'A captura do DOM antigo não deve fechar 
 
 // A agenda deve manter os itens, a ordem por horário e as ações existentes após a limpeza visual.
 const weeklyTasks = [
-    { id: 'late', day: 'mon', text: 'Missão tarde', startTime: '15:00', category: 'work', priority: 'media', subtasks: [] },
-    { id: 'free', day: 'mon', text: '<Missão livre>', category: 'work', priority: 'alta', completed: true, subtasks: [] }
+    { id: 'late', day: 'monday', text: 'Missão tarde', startTime: '15:00', category: 'work', priority: 'media', subtasks: [] },
+    { id: 'free', day: 'monday', text: '<Missão livre>', category: 'work', priority: 'alta', completed: true, subtasks: [] }
 ];
 const weeklyState = { tasks: weeklyTasks, studyData: { subjects: [], studyPlan: { weeklyBlocks: [
-    { day: 'mon', title: 'Estudo cedo', startTime: '09:00', plannedMinutes: 60, status: 'planned' },
-    { day: 'mon', title: 'Cancelado', status: 'cancelled' }
+    { day: 'monday', title: 'Estudo cedo', startTime: '09:00', plannedMinutes: 60, status: 'planned' },
+    { day: 'monday', title: 'Cancelado', status: 'cancelled' }
 ] } } };
-const weeklyUi = { weeklyExpandedSections: { '2026-10-05:mon': false, '2026-10-05:tue': true } };
+const weeklyUi = { weeklyExpandedSections: { '2026-10-05:monday': false, '2026-10-05:tuesday': true } };
 const weeklyWindow = {
     getActivePlanningWeekStartDate: () => new Date('2026-10-05T12:00:00'),
     getCurrentCalendarWeekStartKey: () => '2026-10-05',
@@ -381,8 +382,8 @@ assert.doesNotMatch(weeklyMarkup, /Cancelado/);
 assert.ok(weeklyMarkup.indexOf('id="sync-stub"') < weeklyMarkup.indexOf('id="inbox-stub"'));
 assert.ok(weeklyMarkup.indexOf('id="inbox-stub"') < weeklyMarkup.indexOf('Semana Geral'));
 assert.doesNotMatch(weeklyMarkup, /data-week-section="[^"\n]*:google"/);
-assert.match(weeklyMarkup, /data-week-day="mon" data-week-section="2026-10-05:mon"  class=/);
-assert.match(weeklyMarkup, /data-week-day="tue" data-week-section="2026-10-05:tue" open /);
+assert.match(weeklyMarkup, /data-week-day="monday" data-week-section="2026-10-05:monday"  class=/);
+assert.match(weeklyMarkup, /data-week-day="tuesday" data-week-section="2026-10-05:tuesday" open /);
 for (const action of ['setPlanningCalendarWeek', 'exportVisibleWeekToIcs', 'prepareNextWeekPlanning', 'setMainView']) {
     assert.ok(weeklyMarkup.includes(`window.${action}(`), `A agenda deve preservar ${action}.`);
 }
@@ -393,14 +394,14 @@ assert.match(weeklyContext.renderWeek(), /window.setPlanningCalendarWeek\('prev'
     'Sem itens, a navegação ainda deve permitir voltar às outras semanas.');
 
 // A visão semanal deve acompanhar substituição de estado e mudança de semana.
-weeklyContext.state = { tasks: [{ id: 'fresh', day: 'tue', text: 'Missão após importação', category: 'work', subtasks: [] }], studyData: { subjects: [], studyPlan: { weeklyBlocks: [{ day: 'tue', title: 'Estudo após importação', plannedMinutes: 45, status: 'partial' }] } } };
+weeklyContext.state = { tasks: [{ id: 'fresh', day: 'tuesday', text: 'Missão após importação', category: 'work', subtasks: [] }], studyData: { subjects: [], studyPlan: { weeklyBlocks: [{ day: 'tuesday', title: 'Estudo após importação', plannedMinutes: 45, status: 'partial' }] } } };
 weeklyWindow.sortTasksForDay = day => weeklyContext.state.tasks.filter(task => task.day === day);
-weeklyContext.uiState = { weeklyExpandedSections: { '2026-10-12:tue': false } };
+weeklyContext.uiState = { weeklyExpandedSections: { '2026-10-12:tuesday': false } };
 weeklyWindow.getActivePlanningWeekStartDate = () => new Date('2026-10-12T12:00:00');
 const importedWeek = weeklyContext.renderWeek();
 assert.match(importedWeek, /Missão após importação/); assert.match(importedWeek, /Estudo após importação/);
 assert.match(importedWeek, /Próxima semana/);
-assert.match(importedWeek, /data-week-day="tue" data-week-section="2026-10-12:tue"  class=/);
+assert.match(importedWeek, /data-week-day="tuesday" data-week-section="2026-10-12:tuesday"  class=/);
 // A expansão diária também deve usar o objeto de interface atual.
 let importedBoardUi = { expandedSubtasks: { '77': true } };
 installPlanner(boardWindow, { getUiState: () => importedBoardUi });
@@ -545,7 +546,7 @@ assert.equal(opDraftFields[1].value, 'waiting');
 assert.equal(opDraftSections[0].open, true);
 
 // Edição: valores existentes, recorrência e recompensas já recebidas.
-const editable = { id: 91, text: '<Missão recorrente>', day: 'mon', category: 'work', priority: 'alta', complexity: 3, time: '60 min', missionNature: 'normal', startTime: '09:30', endTime: '10:30', recurrenceDays: ['mon', 'tue'], recurrenceGroupId: 'group-91', completed: true, subtasks: [{ id: 1, text: 'Preservar', completed: true }], customField: 'preservar', xp: 100, energyCost: 20 };
+const editable = { id: 91, text: '<Missão recorrente>', day: 'monday', category: 'work', priority: 'alta', complexity: 3, time: '60 min', missionNature: 'normal', startTime: '09:30', endTime: '10:30', recurrenceDays: ['monday', 'tuesday'], recurrenceGroupId: 'group-91', completed: true, subtasks: [{ id: 1, text: 'Preservar', completed: true }], customField: 'preservar', xp: 100, energyCost: 20 };
 const editWindow = { escapeHtml: radarWindow.escapeHtml, getTaskNature: task => task.missionNature, getTaskCategories: () => [{ id: 'work', label: 'Trabalho' }] };
 installFormDialogs(editWindow);
 installTaskForms(editWindow, { daysOfWeek: createDays, getState: () => ({}), getUiState: () => ({}) });
@@ -556,23 +557,24 @@ assert.match(editMarkup, /data-edit-section="schedule" open/);
 assert.match(editMarkup, /data-edit-section="recurrence" open/);
 assert.match(editMarkup, /id="et-start-time" type="time"\s+value="09:30"/);
 assert.match(editMarkup, /Editar não recalcula as recompensas/);
-const editValues = { 'et-text': 'Título ajustado', 'et-day': 'mon', 'et-category': 'work', 'et-priority': 'alta', 'et-complexity': '3', 'et-time': '60', 'et-impact-type': 'drain', 'et-nature': 'normal' };
+const editValues = { 'et-text': 'Título ajustado', 'et-day': 'monday', 'et-category': 'work', 'et-priority': 'alta', 'et-complexity': '3', 'et-time': '60', 'et-impact-type': 'drain', 'et-nature': 'normal' };
 const editElements = Object.fromEntries(Object.entries(editValues).map(([id, value]) => [id, { value, setAttribute(name, value) { this[name] = value; }, focus() { this.focused = true; } }]));
-editElements['et-repeat-mon'] = { checked: false }; editElements['et-repeat-tue'] = { checked: true };
-const editState = { tasks: [editable], activeTab: 'mon', xp: 500, coins: 200 };
+editElements['et-repeat-monday'] = { checked: false }; editElements['et-repeat-tuesday'] = { checked: true };
+const editState = { tasks: [editable], currentPlanningWeekStart:'2026-10-19', activeTab: 'monday', xp: 500, coins: 200 };
 const editUi = { editingTaskId: 91, editTaskDraft: { fields: [] }, showEditTaskModal: true };
 let recurringUpdate = null, editSaves = 0;
 Object.assign(editWindow, {
-    calculateTaskCost: () => ({ xp: 104, hp: 20 }), readCalendarTimeFields: () => ({ startTime: '09:30', endTime: '10:30' }),
+    readRecurrenceEndDate: () => '', calculateTaskCost: () => ({ xp: 104, hp: 20 }), readCalendarTimeFields: () => ({ startTime: '09:30', endTime: '10:30' }),
     upsertRecurringTaskOccurrences: (task, days, options) => { recurringUpdate = { days: [...days], removeUnselected: options.removeUnselected }; },
     reindexTaskOrderForDay() {}, getRecurringDaysLabel: () => 'Terça', showToast() {}, saveState: () => { editSaves++; }, showAlertModal() { throw new Error('Alerta inesperado'); }
 });
 const saveEditStart = app.indexOf('        window.saveEditedTask = function(');
 const saveEditEnd = app.indexOf('        window.calculateTaskCost = function(', saveEditStart);
-runInNewContext(app.slice(saveEditStart, saveEditEnd), { window: editWindow, state: editState, uiState: editUi, daysOfWeek: [{ id: 'mon' }, { id: 'tue' }], document: { getElementById: id => id === 'et-title-error' ? localError : editElements[id] } });
+runInNewContext(app.slice(saveEditStart, saveEditEnd), { Recurrence:{...Recurrence,recurrenceCutoff:()=> '2026-10-19'}, window: editWindow, state: editState, uiState: editUi, daysOfWeek: [{ id: 'monday' }, { id: 'tuesday' }], document: { getElementById: id => id === 'et-title-error' ? localError : editElements[id] } });
 editWindow.saveEditedTask();
-assert.deepEqual(recurringUpdate, { days: ['tue'], removeUnselected: true });
-assert.equal(editable.day, 'tue'); assert.equal(editable.text, 'Título ajustado');
+assert.equal(editState.planning.recurrenceRules[editable.recurrenceGroupId].days[0], 'tuesday');
+assert.equal(editable.day, 'monday'); assert.equal(editable.text, '<Missão recorrente>');
+assert.equal(editState.tasks.find(t=>t.day==='tuesday').text,'Título ajustado');
 assert.equal(editable.completed, true); assert.equal(editable.subtasks[0].completed, true); assert.equal(editable.customField, 'preservar');
 assert.equal(editState.xp, 500); assert.equal(editState.coins, 200); assert.equal(editSaves, 1);
 assert.equal(editUi.editTaskDraft, null);
@@ -581,7 +583,7 @@ editWindow.saveEditedTask();
 assert.equal(editElements['et-text']['aria-invalid'], 'true'); assert.equal(editElements['et-text'].focused, true); assert.equal(editSaves, 1);
 
 const editDraftUi = { showEditTaskModal: true };
-const editDraftFields = [{ id: 'et-text', value: 'Edição em andamento' }, { id: 'et-repeat-tue', type: 'checkbox', value: 'on', checked: true }];
+const editDraftFields = [{ id: 'et-text', value: 'Edição em andamento' }, { id: 'et-repeat-tuesday', type: 'checkbox', value: 'on', checked: true }];
 const editDraftSections = [{ dataset: { editSection: 'recurrence' }, open: true }];
 const editDraftApp = { querySelector: () => ({ querySelectorAll: selector => selector.startsWith('input') ? editDraftFields : editDraftSections }), querySelectorAll: () => editDraftSections };
 const editCaptureStart = app.indexOf('const previousEditDialog =');
@@ -594,7 +596,7 @@ runInNewContext(app.slice(editRestoreStart, editRestoreEnd), { appDiv: editDraft
 assert.equal(editDraftFields[0].value, 'Edição em andamento'); assert.equal(editDraftFields[1].checked, true); assert.equal(editDraftSections[0].open, true);
 
 // Login/importação podem substituir os objetos: a interface deve consultar o estado atual.
-let liveTaskState = { activeTab: 'mon' };
+let liveTaskState = { activeTab: 'monday' };
 let liveDialogState = { editingOperationalDemandId: null, showCategoryModal: false, alert: { show: false }, confirm: { show: false } };
 let lastBinding = null, liveCloses = 0, prepared = [];
 const liveFormsWindow = {
@@ -609,9 +611,9 @@ installFormDialogs(liveFormsWindow);
 // Preservar o capturador de opções após a instalação da estrutura compartilhada.
 liveFormsWindow.bindFormDialog = (root, options) => { lastBinding = options; };
 installTaskForms(liveFormsWindow, { daysOfWeek: createDays, getState: () => liveTaskState, getUiState: () => liveDialogState });
-assert.match(liveFormsWindow.renderCreateTaskModal(), /value="mon" selected/);
-liveTaskState = { activeTab: 'tue' };
-assert.match(liveFormsWindow.renderCreateTaskModal(), /value="tue" selected/);
+assert.match(liveFormsWindow.renderCreateTaskModal(), /value="monday" selected/);
+liveTaskState = { activeTab: 'tuesday' };
+assert.match(liveFormsWindow.renderCreateTaskModal(), /value="tuesday" selected/);
 liveDialogState = { editingOperationalDemandId: 'current', showCategoryModal: true, alert: { show: false }, confirm: { show: false } };
 assert.match(liveFormsWindow.renderOperationalDemandModal(), /value="Demanda atual"/);
 assert.match(liveFormsWindow.renderOperationalDemandModal(), /value="waiting" selected/);

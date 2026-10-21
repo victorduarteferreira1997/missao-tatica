@@ -1,5 +1,14 @@
 ## RADAR, missões e subtarefas · v1.9.65 · 20/10/2026
 
+## v1.9.66 — 21/10/2026
+
+- Término opcional e inclusivo para repetição de missões, com resumo nos cartões.
+- Encerramento explícito preserva histórico, trabalho iniciado, RADAR e recompensas.
+- Regras persistentes impedem recriação após reload ou passagem de semana.
+- Proteção das limpezas, categorias, vínculos e eventos cancelados no Google Agenda.
+- [Detalhes e validação](RECORRENCIA_MISSOES.md).
+
+
 - Semana com follow-ups por prazo/revisão/retorno, sem exigir missão, com um cartão
   por RADAR e aviso dos ativos sem execução disponível. Atalho na semana e sinal
   no dia tornam essas frentes visíveis.

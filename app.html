@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.65-radar-missions">
+    <meta name="app-build" content="v1.9.66-recurrence-end">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -99,13 +99,15 @@
 
     <!-- Script Principal com Firebase em Módulo -->
     <script type="module">
-        import { createCalendarSync } from './calendar_sync.v2.js?v=1.9.62';
-        import { installPlanningTools } from './ui/planning_tools.v2.js';
+        import { createCalendarSync } from './calendar_sync.v2.js?v=1.9.66';
+        import { installPlanningTools } from './ui/planning_tools.v3.js';
         import { installRadarMissions } from './ui/radar_missions.v1.js';
         import { installSubtasks } from './ui/subtasks.v1.js?v=1.9.65';
         import { installFormDialogs } from './ui/form_dialogs.v1.js';
-        import { installTaskForms } from './ui/task_forms.v4.js?v=1.9.65';
-        import { installPlanningViews } from './ui/planning_views.v4.js';
+        import * as Recurrence from './recurrence.v1.js';
+        import { installRecurrence } from './ui/recurrence.v1.js';
+        import { installTaskForms } from './ui/task_forms.v5.js?v=1.9.66';
+        import { installPlanningViews } from './ui/planning_views.v5.js';
         import { installAiInbox } from './ui/ai_inbox.v3.js';
         import { AI_CONFIG } from './ai/config.v1.js';
         import { AI_V2_CONFIG } from './ai/config.v2.js';
@@ -127,7 +129,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.65';
+        const APP_VERSION = 'v1.9.66';
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
             authDomain: "missao-tatica.firebaseapp.com",
@@ -638,6 +640,8 @@
             removedTaskGroups.forEach(group => {
                 const remaining = (state.tasks || []).filter(t => t.recurrenceGroupId === group);
                 const days = [...new Set(remaining.map(t => t.day))];
+                if (!remaining.length && state.planning?.recurrenceRules) delete state.planning.recurrenceRules[group];
+                else if (state.planning?.recurrenceRules?.[group]) state.planning.recurrenceRules[group].days=state.planning.recurrenceRules[group].days.filter(day=>days.includes(day));
                 remaining.forEach(t => { t.recurrenceDays = [...days]; });
             });
             removedTasks.forEach(task => { if (typeof window.rollbackTaskBadges === 'function') window.rollbackTaskBadges(task); });
@@ -934,6 +938,7 @@
 
         window.upsertRecurringTaskOccurrences = function(templateTask, recurrenceDays = [], options = {}) {
             if (!templateTask || !Array.isArray(state.tasks)) return [];
+            if (Recurrence.recurrenceRule(state,templateTask)) return Recurrence.reconcileRecurrenceWeek(state,templateTask.recurrenceGroupId,window.taskPlanningWeek(templateTask),{applyChanges:Boolean(options.applyChanges),now:new Date().toISOString()});
             const validDays = daysOfWeek.map(d => d.id);
             const days = [...new Set((recurrenceDays || []).filter(day => validDays.includes(day)))];
             if (!days.length) return [templateTask];
@@ -944,7 +949,7 @@
             const sameWeek = t => !window.taskPlanningWeek || window.taskPlanningWeek(t) === window.taskPlanningWeek(templateTask);
 
             if (options.removeUnselected !== false) {
-                state.tasks = state.tasks.filter(t => !(String(t.recurrenceGroupId || '') === String(groupId) && sameWeek(t) && !days.includes(t.day)));
+                state.tasks = state.tasks.filter(t => !(String(t.recurrenceGroupId || '') === String(groupId) && sameWeek(t) && !days.includes(t.day) && !Recurrence.protectedOccurrence(t,state,Recurrence.recurrenceToday())));
             }
 
             const applyFullTemplate = (target, targetDay, isNew = false) => {
@@ -991,21 +996,12 @@
                     state.tasks.push(occurrence);
                     applyFullTemplate(occurrence, dayId, true);
                 } else {
-                    applyFullTemplate(occurrence, dayId, false);
+                    if (!Recurrence.protectedOccurrence(occurrence,state,Recurrence.recurrenceToday())) applyFullTemplate(occurrence, dayId, false);
                 }
                 touched.push(occurrence);
             });
 
-            // Evita cards duplicados do mesmo grupo no mesmo dia, mantendo o primeiro encontrado.
-            const seen = new Set();
-            state.tasks = state.tasks.filter(t => {
-                if (String(t.recurrenceGroupId || '') !== String(groupId) || !sameWeek(t)) return true;
-                const key = `${groupId}::${t.day}`;
-                if (seen.has(key)) return false;
-                seen.add(key);
-                return true;
-            });
-
+            // Registros antigos com IDs distintos são preservados; a busca acima evita criar novas cópias.
             days.forEach(dayId => {
                 if (typeof window.reindexTaskOrderForDay === 'function') window.reindexTaskOrderForDay(dayId);
             });
@@ -1025,6 +1021,8 @@
                 groups.get(key).push(t);
             });
             groups.forEach(groupTasks => {
+                const policy=Recurrence.recurrenceRule(state,groupTasks[0]);
+                if(policy){Recurrence.reconcileRecurrenceWeek(state,groupTasks[0].recurrenceGroupId,window.taskPlanningWeek(groupTasks[0]),{now:new Date().toISOString()});return;}
                 const days = [...new Set(groupTasks.flatMap(t => Array.isArray(t.recurrenceDays) ? t.recurrenceDays : []).filter(day => validDays.includes(day)))];
                 if (!days.length) return;
                 const source = groupTasks.find(t => normalizeClockTime(t.startTime)) || groupTasks[0];
@@ -1619,6 +1617,7 @@
         installRadarMissions(window,{document,getState:()=>state,getUiState:()=>uiState,render,save:()=>window.saveStudyPlanningState()});
         installSubtasks(window,{document,getState:()=>state,getUiState:()=>uiState,render,save:()=>window.saveStudyPlanningState()});
         window.isPlanningTransitionBlocked=()=>{if(pomodoro.isRunning||pomodoro.currentFocusStartedAt||uiState.pomodoroEvaluationData||calendarSync.view().busy){window.showAlertModal('Finalize o ciclo de foco ou a sincronização antes de fechar a semana.');return true;}return false;};
+        installRecurrence(window,{document,getState:()=>state,getUiState:()=>uiState,render,save:()=>window.saveState(),now:()=>new Date().toISOString()});
         window.validateState();
 
         // ------------------------------------------
@@ -2064,6 +2063,7 @@
             } : JSON.parse(JSON.stringify(original));
             selected.forEach(module => module.keys.forEach(key => { delete next[key]; }));
             if (has('missions')) {
+                if(next.planning) delete next.planning.recurrenceRules;
                 next.focusedTaskId = null; next.focusMode = false; next.currentFilter = 'all';
                 // Mantém os compromissos externos; somente a vinculação à missão apagada é removida.
                 (next.calendarInboxItems || []).forEach(item => {
@@ -2075,6 +2075,7 @@
                 if (has('study')) next.planning.history.forEach(row=>{row.studyBlocks=[];delete row.summary;});
                 next.planning.history=next.planning.history.filter(row=>row.tasks?.length||row.studyBlocks?.length);
             }
+            if (has('radar')) Object.values(next.planning?.recurrenceRules||{}).forEach(rule=>{if(rule.template)rule.template.radarDemandId=null;});
             if (has('rewards') && next.economy) next.economy.targetReward = null;
             if (has('game')) {
                 const p = original.prestige || {};
@@ -2311,7 +2312,7 @@
                 if (!task || !dayIndexMap.has(task.day)) return;
                 const recurrenceDays = Array.isArray(task.recurrenceDays) ? task.recurrenceDays.filter(dayId => dayIndexMap.has(dayId)) : [];
                 const groupId = task.recurrenceGroupId ? String(task.recurrenceGroupId) : '';
-                const isRecurringSeries = Boolean(groupId && (task.isRecurring || recurrenceDays.length > 1));
+                const isRecurringSeries = Boolean(groupId && !Recurrence.recurrenceRule(state,task) && (task.isRecurring || recurrenceDays.length > 1));
 
                 if (isRecurringSeries) {
                     if (exportedTaskGroups.has(groupId)) return;
@@ -2954,6 +2955,7 @@
             if (event) { if (typeof event.stopPropagation === 'function') event.stopPropagation(); if (typeof event.preventDefault === 'function') event.preventDefault(); }
             const targetDay = selectEl.value; if (!targetDay) return;
             const task = state.tasks.find(t => t.id == taskId);
+            if (Recurrence.hasRecurrence(task)) { selectEl.value=''; window.showAlertModal('Para alterar os dias de uma missão recorrente, use Editar missão > Repetição.'); return; }
             if (task?.googleCalendarSource === 'primary') { selectEl.value = ''; window.showAlertModal('Altere o dia no Google Agenda e sincronize novamente.'); return; }
             if (task) { task.day = targetDay; task.order = window.getNextTaskOrder(targetDay); window.changeEnergy(10); window.recordCampaignStat('tasksMoved'); state.stats.tasksMoved = (state.stats.tasksMoved || 0) + 1; window.unlockBadge('estrategista'); window.spawnFloatingText(event, `+10 HP`, 'text-emerald-400'); window.breakCombo(); window.saveState(); }
             selectEl.value = "";
@@ -3005,7 +3007,13 @@
 
             // Correção crítica: se a missão fazia parte de uma recorrência, remover apenas o dia excluído
             // da série. Sem isso, a validação/relogin recriava a ocorrência apagada.
-            if (wasRecurring && recurrenceGroupId && deletedDay) {
+            const controlledRule = Recurrence.recurrenceRule(state,task);
+            if (controlledRule && deletedDay) {
+                controlledRule.days = controlledRule.days.filter(day=>day!==deletedDay);
+                controlledRule.effectiveFrom = Recurrence.recurrenceCutoff(state,task);
+                if (!controlledRule.days.length) { controlledRule.stoppedAfter=Recurrence.recurrenceToday(); controlledRule.stoppedAt=new Date().toISOString(); }
+                Recurrence.reconcileKnownRecurrenceWeeks(state,recurrenceGroupId,{now:new Date().toISOString()});
+            } else if (wasRecurring && recurrenceGroupId && deletedDay) {
                 const validDays = daysOfWeek.map(d => d.id);
                 const groupTasks = state.tasks.filter(t => String(t.recurrenceGroupId || '') === String(recurrenceGroupId));
                 const remainingDays = [...new Set(groupTasks
@@ -3112,6 +3120,7 @@
             window.showConfirmModal(`Excluir definitivamente a categoria "${cat.label}"? ${taskCount ? `As ${taskCount} missão(ões) desta categoria serão movidas para outra categoria ativa.` : 'Nenhuma missão será afetada.'}`, () => {
                 const fallbackId = window.getFallbackTaskCategoryId(categoryId);
                 state.tasks.forEach(t => { if (t.category === categoryId) t.category = fallbackId; });
+                Object.values(state.planning?.recurrenceRules||{}).forEach(rule=>{if(rule.template?.category===categoryId)rule.template.category=fallbackId;});
                 state.taskCategories = state.taskCategories.filter(c => c.id !== categoryId);
                 if (!state.deletedTaskCategoryIds.includes(categoryId)) state.deletedTaskCategoryIds.push(categoryId);
                 if (!state.taskCategories.some(c => c.active !== false)) {
@@ -3913,27 +3922,27 @@
 
             if (isRecurring) {
                 const groupId = task.recurrenceGroupId || `rec-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-                const oldGroupDays = state.tasks
-                    .filter(t => String(t.recurrenceGroupId || '') === String(groupId) || String(t.id) === String(task.id))
-                    .map(t => t.day)
-                    .filter(Boolean);
-
-                applyValues(task, recurrenceDays.includes(newDay) ? newDay : recurrenceDays[0]);
-                task.isRecurring = true;
-                task.recurrenceDays = [...recurrenceDays];
-                task.recurrenceGroupId = groupId;
-
-                window.upsertRecurringTaskOccurrences(task, recurrenceDays, { removeUnselected: true });
-                [...new Set([...oldGroupDays, ...recurrenceDays, oldDay])].forEach(dayId => {
-                    if (typeof window.reindexTaskOrderForDay === 'function') window.reindexTaskOrderForDay(dayId);
-                });
+                const proposed = { ...task, recurrenceGroupId: groupId };
+                applyValues(proposed, newDay);
+                const from = Recurrence.recurrenceCutoff(state, task);
+                const endDate = window.readRecurrenceEndDate('et', recurrenceDays, from);
+                if (endDate === null) return;
+                try {
+                    const staged=JSON.parse(JSON.stringify(state));
+                    Recurrence.setRecurrenceRule(staged, proposed, recurrenceDays, endDate, { from });
+                    const stagedTask=staged.tasks.find(t=>String(t.id)===String(task.id));
+                    if (!stagedTask.recurrenceGroupId) { stagedTask.recurrenceGroupId=groupId; stagedTask.isRecurring=true; stagedTask.recurrenceDays=[...recurrenceDays]; }
+                    Recurrence.reconcileKnownRecurrenceWeeks(staged, groupId, { applyChanges: true, now: new Date().toISOString() });
+                    state.tasks=staged.tasks; state.planning=staged.planning;
+                } catch (error) { window.showAlertModal(error.message); return; }
                 uiState.editTaskDraft = null;
                 uiState.showEditTaskModal = false;
                 uiState.editingTaskId = null;
-                window.showToast('Recorrência atualizada', `Horário sincronizado em ${recurrenceDays.length} dia(s): ${window.getRecurringDaysLabel(recurrenceDays)}.`, 'repeat', 'text-violet-300');
+                window.showToast('Recorrência atualizada', 'Próximas ocorrências ajustadas; histórico e trabalho iniciado preservados.', 'repeat', 'text-violet-300');
                 window.saveState();
                 return;
             }
+            if (Recurrence.hasRecurrence(task)) { window.showAlertModal('Para parar esta série, use Encerrar repetição. Para continuar, selecione ao menos um dia.'); return; }
 
             applyValues(task, newDay);
             task.isRecurring = false;
@@ -4060,7 +4069,9 @@
                 .filter(d => document.getElementById(`ct-repeat-${d.id}`)?.checked)
                 .map(d => d.id);
             const isRecurring = recurrenceDays.length > 0;
-            const daysToCreate = isRecurring ? recurrenceDays : [selectedDay === 'next_week' ? 'monday' : selectedDay];
+            const recurrenceEndDate = window.readRecurrenceEndDate ? window.readRecurrenceEndDate('ct', recurrenceDays, targetPlanningWeek) : '';
+            if (window.readRecurrenceEndDate && recurrenceEndDate === null) return;
+            const daysToCreate = (isRecurring ? recurrenceDays : [selectedDay === 'next_week' ? 'monday' : selectedDay]).filter(day=>!isRecurring || !recurrenceEndDate || Recurrence.occurrenceDate({day,planningWeekStart:targetPlanningWeek},state)<=recurrenceEndDate);
             const recurrenceGroupId = isRecurring ? `rec-${Date.now()}-${Math.random().toString(16).slice(2)}` : null;
 
             let firstCreatedTaskId = null;
@@ -4108,7 +4119,10 @@
 
             if (isRecurring) {
                 const firstOccurrence = state.tasks.find(t => String(t.recurrenceGroupId || '') === String(recurrenceGroupId));
-                if (firstOccurrence) window.upsertRecurringTaskOccurrences(firstOccurrence, recurrenceDays, { removeUnselected: true });
+                if (firstOccurrence) {
+                    Recurrence.setRecurrenceRule(state,firstOccurrence,recurrenceDays,recurrenceEndDate,{from:targetPlanningWeek,create:true});
+                    window.upsertRecurringTaskOccurrences(firstOccurrence, recurrenceDays, { removeUnselected: true });
+                }
             }
             [...new Set(daysToCreate)].forEach(dayId => { if (typeof window.reindexTaskOrderForDay === 'function') window.reindexTaskOrderForDay(dayId); });
 
@@ -4183,6 +4197,7 @@
                 `Limpar TODAS as missões? Serão excluídas ${totalTasks} missão(ões) do quadro.${recurringText} Esta ação apaga missões comuns e recorrentes. Estudos, XP, moedas, perfil, rituais, finanças, saúde e demais módulos serão preservados.`,
                 () => {
                     state.tasks = [];
+                    if(state.planning) delete state.planning.recurrenceRules;
                     state.focusedTaskId = null;
                     state.currentFilter = 'all';
 
@@ -6135,6 +6150,7 @@
                 window.getOperationalControl().demands = window.getOperationalControl().demands
                     .filter(demand => String(demand.id) !== String(demandId));
                 latest.tasks.forEach(task => { task.radarDemandId = null; });
+                Object.values(state.planning?.recurrenceRules||{}).forEach(rule=>{if(String(rule.template?.radarDemandId)===String(demandId))rule.template.radarDemandId=null;});
                 delete uiState.radarExpandedSections?.[`demand:${demandId}`];
                 if (String(uiState.editingOperationalDemandId) === String(demandId)) {
                     uiState.showOperationalDemandModal = false;
