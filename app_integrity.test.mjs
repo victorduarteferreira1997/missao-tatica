@@ -5,11 +5,11 @@ import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 import { installFormDialogs as installDialogModule } from './ui/form_dialogs.v1.js';
 import { installTaskForms } from './ui/task_forms.v5.js';
-import { installPlanningViews } from './ui/planning_views.v5.js';
+import { installPlanningViews } from './ui/planning_views.v6.js';
 
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
 const taskForms = await readFile(new URL('./ui/task_forms.v5.js', import.meta.url), 'utf8');
-const planningViews = await readFile(new URL('./ui/planning_views.v5.js', import.meta.url), 'utf8');
+const planningViews = await readFile(new URL('./ui/planning_views.v6.js', import.meta.url), 'utf8');
 const aiInbox = await readFile(new URL('./ui/ai_inbox.v3.js', import.meta.url), 'utf8');
 const aiAccess = await readFile(new URL('./ui/ai_access.v2.js', import.meta.url), 'utf8');
 const aiProposals = await readFile(new URL('./ui/ai_proposals.v2.js', import.meta.url), 'utf8');
@@ -22,7 +22,7 @@ const installPlanner = (target, options = {}) => installPlanningViews(target, {
     getState: () => ({}), getUiState: () => ({}), extractMinutesFromTask: () => 30,
     ...options
 });
-assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v5\.js'/);
+assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v6\.js'/);
 assert.match(app, /html \+= window\.renderWeeklyPlanningOverview\(\)/);
 assert.ok(!app.includes('window.renderDailyMissionBoard ='), 'As visões devem existir apenas no módulo do planejamento.');
 assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v5\.js\?v=1\.9\.66'/);
@@ -274,7 +274,7 @@ installPlanner(boardWindow, { getUiState: () => boardUi });
 const board = boardWindow.renderDailyMissionBoard([
     { id: 123.45, text: 'Missão de teste', priority: 'media', subtasks: [{ id: 1, text: 'Etapa' }] }
 ]);
-const completionControls = [...board.matchAll(/<([a-z]+)\b[^>]*onclick="window\.toggleTask\(/g)];
+const completionControls = [...board.matchAll(/<([a-z]+)\b[^>]*onclick="window\.changeDailyMissionStatus\(/g)];
 assert.equal(completionControls.length, 1, 'Cada missão deve ter um único controle explícito para concluir.');
 assert.equal(completionControls[0][1], 'button', 'A linha e o texto da missão não devem concluir por clique.');
 assert.match(board, /role="progressbar"[^>]*aria-valuemax="1" aria-valuenow="0"/);

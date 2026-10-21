@@ -1,3 +1,14 @@
+## v1.9.67 — 21/10/2026
+
+- Pendentes primeiro e seção recolhível **Concluídas (N)** no final do dia/filtro.
+- Reabertura e edição preservadas; concluir/reabrir não muda a ordem manual.
+- Arraste e botões pulam concluídas e categorias ocultas; sem migração de dados.
+- Confirmação visual e anúncio acessível; foco passa à próxima missão disponível,
+  respeitando diálogos de validação e decisões do RADAR.
+- Nova interface versionada; visão semanal e regras de negócio preservadas.
+- Validação: 346 testes automatizados e fluxo de navegador em desktop e 390 px,
+  com teclado/toque, recarregamento, recompensas, dependências e RADAR simulados.
+
 ## RADAR, missões e subtarefas · v1.9.65 · 20/10/2026
 
 ## v1.9.66 — 21/10/2026

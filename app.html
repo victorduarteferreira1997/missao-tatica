@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.66-recurrence-end">
+    <meta name="app-build" content="v1.9.67-daily-completed">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -107,7 +107,7 @@
         import * as Recurrence from './recurrence.v1.js?v=1.9.66.1';
         import { installRecurrence } from './ui/recurrence.v1.js?v=1.9.66.1';
         import { installTaskForms } from './ui/task_forms.v5.js?v=1.9.66';
-        import { installPlanningViews } from './ui/planning_views.v5.js';
+        import { installPlanningViews } from './ui/planning_views.v6.js';
         import { installAiInbox } from './ui/ai_inbox.v3.js';
         import { AI_CONFIG } from './ai/config.v1.js';
         import { AI_V2_CONFIG } from './ai/config.v2.js';
@@ -129,7 +129,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.66';
+        const APP_VERSION = 'v1.9.67';
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
             authDomain: "missao-tatica.firebaseapp.com",
@@ -3168,6 +3168,22 @@
             window.sortTasksBySchedule(state.tasks.filter(t => t.day === dayId && (window.isPlanningTaskVisible ? window.isPlanningTaskVisible(t) : (!t.googleCalendarWeekStart || t.googleCalendarWeekStart === state.currentPlanningWeekStart)))).forEach((t, index) => { t.order = index + 1; });
         };
 
+        window.getDailyReorderTasks = function(dayId) {
+            return window.sortTasksForDay(dayId).filter(task => !task.completed && (!state.currentFilter || state.currentFilter === 'all' || task.category === state.currentFilter));
+        };
+
+        // Reuse the visible pending slots. Completing/reopening never changes stored order.
+        window.applyDailyMissionOrder = function(ordered, dayId) {
+            const ids = new Set(ordered.map(task => String(task.id)));
+            const all = window.sortTasksForDay(dayId);
+            const slots = [];
+            all.forEach((task, index) => {
+                if (ids.has(String(task.id))) slots.push(index + 1);
+                else task.order = index + 1;
+            });
+            ordered.forEach((task, index) => { task.order = slots[index]; });
+        };
+
         window.handleTaskDragStart = function(taskId, event) {
             if (!event || !event.dataTransfer) return;
             event.stopPropagation();
@@ -3201,12 +3217,13 @@
             if (!draggedTaskId || String(draggedTaskId) === String(targetTaskId)) return;
             const dragged = state.tasks.find(t => String(t.id) === String(draggedTaskId));
             const target = state.tasks.find(t => String(t.id) === String(targetTaskId));
-            if (!dragged || !target) return;
-            dragged.day = target.day;
-            const ordered = window.sortTasksForDay(target.day).filter(t => String(t.id) !== String(dragged.id));
+            if (!dragged || !target || dragged.day !== target.day) return;
+            const eligible = window.getDailyReorderTasks(target.day);
+            if (!eligible.includes(dragged) || !eligible.includes(target)) return;
+            const ordered = eligible.filter(t => String(t.id) !== String(dragged.id));
             const targetIndex = ordered.findIndex(t => String(t.id) === String(target.id));
             ordered.splice(targetIndex < 0 ? ordered.length : targetIndex, 0, dragged);
-            ordered.forEach((t, index) => { t.order = index + 1; });
+            window.applyDailyMissionOrder(ordered, target.day);
             window.saveState();
             window.showToast('Ordem atualizada', 'Missões reorganizadas no dia.', 'grip-vertical', 'text-cyan-400');
         };
@@ -3215,13 +3232,13 @@
             if (event) event.stopPropagation();
             const task = state.tasks.find(t => t.id == taskId);
             if (!task) return;
-            const ordered = window.sortTasksForDay(task.day);
+            const ordered = window.getDailyReorderTasks(task.day);
             const index = ordered.findIndex(t => t.id == taskId);
             const nextIndex = index + direction;
             if (index < 0 || nextIndex < 0 || nextIndex >= ordered.length) return;
             const [item] = ordered.splice(index, 1);
             ordered.splice(nextIndex, 0, item);
-            ordered.forEach((t, i) => { t.order = i + 1; });
+            window.applyDailyMissionOrder(ordered, task.day);
             window.saveState();
         };
 

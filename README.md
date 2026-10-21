@@ -22,9 +22,18 @@ A integração privada com IA continua exclusiva do proprietário.
 - [Aplicação oficial](https://victorduarteferreira1997.github.io/missao-tatica/)
 - [Endereço direto](https://victorduarteferreira1997.github.io/missao-tatica/app.html)
 
-A versão atual é **v1.9.66**. A raiz, `teste_novos_modulos.html` e as prévias
+A versão atual é **v1.9.67**. A raiz, `teste_novos_modulos.html` e as prévias
 estáticas v1.9.11/v1.9.13 encaminham para a aplicação oficial. Parâmetros e
 fragmentos dos favoritos são preservados.
+
+## Concluídas no dia · v1.9.67
+
+Missões pendentes aparecem primeiro. As finalizadas ficam em **Concluídas (N)**,
+recolhida no final do mesmo dia e filtro. Abra para consultar, editar ou reabrir.
+Concluir/reabrir preserva a ordem manual; arraste e botões de ordenação atuam
+somente nas pendentes visíveis. Reuniões não realizadas não viram concluídas.
+A alteração é visual, sem migração, exclusão ou cópia de registros. Recompensas,
+dependências, RADAR, repetição, visão semanal e sincronização usam as regras atuais.
 
 ## RADAR, missões e subtarefas · v1.9.65
 
