@@ -22,9 +22,18 @@ A integração privada com IA continua exclusiva do proprietário.
 - [Aplicação oficial](https://victorduarteferreira1997.github.io/missao-tatica/)
 - [Endereço direto](https://victorduarteferreira1997.github.io/missao-tatica/app.html)
 
-A versão atual é **v1.9.67**. A raiz, `teste_novos_modulos.html` e as prévias
+A versão atual é **v1.9.68**. A raiz, `teste_novos_modulos.html` e as prévias
 estáticas v1.9.11/v1.9.13 encaminham para a aplicação oficial. Parâmetros e
 fragmentos dos favoritos são preservados.
+
+## Exclusão e reagendamento sem penalidade · v1.9.68
+
+Excluir ou mover uma missão preserva o Frenesi. A exclusão pede somente confirmação,
+sem justificativa obrigatória, e avisa quando há pré-requisitos ou repetição.
+Excluir não registra conclusão, não gera recompensas nem retira as já conquistadas.
+O RADAR e as dependências das outras missões permanecem disponíveis para revisão.
+A opção **Próxima semana** mantém um dia válido e move a data de planejamento.
+Registros antigos de exclusão são preservados; combos já zerados não são recalculados.
 
 ## Concluídas no dia · v1.9.67
 
