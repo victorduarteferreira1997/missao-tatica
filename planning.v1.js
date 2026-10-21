@@ -1,4 +1,4 @@
-import {recurrenceRule,reconcileRecurrenceWeek,occurrenceDate} from './recurrence.v1.js';
+import {recurrenceRule,reconcileRecurrenceWeek,occurrenceDate} from './recurrence.v1.js?v=1.9.66.1';
 // Pure planning rules. No network, credentials, rewards or automatic scheduling.
 export const PLANNING_LIMITS=Object.freeze({historyWeeks:12,historyBytes:320000,weekItems:500,dependencies:20});
 const clone=value=>JSON.parse(JSON.stringify(value));
