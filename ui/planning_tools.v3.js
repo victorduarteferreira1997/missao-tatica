@@ -1,4 +1,4 @@
-import {PLANNING_LIMITS,findPlanningTask,nextWeek,normalizePlanning,taskWeek,tasksForWeek,linkedTasks,validateRelations,blockingDependencies,analyzePlanning,planningSummary,buildWeekTransition,applyWeekTransition} from '../planning.v1.js?v=1.9.66';
+import {PLANNING_LIMITS,findPlanningTask,nextWeek,normalizePlanning,taskWeek,tasksForWeek,linkedTasks,validateRelations,blockingDependencies,analyzePlanning,planningSummary,buildWeekTransition,applyWeekTransition} from '../planning.v1.js?v=1.9.66.1';
 export function installPlanningTools(window,{document,getState,getUiState,render,save,now=()=>new Date().toISOString()}){
  const e=value=>window.escapeHtml(value),arg=value=>e(JSON.stringify(String(value))),days={monday:'Segunda',tuesday:'Terça',wednesday:'Quarta',thursday:'Quinta',friday:'Sexta',saturday:'Sábado',sunday:'Domingo'};
  const button='rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800';

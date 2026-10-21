@@ -1,4 +1,4 @@
-import * as R from '../recurrence.v1.js';
+import * as R from '../recurrence.v1.js?v=1.9.66.1';
 export function installRecurrence(window,{document,getState,getUiState,render,save,now=()=>new Date().toISOString()}) {
     const today=()=>R.recurrenceToday(now()),labels=['segunda','terça','quarta','quinta','sexta','sábado','domingo'];
     window.getMissionRecurrenceSummary=task=>R.recurrenceSummary(getState(),task,labels);

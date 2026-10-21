@@ -98,6 +98,7 @@ export function reconcileRecurrenceWeek(state, groupId, week, {applyChanges=fals
             const id=makeId?makeId():Math.max(Date.now(),...allRecords.map(t=>Math.ceil(Number(t.id)||0)))+1;
             const previous=rows(sources||tasks).filter(t=>String(t.recurrenceGroupId)===String(groupId)&&t.day===day&&!t.recurrenceCancelled&&occurrenceDate(t,state)<date).sort((a,b)=>occurrenceDate(b,state).localeCompare(occurrenceDate(a,state)))[0];
             const template={...copy(rule.template),...(previous?{dependsOnTaskIds:copy(previous.dependsOnTaskIds||[]),dependencyReceipts:copy(previous.dependencyReceipts||[]),radarDemandId:previous.radarDemandId||null,subtasks:copy(previous.subtasks||[])}:{})};
+            if (template.radarDemandId && !rows(state.operationalControl?.demands).some(d=>String(d.id)===String(template.radarDemandId))) template.radarDemandId=null;
             if (tasks.some(t=>String(t.id)===String(id)) || rows(state.planning?.history).some(w=>rows(w.tasks).some(t=>String(t.id)===String(id)))) throw Error('Identificador de ocorrência duplicado. Tente novamente.');
             task={...template,id,day,planningWeekStart:week,order:tasks.filter(t=>t.day===day).length+1,createdAt:now,completed:false,workflowStatus:'planned',skipped:false,campaignId:state.prestige?.campaign||1,subtasks:rows(template.subtasks).map((s,i)=>({...s,id:String(id)+':sub:'+i,completed:false}))};
             tasks.push(task);
