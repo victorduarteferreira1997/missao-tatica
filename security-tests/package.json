@@ -8,7 +8,8 @@
     "test:browser:recurrence": "TZ=America/Sao_Paulo node ../test-support/browser_recurrence.mjs",
     "test:browser:daily": "TZ=America/Sao_Paulo node ../test-support/browser_daily_missions.mjs",
     "test:browser:maintenance": "TZ=America/Sao_Paulo node ../test-support/browser_mission_maintenance.mjs",
-    "test:browser:library": "TZ=America/Sao_Paulo node ../test-support/browser_library.mjs"
+    "test:browser:library": "TZ=America/Sao_Paulo node ../test-support/browser_library.mjs",
+    "test:browser:reading": "TZ=America/Sao_Paulo node ../test-support/browser_reading.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "4.0.1",

@@ -1,6 +1,6 @@
-# Biblioteca — catálogo · v1.9.69
+# Biblioteca — catálogo, leituras e planos · v1.9.70
 
-## Entrega atual (etapas 1 e 2)
+## Catálogo (etapas 1 e 2)
 
 Acesso em **Mais recursos → Biblioteca**. Catálogo pessoal disponível para as contas
 já autorizadas, incluindo contas independentes. Nenhum dado anterior é importado,
@@ -25,11 +25,52 @@ apagado, classificado como lido ou transmitido à IA automaticamente.
   mantém rascunho/expansão/rolagem durante redraws. Alterações não salvas pedem descarte.
 - Sem XP, moedas, energia, Frenesi, mudança de campanha ou criação de Missões.
 
+## Acompanhamento e planejamento (etapas 3 e 4)
+
+- Abas **Em leitura**, **Minha estante** e **Planejamento**. A abertura prioriza
+  acompanhamentos não arquivados em andamento; o catálogo permanece acessível.
+- Um acompanhamento aberto por livro, com uma edição definida, métrica em páginas
+  ou percentual e posição inicial. Nova releitura é um novo ciclo, sem sobrescrever
+  conclusões anteriores. Revisão de trechos não soma leitura completa ao histórico.
+- Registro realizado informa data, posição e/ou minutos reais; anotação opcional.
+  Tempo planejado não preenche o tempo real. Chegar à última página ou registrar
+  uma sessão não conclui automaticamente o livro.
+- Correção e remoção de registros recalculam o progresso desde a posição inicial.
+  Leituras normais não podem regredir entre registros cronológicos; revisão de
+  trechos pode. O total de páginas não pode invalidar nenhuma posição histórica.
+- Concluir o acompanhamento é uma ação explícita, que encerra apenas seus planos
+  abertos e preserva todas as sessões. Acompanhamentos concluídos e seus registros
+  podem ser consultados/corrigidos em **Minha estante → Formatos e histórico**.
+- Plano opcional: dias, início, término inclusivo opcional, minutos e horário opcional.
+  Não cria Missões, recompensas, vínculo com RADAR ou blocos de estudo.
+- Ocorrências são calculadas por data, com identidade `planId:sourceDate`; não são
+  copiadas para o banco a cada semana. Não existe acúmulo automático de atrasadas.
+  Uma remarcação guarda uma exceção e respeita o período do plano; cancelar uma
+  sessão não encerra a leitura nem altera as demais datas.
+- Pausar leitura pausa seus planos ativos. Retomar reativa somente esses planos,
+  sem recuperar atrasos da pausa; planos pausados manualmente continuam pausados.
+  Encerrar plano preserva os registros e oculta suas sessões ainda não realizadas.
+- Editar dias/período preserva os registros reais, mesmo quando sua data deixa de
+  corresponder ao padrão. Registros planejados realizados cedo/tarde aparecem na
+  data real, sem uma segunda cópia na data original.
+- Uma sessão planejada pode ter um registro parcial ou concluído; corrigir esse
+  registro mantém seu ID. Chaves de requisição impedem repetição de uma gravação,
+  e a assinatura do rascunho recusa ações sobre uma Biblioteca já alterada.
+- No dia, um único bloco **Estudos e leituras** começa recolhido, mostra contagens,
+  mantém a abertura ao agir e desaparece quando não há itens naquele dia. Os grupos
+  são separados e os controles existentes de estudo são preservados. Na semana,
+  leituras aparecem no respectivo dia, junto de missões e estudos.
+- Formulários preservam rascunho, foco e ordem durante redraws, têm rodapé fixo e
+  navegação por teclado; descartar edição não salva pede confirmação. O salvamento
+  informa quando a confirmação em nuvem ainda está pendente.
+
 ## Modelo aditivo e preservação
 
 `libraryData` contém `version:1`, `books`, `editions`, `readings`, `plans`, `sessions`
-e `imports`. As últimas três estruturas estão reservadas para as próximas etapas;
-a interface atual não cria planejamento ou importações.
+e `imports`. Leituras, planos e sessões agora são utilizados; `imports` continua
+reservado. O schema persistido permanece na versão 1, com campos aditivos. Os
+arquivos `library.v2.js`, `ui/library.v2.js` e `ui/reading_activity.v1.js` implementam
+a nova experiência; os módulos anteriores permanecem disponíveis para snapshots.
 
 A inicialização adiciona a estrutura apenas quando ela não existe. Versões
 incompatíveis ou malformadas são retidas intactas; o catálogo informa o problema
@@ -54,24 +95,31 @@ acrescentar formatos. Não há fusão silenciosa nem inferência de edições.
 
 ## Validação
 
-- 369 testes automatizados aprovados.
+- 384 testes automatizados aprovados (369 anteriores + 15 específicos de leituras).
 - Regressão do aplicativo e testes do catálogo: inicialização, alterações atômicas,
   formatos, datas desconhecidas, intenção independente, duplicados, histórico,
   referências protegidas, arquivamento, limite de tamanho e contas isoladas.
 - Catálogo de 300 livros: IDs únicos e busca do último registro.
 - Navegador desktop e celular de 390 px: formulários reais, rascunho/caret, filtros,
   confirmação/cancelamento, duas edições, edição/histórico, reload e conta membro.
+- Navegador de leituras: início, plano, alterações finais, clique repetido, parcial,
+  correção após conclusão, releitura, remarcação/cancelamento, estudos existentes,
+  bloco diário/semanal, fechamento de confirmação, reload e troca de conta.
+- Regressões do catálogo e de Missões diárias também aprovadas em desktop e 390 px.
 - Serviços externos simulados: nenhum dado real consultado ou alterado nos testes.
 
 ## Próximas etapas já definidas
 
-1. Acompanhamento de leitura: progresso por edição, correção e releituras.
-2. Planejamento opcional e bloco compacto **Estudos e leituras**, oculto quando vazio,
-   com contagens de sessões, detalhes sob demanda e preservação das telas de estudo.
-3. Importação assistida pelo GPT: ampliar consentimento, projeção, contrato de
+1. Importação assistida pelo GPT: ampliar consentimento, projeção, contrato de
    propostas, backend e revisão em lote, com deduplicação/retomada. A ponte atual
    continua aceitando apenas Missões, RADAR e Estudos; não recebe livros nesta versão.
-4. Integração de uma leitura com trilhas da Inteligência após a base, sem duplicar registros.
+2. Integração opcional de leitura com trilhas da Inteligência, sem duplicar registros.
+
+Leituras ainda não são exportadas/sincronizadas com Google Agenda ou ICS.
+Registros independentes de plano ficam no acompanhamento do livro; o bloco diário
+exibe as sessões vinculadas ao planejamento. O estado continua em um documento
+pessoal, com a guarda de tamanho descrita acima; não houve alteração de regras
+Firestore nem migração, exclusão ou recriação dos registros existentes.
 
 Integração Kindle, recomendações automáticas e armazenamento de PDFs ficam fora
 desta entrega. O aplicativo não é um leitor de e-books nem sincroniza posição Kindle.

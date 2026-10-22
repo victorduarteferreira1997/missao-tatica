@@ -1,4 +1,4 @@
-import * as Library from './library.v1.js';
+import * as Library from './library.v2.js';
 import {validateAccountState} from './account_storage.v1.js';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
