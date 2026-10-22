@@ -15,7 +15,7 @@ const aiAccess = await readFile(new URL('./ui/ai_access.v2.js', import.meta.url)
 const aiProposals = await readFile(new URL('./ui/ai_proposals.v2.js', import.meta.url), 'utf8');
 const aiEntityReview = await readFile(new URL('./ui/ai_entity_review.v1.js', import.meta.url), 'utf8');
 const planningTools = await readFile(new URL('./ui/planning_tools.v3.js', import.meta.url), 'utf8');
-const extraInterfaces = (await Promise.all(['./ui/radar_missions.v1.js','./ui/subtasks.v1.js','./ui/recurrence.v1.js'].map(path=>readFile(new URL(path,import.meta.url),'utf8')))).join('\n');
+const extraInterfaces = (await Promise.all(['./ui/library.v1.js','./ui/radar_missions.v1.js','./ui/subtasks.v1.js','./ui/recurrence.v1.js'].map(path=>readFile(new URL(path,import.meta.url),'utf8')))).join('\n');
 const interfaceSource = extraInterfaces + planningTools + aiEntityReview + app + taskForms + planningViews + aiInbox + aiAccess + aiProposals;
 const installPlanner = (target, options = {}) => installPlanningViews(target, {
     document: { addEventListener() {} }, daysOfWeek: [], ICONS: { default: 'target' },

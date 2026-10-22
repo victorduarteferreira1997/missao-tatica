@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.68-planning-without-penalty">
+    <meta name="app-build" content="v1.9.69-library-catalog">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -107,6 +107,8 @@
         import * as Recurrence from './recurrence.v1.js?v=1.9.66.1';
         import { installRecurrence } from './ui/recurrence.v1.js?v=1.9.66.1';
         import { installTaskForms } from './ui/task_forms.v5.js?v=1.9.66';
+        import * as Library from './library.v1.js?v=1.9.69';
+        import { installLibrary } from './ui/library.v1.js?v=1.9.69';
         import { installPlanningViews } from './ui/planning_views.v6.js';
         import { installAiInbox } from './ui/ai_inbox.v3.js';
         import { AI_CONFIG } from './ai/config.v1.js';
@@ -129,7 +131,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.68';
+        const APP_VERSION = 'v1.9.69';
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
             authDomain: "missao-tatica.firebaseapp.com",
@@ -1355,6 +1357,7 @@
                     stats: { pomodorosCompleted: 0, tasksMoved: 0, maxComboReached: 0, rewardsBought: 0 }
                 };
             }
+            Library.initializeLibrary(state);
             if (!state.stats) state.stats = { pomodorosCompleted: 0, tasksMoved: 0, maxComboReached: 0, rewardsBought: 0 };
             if (!state.quickTasks) state.quickTasks = [];
             if (!state.userProfile) state.userProfile = { displayName: '', gender: '', configured: false };
@@ -1980,6 +1983,7 @@
         // ==========================================
         const DATA_CLEANUP_MODULES = [
             { id: 'missions', name: 'Missões', icon: 'list-checks', group: 'modules', desc: 'Quadro, recorrências, capturas rápidas e categorias.', keys: ['tasks', 'quickTasks', 'taskDeletionLog', 'taskCategories', 'deletedTaskCategoryIds'], paths: ['tasks', 'quickTasks'] },
+            { id: 'library', name: 'Biblioteca', icon: 'library', group: 'modules', desc: 'Catálogo, formatos/edições e histórico de leitura. Independente das campanhas.', keys: ['libraryData'], paths: ['libraryData.books', 'libraryData.readings', 'libraryData.plans', 'libraryData.sessions'] },
             { id: 'study', name: 'Estudos', icon: 'book-open', group: 'modules', desc: 'Disciplinas, sessões, revisões, erros, ciclos e planejamento.', keys: ['studyData'], paths: ['studyData.subjects', 'studyData.sessions', 'studyData.reviews', 'studyData.errorLog', 'studyData.cycles', 'studyData.studyPlan.weeklyBlocks'] },
             { id: 'finance', name: 'Finanças', icon: 'wallet', group: 'modules', desc: 'Receitas, despesas, dívidas, metas, orçamentos e diário.', keys: ['financeData'], paths: ['financeData.incomes', 'financeData.fixedExpenses', 'financeData.variableExpenses', 'financeData.debts', 'financeData.goals', 'financeData.categoryBudgets', 'financeData.moneyJournal'] },
             { id: 'health', name: 'Corpo', icon: 'activity', group: 'modules', desc: 'Treinos, medidas, hábitos e metas físicas.', keys: ['healthData'], paths: ['healthData.workouts', 'healthData.bodyMetrics', 'healthData.habits', 'healthData.goals'] },
@@ -2131,6 +2135,7 @@
                 uiState.createTaskDraft = null; uiState.operationalDemandDraft = null; uiState.editingOperationalDemandId = null;
                 uiState.calendarInboxEventId = null; uiState.studyPlanningTrackId = '';
                 ['showStatsModal', 'showCreateTaskModal', 'showEditTaskModal', 'showStudyModal', 'showHealthModal', 'showFinanceModal', 'showRitualModal', 'showRechargeModal', 'showCategoryModal', 'showOperationalDemandModal', 'showProfileModal'].forEach(key => { uiState[key] = false; });
+                uiState.library = null;
                 uiState.deleteTaskPrompt = { show: false, taskId: null };
                 ['ritual', 'recharge'].forEach(kind => {
                     if (!ids.includes(kind === 'ritual' ? 'rituals' : 'recharge')) return;
@@ -6511,6 +6516,8 @@
                 </div>`;
         };
 
+        installLibrary(window, {document, getState: () => state, getUiState: () => uiState, render});
+
         installPlanningViews(window, {
             document, daysOfWeek, ICONS, calendarSync,
             getState: () => state, getUiState: () => uiState,
@@ -6539,6 +6546,7 @@
         // ==========================================
         function render() {
             const appDiv = document.getElementById('app');
+            window.captureLibraryDraft?.();
             const viewPageKey = `${uiState.mainView}:${state.activeTab}`;
             const viewSnapshot = window.captureViewState?.(appDiv, {pageKey: appDiv.__viewPageKey || viewPageKey});
             const recoverySnapshots = window.captureRecoveryDialogs(appDiv);
@@ -6803,6 +6811,7 @@
                             <details class="group">
                                 <summary class="cursor-pointer list-none flex h-10 items-center justify-between gap-2 px-3 rounded-lg border border-slate-800 bg-slate-950/40 text-[11px] sm:text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800"><span class="inline-flex items-center gap-2"><i data-lucide="layers-3" class="w-4 h-4 text-slate-400"></i>Mais recursos</span><i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform group-open:rotate-180"></i></summary>
                                 <div class="absolute top-full left-3 right-3 sm:left-auto sm:right-4 mt-2 z-50 sm:w-64 grid grid-cols-2 gap-1 rounded-xl border border-slate-700 bg-slate-900 p-2 shadow-xl shadow-black/40">
+                                    <button type="button" onclick="window.openLibrary()" class="min-h-11 rounded-md px-2 py-2 text-left text-sm font-medium text-indigo-200 hover:bg-indigo-950/30"><i data-lucide="library" class="inline w-4 h-4 mr-1.5"></i>Biblioteca</button>
                                     <button onclick="window.toggleRitualModal()" class="rounded-md px-2 py-2 text-left text-[10px] font-bold text-emerald-300 hover:bg-emerald-950/30"><i data-lucide="clipboard-check" class="inline w-3.5 h-3.5 mr-1.5"></i>Rituais</button>
                                     <button onclick="window.toggleRechargeModal()" class="rounded-md px-2 py-2 text-left text-[10px] font-bold text-emerald-300 hover:bg-emerald-950/30"><i data-lucide="battery-charging" class="inline w-3.5 h-3.5 mr-1.5"></i>Recarga</button>
                                     <button onclick="window.toggleHealthModal()" class="rounded-md px-2 py-2 text-left text-[10px] font-bold text-rose-300 hover:bg-rose-950/30"><i data-lucide="activity" class="inline w-3.5 h-3.5 mr-1.5"></i>Corpo</button>
@@ -7098,6 +7107,8 @@
                 </div>`;
             }
 
+            html += window.renderLibrary?.() || '';
+
             if (uiState.showStudyModal) html += window.renderWorkDialog('study');
 
             if (uiState.showHealthModal) html += window.renderHealthDialog();
@@ -7168,12 +7179,13 @@
                 });
             }
             window.bindEditTaskDialog(appDiv);
-            const viewBlocked = uiState.deleteTaskPrompt?.show || uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) || Boolean(uiState.studyTrackDeletion) || Boolean(uiState.subtaskEditor) || Boolean(uiState.radarLink) || Boolean(uiState.radarNext);
+            const viewBlocked = Boolean(uiState.library) || uiState.deleteTaskPrompt?.show || uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) || Boolean(uiState.studyTrackDeletion) || Boolean(uiState.subtaskEditor) || Boolean(uiState.radarLink) || Boolean(uiState.radarNext);
             window.restoreViewState?.(appDiv, viewSnapshot, {pageKey: viewPageKey, blocked: viewBlocked});
             for (const prefix of ['ct','et']) if (document.getElementById(prefix+'-radar')) window.updateDependencySelection?.(prefix);
             window.bindPlanningReview?.(appDiv);
             window.bindRadarMissionDialogs?.(appDiv);
             window.bindSubtaskEditor?.(appDiv);
+            window.bindLibrary?.(appDiv);
             if (uiState.deleteTaskPrompt?.show) window.bindFormDialog(appDiv, {id:'delete-mission-dialog',initialFocus:'delete-mission-cancel',close:window.cancelDeleteTaskPrompt,blocked:uiState.confirm.show || uiState.alert.show});
             if (uiState.studyTrackDeletion) window.bindFormDialog(appDiv, {id:'study-track-delete-dialog',initialFocus:'study-track-delete-close',close:window.closeStudyTrackDeletion,blocked:uiState.confirm.show || uiState.alert.show});
             if (uiState.confirm.show) window.bindFormDialog(appDiv, {id:'confirmation-dialog',initialFocus:'confirmation-cancel',close:()=>window.handleConfirmResult(false),blocked:uiState.alert.show});

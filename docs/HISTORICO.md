@@ -1,3 +1,15 @@
+## v1.9.69 — 22/10/2026
+
+- Biblioteca em Mais recursos: catálogo, formatos/edições, busca, intenções e mês desejado.
+- Posse e leituras concluídas independentes, sem presumir datas ou criar Missões.
+- Arquivamento com filtro próprio, restauração e proteção de histórico na exclusão.
+- Estado aditivo por conta, backup completo e limpeza independente de outros módulos/campanhas.
+- Interface mantém catálogo aberto, rascunho, foco e navegação durante ações.
+- 369 testes automatizados e dois fluxos de navegador aprovados, incluindo desktop,
+  celular, recarregamento, contas independentes e regressão da lista diária.
+- Etapas 1/2; acompanhamento, painel diário/semanal e importação GPT ainda não ativados.
+- [Detalhes técnicos e validação](BIBLIOTECA.md).
+
 ## v1.9.68 — 21/10/2026
 
 - Excluir/cancelar uma missão e mover seu dia preservam o Frenesi, incluindo chamadas

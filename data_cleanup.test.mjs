@@ -1,3 +1,4 @@
+import * as Library from './library.v1.js';
 import {validateAccountState} from './account_storage.v1.js';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -13,7 +14,7 @@ const plain = value => JSON.parse(JSON.stringify(value));
 function engine() {
     let persisted;
     const arrays = keys => Object.fromEntries(keys.map(key => [key, [{ id: key, amount: 20, campaignId: 1 }]]));
-    const ctx = {
+    const ctx = { Library,
         accountRecovery:{preserve(){},list:()=>[]},currentUser:{uid: 'test-owner'}, sessionGeneration:1, sessionReady:true, APP_OWNER_UID:'test-owner',validateAccountState,
         isSession:(user,generation)=>user===ctx.currentUser && generation===ctx.sessionGeneration,
         saveAccountCache:()=>{persisted=JSON.stringify(ctx.state);return true;},
@@ -22,6 +23,7 @@ function engine() {
             ownerUid: 'test-owner', xp: 25100, level: 10, coins: 90, combo: 3, energy: 61,
             userProfile: { displayName: 'Perfil teste', gender: 'feminino', configured: true, preference: 'keep' },
             tasks: [{ id: 't1', text: 'Missão teste', day: 'monday', category: 'work', xp: 100, completed: true, rewardedXp: 100, rewardedCoins: 10, rewardedCampaign: 1, campaignId: 1 }],
+            libraryData: {...Library.emptyLibrary(),books:[{id:'book-preserved',title:'Livro teste',authors:'Autor',intent:'none'}],editions:[{id:'edition-preserved',bookId:'book-preserved',format:'physical'}],readings:[{id:'read-preserved',bookId:'book-preserved',status:'completed'}]},
             quickTasks: [{ id: 'q1', text: 'Captura', done: true, campaignId: 1 }], taskDeletionLog: [{ id: 'd1', campaignId: 1 }],
             studyData: { subjects: [{ id: 's1', name: 'Matéria' }], sessions: [{ id: 'ss', subjectId: 's1', xp: 100, campaignId: 1 }], reviews: [{ id: 'sr', sourceSessionId: 'ss', subjectId: 's1', campaignId: 1 }], errorLog: [{ id: 'se', campaignId: 1 }], cycles: [{ id: 'sc' }], studyPlan: { tracks: [{ id: 'custom', name: 'Trilha própria' }], weeklyBlocks: [{ id: 'sb', trackId: 'custom', subjectId: 's1', day: 'monday', title: 'Bloco teste', campaignId: 1 }] } },
             financeData: arrays(['incomes', 'fixedExpenses', 'variableExpenses', 'debts', 'goals', 'categoryBudgets', 'moneyJournal']),
@@ -86,7 +88,7 @@ test('abrir, selecionar, revisar e cancelar não alteram os dados', async () => 
 });
 
 test('cada módulo apaga cadastro e histórico preservando os demais módulos e o jogo', async () => {
-    for (const id of ['missions', 'study', 'finance', 'health', 'focus', 'rituals', 'recharge', 'radar', 'rewards', 'profile']) {
+    for (const id of ['missions', 'library', 'study', 'finance', 'health', 'focus', 'rituals', 'recharge', 'radar', 'rewards', 'profile']) {
         const ctx = engine(); const before = plain(ctx.state);
         ctx.uiState.rewardEditor = {id:'r2'}; ctx.uiState.rewardDraft = {title:'Rascunho'}; ctx.uiState.rewardSections = {create:true};
         const module = ctx.window.cleanupModulesForTest.find(m => m.id === id);
@@ -124,7 +126,7 @@ test('todos os módulos mais gamificação mantêm perfil e identidade de sincro
 
 test('selecionar tudo reinicia perfil, jogo e módulos com padrões novos', async () => {
     const ctx = engine(); const before = plain(ctx.state); ctx.window.selectAllDataCleanup(true);
-    assert.equal(ctx.uiState.dataManager.selected.length, 11); assert.match(ctx.window.renderDataManager(), /Reinício completo/);
+    assert.equal(ctx.uiState.dataManager.selected.length, 12); assert.match(ctx.window.renderDataManager(), /Reinício completo/);
     ctx.window.reviewDataCleanup(); assert.match(ctx.window.confirmMessage, /Reiniciar todo/); await ctx.window.confirmCallback();
     const saved = ctx.persisted();
     assert.equal(saved.userProfile.configured, false); assert.equal(saved.userProfile.displayName, '');
