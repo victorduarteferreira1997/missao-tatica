@@ -1,3 +1,4 @@
+import {createLibraryImports} from './library-import.mjs';
 import {createV2Foundation} from './foundation.v2.mjs';
 import {createPlanningService} from './planning.v2.mjs';
 import {createV2Proposals} from './proposals.v2.mjs';
@@ -48,10 +49,11 @@ export function createWorker({verifyOwner=createFirebaseVerifier(),storeFactory=
     let minute=-1,requests=0;
     const foundation=createV2Foundation({verifyOwner,now});
     const proposals=createV2Proposals({now,readBody:readJson,verifyOwner});
-    const planning=createPlanningService({now,readBody:readJson,proposals});
+    const libraryImports=createLibraryImports({now,readBody:readJson,verifyOwner});
+    const planning=createPlanningService({now,readBody:readJson,proposals,libraryImports});
     const worker = {
         async fetch(request,env) {
-            if(new URL(request.url).pathname.startsWith('/v2/'))return await proposals.fetch(request,env) || await planning.fetch(request,env) || foundation.fetch(request,env);
+            if(new URL(request.url).pathname.startsWith('/v2/'))return await libraryImports.fetch(request,env) || await proposals.fetch(request,env) || await planning.fetch(request,env) || foundation.fetch(request,env);
             const pluginResponse=await plugin(request,env);if(pluginResponse)return pluginResponse;
             const url = new URL(request.url), method=request.method;
             const appRoute = url.pathname.startsWith('/v1/app/');
@@ -69,6 +71,7 @@ export function createWorker({verifyOwner=createFirebaseVerifier(),storeFactory=
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=reads') return send(200,{service:'missao-tatica-ai-bridge',readsVersion:1,enabled:env.AI_V2_ENABLED==='true'&&env.AI_V2_READ_ENABLED==='true'});
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=proposals') return send(200,{service:'missao-tatica-ai-bridge',proposalsVersion:1,enabled:env.AI_V2_ENABLED==='true'&&env.AI_V2_PROPOSALS_ENABLED==='true'});
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=apply') return send(200,{service:'missao-tatica-ai-bridge',applyVersion:1,enabled:env.AI_V2_ENABLED==='true'&&env.AI_V2_PROPOSALS_ENABLED==='true'&&env.AI_V2_APPLY_ENABLED==='true'});
+                if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=library') return send(200,{service:'missao-tatica-ai-bridge',libraryImportVersion:1,enabled:['AI_V2_ENABLED','AI_V2_READ_ENABLED','AI_V2_PROPOSALS_ENABLED','AI_V2_APPLY_ENABLED','AI_LIBRARY_IMPORT_ENABLED'].every(key=>env[key]==='true')});
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=entities') return send(200,{service:'missao-tatica-ai-bridge',entitiesVersion:1,enabled:['AI_V2_ENABLED','AI_V2_READ_ENABLED','AI_V2_PROPOSALS_ENABLED','AI_V2_APPLY_ENABLED','AI_V2_ENTITIES_ENABLED'].every(key=>env[key]==='true')});
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=keys') {
                     if(typeof verifyOwner.inspectPublicKeys!=='function')return send(503,{error:'service_unavailable'});

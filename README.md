@@ -22,7 +22,7 @@ A integração privada com IA continua exclusiva do proprietário.
 - [Aplicação oficial](https://victorduarteferreira1997.github.io/missao-tatica/)
 - [Endereço direto](https://victorduarteferreira1997.github.io/missao-tatica/app.html)
 
-A versão atual é **v1.9.70**. A raiz, `teste_novos_modulos.html` e as prévias
+A versão atual é **v1.9.71**. A raiz, `teste_novos_modulos.html` e as prévias
 estáticas v1.9.11/v1.9.13 encaminham para a aplicação oficial. Parâmetros e
 fragmentos dos favoritos são preservados.
 
@@ -37,6 +37,13 @@ leituras** reúne as sessões do dia; leituras também aparecem na semana. Nenhu
 leitura vira Missão ou altera o Frenesi. A importação pela conexão GPT vem depois.
 
 - [Modelo, preservação, validação e próximas etapas](docs/BIBLIOTECA.md)
+
+A revisão de catálogo pela IA está preparada em **Biblioteca → Importar com IA**:
+edite/desmarque livros, confira duplicados e retome partes interrompidas. Usa
+permissão própria, sem compartilhar a estante. **A fila ainda depende da ativação
+no Cloudflare**; até lá o aplicativo informa a pendência e mantém os fluxos atuais.
+
+- [Ativar a importação na infraestrutura existente](docs/ATIVAR_IMPORTACAO_BIBLIOTECA.md)
 
 ## Exclusão e reagendamento sem penalidade · v1.9.68
 

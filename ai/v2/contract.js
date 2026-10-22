@@ -13,9 +13,10 @@ export function v2Date(value) { v2Text(value,40); v2Assert(value==='' || (Number
 export async function v2Hash(value) { const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)); return [...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join(''); }
 export function v2ValidateChoices(value) {
     const permissions={allowProposals:'missions',allowRadarProposals:'radar',allowStudyProposals:'studies'};
-    v2Exact(value,['modules','includeFuture',...Object.keys(permissions).filter(k=>Object.hasOwn(value||{},k))]);v2Exact(value.modules,V2_MODULES);
+    v2Exact(value,['modules','includeFuture',...Object.keys(permissions).filter(k=>Object.hasOwn(value||{},k)),...(Object.hasOwn(value||{},'allowLibraryProposals')?['allowLibraryProposals']:[])]);v2Exact(value.modules,V2_MODULES);
     for(const [key,module] of Object.entries(permissions))if(Object.hasOwn(value,key))v2Assert(typeof value[key]==='boolean'&&(!value[key]||value.modules[module]));
-    v2Assert(V2_MODULES.every(k=>typeof value.modules[k]==='boolean') && V2_MODULES.some(k=>value.modules[k]) && typeof value.includeFuture==='boolean'); return value;
+    if(Object.hasOwn(value,'allowLibraryProposals'))v2Assert(typeof value.allowLibraryProposals==='boolean');
+    v2Assert(V2_MODULES.every(k=>typeof value.modules[k]==='boolean') && (V2_MODULES.some(k=>value.modules[k])||value.allowLibraryProposals===true) && typeof value.includeFuture==='boolean'); return value;
 }
 export function v2ValidateGrantRequest(value) {
     v2Exact(value,['grantId','expectedVersion','choices','frozenRefs']); v2GrantId(value.grantId); v2Integer(value.expectedVersion); v2ValidateChoices(value.choices);

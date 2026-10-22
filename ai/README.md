@@ -526,3 +526,21 @@ explícito da coluna kind. Frontend entitiesEnabled:true e Wrangler atualizados.
 Permissões de RADAR/estudos começam desmarcadas no grant anterior; revisar no app,
 autorizar e reativar consultas/envio no Site. Operações reais e aparência dos
 formulários ainda pendentes. Finanças e Corpo permanecem manuais.
+
+
+## Catálogo da Biblioteca · v1.9.71 (preparado, ativação externa pendente)
+
+Fila isolada `ai_library_imports`, contrato `v2/library_import.js`, ferramentas
+`submitLibraryCatalog` e `listLibraryImports` na mesma conexão privada. Não amplia
+o snapshot: `allowLibraryProposals` é consentimento explícito de recebimento, sem
+projetar a estante. O app aplica partes em transações confirmadas e comprovantes,
+com deduplicação local e retomada após falha no acknowledge. Kinds/filas atuais
+continuam intactos; nenhum acesso administrativo ao Firestore é concedido.
+
+Instalar somente `cloudflare/library-import-schema.sql`, atualizar o bundle e
+ativar `AI_LIBRARY_IMPORT_ENABLED=true` após conferir a tabela. O Wrangler mantém
+a flag falsa até a ativação explícita. O Site verifica a capability pública antes
+de chamar as ferramentas novas; uma versão antiga retorna orientação de ativação.
+Health confirma código/flag, não tabela nem gravação real.
+
+[Procedimento e limites](../docs/ATIVAR_IMPORTACAO_BIBLIOTECA.md).
