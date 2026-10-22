@@ -22,17 +22,19 @@ A integração privada com IA continua exclusiva do proprietário.
 - [Aplicação oficial](https://victorduarteferreira1997.github.io/missao-tatica/)
 - [Endereço direto](https://victorduarteferreira1997.github.io/missao-tatica/app.html)
 
-A versão atual é **v1.9.69**. A raiz, `teste_novos_modulos.html` e as prévias
+A versão atual é **v1.9.70**. A raiz, `teste_novos_modulos.html` e as prévias
 estáticas v1.9.11/v1.9.13 encaminham para a aplicação oficial. Parâmetros e
 fragmentos dos favoritos são preservados.
 
-## Biblioteca: catálogo pessoal · v1.9.69
+## Biblioteca: catálogo, leituras e planos · v1.9.70
 
 Em **Mais recursos → Biblioteca**, cadastre livros e seus formatos/edições, busque,
 registre leituras anteriores e marque intenção/período sem gerar compromissos.
 Arquivados ficam ocultos e podem ser restaurados. Histórico, contas e backups são
-preservados; o catálogo não concede recompensas. Esta entrega cobre as etapas 1 e 2;
-progresso, planejamento e importação pela conexão GPT serão ampliados depois.
+preservados. Acompanhe páginas/percentual, registre sessões reais, releia mantendo
+o histórico e planeje dias com término opcional. Um bloco recolhível **Estudos e
+leituras** reúne as sessões do dia; leituras também aparecem na semana. Nenhuma
+leitura vira Missão ou altera o Frenesi. A importação pela conexão GPT vem depois.
 
 - [Modelo, preservação, validação e próximas etapas](docs/BIBLIOTECA.md)
 

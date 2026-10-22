@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.69-library-catalog">
+    <meta name="app-build" content="v1.9.70-reading-plans">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -107,9 +107,9 @@
         import * as Recurrence from './recurrence.v1.js?v=1.9.66.1';
         import { installRecurrence } from './ui/recurrence.v1.js?v=1.9.66.1';
         import { installTaskForms } from './ui/task_forms.v5.js?v=1.9.66';
-        import * as Library from './library.v1.js?v=1.9.69';
-        import { installLibrary } from './ui/library.v1.js?v=1.9.69';
-        import { installPlanningViews } from './ui/planning_views.v6.js';
+        import * as Library from './library.v2.js?v=1.9.70';
+        import { installLibrary } from './ui/library.v2.js?v=1.9.70';
+        import { installPlanningViews } from './ui/planning_views.v7.js';
         import { installAiInbox } from './ui/ai_inbox.v3.js';
         import { AI_CONFIG } from './ai/config.v1.js';
         import { AI_V2_CONFIG } from './ai/config.v2.js';
@@ -131,7 +131,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.69';
+        const APP_VERSION = 'v1.9.70';
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
             authDomain: "missao-tatica.firebaseapp.com",
@@ -2135,7 +2135,7 @@
                 uiState.createTaskDraft = null; uiState.operationalDemandDraft = null; uiState.editingOperationalDemandId = null;
                 uiState.calendarInboxEventId = null; uiState.studyPlanningTrackId = '';
                 ['showStatsModal', 'showCreateTaskModal', 'showEditTaskModal', 'showStudyModal', 'showHealthModal', 'showFinanceModal', 'showRitualModal', 'showRechargeModal', 'showCategoryModal', 'showOperationalDemandModal', 'showProfileModal'].forEach(key => { uiState[key] = false; });
-                uiState.library = null;
+                uiState.library = null; uiState.readingAction = null; uiState.readingBusy = false; uiState.readingLogLimits = {};
                 uiState.deleteTaskPrompt = { show: false, taskId: null };
                 ['ritual', 'recharge'].forEach(kind => {
                     if (!ids.includes(kind === 'ritual' ? 'rituals' : 'recharge')) return;
@@ -7108,6 +7108,7 @@
             }
 
             html += window.renderLibrary?.() || '';
+            html += window.renderReadingAction?.() || '';
 
             if (uiState.showStudyModal) html += window.renderWorkDialog('study');
 
@@ -7179,7 +7180,7 @@
                 });
             }
             window.bindEditTaskDialog(appDiv);
-            const viewBlocked = Boolean(uiState.library) || uiState.deleteTaskPrompt?.show || uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) || Boolean(uiState.studyTrackDeletion) || Boolean(uiState.subtaskEditor) || Boolean(uiState.radarLink) || Boolean(uiState.radarNext);
+            const viewBlocked = Boolean(uiState.readingAction) || Boolean(uiState.library) || uiState.deleteTaskPrompt?.show || uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) || Boolean(uiState.studyTrackDeletion) || Boolean(uiState.subtaskEditor) || Boolean(uiState.radarLink) || Boolean(uiState.radarNext);
             window.restoreViewState?.(appDiv, viewSnapshot, {pageKey: viewPageKey, blocked: viewBlocked});
             for (const prefix of ['ct','et']) if (document.getElementById(prefix+'-radar')) window.updateDependencySelection?.(prefix);
             window.bindPlanningReview?.(appDiv);
@@ -7262,40 +7263,18 @@
         }
 
         function renderDailyStudyPlanSection() {
-            const dayBlocks = window.getStudyBlocksForDay(state.activeTab);
-            const activeBlocks = dayBlocks.filter(b => b.status !== 'cancelled');
-            const completed = activeBlocks.filter(b => b.status === 'completed').length;
-            const totalMinutes = activeBlocks.reduce((acc, b) => acc + (parseInt(b.plannedMinutes) || 0), 0);
-            const doneMinutes = activeBlocks.filter(b => b.status === 'completed').reduce((acc, b) => acc + (parseInt(b.plannedMinutes) || 0), 0);
-            const pct = activeBlocks.length ? Math.round((completed / activeBlocks.length) * 100) : 0;
-            const dayLabel = daysOfWeek.find(d => d.id === state.activeTab)?.label || 'hoje';
-
-            if (!activeBlocks.length) {
-                return `
-                <details data-view-key="daily-study" class="mb-4 rounded-2xl border border-slate-800 bg-slate-900/60 font-mono overflow-hidden">
-                    <summary class="cursor-pointer list-none px-3 py-3 flex items-center justify-between gap-3 hover:bg-slate-800/40">
-                        <div class="flex items-center gap-2 min-w-0"><i data-lucide="book-open" class="w-4 h-4 text-cyan-400"></i><span class="text-xs font-black text-slate-300">Estudos de ${dayLabel}</span><span class="text-[10px] text-slate-600">0 blocos</span></div>
-                        <span class="text-[9px] text-slate-500 uppercase font-black tracking-wider">Expandir</span>
-                    </summary>
-                    <div class="border-t border-slate-800 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                        <div class="text-[10px] text-slate-500">Nenhum bloco planejado para este dia.</div>
-                        <button onclick="window.toggleStudyModal(); window.setStudyTab('planning')" class="rounded-lg bg-cyan-800 hover:bg-cyan-700 text-white px-3 py-2 text-[10px] font-black uppercase tracking-widest">Criar planejamento</button>
-                    </div>
-                </details>`;
-            }
-
-            return `
-            <details data-view-key="daily-study" class="mb-4 rounded-xl border border-slate-800 bg-slate-950/35 font-mono overflow-hidden">
-                <summary class="cursor-pointer list-none px-3 py-3 flex items-center justify-between gap-3 hover:bg-slate-900/50">
-                    <div class="min-w-0 flex items-center gap-2">
-                        <i data-lucide="book-open" class="w-4 h-4 text-cyan-500"></i>
-                        <div class="min-w-0"><div class="text-xs font-bold text-slate-300">Estudos de ${dayLabel}</div><div class="text-[10px] text-slate-600 mt-0.5">${completed}/${activeBlocks.length} blocos • ${doneMinutes}/${totalMinutes} min do plano concluído</div></div>
-                    </div>
-                    <div class="flex items-center gap-2 shrink-0"><span class="text-[10px] font-bold ${pct === 100 ? 'text-emerald-400' : 'text-slate-500'}">${pct}%</span><i data-lucide="chevron-down" class="w-4 h-4 text-slate-600"></i></div>
-                </summary>
-                <div class="border-t border-slate-800 p-3">
-                    <div class="flex justify-end mb-3"><button onclick="window.toggleStudyModal(); window.setStudyTab('planning')" class="text-[10px] font-bold text-slate-500 hover:text-cyan-300">Abrir planejamento →</button></div>
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">${activeBlocks.map(b => renderStudyPlanBlockCard(b, true)).join('')}</div>
+            const studies = window.getStudyBlocksForDay(state.activeTab).filter(block => block.status !== 'cancelled');
+            const date = Library.addReadingDays(state.currentPlanningWeekStart, Math.max(0, daysOfWeek.findIndex(day => day.id === state.activeTab)));
+            const readings = window.getLibraryOccurrences?.(date, date) || [];
+            if (!studies.length && !readings.length) return '';
+            const completed = studies.filter(block => block.status === 'completed').length + readings.filter(row => row.status === 'completed').length;
+            const count = studies.length + readings.length;
+            const summary = [studies.length ? studies.length + (studies.length === 1 ? ' estudo' : ' estudos') : '', readings.length ? readings.length + (readings.length === 1 ? ' leitura' : ' leituras') : ''].filter(Boolean).join(' · ');
+            return `<details data-view-key="daily-support-${state.currentPlanningWeekStart}-${state.activeTab}" class="group/support mb-4 rounded-xl border border-slate-800 bg-slate-950/35 font-sans">
+                <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm text-slate-300"><div><span class="font-medium">Estudos e leituras</span><span class="mt-1 block text-xs text-slate-400">${summary}</span></div><span class="shrink-0 text-right text-xs text-slate-400"><span class="block">${completed}/${count} realizados</span><span class="mt-1 block text-indigo-300"><span class="group-open/support:hidden">Abrir</span><span class="hidden group-open/support:inline">Recolher</span></span></span></summary>
+                <div class="space-y-4 border-t border-slate-800 p-3">
+                    ${studies.length ? `<section aria-label="Estudos planejados"><h3 class="mb-2 text-sm font-medium text-cyan-200">Estudos</h3><div class="grid grid-cols-1 gap-3">${studies.map(block => renderStudyPlanBlockCard(block, true)).join('')}</div></section>` : ''}
+                    ${readings.length ? `<section aria-label="Leituras planejadas"><h3 class="mb-2 text-sm font-medium text-indigo-200">Leituras</h3><div class="space-y-3">${readings.map(row => window.renderLibraryOccurrence(row)).join('')}</div></section>` : ''}
                 </div>
             </details>`;
         }

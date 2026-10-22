@@ -1,5 +1,5 @@
-import * as Library from '../library.v1.js';
-import {installLibrary} from '../ui/library.v1.js';
+import * as Library from '../library.v2.js';
+import {installLibrary} from '../ui/library.v2.js';
 import * as Recurrence from '../recurrence.v1.js';
 import {installRecurrence} from '../ui/recurrence.v1.js';
 import {installRadarMissions} from '../ui/radar_missions.v1.js';
@@ -21,7 +21,7 @@ import {createCalendarSync} from '../calendar_sync.v2.js';
 import {installPlanningTools} from '../ui/planning_tools.v3.js';
 import {installFormDialogs} from '../ui/form_dialogs.v1.js';
 import {installTaskForms} from '../ui/task_forms.v5.js';
-import {installPlanningViews} from '../ui/planning_views.v6.js';
+import {installPlanningViews} from '../ui/planning_views.v7.js';
 import {installAiInbox} from '../ui/ai_inbox.v3.js';
 import {AI_CONFIG} from '../ai/config.v1.js';
 import {createAiBrowserStore} from '../ai/bridge_rest.v1.js';

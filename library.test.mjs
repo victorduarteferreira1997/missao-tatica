@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as L from './library.v1.js';
+import * as L from './library.v2.js';
 import {validateAccountState,createAccountStorage} from './account_storage.v1.js';
 const clone=x=>JSON.parse(JSON.stringify(x));
 const draft=(extra={})=>({title:'A República',authors:'Platão',category:'Filosofia',intent:'reread',targetMonth:'2026-11',notes:'',editions:[{format:'physical',edition:'Edição de bolso',pageCount:'400',owned:true}],historyToAdd:0,...extra});
