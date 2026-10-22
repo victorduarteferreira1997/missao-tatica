@@ -22,9 +22,19 @@ A integração privada com IA continua exclusiva do proprietário.
 - [Aplicação oficial](https://victorduarteferreira1997.github.io/missao-tatica/)
 - [Endereço direto](https://victorduarteferreira1997.github.io/missao-tatica/app.html)
 
-A versão atual é **v1.9.68**. A raiz, `teste_novos_modulos.html` e as prévias
+A versão atual é **v1.9.69**. A raiz, `teste_novos_modulos.html` e as prévias
 estáticas v1.9.11/v1.9.13 encaminham para a aplicação oficial. Parâmetros e
 fragmentos dos favoritos são preservados.
+
+## Biblioteca: catálogo pessoal · v1.9.69
+
+Em **Mais recursos → Biblioteca**, cadastre livros e seus formatos/edições, busque,
+registre leituras anteriores e marque intenção/período sem gerar compromissos.
+Arquivados ficam ocultos e podem ser restaurados. Histórico, contas e backups são
+preservados; o catálogo não concede recompensas. Esta entrega cobre as etapas 1 e 2;
+progresso, planejamento e importação pela conexão GPT serão ampliados depois.
+
+- [Modelo, preservação, validação e próximas etapas](docs/BIBLIOTECA.md)
 
 ## Exclusão e reagendamento sem penalidade · v1.9.68
 
