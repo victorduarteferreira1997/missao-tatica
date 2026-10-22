@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.71-library-import">
+    <meta name="app-build" content="v1.9.72-resource-menu">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -59,6 +59,41 @@
         #edit-task-dialog input[type="time"] {
             color-scheme: dark;
         }
+        .resource-menu-panel {
+            display: grid;
+            gap: 4px;
+            max-height: min(24rem, max(8rem, calc(100dvh - 14rem)));
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+        .resource-menu-button {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            min-height: 48px;
+            padding: 8px 12px;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 20px;
+            text-align: left;
+            transition: background-color .15s, border-color .15s;
+        }
+        .resource-menu-button:hover { background: #1e293b; border-color: #334155; }
+        .resource-menu-button:active { background: #334155; }
+        .resource-menu-button:focus-visible { outline: 2px solid #a5b4fc; outline-offset: -2px; background: #1e293b; }
+        .resource-menu-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 32px;
+            height: 32px;
+            border-radius: 8px;
+        }
+        .resource-menu-icon > svg, .resource-menu-icon > i { width: 18px; height: 18px; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen p-2 sm:p-6 pb-24 overflow-x-hidden">
@@ -134,7 +169,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.71';
+        const APP_VERSION = 'v1.9.72';
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
             authDomain: "missao-tatica.firebaseapp.com",
@@ -6820,15 +6855,15 @@
                             <button type="button" onclick="window.openIndependentPomodoro()" class="inline-flex h-10 items-center justify-center gap-2 bg-slate-950/40 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3 rounded-lg text-[11px] sm:text-xs font-bold transition-colors"><i data-lucide="timer" class="w-4 h-4 text-indigo-300 shrink-0"></i><span>Pomodoro livre</span></button>
                             <button onclick="window.toggleStudyModal()" class="inline-flex h-10 items-center justify-center gap-2 bg-slate-950/40 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3 rounded-lg text-[11px] sm:text-xs font-bold transition-colors"><i data-lucide="brain-circuit" class="w-4 h-4 text-cyan-400 shrink-0"></i><span>Inteligência</span></button>
                             <button onclick="window.toggleFinanceModal()" class="inline-flex h-10 items-center justify-center gap-2 bg-slate-950/40 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 px-3 rounded-lg text-[11px] sm:text-xs font-bold transition-colors"><i data-lucide="wallet" class="w-4 h-4 text-amber-400 shrink-0"></i><span>Finanças</span></button>
-                            <details class="group">
-                                <summary class="cursor-pointer list-none flex h-10 items-center justify-between gap-2 px-3 rounded-lg border border-slate-800 bg-slate-950/40 text-[11px] sm:text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800"><span class="inline-flex items-center gap-2"><i data-lucide="layers-3" class="w-4 h-4 text-slate-400"></i>Mais recursos</span><i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform group-open:rotate-180"></i></summary>
-                                <div class="absolute top-full left-3 right-3 sm:left-auto sm:right-4 mt-2 z-50 sm:w-64 grid grid-cols-2 gap-1 rounded-xl border border-slate-700 bg-slate-900 p-2 shadow-xl shadow-black/40">
-                                    <button type="button" onclick="window.openLibrary()" class="min-h-11 rounded-md px-2 py-2 text-left text-sm font-medium text-indigo-200 hover:bg-indigo-950/30"><i data-lucide="library" class="inline w-4 h-4 mr-1.5"></i>Biblioteca</button>
-                                    <button onclick="window.toggleRitualModal()" class="rounded-md px-2 py-2 text-left text-[10px] font-bold text-emerald-300 hover:bg-emerald-950/30"><i data-lucide="clipboard-check" class="inline w-3.5 h-3.5 mr-1.5"></i>Rituais</button>
-                                    <button onclick="window.toggleRechargeModal()" class="rounded-md px-2 py-2 text-left text-[10px] font-bold text-emerald-300 hover:bg-emerald-950/30"><i data-lucide="battery-charging" class="inline w-3.5 h-3.5 mr-1.5"></i>Recarga</button>
-                                    <button onclick="window.toggleHealthModal()" class="rounded-md px-2 py-2 text-left text-[10px] font-bold text-rose-300 hover:bg-rose-950/30"><i data-lucide="activity" class="inline w-3.5 h-3.5 mr-1.5"></i>Corpo</button>
-                                    <button onclick="window.toggleStatsModal()" class="rounded-md px-2 py-2 text-left text-[10px] font-bold text-yellow-300 hover:bg-yellow-950/30"><i data-lucide="building-2" class="inline w-3.5 h-3.5 mr-1.5"></i>Q.G.</button>
-                                </div>
+                            <details id="resource-menu" class="group">
+                                <summary class="cursor-pointer list-none flex h-10 items-center justify-between gap-2 px-3 rounded-lg border border-slate-800 bg-slate-950/40 text-[11px] sm:text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-300"><span class="inline-flex items-center gap-2"><i data-lucide="layers-3" aria-hidden="true" class="w-4 h-4 text-slate-400"></i>Mais recursos</span><i data-lucide="chevron-down" aria-hidden="true" class="w-3.5 h-3.5 transition-transform group-open:rotate-180"></i></summary>
+                                <nav aria-label="Mais recursos" class="resource-menu-panel absolute top-full left-3 right-3 sm:left-auto sm:right-4 mt-2 z-50 sm:w-72 rounded-xl border border-slate-700 bg-slate-900 p-2 shadow-xl shadow-black/40">
+                                    <button type="button" onclick="window.openLibrary()" class="resource-menu-button"><span class="resource-menu-icon bg-indigo-500/10 text-indigo-300"><i data-lucide="library" aria-hidden="true"></i></span><span>Biblioteca</span></button>
+                                    <button type="button" onclick="window.toggleRitualModal()" class="resource-menu-button"><span class="resource-menu-icon bg-emerald-500/10 text-emerald-300"><i data-lucide="clipboard-check" aria-hidden="true"></i></span><span>Rituais</span></button>
+                                    <button type="button" onclick="window.toggleRechargeModal()" class="resource-menu-button"><span class="resource-menu-icon bg-emerald-500/10 text-emerald-300"><i data-lucide="battery-charging" aria-hidden="true"></i></span><span>Recarga</span></button>
+                                    <button type="button" onclick="window.toggleHealthModal()" class="resource-menu-button"><span class="resource-menu-icon bg-rose-500/10 text-rose-300"><i data-lucide="activity" aria-hidden="true"></i></span><span>Corpo</span></button>
+                                    <button type="button" onclick="window.toggleStatsModal()" class="resource-menu-button"><span class="resource-menu-icon bg-amber-500/10 text-amber-300"><i data-lucide="building-2" aria-hidden="true"></i></span><span>Quartel-general</span></button>
+                                </nav>
                             </details>
                 </div>
             </div>`;
