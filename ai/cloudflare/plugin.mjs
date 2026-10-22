@@ -2,6 +2,8 @@
 import { DAYS,ContractError } from '../contract.v1.js';
 import {PLANNING_SCOPE,PLANNING_TOOLS,PlanningError} from './planning.v2.mjs';
 import {V2_PROPOSAL_SCOPE,V2_PROPOSAL_TOOLS} from '../v2/proposals.js';
+import {CatalogError} from './library-import.mjs';
+import {LIBRARY_IMPORT_TOOLS} from '../v2/library_import.js';
 import {ProposalError} from './proposals.v2.mjs';
 import {V2ValidationError} from '../v2/contract.js';
 export const BRIDGE_BASE='https://missao-tatica-ai-bridge.victorduarteferreira1997.workers.dev';
@@ -121,7 +123,7 @@ export function createPluginGateway({now=Date.now,fetchImpl=fetch,readBody,callB
             const readsEnabled=env.AI_V2_ENABLED==='true'&&env.AI_V2_READ_ENABLED==='true';
             const proposalsEnabled=readsEnabled&&env.AI_V2_PROPOSALS_ENABLED==='true';
             const scopes=PLUGIN_SCOPES.filter(s=>(s!==PLANNING_SCOPE||readsEnabled)&&(s!==V2_PROPOSAL_SCOPE||proposalsEnabled));
-            const tools=[...PLUGIN_TOOLS,...(readsEnabled?PLANNING_TOOLS:[]),...(proposalsEnabled?V2_PROPOSAL_TOOLS:[])];
+            const tools=[...PLUGIN_TOOLS,...(readsEnabled?PLANNING_TOOLS:[]),...(proposalsEnabled?V2_PROPOSAL_TOOLS:[]),...(proposalsEnabled&&env.AI_LIBRARY_IMPORT_ENABLED==='true'?LIBRARY_IMPORT_TOOLS:[])];
             if(url.origin!==BRIDGE_BASE||url.username||url.password)pluginFail(400,'invalid_request');
             const origin=request.headers.get('Origin');
             if(origin&&!['https://chatgpt.com',BRIDGE_BASE].includes(origin))pluginFail(403,'origin_not_allowed');
@@ -207,16 +209,16 @@ export function createPluginGateway({now=Date.now,fetchImpl=fetch,readBody,callB
             if(!tool.securitySchemes[0].scopes.every(s=>owner.scope.split(' ').includes(s)))return json(403,{error:'insufficient_scope'},authChallenge());
             const args=params.arguments;
             if(!args||typeof args!=='object'||Array.isArray(args)||tool.inputSchema.required.some(k=>!Object.hasOwn(args,k))||Object.keys(args).some(k=>!Object.hasOwn(tool.inputSchema.properties,k)))return rpcError(-32602,'Invalid arguments');
-            if([...PLANNING_TOOLS,...V2_PROPOSAL_TOOLS].some(t=>t.name===params.name)){
+            if([...PLANNING_TOOLS,...V2_PROPOSAL_TOOLS,...LIBRARY_IMPORT_TOOLS].some(t=>t.name===params.name)){
                 try{const data=await planning.read(params.name,args,owner,env);return result({content:[{type:'text',text:JSON.stringify(data)}],structuredContent:data});}
-                catch(e){if(e instanceof ContractError||e instanceof V2ValidationError||e instanceof PlanningError&&e.status===400)return rpcError(-32602,'Invalid arguments');if((e instanceof PlanningError||e instanceof ProposalError)&&[401,403].includes(e.status))throw e;return result({isError:true,content:[{type:'text',text:JSON.stringify({error:e instanceof PlanningError||e instanceof ProposalError?e.code:'invalid_shared_data'})}]});}
+                catch(e){if(e instanceof ContractError||e instanceof V2ValidationError||e instanceof PlanningError&&e.status===400)return rpcError(-32602,'Invalid arguments');if((e instanceof PlanningError||e instanceof ProposalError||e instanceof CatalogError)&&[401,403].includes(e.status))throw e;return result({isError:true,content:[{type:'text',text:JSON.stringify({error:e instanceof PlanningError||e instanceof ProposalError||e instanceof CatalogError?e.code:'invalid_shared_data'})}]});}
             }
             const read=params.name==='getSharedWeek';
             const internal=new Request(BRIDGE_BASE+(read?'/v1/week?weekStart='+encodeURIComponent(args.weekStart):'/v1/proposals'),{method:read?'GET':'POST',headers:{Authorization:'Bearer '+env.ACTION_SECRET,'Content-Type':'application/json'},...(!read?{body:JSON.stringify(args)}:{})});
             const response=await callBridge(internal,env),data=await response.json();
             return result({content:[{type:'text',text:JSON.stringify(data)}],...(response.ok?{structuredContent:data}:{isError:true})});
         }catch(e){
-            const status=e instanceof PluginError||e instanceof PlanningError||e instanceof ProposalError?e.status:e instanceof ContractError?400:503,code=e instanceof PluginError||e instanceof PlanningError||e instanceof ProposalError?e.code:e instanceof ContractError?'invalid_request':'service_unavailable';
+            const status=e instanceof PluginError||e instanceof PlanningError||e instanceof ProposalError||e instanceof CatalogError?e.status:e instanceof ContractError?400:503,code=e instanceof PluginError||e instanceof PlanningError||e instanceof ProposalError||e instanceof CatalogError?e.code:e instanceof ContractError?'invalid_request':'service_unavailable';
             return json(status,{error:code},status===401?authChallenge():status===429?{'Retry-After':'60'}:{});
         }
     };

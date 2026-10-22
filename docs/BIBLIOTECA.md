@@ -1,4 +1,4 @@
-# Biblioteca — catálogo, leituras e planos · v1.9.70
+# Biblioteca — catálogo, leituras e planos · v1.9.71
 
 ## Catálogo (etapas 1 e 2)
 
@@ -64,6 +64,53 @@ apagado, classificado como lido ou transmitido à IA automaticamente.
   navegação por teclado; descartar edição não salva pede confirmação. O salvamento
   informa quando a confirmação em nuvem ainda está pendente.
 
+## Importação assistida pelo GPT (etapa 5 — servidor a ativar)
+
+Frontend e conexão privada estão preparados para **Biblioteca → Importar com IA**.
+A implantação do servidor externo exige o procedimento em
+[ATIVAR_IMPORTACAO_BIBLIOTECA.md](ATIVAR_IMPORTACAO_BIBLIOTECA.md). Enquanto o
+Worker não for atualizado e ativado, a importação informa essa pendência e o
+catálogo manual, leituras e módulos anteriores continuam disponíveis.
+
+- A planilha é enviada ao chat, não ao aplicativo. O GPT confirma o mapeamento e
+  propõe o catálogo usando `submitLibraryCatalog`; `listLibraryImports` consulta
+  as partes enviadas. Conteúdo da planilha é tratado como dado, nunca instrução.
+- Permissão `allowLibraryProposals` explícita, independente das consultas de outros
+  módulos. Nenhum livro, anotação ou histórico da estante é incluído na projeção IA.
+  A integração continua exclusiva do proprietário; outras contas mantêm uso manual.
+- Até 20 livros / 12.000 bytes por parte, no máximo 50 partes por lote. O GPT deve
+  manter `batchKey`, `partIndex`, `partCount`, `sourceKey` e `idempotencyKey` nas
+  tentativas. Não remapear/redividir um lote já iniciado.
+- Formatos do mesmo título/autor devem ser agrupados em uma entrada (até 5 edições
+  por livro na importação; o editor normal continua permitindo 20).
+- Formato desconhecido permanece vazio para resolução na revisão. Autoria, páginas,
+  posse e leituras anteriores não são inferidas. Posse ausente = não informada;
+  leitura anterior ausente = zero. Datas de conclusão antigas continuam desconhecidas.
+- A revisão permite editar os campos, conferir ajustes e selecionar os livros.
+  Duplicados exatos, inclusive arquivados, ficam fora; título igual com autoria
+  diferente/incompleta exige seleção explícita. A conferência é local à estante.
+- Não existe fusão automática: um livro existente não tem metadados substituídos
+  nem recebe edições/leituras anteriores em silêncio. Acrescente formatos a um
+  livro já cadastrado pelo editor normal.
+- Cada parte é aplicada integralmente em uma transação confirmada da conta. Falha
+  de validação/tamanho recusa a parte toda. Não cria Missões, planos, sessões reais,
+  recompensas, eventos de calendário ou mudança de campanha.
+- Estados: pendente, cadastro iniciado, cadastro concluído, recusada e expirada.
+  Reserva guarda exatamente os valores e seleção revisados. Depois de iniciar,
+  os campos ficam bloqueados e **Retomar cadastro** usa os mesmos dados.
+- Comprovantes em `libraryData.imports` e `aiApplications` evitam duplicação mesmo
+  se a confirmação da fila falhar. Fechar/reabrir e retomar não recria os livros.
+  Nova proposta da mesma parte/conteúdo também não repete livros ou leituras antigas.
+- Partes já importadas são reconhecidas pela chave do lote e índice; repetição de
+  uma linha em outra parte ou mudança de divisão é recusada. Desmarcados são
+  deliberadamente omitidos da parte, não pendências a cadastrar automaticamente.
+- A fila tem paginação assinada (5 partes por página), até 100 abertas e 1.000
+  marcadores; propostas pendentes expiram em 90 dias. Campos de partes encerradas
+  expiram, enquanto marcadores permanecem. Partes com cadastro iniciado continuam
+  recuperáveis. A guarda local de importação limita o estado a 720.000 bytes.
+- A janela da Biblioteca permanece aberta; formulários preservam valores e têm
+  rodapé fixo no desktop/celular. Troca de conta invalida trabalhos pendentes.
+
 ## Modelo aditivo e preservação
 
 `libraryData` contém `version:1`, `books`, `editions`, `readings`, `plans`, `sessions`
@@ -95,7 +142,8 @@ acrescentar formatos. Não há fusão silenciosa nem inferência de edições.
 
 ## Validação
 
-- 384 testes automatizados aprovados (369 anteriores + 15 específicos de leituras).
+- 403 testes automatizados aprovados (384 anteriores + 19 da importação).
+- 18 testes da conexão privada aprovados (incluindo 3 novos de catálogo); build e validação ESM aprovados.
 - Regressão do aplicativo e testes do catálogo: inicialização, alterações atômicas,
   formatos, datas desconhecidas, intenção independente, duplicados, histórico,
   referências protegidas, arquivamento, limite de tamanho e contas isoladas.
@@ -106,20 +154,22 @@ acrescentar formatos. Não há fusão silenciosa nem inferência de edições.
   correção após conclusão, releitura, remarcação/cancelamento, estudos existentes,
   bloco diário/semanal, fechamento de confirmação, reload e troca de conta.
 - Regressões do catálogo e de Missões diárias também aprovadas em desktop e 390 px.
+- Navegador de importação: Worker/SQLite real em memória + formulários do app e
+  Firebase simulado, valores finais, formato desconhecido, duplicados entre partes,
+  confirmação perdida/reload/retomada, janela preservada e conta membro em 390 px.
 - Serviços externos simulados: nenhum dado real consultado ou alterado nos testes.
 
-## Próximas etapas já definidas
+## Próximas etapas
 
-1. Importação assistida pelo GPT: ampliar consentimento, projeção, contrato de
-   propostas, backend e revisão em lote, com deduplicação/retomada. A ponte atual
-   continua aceitando apenas Missões, RADAR e Estudos; não recebe livros nesta versão.
+1. Ativar a fila no Cloudflare e validar o primeiro lote real com o proprietário.
 2. Integração opcional de leitura com trilhas da Inteligência, sem duplicar registros.
 
 Leituras ainda não são exportadas/sincronizadas com Google Agenda ou ICS.
 Registros independentes de plano ficam no acompanhamento do livro; o bloco diário
 exibe as sessões vinculadas ao planejamento. O estado continua em um documento
 pessoal, com a guarda de tamanho descrita acima; não houve alteração de regras
-Firestore nem migração, exclusão ou recriação dos registros existentes.
+Firestore nem exclusão ou recriação dos registros existentes. A importação adiciona
+apenas uma nova tabela D1, sem alterar as filas ou os registros anteriores.
 
 Integração Kindle, recomendações automáticas e armazenamento de PDFs ficam fora
 desta entrega. O aplicativo não é um leitor de e-books nem sincroniza posição Kindle.
