@@ -22,7 +22,7 @@ A integração privada com IA continua exclusiva do proprietário.
 - [Aplicação oficial](https://victorduarteferreira1997.github.io/missao-tatica/)
 - [Endereço direto](https://victorduarteferreira1997.github.io/missao-tatica/app.html)
 
-A versão atual é **v1.9.72**. A raiz, `teste_novos_modulos.html` e as prévias
+A versão atual é **v1.9.73**. A raiz, `teste_novos_modulos.html` e as prévias
 estáticas v1.9.11/v1.9.13 encaminham para a aplicação oficial. Parâmetros e
 fragmentos dos favoritos são preservados.
 
@@ -185,6 +185,21 @@ e revisão no app. Detalhes operacionais estão em [ai/README.md](ai/README.md).
 A ponte não recebe acesso administrativo ao Firebase. Finanças e Corpo permanecem
 manuais. Alterações na autorização exigem reativar a conexão privada; a rotina de
 consulta não exige nova publicação manual da seleção semanal legada.
+
+## Reagendamento por data · v1.9.73
+
+No menu da missão, **Reagendar…** abre uma data de destino, Cancelar e Salvar.
+Na edição, **Data da missão** substitui o seletor de dia para missões avulsas.
+Semana e dia são calculados juntos, preservando ID, subtarefas, status e vínculos.
+**Hoje** retorna ao dia real; o cabeçalho diário mostra a data e um aviso discreto
+permite revisar pendências anteriores. Navegar não transfere missões automaticamente.
+
+Concluídas, semanas fechadas e eventos do Google têm proteção; séries continuam
+em Repetição. O reagendamento manual mantém os horários; Preparar próxima semana
+mantém suas regras. A agenda gerenciada reconcilia o evento antigo após trocas de
+semana, com fila recuperável. Não há migração ou correção automática de datas antigas.
+
+[Diagnóstico, compatibilidade, arquivos e validação](docs/REAGENDAMENTO_MISSOES.md).
 
 ## Planejamento integrado
 

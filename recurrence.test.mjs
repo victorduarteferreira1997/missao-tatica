@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as R from './recurrence.v1.js';
 import {normalizePlanning,buildWeekTransition,applyWeekTransition,blockingDependencies} from './planning.v1.js';
-import {buildWeekEvents} from './calendar_sync.v2.js';
+import {buildWeekEvents} from './calendar_sync.v3.js';
 import {boot,plain} from './test-support/app_boot.mjs';
 const days=['monday','wednesday','friday'],week='2026-11-09',now='2026-11-09T12:00:00Z';
 function fixture(){const s={currentPlanningWeekStart:week,prestige:{campaign:2},xp:250,coins:32,energy:60,combo:4,aiAppliedProposals:{proof:1},tasks:days.map((day,i)=>({id:i+1,day,planningWeekStart:week,text:'Rotina de teste',time:'30 min',category:'life',isRecurring:true,recurrenceGroupId:'test-series',recurrenceDays:[...days],completed:false,workflowStatus:'planned',subtasks:[{id:i+100,text:'Conferir',completed:false}]})),operationalControl:{demands:[{id:'radar',workflowStatus:'active'}]},studyData:{studyPlan:{weeklyBlocks:[]}},financeData:{incomes:[{amount:20}]},healthData:{workouts:[{duration:10}]}};normalizePlanning(s);return s;}

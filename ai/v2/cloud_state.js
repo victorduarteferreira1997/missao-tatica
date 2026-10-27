@@ -1,3 +1,4 @@
+import {assertScheduleWeekOpen} from '../../mission_schedule.v1.js';
 // All transaction callbacks are pure: UI/state updates happen only after commit.
 export function createCloudStateStore({getUser,transact,onAdopt=()=>{}}){
  const bases=new Map();
@@ -23,6 +24,7 @@ export function createCloudStateStore({getUser,transact,onAdopt=()=>{}}){
   });check(user);bases.set(user.uid,result.payload);onAdopt(JSON.parse(result.payload),user.uid,{...result.receipt,proposalId});return result;
  },
  apply(user,proposalId,task,savedAt){return this.applyMutation(user,proposalId,s=>{
+  if(task.planningWeekStart)assertScheduleWeekOpen(s,task.planningWeekStart);
   if(s.tasks.some(t=>t.aiV2ProposalId===proposalId))throw Error('Vínculo anterior sem comprovante. Confira a missão antes de continuar.');
   if(s.tasks.some(t=>String(t.id)===String(task.id)))throw Error('ID de missão já utilizado. Nenhum cadastro foi feito.');s.tasks.push(task);return {taskId:task.id};
  },savedAt);}

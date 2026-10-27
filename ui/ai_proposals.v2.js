@@ -4,7 +4,7 @@ import {syncMissionTiming,reviewMissionFields} from './ai_mission_review.v1.js';
 import {v2ProposalRequest} from '../ai/v2/proposals.js';
 import {v2Hash} from '../ai/v2/contract.js';
 import {AI_OWNER_UID} from '../ai/contract.v1.js';
-export function installAiV2Proposals(window,{config,getUser,store,render,document,getCategories=()=>[],saveConfirmed,applyMission,previewEntity}){
+export function installAiV2Proposals(window,{config,getUser,store,render,document,getCategories=()=>[],saveConfirmed,applyMission,validateMission=()=>{},previewEntity}){
  let open=false,busy=false,generation=0,message='',items=[],nextCursor=null,status='pending',editor=null,progress='',viewSnapshot=null;
  const enabled=()=>config.enabled===true&&config.proposalsEnabled===true&&getUser()?.uid===AI_OWNER_UID;
  const e=window.escapeHtml;
@@ -30,6 +30,7 @@ export function installAiV2Proposals(window,{config,getUser,store,render,documen
  if(config.applyEnabled!==true||!editor||!saveConfirmed||!applyMission||editor.row.kind&&editor.row.kind!=='mission.create'&&config.entitiesEnabled!==true)throw Error('Cadastro ainda não habilitado.');
  const draft=editor,fields=(!draft.row.kind||draft.row.kind==='mission.create')&&draft.row.status==='pending'?reviewMissionFields(draft.fields,getCategories()):structuredClone(draft.fields);v2ProposalRequest({idempotencyKey:'review-validation',kind:draft.row.kind||'mission.create',fields},{grantId:draft.row.grantId,grantVersion:draft.row.grantVersion});
  if((!draft.row.kind||draft.row.kind==='mission.create')&&draft.row.status==='pending'&&!getCategories().some(c=>c.id===fields.category))throw Error('Escolha uma categoria válida no app.');
+ if(!draft.row.kind||draft.row.kind==='mission.create')validateMission(fields);
  draft.fields=structuredClone(fields);
  setProgress('Salvando seus dados…');
  if(!await saveConfirmed())throw Error('O salvamento não foi confirmado. Seus campos continuam aqui; confira a conexão antes de tentar novamente.');if(gen!==generation)return;

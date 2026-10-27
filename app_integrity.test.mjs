@@ -1,31 +1,32 @@
+import {applyMissionSchedule,planMissionSchedule,scheduleForDate,formatMissionDate} from './mission_schedule.v1.js';
 import * as Recurrence from './recurrence.v1.js';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 import { installFormDialogs as installDialogModule } from './ui/form_dialogs.v1.js';
-import { installTaskForms } from './ui/task_forms.v5.js';
-import { installPlanningViews } from './ui/planning_views.v7.js';
+import { installTaskForms } from './ui/task_forms.v6.js';
+import { installPlanningViews } from './ui/planning_views.v8.js';
 
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
-const taskForms = await readFile(new URL('./ui/task_forms.v5.js', import.meta.url), 'utf8');
-const planningViews = await readFile(new URL('./ui/planning_views.v7.js', import.meta.url), 'utf8');
+const taskForms = await readFile(new URL('./ui/task_forms.v6.js', import.meta.url), 'utf8');
+const planningViews = await readFile(new URL('./ui/planning_views.v8.js', import.meta.url), 'utf8');
 const aiInbox = await readFile(new URL('./ui/ai_inbox.v3.js', import.meta.url), 'utf8');
 const aiAccess = await readFile(new URL('./ui/ai_access.v3.js', import.meta.url), 'utf8');
 const aiProposals = await readFile(new URL('./ui/ai_proposals.v2.js', import.meta.url), 'utf8');
 const aiEntityReview = await readFile(new URL('./ui/ai_entity_review.v1.js', import.meta.url), 'utf8');
-const planningTools = await readFile(new URL('./ui/planning_tools.v3.js', import.meta.url), 'utf8');
-const extraInterfaces = (await Promise.all(['./ui/library.v3.js','./ui/library_import.v1.js','./ui/reading_activity.v1.js','./ui/radar_missions.v1.js','./ui/subtasks.v1.js','./ui/recurrence.v1.js'].map(path=>readFile(new URL(path,import.meta.url),'utf8')))).join('\n');
+const planningTools = await readFile(new URL('./ui/planning_tools.v4.js', import.meta.url), 'utf8');
+const extraInterfaces = (await Promise.all(['./ui/library.v3.js','./ui/library_import.v1.js','./ui/reading_activity.v1.js','./ui/mission_schedule.v1.js','./ui/radar_missions.v1.js','./ui/subtasks.v1.js','./ui/recurrence.v1.js'].map(path=>readFile(new URL(path,import.meta.url),'utf8')))).join('\n');
 const interfaceSource = extraInterfaces + planningTools + aiEntityReview + app + taskForms + planningViews + aiInbox + aiAccess + aiProposals;
 const installPlanner = (target, options = {}) => installPlanningViews(target, {
     document: { addEventListener() {} }, daysOfWeek: [], ICONS: { default: 'target' },
     getState: () => ({}), getUiState: () => ({}), extractMinutesFromTask: () => 30,
     ...options
 });
-assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v7\.js'/);
+assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v8\.js\?v=1\.9\.73'/);
 assert.match(app, /html \+= window\.renderWeeklyPlanningOverview\(\)/);
 assert.ok(!app.includes('window.renderDailyMissionBoard ='), 'As visões devem existir apenas no módulo do planejamento.');
-assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v5\.js\?v=1\.9\.66'/);
+assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v6\.js\?v=1\.9\.73'/);
 assert.match(app, /installTaskForms\(window, \{ daysOfWeek, getState: \(\) => state, getUiState: \(\) => uiState \}\)/);
 const installFormDialogs = target => installDialogModule(target, {});
 assert.match(app, /import \{ installFormDialogs \} from '\.\/ui\/form_dialogs\.v1\.js'/);
@@ -564,14 +565,14 @@ const editState = { tasks: [editable], currentPlanningWeekStart:'2026-10-19', ac
 const editUi = { editingTaskId: 91, editTaskDraft: { fields: [] }, showEditTaskModal: true };
 let recurringUpdate = null, editSaves = 0;
 Object.assign(editWindow, {
-    readRecurrenceEndDate: () => '', calculateTaskCost: () => ({ xp: 104, hp: 20 }), readCalendarTimeFields: () => ({ startTime: '09:30', endTime: '10:30' }),
+    taskPlanningWeek:t=>t.planningWeekStart||'2026-10-19',applyMissionDate:(t,date)=>applyMissionSchedule(editState,t,date).changed,readRecurrenceEndDate: () => '', calculateTaskCost: () => ({ xp: 104, hp: 20 }), readCalendarTimeFields: () => ({ startTime: '09:30', endTime: '10:30' }),
     upsertRecurringTaskOccurrences: (task, days, options) => { recurringUpdate = { days: [...days], removeUnselected: options.removeUnselected }; },
     reindexTaskOrderForDay() {}, getRecurringDaysLabel: () => 'Terça', showToast() {}, saveState: () => { editSaves++; }, showAlertModal() { throw new Error('Alerta inesperado'); }
 });
-const saveEditStart = app.indexOf('        window.saveEditedTask = function(');
+const saveEditStart = app.indexOf('        window.saveEditedTask = async function(');
 const saveEditEnd = app.indexOf('        window.calculateTaskCost = function(', saveEditStart);
-runInNewContext(app.slice(saveEditStart, saveEditEnd), { Recurrence:{...Recurrence,recurrenceCutoff:()=> '2026-10-19'}, window: editWindow, state: editState, uiState: editUi, daysOfWeek: [{ id: 'monday' }, { id: 'tuesday' }], document: { getElementById: id => id === 'et-title-error' ? localError : editElements[id] } });
-editWindow.saveEditedTask();
+runInNewContext(app.slice(saveEditStart, saveEditEnd), {applyMissionSchedule,planMissionSchedule,scheduleForDate,formatMissionDate, Recurrence:{...Recurrence,recurrenceCutoff:()=> '2026-10-19'}, window: editWindow, state: editState, uiState: editUi, daysOfWeek: [{ id: 'monday' }, { id: 'tuesday' }], document: { getElementById: id => id === 'et-title-error' ? localError : editElements[id] } });
+await editWindow.saveEditedTask();
 assert.equal(editState.planning.recurrenceRules[editable.recurrenceGroupId].days[0], 'tuesday');
 assert.equal(editable.day, 'monday'); assert.equal(editable.text, '<Missão recorrente>');
 assert.equal(editState.tasks.find(t=>t.day==='tuesday').text,'Título ajustado');
@@ -579,7 +580,7 @@ assert.equal(editable.completed, true); assert.equal(editable.subtasks[0].comple
 assert.equal(editState.xp, 500); assert.equal(editState.coins, 200); assert.equal(editSaves, 1);
 assert.equal(editUi.editTaskDraft, null);
 editUi.editingTaskId = 91; editElements['et-text'].value = ' ';
-editWindow.saveEditedTask();
+await editWindow.saveEditedTask();
 assert.equal(editElements['et-text']['aria-invalid'], 'true'); assert.equal(editElements['et-text'].focused, true); assert.equal(editSaves, 1);
 
 const editDraftUi = { showEditTaskModal: true };

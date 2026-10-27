@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.72-resource-menu">
+    <meta name="app-build" content="v1.9.73-mission-dates">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -56,7 +56,9 @@
         /* Controles nativos acompanham o fundo escuro dos formulários. */
         #operational-demand-dialog input[type="date"],
         #create-task-dialog input[type="time"],
-        #edit-task-dialog input[type="time"] {
+        #edit-task-dialog input[type="time"],
+        #edit-task-dialog input[type="date"],
+        #mission-reschedule-dialog input[type="date"] {
             color-scheme: dark;
         }
         .resource-menu-panel {
@@ -134,30 +136,32 @@
 
     <!-- Script Principal com Firebase em Módulo -->
     <script type="module">
-        import { createCalendarSync } from './calendar_sync.v2.js?v=1.9.66';
-        import { installPlanningTools } from './ui/planning_tools.v3.js?v=1.9.66.1';
+        import { createCalendarSync } from './calendar_sync.v3.js?v=1.9.73';
+        import { installPlanningTools } from './ui/planning_tools.v4.js?v=1.9.73';
         import { installRadarMissions } from './ui/radar_missions.v1.js';
         import { installSubtasks } from './ui/subtasks.v1.js?v=1.9.65';
+        import {applyMissionSchedule,planMissionSchedule,scheduleForDate,formatMissionDate,assertScheduleWeekOpen} from './mission_schedule.v1.js?v=1.9.73';
+        import {installMissionScheduling} from './ui/mission_schedule.v1.js?v=1.9.73';
         import { installFormDialogs } from './ui/form_dialogs.v1.js';
         import * as Recurrence from './recurrence.v1.js?v=1.9.66.1';
         import { installRecurrence } from './ui/recurrence.v1.js?v=1.9.66.1';
-        import { installTaskForms } from './ui/task_forms.v5.js?v=1.9.66';
+        import { installTaskForms } from './ui/task_forms.v6.js?v=1.9.73';
         import * as Library from './library.v2.js?v=1.9.70';
         import { installLibrary } from './ui/library.v3.js?v=1.9.71';
         import {installLibraryImports} from './ui/library_import.v1.js?v=1.9.71';
         import {createLibraryImportStore} from './ai/v2/library_browser.js?v=1.9.71';
         import {applyLibraryImport} from './library_import.v1.js?v=1.9.71';
-        import { installPlanningViews } from './ui/planning_views.v7.js';
+        import { installPlanningViews } from './ui/planning_views.v8.js?v=1.9.73';
         import { installAiInbox } from './ui/ai_inbox.v3.js';
         import { AI_CONFIG } from './ai/config.v1.js';
         import { AI_V2_CONFIG } from './ai/config.v2.js';
         import { applyEntity, radarTarget } from './ai/v2/entity_apply.js';
-        import { createCloudStateStore } from './ai/v2/cloud_state.js';
+        import { createCloudStateStore } from './ai/v2/cloud_state.js?v=1.9.73';
         import { createConfirmedStateWriter } from './ai/v2/saved_state.js?v=1.9.62';
         import { createV2BrowserStore } from './ai/v2/browser.js?v=1.9.71';
         import { installAiAccess } from './ui/ai_access.v3.js?v=1.9.71';
         import { createV2ProposalsBrowserStore } from './ai/v2/proposals_browser.js';
-        import { installAiV2Proposals } from './ui/ai_proposals.v2.js?v=1.9.65';
+        import { installAiV2Proposals } from './ui/ai_proposals.v2.js?v=1.9.73';
         import { createAiBrowserStore } from './ai/bridge_rest.v1.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { initializeAppCheck, ReCaptchaEnterpriseProvider, getToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
@@ -169,7 +173,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.72';
+        const APP_VERSION = 'v1.9.73';
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
             authDomain: "missao-tatica.firebaseapp.com",
@@ -1872,6 +1876,7 @@
             clearInterval(pomodoro.intervalId);
             clearInterval(uiState.breathingInterval);
             calendarSync.setOwner(null);
+            window.resetMissionScheduling?.();
             window.resetAiInbox?.(); window.resetAiAccess?.();
             uiState = JSON.parse(initialUiState);
             pomodoro = JSON.parse(initialPomodoro);
@@ -2995,30 +3000,30 @@
             });
         };
 
-        window.moveTaskFromSelect = function(taskId, event, selectEl) {
-            if (event) { if (typeof event.stopPropagation === 'function') event.stopPropagation(); if (typeof event.preventDefault === 'function') event.preventDefault(); }
-            const targetDay = selectEl.value; if (!targetDay) return;
-            const task = state.tasks.find(t => t.id == taskId);
-            if (Recurrence.hasRecurrence(task)) { selectEl.value=''; window.showAlertModal('Para alterar os dias de uma missão recorrente, use Editar missão > Repetição.'); return; }
-            if (task?.googleCalendarSource === 'primary') { selectEl.value = ''; window.showAlertModal('Altere o dia no Google Agenda e sincronize novamente.'); return; }
-            if (task) {
-                const nextWeek = targetDay === 'next_week';
-                if (!nextWeek && !daysOfWeek.some(day => day.id === targetDay)) { selectEl.value = ''; return; }
-                if (!nextWeek && task.day === targetDay) { selectEl.value = ''; return; }
-                if (nextWeek) {
-                    const targetWeek = window.nextPlanningWeek();
-                    if (!window.assertPlanningWeekWritable(targetWeek)) { selectEl.value = ''; return; }
-                    task.planningWeekStart = targetWeek;
-                    if (task.googleCalendarWeekStart) task.googleCalendarWeekStart = targetWeek;
-                } else task.day = targetDay;
-                const orders = state.tasks.filter(other => other !== task && other.day === task.day && window.taskPlanningWeek(other) === window.taskPlanningWeek(task)).map(other => Number.isFinite(other.order) ? other.order : 0);
-                task.order = Math.max(0, ...orders) + 1;
-                window.changeEnergy(10); window.recordCampaignStat('tasksMoved'); state.stats.tasksMoved = (state.stats.tasksMoved || 0) + 1;
-                window.unlockBadge('estrategista'); window.spawnFloatingText(event, `+10 HP`, 'text-emerald-400');
-                window.saveState();
-                window.showToast('Missão reagendada', nextWeek ? 'Movida para o mesmo dia da próxima semana. Frenesi preservado.' : 'Dia atualizado. Frenesi preservado.', 'calendar-days', 'text-cyan-300');
+        window.applyMissionDate = function(task,date,rewardMove=false) {
+            if ((pomodoro.isRunning || pomodoro.currentFocusStartedAt) && String(pomodoro.focusLock?.id ?? pomodoro.currentFocusTaskId ?? state.focusedTaskId) === String(task.id)) throw Error('Finalize o ciclo de foco antes de reagendar esta missão.');
+            if (calendarSync.view().busy) throw Error('Aguarde a sincronização da agenda antes de reagendar.');
+            const plan=applyMissionSchedule(state,task,date);
+            if(plan.changed && rewardMove){
+                window.changeEnergy(10); window.recordCampaignStat('tasksMoved'); state.stats.tasksMoved=(state.stats.tasksMoved||0)+1;
+                window.unlockBadge('estrategista');
             }
-            selectEl.value = "";
+            return plan.changed;
+        };
+        // Compatibility for older controls: resolve their intent to a full date first.
+        window.moveTaskFromSelect = async function(taskId,event,selectEl) {
+            event?.stopPropagation?.();event?.preventDefault?.();
+            const choice=selectEl.value;selectEl.value='';if(!choice)return;
+            const task=state.tasks.find(t=>String(t.id)===String(taskId));if(!task)return;
+            const sourceState=state;
+            try{
+                const week=choice==='next_week'?window.nextPlanningWeek():window.taskPlanningWeek(task);
+                const day=choice==='next_week'?task.day:choice;
+                const date=Recurrence.occurrenceDate({day,planningWeekStart:week},state);
+                if(!window.applyMissionDate(task,date,true))return;
+                const saved=await window.saveStateNow(true,'mission-reschedule');if(state!==sourceState)return;
+                render();window.showToast(saved?'Missão reagendada':'Reagendamento aguardando sincronização',saved?formatMissionDate(date)+' · Frenesi preservado.':'A alteração local ainda não foi confirmada na nuvem.','calendar-days',saved?'text-cyan-300':'text-amber-300');
+            }catch(error){window.showAlertModal(error.message);}
         };
 
         window.deleteMainTask = function(taskId, event) {
@@ -3860,6 +3865,7 @@
 
         // Ponte temporária para os handlers existentes durante a modularização.
         installFormDialogs(window, document);
+        installMissionScheduling(window,{document,getState:()=>state,getUiState:()=>uiState,render,move:(task,date)=>window.applyMissionDate(task,date,true),saveConfirmed:()=>window.saveStateNow(true,'mission-reschedule')});
         installTaskForms(window, { daysOfWeek, getState: () => state, getUiState: () => uiState });
         window.__aiCloseCreate = () => { uiState.showCreateTaskModal = false; uiState.createTaskDraft = null; };
         window.__aiOpenCreate = fields => {
@@ -3883,7 +3889,7 @@
             saveConfirmed: () => window.saveStateNow(true, 'ai-v2-share'), render
         });
         installAiV2Proposals(window, {config: AI_V2_CONFIG, getUser: () => currentUser, render, document,
-            getCategories:()=>window.getTaskCategories(),previewEntity:(row)=>radarTarget(state,row,row.fields).then(result=>result.entity.fields),saveConfirmed:()=>window.saveStateNow(true,'ai-v2-before-apply'),
+            validateMission:fields=>assertScheduleWeekOpen(state,fields.weekStart),getCategories:()=>window.getTaskCategories(),previewEntity:(row)=>radarTarget(state,row,row.fields).then(result=>result.entity.fields),saveConfirmed:()=>window.saveStateNow(true,'ai-v2-before-apply'),
             applyMission:(row,fields)=>{const user=currentUser;return confirmedStateWriter.exclusive(()=>{
                 if (!isAuthorizedAppOwner(user) || !isSession(user) || !sessionReady) throw Error('Integração IA restrita ao proprietário.');
                 const stamp=new Date().toISOString(),campaign=window.normalizePrestige().campaign;
@@ -3948,7 +3954,7 @@
             }
         };
 
-        window.saveEditedTask = function() {
+        window.saveEditedTask = async function() {
             const task = state.tasks.find(t => t.id == uiState.editingTaskId);
             if (!task) { window.showAlertModal('Missão não encontrada.'); return; }
             const text = document.getElementById('et-text')?.value.trim();
@@ -3961,8 +3967,12 @@
             }
             const relations = window.readTaskRelations?.('et',task);
             if (relations === null) return;
-            const oldDay = task.day;
-            const newDay = document.getElementById('et-day')?.value || task.day || state.activeTab;
+            const dateField=document.getElementById('et-date');
+            const requestedDate=dateField ? dateField.value : Recurrence.occurrenceDate({day:document.getElementById('et-day')?.value||task.day,planningWeekStart:window.taskPlanningWeek(task)},state);
+            let datePlan;
+            try { datePlan=planMissionSchedule(state,task,requestedDate); } catch(error) { window.showAlertModal(error.message); return; }
+            const newDay=datePlan.day;
+            const editState=state;
             const activeCategories = window.getTaskCategories();
             const selectedCategory = document.getElementById('et-category')?.value || activeCategories[0]?.id || task.category || 'geral';
             const priority = document.getElementById('et-priority')?.value || task.priority || 'media';
@@ -4002,13 +4012,14 @@
 
             if (isRecurring) {
                 const groupId = task.recurrenceGroupId || `rec-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-                const proposed = { ...task, recurrenceGroupId: groupId };
+                const proposed = { ...task, ...(!Recurrence.hasRecurrence(task)?{planningWeekStart:datePlan.planningWeekStart,...(task.googleCalendarWeekStart?{googleCalendarWeekStart:datePlan.planningWeekStart}:{})}:{}), recurrenceGroupId: groupId };
                 applyValues(proposed, newDay);
-                const from = Recurrence.recurrenceCutoff(state, task);
+                const from = Recurrence.recurrenceCutoff(state, proposed);
                 const endDate = window.readRecurrenceEndDate('et', recurrenceDays, from);
                 if (endDate === null) return;
                 try {
                     const staged=JSON.parse(JSON.stringify(state));
+                    if(datePlan.changed)applyMissionSchedule(staged,staged.tasks.find(t=>String(t.id)===String(task.id)),requestedDate);
                     Recurrence.setRecurrenceRule(staged, proposed, recurrenceDays, endDate, { from });
                     const stagedTask=staged.tasks.find(t=>String(t.id)===String(task.id));
                     if (!stagedTask.recurrenceGroupId) { stagedTask.recurrenceGroupId=groupId; stagedTask.isRecurring=true; stagedTask.recurrenceDays=[...recurrenceDays]; }
@@ -4024,23 +4035,16 @@
             }
             if (Recurrence.hasRecurrence(task)) { window.showAlertModal('Para parar esta série, use Encerrar repetição. Para continuar, selecione ao menos um dia.'); return; }
 
+            try { window.applyMissionDate(task,requestedDate); } catch(error) { window.showAlertModal(error.message); return; }
             applyValues(task, newDay);
             task.isRecurring = false;
             task.recurrenceDays = [];
             delete task.recurrenceGroupId;
-            if (oldDay !== newDay) {
-                task.order = window.getNextTaskOrder(newDay);
-                window.reindexTaskOrderForDay(oldDay);
-                window.reindexTaskOrderForDay(newDay);
-            } else {
-                if (typeof task.order !== 'number') task.order = window.getNextTaskOrder(newDay);
-                window.reindexTaskOrderForDay(newDay);
-            }
             uiState.editTaskDraft = null;
             uiState.showEditTaskModal = false;
             uiState.editingTaskId = null;
-            window.showToast('Missão atualizada', 'Horário, dificuldade, tempo e categoria foram ajustados. O dia será reordenado automaticamente.', 'pencil', 'text-amber-400');
-            window.saveState();
+            const saved=await window.saveStateNow(true,'mission-edit');if(state!==editState)return;
+            render();window.showToast(saved?'Missão atualizada':'Alteração aguardando sincronização',saved?formatMissionDate(requestedDate)+' · Salva na nuvem.':'A edição local ainda não foi confirmada na nuvem.','pencil',saved?'text-cyan-300':'text-amber-300');
         };
 
         window.calculateTaskCost = function(priority, complexity, time, impactType, missionNature = 'normal') {
@@ -5174,6 +5178,11 @@
             render();
         };
 
+        window.goToToday = function() {
+            const today=Recurrence.recurrenceToday(new Date());const target=scheduleForDate(today);
+            state.currentPlanningWeekStart=target.planningWeekStart;state.activeTab=target.day;
+            uiState.mainView='day';render();calendarSync.refreshInbox();
+        };
         window.setMainView = function(view) {
             uiState.mainView = ['day', 'week', 'control'].includes(view) ? view : 'day';
             render();
@@ -6672,6 +6681,7 @@
             if (uiState.dataCleanupSaving) html += '<div class="fixed inset-0 bg-slate-950/95 z-[1200] p-4 flex items-center justify-center"><section role="dialog" aria-modal="true" aria-labelledby="cleanup-saving-title" aria-busy="true" class="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full text-center"><h2 id="cleanup-saving-title" class="text-lg font-bold text-white">Salvando limpeza na nuvem…</h2><p role="status" class="text-sm text-slate-400 mt-3">Aguarde a confirmação antes de fechar esta aba ou configurar seu perfil.</p></section></div>';
             html += window.renderStudyTrackDeletion();
             html += window.renderPlanningReview?.() || '';
+            html += window.renderMissionReschedule?.() || '';
 
             const profileNeedsSetup = !state?.userProfile?.configured;
             if (!uiState.dataCleanupSaving && (profileNeedsSetup || uiState.showProfileModal)) {
@@ -6925,7 +6935,7 @@
                     <div class="text-sm font-semibold text-slate-200">${compactViewMeta.title}</div>
                 </div>
                 <div class="grid grid-cols-3 gap-1 bg-slate-950 rounded-xl p-1 shrink-0">
-                    <button onclick="window.setMainView('day')" class="rounded-lg px-2.5 py-2 text-xs font-medium ${uiState.mainView === 'day' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}"><i data-lucide="layout-list" class="w-3.5 h-3.5 inline mr-1"></i>Hoje</button>
+                    <button onclick="window.goToToday()" class="rounded-lg px-2.5 py-2 text-xs font-medium ${uiState.mainView === 'day' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}"><i data-lucide="layout-list" class="w-3.5 h-3.5 inline mr-1"></i>Hoje</button>
                     <button onclick="window.setMainView('week')" class="rounded-lg px-2.5 py-2 text-xs font-medium ${uiState.mainView === 'week' ? 'bg-cyan-700 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}"><i data-lucide="calendar-days" class="w-3.5 h-3.5 inline mr-1"></i>Semana${calendarInboxPending ? ` · ${calendarInboxPending}` : ''}</button>
                     <button onclick="window.setMainView('control')" class="rounded-lg px-2.5 py-2 text-xs font-medium ${uiState.mainView === 'control' ? 'bg-sky-700 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}"><i data-lucide="radar" class="w-3.5 h-3.5 inline mr-1"></i>Radar</button>
                 </div>
@@ -6957,11 +6967,13 @@
             html += `<section class="mb-3 px-1 py-1 font-sans">
                 <div class="flex items-end justify-between gap-3">
                     <div class="min-w-0">
-                        <div class="flex flex-wrap items-baseline gap-2"><h2 class="text-lg font-semibold text-white">Missões de ${selectedDayLabel}</h2><span class="text-xs text-slate-400">${pendingDailyCount} pendentes · ${completedDailyCount} concluídas</span></div>
+                        <div class="flex flex-wrap items-baseline gap-2"><h2 class="text-lg font-semibold text-white">${selectedDayLabel}, ${formatMissionDate(Recurrence.occurrenceDate({day:state.activeTab,planningWeekStart:state.currentPlanningWeekStart},state)).slice(0,5)}</h2><span class="text-xs text-slate-400">${pendingDailyCount} pendentes · ${completedDailyCount} concluídas</span></div>
                     </div>
                 </div>
             </section>`;
 
+            const olderPending=state.tasks.filter(t=>!t.completed&&!t.recurrenceCancelled&&t.googleCalendarSource!=='primary'&&window.taskPlanningWeek(t)<state.currentPlanningWeekStart).length;
+            if(olderPending)html+=`<button type="button" onclick="window.openPlanningReview()" class="mb-3 min-h-10 text-xs text-slate-400 hover:text-indigo-200">${olderPending} pendência${olderPending===1?' anterior':'s anteriores'} · Revisar</button>`;
             html += window.renderDailyCategoryBar();
 
             }
@@ -7228,10 +7240,11 @@
                 });
             }
             window.bindEditTaskDialog(appDiv);
-            const viewBlocked = Boolean(uiState.libraryImportOpen) || Boolean(uiState.readingAction) || Boolean(uiState.library) || uiState.deleteTaskPrompt?.show || uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) || Boolean(uiState.studyTrackDeletion) || Boolean(uiState.subtaskEditor) || Boolean(uiState.radarLink) || Boolean(uiState.radarNext);
+            const viewBlocked = Boolean(window.isMissionScheduleOpen?.()) || Boolean(uiState.libraryImportOpen) || Boolean(uiState.readingAction) || Boolean(uiState.library) || uiState.deleteTaskPrompt?.show || uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) || Boolean(uiState.studyTrackDeletion) || Boolean(uiState.subtaskEditor) || Boolean(uiState.radarLink) || Boolean(uiState.radarNext);
             window.restoreViewState?.(appDiv, viewSnapshot, {pageKey: viewPageKey, blocked: viewBlocked});
             for (const prefix of ['ct','et']) if (document.getElementById(prefix+'-radar')) window.updateDependencySelection?.(prefix);
             window.bindPlanningReview?.(appDiv);
+            window.bindMissionReschedule?.(appDiv);
             window.bindRadarMissionDialogs?.(appDiv);
             window.bindSubtaskEditor?.(appDiv);
             window.bindLibrary?.(appDiv);

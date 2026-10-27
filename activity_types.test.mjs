@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFile} from 'node:fs/promises';
 import {runInNewContext} from 'node:vm';
-import {normalizePrimaryEvent, buildWeekEvents} from './calendar_sync.v2.js';
+import {normalizePrimaryEvent, buildWeekEvents} from './calendar_sync.v3.js';
 import {installPlanningViews} from './ui/planning_views.v3.js';
 import {installTaskForms} from './ui/task_forms.v2.js';
 import {installFormDialogs} from './ui/form_dialogs.v1.js';
