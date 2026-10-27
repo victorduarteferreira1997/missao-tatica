@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createCalendarSync} from './calendar_sync.v2.js';
+import {createCalendarSync} from './calendar_sync.v3.js';
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {resolve,promise};};
 const tick=()=>new Promise(r=>setImmediate(r));
 function setup(){

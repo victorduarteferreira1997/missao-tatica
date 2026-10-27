@@ -10,7 +10,8 @@
     "test:browser:maintenance": "TZ=America/Sao_Paulo node ../test-support/browser_mission_maintenance.mjs",
     "test:browser:library": "TZ=America/Sao_Paulo node ../test-support/browser_library.mjs",
     "test:browser:reading": "TZ=America/Sao_Paulo node ../test-support/browser_reading.mjs",
-    "test:browser:catalog": "TZ=America/Sao_Paulo node ../test-support/browser_catalog_import.mjs"
+    "test:browser:catalog": "TZ=America/Sao_Paulo node ../test-support/browser_catalog_import.mjs",
+    "test:browser:dates": "TZ=America/Sao_Paulo node ../test-support/browser_mission_dates.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "4.0.1",

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const source = await readFile(new URL('./calendar_sync.v2.js', import.meta.url), 'utf8');
+const source = await readFile(new URL('./calendar_sync.v3.js', import.meta.url), 'utf8');
 const { buildWeekEvents, createCalendarSync } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 
 const state = {

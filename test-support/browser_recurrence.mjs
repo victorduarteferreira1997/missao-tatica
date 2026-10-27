@@ -64,6 +64,8 @@ await context.route('**/*',async route=>{
 const login=async uid=>{activeAccount=uid;await page.evaluate(async uid=>window.__auth({uid,email:uid+'@example.test',displayName:'Fictício',getIdToken:async()=>'synthetic-id-token'}),uid);};
 
 const cloud=async()=>page.evaluate(uid=>JSON.parse(window.__rows[`users/${uid}/state/main`].data),owner);
+// Fixed scenario date: the edited occurrence is 21/10, not a past record.
+await page.clock.setFixedTime(new Date('2026-10-21T15:00:00Z'));
 try{
  await page.goto(origin+'/app.html');await page.waitForFunction(()=>!!window.__auth);await login(owner);
  assert.equal(await page.evaluate(()=>window.saveStateNow(true)),true);

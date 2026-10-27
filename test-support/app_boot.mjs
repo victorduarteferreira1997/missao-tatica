@@ -1,3 +1,5 @@
+import {applyMissionSchedule,planMissionSchedule,scheduleForDate,formatMissionDate,assertScheduleWeekOpen} from '../mission_schedule.v1.js';
+import {installMissionScheduling} from '../ui/mission_schedule.v1.js';
 import {installLibraryImports} from '../ui/library_import.v1.js';
 import {createLibraryImportStore} from '../ai/v2/library_browser.js';
 import {applyLibraryImport} from '../library_import.v1.js';
@@ -20,11 +22,11 @@ import {createV2ProposalsBrowserStore} from '../ai/v2/proposals_browser.js';
 import {installAiV2Proposals} from '../ui/ai_proposals.v2.js';
 import {readFile} from 'node:fs/promises';
 import {runInNewContext} from 'node:vm';
-import {createCalendarSync} from '../calendar_sync.v2.js';
-import {installPlanningTools} from '../ui/planning_tools.v3.js';
+import {createCalendarSync} from '../calendar_sync.v3.js';
+import {installPlanningTools} from '../ui/planning_tools.v4.js';
 import {installFormDialogs} from '../ui/form_dialogs.v1.js';
-import {installTaskForms} from '../ui/task_forms.v5.js';
-import {installPlanningViews} from '../ui/planning_views.v7.js';
+import {installTaskForms} from '../ui/task_forms.v6.js';
+import {installPlanningViews} from '../ui/planning_views.v8.js';
 import {installAiInbox} from '../ui/ai_inbox.v3.js';
 import {AI_CONFIG} from '../ai/config.v1.js';
 import {createAiBrowserStore} from '../ai/bridge_rest.v1.js';
@@ -39,7 +41,7 @@ export function boot(saved=null,applyEnabled=false,seedSession=true){
  const document={activeElement:null,getElementById:id=>elements[id]||null,querySelector(){return null;},querySelectorAll(){return [];},addEventListener(){}};
  const window={lucide:{createIcons(){}},location:{origin:'https://victorduarteferreira1997.github.io',pathname:'/missao-tatica/app.html'},addEventListener:(name,callback)=>events.set(name,callback)};
  const c={window,document,Date:FixedDate,console,TextEncoder,Uint8Array,Uint32Array,DataView,URL,Blob,Intl,localStorage:{getItem:key=>stored.get(key)||null,setItem:(key,value)=>{stored.set(key,value);writes.push(key);},removeItem:key=>stored.delete(key)},
- setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),setInterval:()=>1,clearInterval(){},lucide:window.lucide,initializeApp:()=>({}),initializeAppCheck(){},ReCaptchaEnterpriseProvider:class{},getAuth:()=>c.firebaseAuth={currentUser:null},getFirestore:()=>({}),GoogleAuthProvider:class{},signInWithPopup(){},signInWithRedirect(){},signOut:async()=>{},onAuthStateChanged:(auth,callback)=>c.authCallback=user=>{auth.currentUser=user;return callback(user);},doc:(db,...parts)=>parts.join('/'),getDocFromServer:(...args)=>c.getDoc(...args),createAccountStorage,createAccountRecovery,validateAccountState,AUTH_TRANSITION_KEY,authorizeAccount,AI_OWNER_UID,getDoc(){throw Error('A inicialização não deve ler a nuvem sem login.');},setDoc(){throw Error('O teste não deve gravar na nuvem.');},createCalendarSync:options=>{c.calendarOnChange=options.onChange;return createCalendarSync(options);},Library,installLibrary,installLibraryImports,createLibraryImportStore,applyLibraryImport,Recurrence,installRecurrence,installRadarMissions,installSubtasks,installPlanningTools,installFormDialogs,installTaskForms,installPlanningViews,installAiInbox,AI_CONFIG,createAiBrowserStore,AI_V2_CONFIG:{...AI_V2_CONFIG,applyEnabled},createCloudStateStore,applyEntity,radarTarget,createConfirmedStateWriter,createV2BrowserStore,installAiAccess,createV2ProposalsBrowserStore,installAiV2Proposals:(w,options)=>{c.v2ProposalsOptions=options;return installAiV2Proposals(w,options);}};
+ setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),setInterval:()=>1,clearInterval(){},lucide:window.lucide,initializeApp:()=>({}),initializeAppCheck(){},ReCaptchaEnterpriseProvider:class{},getAuth:()=>c.firebaseAuth={currentUser:null},getFirestore:()=>({}),GoogleAuthProvider:class{},signInWithPopup(){},signInWithRedirect(){},signOut:async()=>{},onAuthStateChanged:(auth,callback)=>c.authCallback=user=>{auth.currentUser=user;return callback(user);},doc:(db,...parts)=>parts.join('/'),getDocFromServer:(...args)=>c.getDoc(...args),createAccountStorage,createAccountRecovery,validateAccountState,AUTH_TRANSITION_KEY,authorizeAccount,AI_OWNER_UID,getDoc(){throw Error('A inicialização não deve ler a nuvem sem login.');},setDoc(){throw Error('O teste não deve gravar na nuvem.');},applyMissionSchedule,planMissionSchedule,scheduleForDate,formatMissionDate,assertScheduleWeekOpen,installMissionScheduling,createCalendarSync:options=>{c.calendarOnChange=options.onChange;return createCalendarSync(options);},Library,installLibrary,installLibraryImports,createLibraryImportStore,applyLibraryImport,Recurrence,installRecurrence,installRadarMissions,installSubtasks,installPlanningTools,installFormDialogs,installTaskForms,installPlanningViews,installAiInbox,AI_CONFIG,createAiBrowserStore,AI_V2_CONFIG:{...AI_V2_CONFIG,applyEnabled},createCloudStateStore,applyEntity,radarTarget,createConfirmedStateWriter,createV2BrowserStore,installAiAccess,createV2ProposalsBrowserStore,installAiV2Proposals:(w,options)=>{c.v2ProposalsOptions=options;return installAiV2Proposals(w,options);}};
  runInNewContext(moduleSource+'\nwindow.startupForTest = {getState:()=>state,getUI:()=>uiState,getTimer:()=>pomodoro,render,seedTestAccount:(saved)=>{currentUser={uid:AI_OWNER_UID};state=saved||state;state.ownerUid=AI_OWNER_UID;accountStorage.load(currentUser.uid);sessionReady=true;window.validateState();}};',c,{timeout:3000});
  if(seedSession)window.startupForTest.seedTestAccount(saved);
  return {c,window,elements,stored,writes,events,timers,state:window.startupForTest.getState(),ui:window.startupForTest.getUI(),render:window.startupForTest.render};
