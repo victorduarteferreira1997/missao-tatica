@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {boot,plain} from './test-support/app_boot.mjs';
 import {AI_OWNER_UID as owner} from './ai/contract.v1.js';
-import {createAccountStorage,createAccountRecovery,accountStateKey,LEGACY_STATE_KEY,AUTH_TRANSITION_KEY,validateAccountState} from './account_storage.v1.js';
+import {createAccountStorage,createAccountRecovery,accountStateKey,LEGACY_STATE_KEY,AUTH_TRANSITION_KEY,validateAccountState} from './account_storage.v2.js';
 const sara='fictional-sara',user=uid=>({uid,email:uid+'@example.test',displayName:'Pessoa fictícia'});
 const snap=row=>({exists:()=>Boolean(row),data:()=>plain(row)});
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
@@ -132,7 +132,7 @@ test('a stalled write from a logged-out account does not block first-time member
  const b=fixture({[path(owner)]:row(owner)});await b.c.authCallback(user(owner));
  const wait=deferred(),write=b.c.setDoc;b.c.setDoc=async(p,v)=>{if(p==='users/'+owner)await wait.promise;return write(p,v);};
  const saving=b.window.saveStateNow(true);await tick();let opened=false;
- const opening=b.c.authCallback(user(sara)).then(()=>opened=true);await tick();
+ const opening=b.c.authCallback(user(sara)).then(()=>opened=true);let limit;try{await Promise.race([opening,new Promise((_,reject)=>limit=setTimeout(()=>reject(Error('New session blocked by an older write')),1000))]);}finally{clearTimeout(limit);}
  assert.equal(opened,true);assert.equal(b.getState().ownerUid,sara);assert.equal(b.elements['app-wrapper'].style.display,'block');
  wait.resolve();assert.equal(await saving,false);await opening;
 });
@@ -220,3 +220,8 @@ test('reset never announces success before confirmation and reports a failed clo
  wait.resolve();await pending;assert.equal(notices.length,0);assert.equal(b.getUI().dataCleanupSaving,false);assert.match(b.getUI().alert.message,/limpeza não foi confirmada/);
  assert.equal(JSON.parse(b.rows.get(path(owner)).data).tasks[0].id,'keep');
 });
+
+test('abrir e reabrir sem editar, inclusive navegação, não cria recuperação para normalização do app',async()=>{const b=fixture({[path(owner)]:row(owner)});await b.c.authCallback(user(owner));b.window.setTab('friday');b.window.setPlanningCalendarWeek('forward');await b.c.authCallback(user(owner));await b.c.authCallback(user(owner));assert.equal(createAccountRecovery(b.c.localStorage,owner).list(owner).length,0);});
+test('versão local já confirmada não vira conflito quando outro dispositivo atualiza a nuvem',async()=>{const b=fixture({[path(owner)]:row(owner)});await b.c.authCallback(user(owner));b.getState().tasks=[{id:1,text:'Confirmada',day:'monday'}];assert.equal(await b.window.saveStateNow(true),true);b.rows.set(path(owner),row(owner,{tasks:[{id:2,text:'Outro dispositivo',day:'tuesday'}]}));await b.c.authCallback(user(owner));assert.equal(b.getState().tasks[0].id,2);assert.equal(createAccountRecovery(b.c.localStorage,owner).list(owner).length,0);});
+test('alteração local não confirmada continua recuperável e não é confundida com navegação',async()=>{const b=fixture({[path(owner)]:row(owner)});await b.c.authCallback(user(owner));b.getState().tasks=[{id:88,text:'Não enviada',day:'monday'}];b.window.saveState(true);await b.c.authCallback(user(owner));const copies=createAccountRecovery(b.c.localStorage,owner).list(owner);assert.equal(copies.length,1);assert.equal(copies[0].tasks[0].id,88);assert.equal(b.getState().tasks.length,0);});
+test('quota apenas na compactação opcional não bloqueia login seguro nem remove originais',async()=>{const b=fixture({[path(owner)]:row(owner)});const raw=JSON.stringify({ownerUid:owner,tasks:[]});b.stored.set('missao_tatica_conflict_backup_'+owner,raw);const set=b.c.localStorage.setItem;b.c.localStorage.setItem=(key,value)=>{if(key.endsWith(':v2'))throw new DOMException('quota','QuotaExceededError');set(key,value);};await b.c.authCallback(user(owner));assert.equal(b.elements['app-wrapper'].style.display,'block');assert.equal(b.stored.get('missao_tatica_conflict_backup_'+owner),raw);assert.equal(b.cloudWrites.length,0);});

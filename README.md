@@ -22,7 +22,7 @@ A integração privada com IA continua exclusiva do proprietário.
 - [Aplicação oficial](https://victorduarteferreira1997.github.io/missao-tatica/)
 - [Endereço direto](https://victorduarteferreira1997.github.io/missao-tatica/app.html)
 
-A versão atual é **v1.9.73**. A raiz, `teste_novos_modulos.html` e as prévias
+A versão atual é **v1.9.74**. A raiz, `teste_novos_modulos.html` e as prévias
 estáticas v1.9.11/v1.9.13 encaminham para a aplicação oficial. Parâmetros e
 fragmentos dos favoritos são preservados.
 
@@ -185,6 +185,20 @@ e revisão no app. Detalhes operacionais estão em [ai/README.md](ai/README.md).
 A ponte não recebe acesso administrativo ao Firebase. Finanças e Corpo permanecem
 manuais. Alterações na autorização exigem reativar a conexão privada; a rotina de
 consulta não exige nova publicação manual da seleção semanal legada.
+
+## Resposta da interface e recuperação local · v1.9.74
+
+Excluir uma missão e outras ações locais atualizam a tela antes da confirmação da
+nuvem, mantendo o estado de salvamento visível. Perfil é gravado uma vez por sessão
+ou mudança; retratos de fundo ainda em espera são consolidados sem atravessar
+salvamentos explícitos ou transações da IA.
+
+O login distingue navegação/metadados de alterações reais. Versões já confirmadas
+e cópias equivalentes são dispensadas automaticamente; diferenças locais ainda
+não confirmadas continuam recuperáveis. O arquivo legado permanece compatível com
+abas antigas. Não há limpeza de missões, reset ou migração Firestore.
+
+[Regras, preservação e testes](docs/RESPOSTA_E_RECUPERACAO.md).
 
 ## Reagendamento por data · v1.9.73
 
