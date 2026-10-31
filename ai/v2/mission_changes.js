@@ -1,0 +1,31 @@
+import {v2Assert,v2Exact,v2Text,v2Integer,v2Ref,v2GrantId,v2Date} from './contract.js';
+export const MISSION_CHANGE_KIND='mission.update';
+export const MISSION_CHANGE_TTL=90*86400000;
+const changeText=(value,max=200)=>{const s=v2Text(value,max).trim();v2Assert(s.length>0);return s;};
+const changeKey=value=>{v2Assert(typeof value==='string'&&/^[A-Za-z0-9_-]{8,80}$/.test(value));return value;};
+export function missionChangeFields(value){
+ v2Exact(value,['targetRef','targetVersion','reason','patch']);v2Ref(value.targetRef);v2Ref(value.targetVersion);
+ const reason=changeText(value.reason,500),p=value.patch,allowed=['title','date','durationMinutes','startTime','priority','subtaskEdits','addSubtasks'];
+ v2Assert(p&&typeof p==='object'&&!Array.isArray(p)&&Object.keys(p).length>0&&Object.keys(p).every(k=>allowed.includes(k)));
+ const patch={};
+ if(Object.hasOwn(p,'title'))patch.title=changeText(p.title);
+ if(Object.hasOwn(p,'date')){v2Assert(typeof p.date==='string'&&/^20\d\d-\d\d-\d\d$/.test(p.date));const d=new Date(p.date+'T12:00:00Z');v2Assert(Number.isFinite(+d)&&d.toISOString().slice(0,10)===p.date);patch.date=p.date;}
+ if(Object.hasOwn(p,'durationMinutes')){v2Integer(p.durationMinutes,240);v2Assert(p.durationMinutes>=5);patch.durationMinutes=p.durationMinutes;}
+ if(Object.hasOwn(p,'startTime')){v2Assert(typeof p.startTime==='string'&&(!p.startTime||/^([01]\d|2[0-3]):[0-5]\d$/.test(p.startTime)));patch.startTime=p.startTime;}
+ if(Object.hasOwn(p,'priority')){v2Assert(['baixa','media','alta','essencial','critica'].includes(p.priority));patch.priority=p.priority;}
+ if(Object.hasOwn(p,'subtaskEdits')){v2Assert(Array.isArray(p.subtaskEdits)&&p.subtaskEdits.length>0&&p.subtaskEdits.length<=100);patch.subtaskEdits=p.subtaskEdits.map(s=>{v2Exact(s,['index','title']);v2Integer(s.index,99);return {index:s.index,title:changeText(s.title)};});v2Assert(new Set(patch.subtaskEdits.map(s=>s.index)).size===patch.subtaskEdits.length);}
+ if(Object.hasOwn(p,'addSubtasks')){v2Assert(Array.isArray(p.addSubtasks)&&p.addSubtasks.length>0&&p.addSubtasks.length<=12);patch.addSubtasks=p.addSubtasks.map(s=>changeText(s));}
+ const result={targetRef:value.targetRef,targetVersion:value.targetVersion,reason,patch};v2Assert(new TextEncoder().encode(JSON.stringify(result)).length<=12000);return result;
+}
+export function missionChangeRequest(value){v2Exact(value,['idempotencyKey','fields']);return {idempotencyKey:changeKey(value.idempotencyKey),fields:missionChangeFields(value.fields)};}
+export function missionChangeRow(row){
+ v2Exact(row,['id','grantId','grantVersion','version','kind','status','createdAt','expiresAt','fields','expectedTaskVersion','receiptRef']);v2Ref(row.id);v2GrantId(row.grantId);v2Integer(row.grantVersion);v2Integer(row.version);v2Assert(row.kind===MISSION_CHANGE_KIND&&['pending','applying','accepted','rejected','expired'].includes(row.status));
+ for(const k of ['createdAt','expiresAt']){v2Date(row[k]);v2Assert(row[k]);}if(row.fields!==null)missionChangeFields(row.fields);else v2Assert(['accepted','rejected','expired'].includes(row.status));
+ if(row.expectedTaskVersion!==null)v2Ref(row.expectedTaskVersion);if(row.receiptRef!==null)v2Ref(row.receiptRef);v2Assert(row.status!=='accepted'||row.receiptRef!==null);v2Assert(!['applying','accepted'].includes(row.status)||row.expectedTaskVersion!==null);return row;
+}
+const changeString=maxLength=>({type:'string',maxLength}),changeObject=(required,properties)=>({type:'object',additionalProperties:false,required,properties}),changeRef={type:'string',pattern:'^[a-f0-9]{64}$',minLength:64,maxLength:64};
+export const MISSION_CHANGE_TOOLS=[
+ {name:'submitMissionChange',title:'Propor alteração em missão existente',description:'Envia mission.update para revisão no app, sem alterar diretamente. Antes, consulte listMissions com cópia fresh; use exatamente ref e entityVersion retornados, nunca invente identificadores. Só envie após pedido explícito do usuário para propor a alteração; conversa ou análise não autoriza envio. Uma missão avulsa pendente por proposta. Não conclui, exclui, modifica recorrência, reuniões, eventos externos, RADAR, Finanças ou Corpo. patch omite campos inalterados; date é a data efetiva YYYY-MM-DD, nunca apenas o dia da semana. startTime vazio remove horário; duração recalcula término. subtaskEdits usa index zero-based da lista consultada e altera só texto; addSubtasks acrescenta, sem apagar ou concluir as existentes. Prioridade só deve ser alterada por pedido explícito; o app mostrará o valor atual. Preserve idempotencyKey nas tentativas. pending significa aguardando revisão; não diga que a missão já foi alterada.',
+ inputSchema:changeObject(['idempotencyKey','fields'],{idempotencyKey:{type:'string',minLength:8,maxLength:80,pattern:'^[A-Za-z0-9_-]+$'},fields:changeObject(['targetRef','targetVersion','reason','patch'],{targetRef:changeRef,targetVersion:changeRef,reason:{...changeString(500),minLength:1},patch:changeObject([],{title:{...changeString(200),minLength:1},date:{type:'string',pattern:'^20[0-9]{2}-[0-9]{2}-[0-9]{2}$'},durationMinutes:{type:'integer',minimum:5,maximum:240},startTime:changeString(5),priority:{type:'string',enum:['baixa','media','alta','essencial','critica']},subtaskEdits:{type:'array',minItems:1,maxItems:100,items:changeObject(['index','title'],{index:{type:'integer',minimum:0,maximum:99},title:{...changeString(200),minLength:1}})},addSubtasks:{type:'array',minItems:1,maxItems:12,items:{...changeString(200),minLength:1}}})})}),annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:false},securitySchemes:[{type:'oauth2',scopes:['proposals:create']}]},
+ {name:'listMissionChanges',title:'Consultar alterações propostas',description:'Lista alterações de missões propostas para revisão, com paginação. accepted confirma que o aplicativo salvou a alteração. Não substitui consultar listMissions para preparar outra alteração. Não reenvie com outra chave para contornar erro ou recusa.',inputSchema:changeObject([],{status:{type:'string',enum:['pending','applying','accepted','rejected','expired']},cursor:changeString(4096)}),annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:false},securitySchemes:[{type:'oauth2',scopes:['planning:read']}]}
+];

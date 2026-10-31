@@ -12,7 +12,7 @@ export function v2GrantId(value) { v2Assert(typeof value==='string' && /^[a-zA-Z
 export function v2Date(value) { v2Text(value,40); v2Assert(value==='' || (Number.isFinite(Date.parse(value)) && /^20\d\d-\d\d-\d\d(?:T.*)?$/.test(value))); }
 export async function v2Hash(value) { const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)); return [...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join(''); }
 export function v2ValidateChoices(value) {
-    const permissions={allowProposals:'missions',allowRadarProposals:'radar',allowStudyProposals:'studies'};
+    const permissions={allowProposals:'missions',allowRadarProposals:'radar',allowStudyProposals:'studies',allowMissionChanges:'missions'};
     v2Exact(value,['modules','includeFuture',...Object.keys(permissions).filter(k=>Object.hasOwn(value||{},k)),...(Object.hasOwn(value||{},'allowLibraryProposals')?['allowLibraryProposals']:[])]);v2Exact(value.modules,V2_MODULES);
     for(const [key,module] of Object.entries(permissions))if(Object.hasOwn(value,key))v2Assert(typeof value[key]==='boolean'&&(!value[key]||value.modules[module]));
     if(Object.hasOwn(value,'allowLibraryProposals'))v2Assert(typeof value.allowLibraryProposals==='boolean');

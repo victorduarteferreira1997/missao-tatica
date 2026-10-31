@@ -1,4 +1,4 @@
-import {v2GrantId,v2Integer,v2ValidateChoices,v2Ref,v2Assert,v2Date} from './contract.js?v=1.9.71';
+import {v2GrantId,v2Integer,v2ValidateChoices,v2Ref,v2Assert,v2Date} from './contract.js?v=1.9.75';
 import {AI_OWNER_UID} from '../contract.v1.js';
 const V2_BRIDGE='https://missao-tatica-ai-bridge.victorduarteferreira1997.workers.dev';
 export function createV2BrowserRequest({getUser,getAppCheckToken,fetchImpl=fetch}) {
