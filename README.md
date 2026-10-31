@@ -22,9 +22,18 @@ A integração privada com IA continua exclusiva do proprietário.
 - [Aplicação oficial](https://victorduarteferreira1997.github.io/missao-tatica/)
 - [Endereço direto](https://victorduarteferreira1997.github.io/missao-tatica/app.html)
 
-A versão atual é **v1.9.74**. A raiz, `teste_novos_modulos.html` e as prévias
+A versão atual é **v1.9.75**. A raiz, `teste_novos_modulos.html` e as prévias
 estáticas v1.9.11/v1.9.13 encaminham para a aplicação oficial. Parâmetros e
 fragmentos dos favoritos são preservados.
+
+## Alterações de missões pela IA · v1.9.75
+
+Em **Propostas da IA → Alterar missões**, compare antes e depois de alterações
+pedidas no chat. Reagende com data efetiva, ajuste título, duração, horário,
+prioridade e subtarefas, preservando registros e recompensas. Exige permissão
+própria e ativação do Worker existente; até lá a aba informa a pendência.
+
+- [Uso, ativação, proteção dos dados e limites](docs/ALTERACOES_DE_MISSOES_COM_IA.md)
 
 ## Biblioteca: catálogo, leituras e planos · v1.9.70
 

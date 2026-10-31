@@ -1,3 +1,5 @@
+import {MISSION_CHANGE_TOOLS} from '../v2/mission_changes.js';
+import {MissionChangeError} from './mission-changes.mjs';
 import {DAYS,validateWeek,ContractError} from '../contract.v1.js';
 import {V2_FRESH_MS,V2ValidationError,v2ValidateChoices,v2ValidateSnapshot,v2Module,v2GrantId,v2Integer,v2Ref} from '../v2/contract.js';
 import {V2_PROPOSAL_SCOPE,v2ProposalAllowed,V2_ENTITY_KINDS,V2_PROPOSAL_TOOLS} from '../v2/proposals.js';
@@ -26,7 +28,7 @@ const planningB64=b=>btoa(String.fromCharCode(...b)).replaceAll('+','-').replace
 function planningUnb64(s){if(typeof s!=='string'||s.length>8192||!/^[A-Za-z0-9_-]+$/.test(s))planningFail(401,'invalid_token');return Uint8Array.from(atob(s.replaceAll('-','+').replaceAll('_','/')),c=>c.charCodeAt(0));}
 function planningSecret(s){if(typeof s!=='string'||s.length<32||s.length>256||/\s/.test(s))planningFail(503,'service_unavailable');}
 export function planningArguments(name,args){
-    const t=[...PLANNING_TOOLS,...V2_PROPOSAL_TOOLS,...LIBRARY_IMPORT_TOOLS].find(t=>t.name===name);
+    const t=[...PLANNING_TOOLS,...V2_PROPOSAL_TOOLS,...LIBRARY_IMPORT_TOOLS,...MISSION_CHANGE_TOOLS].find(t=>t.name===name);
     if(!t||!args||typeof args!=='object'||Array.isArray(args)||Object.keys(args).some(k=>!Object.hasOwn(t.inputSchema.properties,k)))planningFail(400,'invalid_arguments');
     if(t.inputSchema.required.some(k=>!Object.hasOwn(args,k)))planningFail(400,'invalid_arguments');
     for(const [k,v] of Object.entries(args)){
@@ -37,7 +39,7 @@ export function planningArguments(name,args){
     }
     return args;
 }
-export function createPlanningService({now=Date.now,readBody,proposals,libraryImports}={}){
+export function createPlanningService({now=Date.now,readBody,proposals,libraryImports,missionChanges}={}){
     let cachedSecret='',cachedKey;
     async function signingKey(secret){planningSecret(secret);if(secret!==cachedSecret){cachedSecret=secret;cachedKey=crypto.subtle.importKey('raw',planningEncoder.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);}return cachedKey;}
     async function seal(kind,p,secret){const body=planningB64(planningEncoder.encode(JSON.stringify(p)));return body+'.'+planningB64(new Uint8Array(await crypto.subtle.sign('HMAC',await signingKey(secret),planningEncoder.encode(kind+'.'+body))));}
@@ -57,7 +59,7 @@ export function createPlanningService({now=Date.now,readBody,proposals,libraryIm
         if(!row)planningFail(401,'grant_not_active');grant(row);
         if(expected&&(row.grant_id!==expected.grantId||row.version!==expected.grantVersion))planningFail(401,'grant_changed');return row;
     }
-    async function oauthGrant(env,scope=PLANNING_SCOPE){const row=await activeGrant(env);if(scope.split(' ').includes(V2_PROPOSAL_SCOPE)){if(env.AI_V2_PROPOSALS_ENABLED!=='true')planningFail(404,'v2_proposals_not_enabled');const choices=grant(row).choices;if(!(env.AI_LIBRARY_IMPORT_ENABLED==='true'&&choices.allowLibraryProposals===true)&&!['mission.create',...(env.AI_V2_ENTITIES_ENABLED==='true'?V2_ENTITY_KINDS:[])].some(kind=>v2ProposalAllowed(choices,kind)))planningFail(403,'proposal_consent_required');}return {grantId:row.grant_id,grantVersion:row.version};}
+    async function oauthGrant(env,scope=PLANNING_SCOPE){const row=await activeGrant(env);if(scope.split(' ').includes(V2_PROPOSAL_SCOPE)){if(env.AI_V2_PROPOSALS_ENABLED!=='true')planningFail(404,'v2_proposals_not_enabled');const choices=grant(row).choices;if(!(env.AI_MISSION_CHANGES_ENABLED==='true'&&choices.allowMissionChanges===true)&&!(env.AI_LIBRARY_IMPORT_ENABLED==='true'&&choices.allowLibraryProposals===true)&&!['mission.create',...(env.AI_V2_ENTITIES_ENABLED==='true'?V2_ENTITY_KINDS:[])].some(kind=>v2ProposalAllowed(choices,kind)))planningFail(403,'proposal_consent_required');}return {grantId:row.grant_id,grantVersion:row.version};}
     async function bind(body,env){
         const requestedScope=body?.requestedScope??PLANNING_SCOPE;
         if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).sort().join(',')!==(Object.hasOwn(body,'requestedScope')?'expectedGrantId,expectedGrantVersion,requestedScope,subject':'expectedGrantId,expectedGrantVersion,subject')||!/^[a-f0-9]{64}$/.test(body.subject)||![PLANNING_SCOPE,V2_PROPOSAL_SCOPE].includes(requestedScope))planningFail(400,'invalid_arguments');
@@ -72,6 +74,7 @@ export function createPlanningService({now=Date.now,readBody,proposals,libraryIm
     }
     async function read(name,args,claims,env){
         ready(env);planningArguments(name,args);
+        if(MISSION_CHANGE_TOOLS.some(t=>t.name===name))return missionChanges.call(name,args,claims,env);
         if(LIBRARY_IMPORT_TOOLS.some(t=>t.name===name))return libraryImports.call(name,args,claims,env);
         if(V2_PROPOSAL_TOOLS.some(t=>t.name===name))return proposals.call(name,args,claims,env);
         if(typeof claims?.scope!=='string'||!claims.scope.split(' ').includes(PLANNING_SCOPE))planningFail(403,'insufficient_scope');
@@ -123,7 +126,7 @@ export function createPlanningService({now=Date.now,readBody,proposals,libraryIm
             if(url.pathname==='/v2/connection')return send(200,await bind(body,env));
             if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).sort().join(',')!=='arguments,name')planningFail(400,'invalid_arguments');
             return send(200,await read(body.name,body.arguments,claims,env));
-        }catch(e){return send(e instanceof PlanningError||e instanceof ProposalError||e instanceof CatalogError?e.status:e?.status===413?413:e?.status===415?415:e instanceof ContractError?400:e instanceof V2ValidationError?422:503,{error:e instanceof PlanningError||e instanceof ProposalError||e instanceof CatalogError?e.code:e?.status===413?'body_too_large':e?.status===415?'json_required':e instanceof ContractError?'invalid_arguments':e instanceof V2ValidationError?'invalid_shared_data':'service_unavailable'});}
+        }catch(e){return send(e instanceof PlanningError||e instanceof ProposalError||e instanceof CatalogError||e instanceof MissionChangeError?e.status:e?.status===413?413:e?.status===415?415:e instanceof ContractError?400:e instanceof V2ValidationError?422:503,{error:e instanceof PlanningError||e instanceof ProposalError||e instanceof CatalogError||e instanceof MissionChangeError?e.code:e?.status===413?'body_too_large':e?.status===415?'json_required':e instanceof ContractError?'invalid_arguments':e instanceof V2ValidationError?'invalid_shared_data':'service_unavailable'});}
     }
     return {oauthGrant,bind,read,fetch:fetchRoute};
 }

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.74-responsive-save">
+    <meta name="app-build" content="v1.9.75-mission-changes">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -148,6 +148,9 @@
         import { installTaskForms } from './ui/task_forms.v6.js?v=1.9.73';
         import * as Library from './library.v2.js?v=1.9.70';
         import { installLibrary } from './ui/library.v3.js?v=1.9.71';
+        import {installMissionChanges} from './ui/mission_changes.v1.js?v=1.9.75';
+        import {createMissionChangeStore} from './ai/v2/mission_changes_browser.js';
+        import {applyMissionChange} from './ai/v2/mission_change_apply.js';
         import {installLibraryImports} from './ui/library_import.v1.js?v=1.9.71';
         import {createLibraryImportStore} from './ai/v2/library_browser.js?v=1.9.71';
         import {applyLibraryImport} from './library_import.v1.js?v=1.9.71';
@@ -156,12 +159,12 @@
         import { AI_CONFIG } from './ai/config.v1.js';
         import { AI_V2_CONFIG } from './ai/config.v2.js';
         import { applyEntity, radarTarget } from './ai/v2/entity_apply.js';
-        import { createCloudStateStore } from './ai/v2/cloud_state.js?v=1.9.73';
+        import { createCloudStateStore } from './ai/v2/cloud_state.js?v=1.9.75';
         import { createConfirmedStateWriter } from './ai/v2/saved_state.js?v=1.9.74';
-        import { createV2BrowserStore } from './ai/v2/browser.js?v=1.9.71';
-        import { installAiAccess } from './ui/ai_access.v3.js?v=1.9.71';
+        import { createV2BrowserStore } from './ai/v2/browser.js?v=1.9.75';
+        import { installAiAccess } from './ui/ai_access.v3.js?v=1.9.75';
         import { createV2ProposalsBrowserStore } from './ai/v2/proposals_browser.js';
-        import { installAiV2Proposals } from './ui/ai_proposals.v2.js?v=1.9.73';
+        import { installAiV2Proposals } from './ui/ai_proposals.v2.js?v=1.9.75';
         import { createAiBrowserStore } from './ai/bridge_rest.v1.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { initializeAppCheck, ReCaptchaEnterpriseProvider, getToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
@@ -173,7 +176,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.74';
+        const APP_VERSION = 'v1.9.75';
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
             authDomain: "missao-tatica.firebaseapp.com",
@@ -1795,6 +1798,7 @@
             }),
             onAdopt:(saved,uid,receipt)=>{if(currentUser?.uid!==uid)return;const adoptedUser=currentUser,adoptedGeneration=sessionGeneration;syncReceipts.confirm(uid,saved,()=>isSession(adoptedUser,adoptedGeneration)).catch(()=>{});for(const task of saved.tasks.filter(t=>t.aiV2ProposalId)){if(!state.tasks.some(t=>String(t.id)===String(task.id))&&!state.aiAppliedProposals?.[task.aiV2ProposalId])state.tasks.push(task);}
                 if(receipt?.kind&&receipt.kind!=='mission.create'&&!state.aiAppliedProposals?.[receipt.proposalId]){
+                    if(receipt.kind==='mission.update'){const updated=saved.tasks.find(t=>String(t.id)===String(receipt.taskId)),index=state.tasks.findIndex(t=>String(t.id)===String(receipt.taskId));if(updated&&index>=0)state.tasks[index]=structuredClone(updated);if(saved.planning?.calendarMoves){state.planning||={};state.planning.calendarMoves=structuredClone(saved.planning.calendarMoves);}}
                     if(receipt.kind.startsWith('radar.')){state.operationalControl=state.operationalControl||{};const demands=state.operationalControl.demands=state.operationalControl.demands||[];const updated=saved.operationalControl?.demands.find(d=>String(d.id)===String(receipt.taskId));const index=demands.findIndex(d=>String(d.id)===String(receipt.taskId));if(updated){if(index>=0)demands[index]=updated;else if(receipt.kind==='radar.create')demands.unshift(updated);}}
                     if(receipt.kind==='library.catalog.import'&&saved.libraryData)state.libraryData=structuredClone(saved.libraryData);
                     if(receipt.kind==='study.plan.create'){state.studyData=state.studyData||{};state.studyData.studyPlan=state.studyData.studyPlan||{};for(const [parent,key,source] of [[state.studyData.studyPlan,'tracks',saved.studyData.studyPlan.tracks],[state.studyData,'subjects',saved.studyData.subjects],[state.studyData.studyPlan,'weeklyBlocks',saved.studyData.studyPlan.weeklyBlocks]]){const items=parent[key]=parent[key]||[];for(const item of source.filter(i=>i.aiV2ProposalId===receipt.proposalId)){if(!items.some(i=>String(i.id)===String(item.id)))items.push(item);}}}
@@ -6582,6 +6586,16 @@
         };
 
         installLibrary(window, {document, getState: () => state, getUiState: () => uiState, render});
+        installMissionChanges(window,{document,getUiState:()=>uiState,getState:()=>state,getUser:()=>currentUser,render,
+            calculateCost:(...args)=>window.calculateTaskCost(...args),
+            store:createMissionChangeStore({getUser:()=>currentUser,getAppCheckToken:async()=>(await getToken(appCheck,false)).token}),
+            saveConfirmed:()=>window.saveStateNow(true,'mission-change-before-apply'),
+            applyChange:row=>{const user=currentUser;return confirmedStateWriter.exclusive(async()=>{
+                if(!isAuthorizedAppOwner(user)||!isSession(user)||!sessionReady)throw Error('Integração IA restrita ao proprietário.');
+                const stamp=new Date().toISOString(),result=await cloudStateStore.applyMutation(user,row.id,s=>applyMissionChange(s,row,{calculateCost:(...args)=>window.calculateTaskCost(...args)}),stamp);
+                if(isSession(user)){try{Promise.resolve(window.onAiV2Saved?.(JSON.parse(result.payload),user.uid)).catch(()=>{});}catch{}}return result;
+            });}
+        });
         installLibraryImports(window,{document,getState:()=>state,getUiState:()=>uiState,getUser:()=>currentUser,render,
             store:createLibraryImportStore({getUser:()=>currentUser,getAppCheckToken:async()=>(await getToken(appCheck,false)).token}),
             saveConfirmed:()=>window.saveStateNow(true,'library-import-before-apply'),
@@ -7200,6 +7214,7 @@
             html += window.renderAiInbox?.() || '';
             html += window.renderAiAccess?.() || '';
             html += window.renderAiV2Proposals?.() || '';
+            html += window.renderMissionChanges?.() || '';
 
             // Ações principais da IA e manutenção dos dados.
             const aiProposalsButton = window.renderAiV2ProposalsButton?.() || '';
@@ -7229,6 +7244,7 @@
             window.bindAiInbox?.(appDiv);
             window.bindAiAccess?.(appDiv);
             window.bindAiV2Proposals?.(appDiv);
+            window.bindMissionChanges?.(appDiv);
             window.bindRecoveryDialogs(appDiv, recoverySnapshots);
             window.bindWorkDialogs(appDiv, workSnapshots);
             window.restorePomodoroDraft(appDiv);
@@ -7257,7 +7273,7 @@
                 });
             }
             window.bindEditTaskDialog(appDiv);
-            const viewBlocked = Boolean(window.isMissionScheduleOpen?.()) || Boolean(uiState.libraryImportOpen) || Boolean(uiState.readingAction) || Boolean(uiState.library) || uiState.deleteTaskPrompt?.show || uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) || Boolean(uiState.studyTrackDeletion) || Boolean(uiState.subtaskEditor) || Boolean(uiState.radarLink) || Boolean(uiState.radarNext);
+            const viewBlocked = Boolean(window.isMissionChangesOpen?.()) || Boolean(window.isMissionScheduleOpen?.()) || Boolean(uiState.libraryImportOpen) || Boolean(uiState.readingAction) || Boolean(uiState.library) || uiState.deleteTaskPrompt?.show || uiState.confirm.show || uiState.alert.show || uiState.customPrompt.show || Boolean(uiState.dataManager) || Boolean(uiState.studyTrackDeletion) || Boolean(uiState.subtaskEditor) || Boolean(uiState.radarLink) || Boolean(uiState.radarNext);
             window.restoreViewState?.(appDiv, viewSnapshot, {pageKey: viewPageKey, blocked: viewBlocked});
             for (const prefix of ['ct','et']) if (document.getElementById(prefix+'-radar')) window.updateDependencySelection?.(prefix);
             window.bindPlanningReview?.(appDiv);

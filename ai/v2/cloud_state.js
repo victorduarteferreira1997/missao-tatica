@@ -17,7 +17,7 @@ export function createCloudStateStore({getUser,transact,onAdopt=()=>{}}){
   const result=await transact(user,async tx=>{check(user);const row=await tx.get();check(user);const s=parse(row),receipts=row.aiApplications||{},old=receipts[proposalId];
    if(old)return {payload:row.data,receipt:old,replayed:true};
    if(row.data!==expected)conflict();if(Object.keys(receipts).length>=1000)throw Error('Limite de comprovantes atingido.');
-   const receipt=await mutate(s);if(!receipt||receipt.taskId===undefined)throw Error('Cadastro inválido.');receipt.createdAt=savedAt;
+   const receipt=await mutate(s);check(user);if(!receipt||receipt.taskId===undefined)throw Error('Cadastro inválido.');receipt.createdAt=savedAt;
    s.aiAppliedProposals={...(s.aiAppliedProposals||{}),[proposalId]:receipt.taskId};s.lastSavedAt=savedAt;s.updatedAt=savedAt;s.lastSaveReason='ai-v2-apply';
    const payload=JSON.stringify(s);tx.set({data:payload,updatedAt:savedAt,revision:(row.revision||0)+1,aiApplications:{...receipts,[proposalId]:receipt}});
    return {payload,receipt,replayed:false};

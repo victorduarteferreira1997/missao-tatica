@@ -263,7 +263,7 @@ function v2GrantId(value) { v2Assert(typeof value==='string' && /^[a-zA-Z0-9_-]{
 function v2Date(value) { v2Text(value,40); v2Assert(value==='' || (Number.isFinite(Date.parse(value)) && /^20\d\d-\d\d-\d\d(?:T.*)?$/.test(value))); }
 async function v2Hash(value) { const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)); return [...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join(''); }
 function v2ValidateChoices(value) {
-    const permissions={allowProposals:'missions',allowRadarProposals:'radar',allowStudyProposals:'studies'};
+    const permissions={allowProposals:'missions',allowRadarProposals:'radar',allowStudyProposals:'studies',allowMissionChanges:'missions'};
     v2Exact(value,['modules','includeFuture',...Object.keys(permissions).filter(k=>Object.hasOwn(value||{},k)),...(Object.hasOwn(value||{},'allowLibraryProposals')?['allowLibraryProposals']:[])]);v2Exact(value.modules,V2_MODULES);
     for(const [key,module] of Object.entries(permissions))if(Object.hasOwn(value,key))v2Assert(typeof value[key]==='boolean'&&(!value[key]||value.modules[module]));
     if(Object.hasOwn(value,'allowLibraryProposals'))v2Assert(typeof value.allowLibraryProposals==='boolean');
@@ -510,6 +510,113 @@ function createLibraryImports({now=Date.now,verifyOwner=createFirebaseVerifier()
  }};
 }
 
+// ../v2/mission_changes.js
+const MISSION_CHANGE_KIND='mission.update';
+const MISSION_CHANGE_TTL=90*86400000;
+const changeText=(value,max=200)=>{const s=v2Text(value,max).trim();v2Assert(s.length>0);return s;};
+const changeKey=value=>{v2Assert(typeof value==='string'&&/^[A-Za-z0-9_-]{8,80}$/.test(value));return value;};
+function missionChangeFields(value){
+ v2Exact(value,['targetRef','targetVersion','reason','patch']);v2Ref(value.targetRef);v2Ref(value.targetVersion);
+ const reason=changeText(value.reason,500),p=value.patch,allowed=['title','date','durationMinutes','startTime','priority','subtaskEdits','addSubtasks'];
+ v2Assert(p&&typeof p==='object'&&!Array.isArray(p)&&Object.keys(p).length>0&&Object.keys(p).every(k=>allowed.includes(k)));
+ const patch={};
+ if(Object.hasOwn(p,'title'))patch.title=changeText(p.title);
+ if(Object.hasOwn(p,'date')){v2Assert(typeof p.date==='string'&&/^20\d\d-\d\d-\d\d$/.test(p.date));const d=new Date(p.date+'T12:00:00Z');v2Assert(Number.isFinite(+d)&&d.toISOString().slice(0,10)===p.date);patch.date=p.date;}
+ if(Object.hasOwn(p,'durationMinutes')){v2Integer(p.durationMinutes,240);v2Assert(p.durationMinutes>=5);patch.durationMinutes=p.durationMinutes;}
+ if(Object.hasOwn(p,'startTime')){v2Assert(typeof p.startTime==='string'&&(!p.startTime||/^([01]\d|2[0-3]):[0-5]\d$/.test(p.startTime)));patch.startTime=p.startTime;}
+ if(Object.hasOwn(p,'priority')){v2Assert(['baixa','media','alta','essencial','critica'].includes(p.priority));patch.priority=p.priority;}
+ if(Object.hasOwn(p,'subtaskEdits')){v2Assert(Array.isArray(p.subtaskEdits)&&p.subtaskEdits.length>0&&p.subtaskEdits.length<=100);patch.subtaskEdits=p.subtaskEdits.map(s=>{v2Exact(s,['index','title']);v2Integer(s.index,99);return {index:s.index,title:changeText(s.title)};});v2Assert(new Set(patch.subtaskEdits.map(s=>s.index)).size===patch.subtaskEdits.length);}
+ if(Object.hasOwn(p,'addSubtasks')){v2Assert(Array.isArray(p.addSubtasks)&&p.addSubtasks.length>0&&p.addSubtasks.length<=12);patch.addSubtasks=p.addSubtasks.map(s=>changeText(s));}
+ const result={targetRef:value.targetRef,targetVersion:value.targetVersion,reason,patch};v2Assert(new TextEncoder().encode(JSON.stringify(result)).length<=12000);return result;
+}
+function missionChangeRequest(value){v2Exact(value,['idempotencyKey','fields']);return {idempotencyKey:changeKey(value.idempotencyKey),fields:missionChangeFields(value.fields)};}
+function missionChangeRow(row){
+ v2Exact(row,['id','grantId','grantVersion','version','kind','status','createdAt','expiresAt','fields','expectedTaskVersion','receiptRef']);v2Ref(row.id);v2GrantId(row.grantId);v2Integer(row.grantVersion);v2Integer(row.version);v2Assert(row.kind===MISSION_CHANGE_KIND&&['pending','applying','accepted','rejected','expired'].includes(row.status));
+ for(const k of ['createdAt','expiresAt']){v2Date(row[k]);v2Assert(row[k]);}if(row.fields!==null)missionChangeFields(row.fields);else v2Assert(['accepted','rejected','expired'].includes(row.status));
+ if(row.expectedTaskVersion!==null)v2Ref(row.expectedTaskVersion);if(row.receiptRef!==null)v2Ref(row.receiptRef);v2Assert(row.status!=='accepted'||row.receiptRef!==null);v2Assert(!['applying','accepted'].includes(row.status)||row.expectedTaskVersion!==null);return row;
+}
+const changeString=maxLength=>({type:'string',maxLength}),changeObject=(required,properties)=>({type:'object',additionalProperties:false,required,properties}),changeRef={type:'string',pattern:'^[a-f0-9]{64}$',minLength:64,maxLength:64};
+const MISSION_CHANGE_TOOLS=[
+ {name:'submitMissionChange',title:'Propor alteração em missão existente',description:'Envia mission.update para revisão no app, sem alterar diretamente. Antes, consulte listMissions com cópia fresh; use exatamente ref e entityVersion retornados, nunca invente identificadores. Só envie após pedido explícito do usuário para propor a alteração; conversa ou análise não autoriza envio. Uma missão avulsa pendente por proposta. Não conclui, exclui, modifica recorrência, reuniões, eventos externos, RADAR, Finanças ou Corpo. patch omite campos inalterados; date é a data efetiva YYYY-MM-DD, nunca apenas o dia da semana. startTime vazio remove horário; duração recalcula término. subtaskEdits usa index zero-based da lista consultada e altera só texto; addSubtasks acrescenta, sem apagar ou concluir as existentes. Prioridade só deve ser alterada por pedido explícito; o app mostrará o valor atual. Preserve idempotencyKey nas tentativas. pending significa aguardando revisão; não diga que a missão já foi alterada.',
+ inputSchema:changeObject(['idempotencyKey','fields'],{idempotencyKey:{type:'string',minLength:8,maxLength:80,pattern:'^[A-Za-z0-9_-]+$'},fields:changeObject(['targetRef','targetVersion','reason','patch'],{targetRef:changeRef,targetVersion:changeRef,reason:{...changeString(500),minLength:1},patch:changeObject([],{title:{...changeString(200),minLength:1},date:{type:'string',pattern:'^20[0-9]{2}-[0-9]{2}-[0-9]{2}$'},durationMinutes:{type:'integer',minimum:5,maximum:240},startTime:changeString(5),priority:{type:'string',enum:['baixa','media','alta','essencial','critica']},subtaskEdits:{type:'array',minItems:1,maxItems:100,items:changeObject(['index','title'],{index:{type:'integer',minimum:0,maximum:99},title:{...changeString(200),minLength:1}})},addSubtasks:{type:'array',minItems:1,maxItems:12,items:{...changeString(200),minLength:1}}})})}),annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:false},securitySchemes:[{type:'oauth2',scopes:['proposals:create']}]},
+ {name:'listMissionChanges',title:'Consultar alterações propostas',description:'Lista alterações de missões propostas para revisão, com paginação. accepted confirma que o aplicativo salvou a alteração. Não substitui consultar listMissions para preparar outra alteração. Não reenvie com outra chave para contornar erro ou recusa.',inputSchema:changeObject([],{status:{type:'string',enum:['pending','applying','accepted','rejected','expired']},cursor:changeString(4096)}),annotations:{readOnlyHint:true,destructiveHint:false,openWorldHint:false},securitySchemes:[{type:'oauth2',scopes:['planning:read']}]}
+];
+
+// ./mission-changes.mjs
+const MISSION_CHANGE_SCHEMA=["-- Additive and repeatable: leaves all existing queues, grants and records intact.\nCREATE TABLE IF NOT EXISTS ai_mission_changes (\n id TEXT PRIMARY KEY CHECK(length(id)=64), grant_id TEXT NOT NULL,\n grant_version INTEGER NOT NULL, payload_hash TEXT NOT NULL,\n version INTEGER NOT NULL DEFAULT 1,\n status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','applying','accepted','rejected','expired')),\n created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL,\n fields TEXT CHECK(fields IS NULL OR length(CAST(fields AS BLOB))<=12000),\n expected_task_version TEXT, review_hash TEXT, receipt_ref TEXT\n)", "CREATE INDEX IF NOT EXISTS ai_mission_changes_status ON ai_mission_changes(status,created_at,id)", "CREATE INDEX IF NOT EXISTS ai_mission_changes_grant ON ai_mission_changes(grant_id,grant_version,created_at,id)"];
+const CHANGE_ORIGIN='https://victorduarteferreira1997.github.io';
+class MissionChangeError extends Error{constructor(status,code){super(code);this.status=status;this.code=code;}}
+const changeFail=(status,code)=>{throw new MissionChangeError(status,code);};
+function createMissionChanges({now=Date.now,verifyOwner=createFirebaseVerifier(),readBody}={}){
+ const ready=env=>{if(!['AI_V2_ENABLED','AI_V2_READ_ENABLED','AI_V2_PROPOSALS_ENABLED','AI_V2_APPLY_ENABLED','AI_MISSION_CHANGES_ENABLED'].every(k=>env[k]==='true'))changeFail(404,'mission_changes_not_enabled');};
+ const dbFor=env=>env.DB?.withSession?env.DB.withSession('first-primary'):env.DB;
+ const run=async statement=>{const r=await statement.run();if(!r.success)throw Error('database');return r.meta.changes;};
+ const initialized=new WeakMap();
+ async function ensure(env){const key=env.DB;if(!initialized.has(key)){const pending=(async()=>{const db=dbFor(env);for(const sql of MISSION_CHANGE_SCHEMA)await run(db.prepare(sql).bind());})();initialized.set(key,pending);pending.catch(()=>initialized.delete(key));}await initialized.get(key);}
+ const find=(db,id)=>db.prepare('SELECT * FROM ai_mission_changes WHERE id=?').bind(id).first();
+ const map=row=>missionChangeRow({id:row.id,grantId:row.grant_id,grantVersion:row.grant_version,version:row.version,kind:MISSION_CHANGE_KIND,status:row.status,createdAt:new Date(row.created_at).toISOString(),expiresAt:new Date(row.expires_at).toISOString(),fields:row.fields?JSON.parse(row.fields):null,expectedTaskVersion:row.expected_task_version||null,receiptRef:row.receipt_ref||null});
+ async function cleanup(db){await run(db.prepare("UPDATE ai_mission_changes SET status='expired',fields=NULL,expected_task_version=NULL,version=version+1 WHERE id IN (SELECT id FROM ai_mission_changes WHERE status='pending' AND expires_at<=? LIMIT 50)").bind(now()));await run(db.prepare("UPDATE ai_mission_changes SET fields=NULL WHERE id IN (SELECT id FROM ai_mission_changes WHERE status IN ('accepted','rejected') AND fields IS NOT NULL AND expires_at<=? LIMIT 50)").bind(now()));}
+ async function consent(db,claims,scope){
+  if(!claims?.scope?.split(' ').includes(scope))changeFail(403,'insufficient_scope');
+  const row=await db.prepare("SELECT choices FROM ai_v2_access WHERE singleton=1 AND grant_id=? AND version=? AND status='active' AND expires_at>?").bind(claims.grantId,claims.grantVersion,now()).first();
+  if(!row)changeFail(401,'grant_changed');if(v2ValidateChoices(JSON.parse(row.choices)).allowMissionChanges!==true)changeFail(403,'mission_change_consent_required');
+ }
+ async function cursor(value,env,body=null){
+  const secret=env.ACTION_SECRET;if(typeof secret!=='string'||secret.length<32)changeFail(503,'service_unavailable');
+  const enc=new TextEncoder(),key=await crypto.subtle.importKey('raw',enc.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);
+  const b64=bytes=>btoa(String.fromCharCode(...bytes)).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,'');
+  if(body){const payload=b64(enc.encode(JSON.stringify(body)));return payload+'.'+b64(new Uint8Array(await crypto.subtle.sign('HMAC',key,enc.encode('mission-change-cursor.'+payload))));}
+  try{if(typeof value!=='string'||value.length>4096)throw Error();const [p,s,...extra]=value.split('.');if(extra.length||!p||!s||!/^[A-Za-z0-9_-]+$/.test(p+s))throw Error();const decode=x=>Uint8Array.from(atob(x.replaceAll('-','+').replaceAll('_','/')),c=>c.charCodeAt(0));if(!await crypto.subtle.verify('HMAC',key,decode(s),enc.encode('mission-change-cursor.'+p)))throw Error();return JSON.parse(new TextDecoder().decode(decode(p)));}catch{changeFail(400,'invalid_cursor');}
+ }
+ async function validateTarget(db,claims,fields){
+  const row=await db.prepare("SELECT * FROM ai_v2_access WHERE singleton=1 AND grant_id=? AND version=? AND status='active' AND expires_at>?").bind(claims.grantId,claims.grantVersion,now()).first();
+  if(!row?.snapshot)changeFail(409,'mission_snapshot_required');
+  const g={grantId:row.grant_id,version:row.version,choices:v2ValidateChoices(JSON.parse(row.choices)),frozenRefs:JSON.parse(row.frozen_refs)},snapshot=JSON.parse(row.snapshot);v2ValidateSnapshot(snapshot,g,now());
+  if(snapshot.expectedProjectionVersion!==row.projection_version-1||snapshot.sourceSavedAt!==row.source_saved_at||!Number.isSafeInteger(row.synced_at)||row.synced_at>now()+60000||Math.min(Date.parse(snapshot.sourceSavedAt),row.synced_at)+V2_FRESH_MS<=now())changeFail(409,'mission_snapshot_stale');
+  const target=snapshot.entities.find(e=>e.kind==='mission'&&e.ref===fields.targetRef);if(!target||target.entityVersion!==fields.targetVersion)changeFail(409,'mission_target_changed');
+  if(target.fields.activityType!=='task'||target.fields.status!=='planned')changeFail(409,'mission_target_not_editable');
+  if(fields.patch.subtaskEdits?.some(s=>!target.fields.subtasks[s.index])||(target.fields.subtasks.length+(fields.patch.addSubtasks?.length||0))>100)changeFail(422,'invalid_subtasks');
+ }
+ async function submit(args,claims,env){
+  ready(env);const a=missionChangeRequest(args),db=dbFor(env);await consent(db,claims,'proposals:create');await ensure(env);await cleanup(db);
+  const payload=JSON.stringify(a.fields),hash=await v2Hash(payload),id=await v2Hash('mission-change:'+claims.grantId+':'+claims.grantVersion+':'+a.idempotencyKey);let row=await find(db,id);
+  if(row){if(row.payload_hash!==hash)changeFail(409,'idempotency_conflict');await consent(db,claims,'proposals:create');return {schemaVersion:1,part:map(row),replayed:true};}
+  await validateTarget(db,claims,a.fields);
+  await run(db.prepare("INSERT INTO ai_mission_changes(id,grant_id,grant_version,payload_hash,created_at,expires_at,fields) SELECT ?,?,?,?,?,?,? FROM ai_v2_access WHERE singleton=1 AND grant_id=? AND version=? AND status='active' AND expires_at>? AND json_extract(choices,'$.allowMissionChanges')=1 AND (SELECT COUNT(*) FROM ai_mission_changes)<1000 AND (SELECT COUNT(*) FROM ai_mission_changes WHERE status IN ('pending','applying'))<100 ON CONFLICT(id) DO NOTHING").bind(id,claims.grantId,claims.grantVersion,hash,now(),now()+MISSION_CHANGE_TTL,payload,claims.grantId,claims.grantVersion,now()));
+  row=await find(db,id);await consent(db,claims,'proposals:create');if(!row)changeFail(409,'mission_change_capacity_reached');if(row.payload_hash!==hash)changeFail(409,'idempotency_conflict');return {schemaVersion:1,part:map(row),replayed:false};
+ }
+ async function list(args,claims,env,owner=false){
+  ready(env);if(!args||typeof args!=='object'||Array.isArray(args)||Object.keys(args).some(k=>!['status','cursor'].includes(k))||args.status!==undefined&&!['pending','applying','accepted','rejected','expired'].includes(args.status)||args.cursor!==undefined&&(typeof args.cursor!=='string'||args.cursor.length>4096))changeFail(400,'invalid_arguments');
+  const db=dbFor(env);if(!owner)await consent(db,claims,'planning:read');await ensure(env);await cleanup(db);const status=args.status||'pending',binding=owner?'owner':claims.grantId+':'+claims.grantVersion;let after=-1,id='';
+  if(args.cursor){const c=await cursor(args.cursor,env);if(c.binding!==binding||c.status!==status||c.expiresAt<=now()||!Number.isSafeInteger(c.after)||c.after<0)changeFail(400,'invalid_cursor');v2Ref(c.id);after=c.after;id=c.id;}
+  const result=await db.prepare(`SELECT * FROM ai_mission_changes WHERE status=? ${owner?'':'AND grant_id=? AND grant_version=?'} AND (created_at>? OR (created_at=? AND id>?)) ORDER BY created_at,id LIMIT 6`).bind(status,...(owner?[]:[claims.grantId,claims.grantVersion]),after,after,id).all();if(!result.success)throw Error('database');
+  const rows=result.results,items=rows.slice(0,5).map(map),last=rows[4];const nextCursor=rows.length>5?await cursor(null,env,{binding,status,after:last.created_at,id:last.id,expiresAt:now()+600000}):null;if(!owner)await consent(db,claims,'planning:read');
+  return {schemaVersion:1,...(!owner?{grantId:claims.grantId,grantVersion:claims.grantVersion}:{}),items,nextCursor};
+ }
+ async function reserve(body,env){
+  v2Exact(body,['id','expectedVersion','fields','expectedTaskVersion']);v2Ref(body.id);v2Integer(body.expectedVersion);v2Ref(body.expectedTaskVersion);const fields=missionChangeFields(body.fields);
+  const db=dbFor(env);await ensure(env);await cleanup(db);let row=await find(db,body.id);if(!row)changeFail(404,'mission_change_not_found');
+  const hash=await v2Hash(JSON.stringify({fields,expectedTaskVersion:body.expectedTaskVersion}));
+  if(['applying','accepted'].includes(row.status)){if(row.review_hash!==hash)changeFail(409,'application_conflict');return {schemaVersion:1,part:map(row)};}
+  if(row.status!=='pending'||!row.fields)changeFail(409,'mission_change_changed');
+  const original=JSON.parse(row.fields);if(original.targetRef!==fields.targetRef||original.targetVersion!==fields.targetVersion)changeFail(409,'mission_change_changed');
+  await run(db.prepare("UPDATE ai_mission_changes SET status='applying',fields=?,expected_task_version=?,review_hash=?,version=version+1 WHERE id=? AND status='pending' AND version=? AND expires_at>?").bind(JSON.stringify(fields),body.expectedTaskVersion,hash,body.id,body.expectedVersion,now()));row=await find(db,body.id);if(row.review_hash!==hash)changeFail(409,'mission_change_changed');return {schemaVersion:1,part:map(row)};
+ }
+ async function acknowledge(body,env){v2Exact(body,['id','receiptRef']);v2Ref(body.id);v2Ref(body.receiptRef);const db=dbFor(env);await ensure(env);await run(db.prepare("UPDATE ai_mission_changes SET status='accepted',receipt_ref=?,version=version+1 WHERE id=? AND status='applying'").bind(body.receiptRef,body.id));const row=await find(db,body.id);if(!row||row.status!=='accepted'||row.receipt_ref!==body.receiptRef)changeFail(409,'application_conflict');return {schemaVersion:1,part:map(row)};}
+ async function reject(body,env){v2Exact(body,['id','expectedVersion']);v2Ref(body.id);v2Integer(body.expectedVersion);const db=dbFor(env);await ensure(env);await cleanup(db);await run(db.prepare("UPDATE ai_mission_changes SET status='rejected',version=version+1 WHERE id=? AND status='pending' AND version=? AND expires_at>?").bind(body.id,body.expectedVersion,now()));const row=await find(db,body.id);if(!row||row.status!=='rejected'||row.version!==body.expectedVersion+1)changeFail(409,'mission_change_changed');return {schemaVersion:1,part:map(row)};}
+ let minute=-1,count=0;
+ return {submit,list,async call(name,args,claims,env){if(name==='submitMissionChange')return submit(args,claims,env);if(name==='listMissionChanges')return list(args,claims,env);changeFail(400,'invalid_arguments');},async fetch(request,env){
+  const url=new URL(request.url);if(!['/v2/app/mission-changes','/v2/app/mission-changes/reserve','/v2/app/mission-changes/acknowledge','/v2/app/mission-changes/reject'].includes(url.pathname))return null;
+  const cors=request.headers.get('Origin')===CHANGE_ORIGIN?{'Access-Control-Allow-Origin':CHANGE_ORIGIN,Vary:'Origin'}:{},send=(status,body)=>Response.json(body,{status,headers:{...cors,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
+  try{ready(env);if(request.headers.get('Origin')!==CHANGE_ORIGIN)changeFail(403,'origin_not_allowed');const method=url.pathname==='/v2/app/mission-changes'?'GET':'POST';
+   if(request.method==='OPTIONS'){if(request.headers.get('Access-Control-Request-Method')!==method||(request.headers.get('Access-Control-Request-Headers')||'').toLowerCase().split(',').map(s=>s.trim()).filter(Boolean).some(k=>!['authorization','content-type','x-firebase-appcheck'].includes(k)))changeFail(403,'preflight_not_allowed');return new Response(null,{status:204,headers:{...cors,'Access-Control-Allow-Methods':method,'Access-Control-Allow-Headers':'Authorization, Content-Type, X-Firebase-AppCheck'}});}
+   if(request.method!==method||method==='POST'&&url.search)changeFail(404,'not_found');await verifyOwner(request);const slot=Math.floor(now()/60000);if(slot!==minute){minute=slot;count=0;}if(++count>60)changeFail(429,'rate_limited');
+   if(method==='GET'){const args={};for(const [k,v] of url.searchParams){if(Object.hasOwn(args,k))changeFail(400,'invalid_arguments');args[k]=v;}return send(200,await list(args,null,env,true));}
+   const body=await readBody(request,14000),operation=url.pathname.split('/').pop();return send(200,await ({reserve,acknowledge,reject}[operation])(body,env));
+  }catch(error){return send(error instanceof AuthError?401:error instanceof MissionChangeError?error.status:error instanceof V2ValidationError?422:error?.status===413?413:503,{error:error instanceof AuthError?'unauthorized':error instanceof MissionChangeError?error.code:error instanceof V2ValidationError?'invalid_arguments':error?.status===413?'body_too_large':'service_unavailable'});}
+ }};
+}
+
 // ./proposals.v2.mjs
 const PROPOSAL_ORIGIN='https://victorduarteferreira1997.github.io';
 class ProposalError extends Error{constructor(status,code){super(code);this.status=status;this.code=code;}}
@@ -608,7 +715,7 @@ const planningB64=b=>btoa(String.fromCharCode(...b)).replaceAll('+','-').replace
 function planningUnb64(s){if(typeof s!=='string'||s.length>8192||!/^[A-Za-z0-9_-]+$/.test(s))planningFail(401,'invalid_token');return Uint8Array.from(atob(s.replaceAll('-','+').replaceAll('_','/')),c=>c.charCodeAt(0));}
 function planningSecret(s){if(typeof s!=='string'||s.length<32||s.length>256||/\s/.test(s))planningFail(503,'service_unavailable');}
 function planningArguments(name,args){
-    const t=[...PLANNING_TOOLS,...V2_PROPOSAL_TOOLS,...LIBRARY_IMPORT_TOOLS].find(t=>t.name===name);
+    const t=[...PLANNING_TOOLS,...V2_PROPOSAL_TOOLS,...LIBRARY_IMPORT_TOOLS,...MISSION_CHANGE_TOOLS].find(t=>t.name===name);
     if(!t||!args||typeof args!=='object'||Array.isArray(args)||Object.keys(args).some(k=>!Object.hasOwn(t.inputSchema.properties,k)))planningFail(400,'invalid_arguments');
     if(t.inputSchema.required.some(k=>!Object.hasOwn(args,k)))planningFail(400,'invalid_arguments');
     for(const [k,v] of Object.entries(args)){
@@ -619,7 +726,7 @@ function planningArguments(name,args){
     }
     return args;
 }
-function createPlanningService({now=Date.now,readBody,proposals,libraryImports}={}){
+function createPlanningService({now=Date.now,readBody,proposals,libraryImports,missionChanges}={}){
     let cachedSecret='',cachedKey;
     async function signingKey(secret){planningSecret(secret);if(secret!==cachedSecret){cachedSecret=secret;cachedKey=crypto.subtle.importKey('raw',planningEncoder.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);}return cachedKey;}
     async function seal(kind,p,secret){const body=planningB64(planningEncoder.encode(JSON.stringify(p)));return body+'.'+planningB64(new Uint8Array(await crypto.subtle.sign('HMAC',await signingKey(secret),planningEncoder.encode(kind+'.'+body))));}
@@ -639,7 +746,7 @@ function createPlanningService({now=Date.now,readBody,proposals,libraryImports}=
         if(!row)planningFail(401,'grant_not_active');grant(row);
         if(expected&&(row.grant_id!==expected.grantId||row.version!==expected.grantVersion))planningFail(401,'grant_changed');return row;
     }
-    async function oauthGrant(env,scope=PLANNING_SCOPE){const row=await activeGrant(env);if(scope.split(' ').includes(V2_PROPOSAL_SCOPE)){if(env.AI_V2_PROPOSALS_ENABLED!=='true')planningFail(404,'v2_proposals_not_enabled');const choices=grant(row).choices;if(!(env.AI_LIBRARY_IMPORT_ENABLED==='true'&&choices.allowLibraryProposals===true)&&!['mission.create',...(env.AI_V2_ENTITIES_ENABLED==='true'?V2_ENTITY_KINDS:[])].some(kind=>v2ProposalAllowed(choices,kind)))planningFail(403,'proposal_consent_required');}return {grantId:row.grant_id,grantVersion:row.version};}
+    async function oauthGrant(env,scope=PLANNING_SCOPE){const row=await activeGrant(env);if(scope.split(' ').includes(V2_PROPOSAL_SCOPE)){if(env.AI_V2_PROPOSALS_ENABLED!=='true')planningFail(404,'v2_proposals_not_enabled');const choices=grant(row).choices;if(!(env.AI_MISSION_CHANGES_ENABLED==='true'&&choices.allowMissionChanges===true)&&!(env.AI_LIBRARY_IMPORT_ENABLED==='true'&&choices.allowLibraryProposals===true)&&!['mission.create',...(env.AI_V2_ENTITIES_ENABLED==='true'?V2_ENTITY_KINDS:[])].some(kind=>v2ProposalAllowed(choices,kind)))planningFail(403,'proposal_consent_required');}return {grantId:row.grant_id,grantVersion:row.version};}
     async function bind(body,env){
         const requestedScope=body?.requestedScope??PLANNING_SCOPE;
         if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).sort().join(',')!==(Object.hasOwn(body,'requestedScope')?'expectedGrantId,expectedGrantVersion,requestedScope,subject':'expectedGrantId,expectedGrantVersion,subject')||!/^[a-f0-9]{64}$/.test(body.subject)||![PLANNING_SCOPE,V2_PROPOSAL_SCOPE].includes(requestedScope))planningFail(400,'invalid_arguments');
@@ -654,6 +761,7 @@ function createPlanningService({now=Date.now,readBody,proposals,libraryImports}=
     }
     async function read(name,args,claims,env){
         ready(env);planningArguments(name,args);
+        if(MISSION_CHANGE_TOOLS.some(t=>t.name===name))return missionChanges.call(name,args,claims,env);
         if(LIBRARY_IMPORT_TOOLS.some(t=>t.name===name))return libraryImports.call(name,args,claims,env);
         if(V2_PROPOSAL_TOOLS.some(t=>t.name===name))return proposals.call(name,args,claims,env);
         if(typeof claims?.scope!=='string'||!claims.scope.split(' ').includes(PLANNING_SCOPE))planningFail(403,'insufficient_scope');
@@ -705,7 +813,7 @@ function createPlanningService({now=Date.now,readBody,proposals,libraryImports}=
             if(url.pathname==='/v2/connection')return send(200,await bind(body,env));
             if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).sort().join(',')!=='arguments,name')planningFail(400,'invalid_arguments');
             return send(200,await read(body.name,body.arguments,claims,env));
-        }catch(e){return send(e instanceof PlanningError||e instanceof ProposalError||e instanceof CatalogError?e.status:e?.status===413?413:e?.status===415?415:e instanceof ContractError?400:e instanceof V2ValidationError?422:503,{error:e instanceof PlanningError||e instanceof ProposalError||e instanceof CatalogError?e.code:e?.status===413?'body_too_large':e?.status===415?'json_required':e instanceof ContractError?'invalid_arguments':e instanceof V2ValidationError?'invalid_shared_data':'service_unavailable'});}
+        }catch(e){return send(e instanceof PlanningError||e instanceof ProposalError||e instanceof CatalogError||e instanceof MissionChangeError?e.status:e?.status===413?413:e?.status===415?415:e instanceof ContractError?400:e instanceof V2ValidationError?422:503,{error:e instanceof PlanningError||e instanceof ProposalError||e instanceof CatalogError||e instanceof MissionChangeError?e.code:e?.status===413?'body_too_large':e?.status===415?'json_required':e instanceof ContractError?'invalid_arguments':e instanceof V2ValidationError?'invalid_shared_data':'service_unavailable'});}
     }
     return {oauthGrant,bind,read,fetch:fetchRoute};
 }
@@ -1032,11 +1140,12 @@ function createWorker({verifyOwner=createFirebaseVerifier(),storeFactory=createD
     let minute=-1,requests=0;
     const foundation=createV2Foundation({verifyOwner,now});
     const proposals=createV2Proposals({now,readBody:readJson,verifyOwner});
+    const missionChanges=createMissionChanges({now,readBody:readJson,verifyOwner});
     const libraryImports=createLibraryImports({now,readBody:readJson,verifyOwner});
-    const planning=createPlanningService({now,readBody:readJson,proposals,libraryImports});
+    const planning=createPlanningService({now,readBody:readJson,proposals,libraryImports,missionChanges});
     const worker = {
         async fetch(request,env) {
-            if(new URL(request.url).pathname.startsWith('/v2/'))return await libraryImports.fetch(request,env) || await proposals.fetch(request,env) || await planning.fetch(request,env) || foundation.fetch(request,env);
+            if(new URL(request.url).pathname.startsWith('/v2/'))return await missionChanges.fetch(request,env) || await libraryImports.fetch(request,env) || await proposals.fetch(request,env) || await planning.fetch(request,env) || foundation.fetch(request,env);
             const pluginResponse=await plugin(request,env);if(pluginResponse)return pluginResponse;
             const url = new URL(request.url), method=request.method;
             const appRoute = url.pathname.startsWith('/v1/app/');
@@ -1054,6 +1163,7 @@ function createWorker({verifyOwner=createFirebaseVerifier(),storeFactory=createD
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=reads') return send(200,{service:'missao-tatica-ai-bridge',readsVersion:1,enabled:env.AI_V2_ENABLED==='true'&&env.AI_V2_READ_ENABLED==='true'});
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=proposals') return send(200,{service:'missao-tatica-ai-bridge',proposalsVersion:1,enabled:env.AI_V2_ENABLED==='true'&&env.AI_V2_PROPOSALS_ENABLED==='true'});
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=apply') return send(200,{service:'missao-tatica-ai-bridge',applyVersion:1,enabled:env.AI_V2_ENABLED==='true'&&env.AI_V2_PROPOSALS_ENABLED==='true'&&env.AI_V2_APPLY_ENABLED==='true'});
+                if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=changes') return send(200,{service:'missao-tatica-ai-bridge',missionChangeVersion:1,enabled:['AI_V2_ENABLED','AI_V2_READ_ENABLED','AI_V2_PROPOSALS_ENABLED','AI_V2_APPLY_ENABLED','AI_MISSION_CHANGES_ENABLED'].every(key=>env[key]==='true')});
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=library') return send(200,{service:'missao-tatica-ai-bridge',libraryImportVersion:1,enabled:['AI_V2_ENABLED','AI_V2_READ_ENABLED','AI_V2_PROPOSALS_ENABLED','AI_V2_APPLY_ENABLED','AI_LIBRARY_IMPORT_ENABLED'].every(key=>env[key]==='true')});
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=entities') return send(200,{service:'missao-tatica-ai-bridge',entitiesVersion:1,enabled:['AI_V2_ENABLED','AI_V2_READ_ENABLED','AI_V2_PROPOSALS_ENABLED','AI_V2_APPLY_ENABLED','AI_V2_ENTITIES_ENABLED'].every(key=>env[key]==='true')});
                 if (method==='GET' && url.pathname==='/healthz' && url.search==='?check=keys') {
