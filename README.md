@@ -22,9 +22,19 @@ A integração privada com IA continua exclusiva do proprietário.
 - [Aplicação oficial](https://victorduarteferreira1997.github.io/missao-tatica/)
 - [Endereço direto](https://victorduarteferreira1997.github.io/missao-tatica/app.html)
 
-A versão atual é **v1.9.75**. A raiz, `teste_novos_modulos.html` e as prévias
+A versão atual é **v1.9.76**. A raiz, `teste_novos_modulos.html` e as prévias
 estáticas v1.9.11/v1.9.13 encaminham para a aplicação oficial. Parâmetros e
 fragmentos dos favoritos são preservados.
+
+## Datas claras na criação · v1.9.76
+
+Em **Nova missão**, o campo **Data da missão** mostra dia e data completos.
+A segunda da semana atual e a da próxima semana ficam explícitas, com o período
+da semana abaixo da seleção. A interface utiliza a mesma referência do cadastro,
+inclusive para recorrências e eventos convertidos do Google Agenda. Nenhum dado
+existente é migrado ou reagendado por esta atualização.
+
+- [Comportamento e validação](docs/DATAS_NA_CRIACAO.md)
 
 ## Alterações de missões pela IA · v1.9.75
 

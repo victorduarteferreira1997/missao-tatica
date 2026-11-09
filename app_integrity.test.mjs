@@ -5,11 +5,11 @@ import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 import { installFormDialogs as installDialogModule } from './ui/form_dialogs.v1.js';
-import { installTaskForms } from './ui/task_forms.v6.js';
+import { installTaskForms } from './ui/task_forms.v7.js';
 import { installPlanningViews } from './ui/planning_views.v8.js';
 
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
-const taskForms = await readFile(new URL('./ui/task_forms.v6.js', import.meta.url), 'utf8');
+const taskForms = await readFile(new URL('./ui/task_forms.v7.js', import.meta.url), 'utf8');
 const planningViews = await readFile(new URL('./ui/planning_views.v8.js', import.meta.url), 'utf8');
 const aiInbox = await readFile(new URL('./ui/ai_inbox.v3.js', import.meta.url), 'utf8');
 const aiAccess = await readFile(new URL('./ui/ai_access.v3.js', import.meta.url), 'utf8');
@@ -26,8 +26,8 @@ const installPlanner = (target, options = {}) => installPlanningViews(target, {
 assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v8\.js\?v=1\.9\.73'/);
 assert.match(app, /html \+= window\.renderWeeklyPlanningOverview\(\)/);
 assert.ok(!app.includes('window.renderDailyMissionBoard ='), 'As visões devem existir apenas no módulo do planejamento.');
-assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v6\.js\?v=1\.9\.73'/);
-assert.match(app, /installTaskForms\(window, \{ daysOfWeek, getState: \(\) => state, getUiState: \(\) => uiState \}\)/);
+assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v7\.js\?v=1\.9\.76'/);
+assert.match(app, /installTaskForms\(window, \{ document, daysOfWeek, getState: \(\) => state, getUiState: \(\) => uiState \}\)/);
 const installFormDialogs = target => installDialogModule(target, {});
 assert.match(app, /import \{ installFormDialogs \} from '\.\/ui\/form_dialogs\.v1\.js'/);
 assert.match(app, /installFormDialogs\(window, document\)/);
