@@ -1,3 +1,5 @@
+import * as Recurrence from '../recurrence.v1.js';
+import {scheduleForDate,assertScheduleWeekOpen,formatMissionDate} from '../mission_schedule.v1.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -201,7 +203,7 @@ test('revisar só preenche formulário; cancelar não cria/revisa, semana errada
     b.setWeek('2026-10-05');b.setItems([]);await b.window.reviewAiProposal(0);assert.equal(b.events.length,1);
 });
 test('revisão evita duplicação local, bloqueia recorrência e semana/sessão alteradas, preserva ID se inbox falhar',async()=>{
-    const b=ui();await b.window.openAiInbox();await b.window.reviewAiProposal(0);const id=b.window.aiDraftMetadata().aiProposalId;
+    const b=ui();b.s.currentPlanningWeekStart='2026-10-05';await b.window.openAiInbox();await b.window.reviewAiProposal(0);const id=b.window.aiDraftMetadata().aiProposalId;
     b.fields['ct-repeat-monday']={checked:true};assert.equal(b.window.aiDraftBeforeSave(),false);b.fields['ct-repeat-monday'].checked=false;
     b.setWeek('2026-10-12');assert.equal(b.window.aiDraftBeforeSave(),false);b.setWeek('2026-10-05');assert.equal(b.window.aiDraftBeforeSave(),true);
     b.s.tasks.push({id:789,aiProposalId:id});b.setFailReview(true);await b.window.aiDraftAfterSave();await b.window.openAiInbox();await b.window.reviewAiProposal(0);
@@ -227,7 +229,7 @@ test('cadastro retorna à mesma caixa de entrada e permite revisar a próxima pr
     b.window.closeAiInbox();await b.window.aiDraftAfterSave();assert.equal(b.window.renderAiInbox(),'');
 });
 test('falha ao confirmar revisão mantém integração aberta e bloqueia um segundo cadastro',async()=>{
-    const b=ui();await b.window.openAiInbox();await b.window.reviewAiProposal(0);
+    const b=ui();b.s.currentPlanningWeekStart='2026-10-05';await b.window.openAiInbox();await b.window.reviewAiProposal(0);
     b.s.tasks.push({id:'saved',aiProposalId:hash(proposal())});b.setFailReview(true);
     await b.window.aiDraftAfterSave();
     assert.match(b.window.renderAiInbox(),/atualização da caixa de entrada falhou/);
@@ -256,11 +258,11 @@ test('resposta tardia de outra sessão é descartada e HTML da IA é escapado',a
 test('o formulário existente calcula a missão e só após salvar marca a proposta, sem alterar XP/finanças',async()=>{
     const app=await readFile(new URL('../app.html',import.meta.url),'utf8');
     const start=app.indexOf('window.saveNewTask = function()'),end=app.indexOf('window.setCategoryFilter',start);
-    const b=ui();await b.window.openAiInbox();await b.window.reviewAiProposal(0);
+    const b=ui();b.s.currentPlanningWeekStart='2026-10-05';await b.window.openAiInbox();await b.window.reviewAiProposal(0);
     const input={'ct-text':{value:'Título revisado'},'ct-nature':{value:'normal'},'ct-priority':{value:'media'},'ct-complexity':{value:'2'},'ct-time':{value:'30'},'ct-impact-type':{value:'drain'},'ct-subtasks':{value:'Passo revisado'},'ct-category':{value:'work'},'ct-day':{value:'wednesday'}};
     const uiState={},existing=JSON.stringify(b.s.financeData);b.s.xp=200;b.s.energy=80;
     Object.assign(b.window,{calculateTaskCost:()=>({xp:82,hp:6}),getTaskCategories:()=>[{id:'work'}],readCalendarTimeFields:()=>({startTime:'10:00',endTime:'10:30'}),getNextTaskOrder:()=>0,cloneSubtasksForNewTask:a=>structuredClone(a),showToast(){},saveState:()=>b.events.push(['save',structuredClone(b.s)])});
-    runInNewContext(app.slice(start,end),{window:b.window,document:{getElementById:id=>input[id]},state:b.s,uiState,calendarSync:{},daysOfWeek:[{id:'monday'},{id:'wednesday'}],Date,Math});
+    runInNewContext(app.slice(start,end),{Recurrence,scheduleForDate,assertScheduleWeekOpen,formatMissionDate,window:b.window,document:{getElementById:id=>input[id]},state:b.s,uiState,calendarSync:{},daysOfWeek:[{id:'monday'},{id:'wednesday'}],Date,Math});
     b.window.saveNewTask();await new Promise(r=>setImmediate(r));
     const created=b.s.tasks.at(-1);assert.equal(created.text,'Título revisado');assert.equal(created.xp,82);assert.equal(created.energyCost,6);assert.equal(created.aiProposalId,hash(proposal()));assert.equal(created.completed,false);
     assert.equal(b.s.xp,200);assert.equal(b.s.energy,80);assert.equal(JSON.stringify(b.s.financeData),existing);
