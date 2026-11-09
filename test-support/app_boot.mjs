@@ -28,7 +28,7 @@ import {runInNewContext} from 'node:vm';
 import {createCalendarSync} from '../calendar_sync.v3.js';
 import {installPlanningTools} from '../ui/planning_tools.v4.js';
 import {installFormDialogs} from '../ui/form_dialogs.v1.js';
-import {installTaskForms} from '../ui/task_forms.v6.js';
+import {installTaskForms} from '../ui/task_forms.v7.js';
 import {installPlanningViews} from '../ui/planning_views.v8.js';
 import {installAiInbox} from '../ui/ai_inbox.v3.js';
 import {AI_CONFIG} from '../ai/config.v1.js';
