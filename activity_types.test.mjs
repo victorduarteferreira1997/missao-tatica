@@ -1,3 +1,5 @@
+import * as Recurrence from './recurrence.v1.js';
+import {scheduleForDate,assertScheduleWeekOpen,formatMissionDate} from './mission_schedule.v1.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFile} from 'node:fs/promises';
@@ -61,10 +63,10 @@ test('cadastro e edição expõem atividade e protegem horários e identidade da
 
 test('salvar exige horários, calcula duração real e bloqueia dupla conversão',()=>{
  const fields={};for(const [key,value] of Object.entries({text:'Reunião de equipe','activity-type':'meeting',nature:'neutral',priority:'media',complexity:'2',time:'30','impact-type':'drain',category:'work',day:'wednesday',subtasks:''})) fields['ct-'+key]={value};
- const state={tasks:[]};const uiState={};let alert='',converted=0;let inbox=null;
+ const state={tasks:[],currentPlanningWeekStart:'2026-10-05'};const uiState={};let alert='',converted=0;let inbox=null;
  const window={calculateTaskCost:()=>({xp:0,hp:0}),readCalendarTimeFields:()=>({startTime:'',endTime:''}),showAlertModal:message=>alert=message,getTaskCategories:()=>[{id:'work'}],getNextTaskOrder:()=>1,cloneSubtasksForNewTask:s=>s,reindexTaskOrderForDay(){},showToast(){},saveState(){}};
  const src=app.slice(app.indexOf('        window.saveNewTask ='),app.indexOf('        window.setCategoryFilter ='));
- runInNewContext(src,{window,state,uiState,document:{getElementById:id=>fields[id]},daysOfWeek:[{id:'wednesday'}],minutesFromClock:value=>{const [h,m]=value.split(':').map(Number);return h*60+m;},calendarSync:{getInbox:()=>inbox?[inbox]:[],markInboxConverted(){converted++;inbox.status='converted';}}});
+ runInNewContext(src,{Recurrence,scheduleForDate,assertScheduleWeekOpen,formatMissionDate,window,state,uiState,document:{getElementById:id=>fields[id]},daysOfWeek:[{id:'wednesday'}],minutesFromClock:value=>{const [h,m]=value.split(':').map(Number);return h*60+m;},calendarSync:{getInbox:()=>inbox?[inbox]:[],markInboxConverted(){converted++;inbox.status='converted';}}});
  window.saveNewTask();assert.equal(state.tasks.length,0);assert.match(alert,/início e fim/);
  window.readCalendarTimeFields=()=>({startTime:'10:00',endTime:'11:30'});window.saveNewTask();assert.equal(state.tasks[0].activityType,'meeting');assert.equal(state.tasks[0].time,'90 min');
  inbox={id:'source',status:'pending',summary:'Reunião · Coaktion',sanitizedOrigin:'coaktion',startTime:'09:00',endTime:'10:00',duration:60,day:'wednesday',weekStart:'2026-10-05'};

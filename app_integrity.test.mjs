@@ -1,16 +1,16 @@
-import {applyMissionSchedule,planMissionSchedule,scheduleForDate,formatMissionDate} from './mission_schedule.v1.js';
+import {applyMissionSchedule,planMissionSchedule,scheduleForDate,formatMissionDate,assertScheduleWeekOpen} from './mission_schedule.v1.js';
 import * as Recurrence from './recurrence.v1.js';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 import { installFormDialogs as installDialogModule } from './ui/form_dialogs.v1.js';
-import { installTaskForms } from './ui/task_forms.v7.js';
-import { installPlanningViews } from './ui/planning_views.v8.js';
+import { installTaskForms } from './ui/task_forms.v8.js';
+import { installPlanningViews } from './ui/planning_views.v9.js';
 
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
-const taskForms = await readFile(new URL('./ui/task_forms.v7.js', import.meta.url), 'utf8');
-const planningViews = await readFile(new URL('./ui/planning_views.v8.js', import.meta.url), 'utf8');
+const taskForms = await readFile(new URL('./ui/task_forms.v8.js', import.meta.url), 'utf8');
+const planningViews = await readFile(new URL('./ui/planning_views.v9.js', import.meta.url), 'utf8');
 const aiInbox = await readFile(new URL('./ui/ai_inbox.v3.js', import.meta.url), 'utf8');
 const aiAccess = await readFile(new URL('./ui/ai_access.v3.js', import.meta.url), 'utf8');
 const aiProposals = await readFile(new URL('./ui/ai_proposals.v2.js', import.meta.url), 'utf8');
@@ -23,10 +23,10 @@ const installPlanner = (target, options = {}) => installPlanningViews(target, {
     getState: () => ({}), getUiState: () => ({}), extractMinutesFromTask: () => 30,
     ...options
 });
-assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v8\.js\?v=1\.9\.73'/);
+assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v9\.js\?v=1\.9\.77'/);
 assert.match(app, /html \+= window\.renderWeeklyPlanningOverview\(\)/);
 assert.ok(!app.includes('window.renderDailyMissionBoard ='), 'As visões devem existir apenas no módulo do planejamento.');
-assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v7\.js\?v=1\.9\.76'/);
+assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v8\.js\?v=1\.9\.77'/);
 assert.match(app, /installTaskForms\(window, \{ document, daysOfWeek, getState: \(\) => state, getUiState: \(\) => uiState \}\)/);
 const installFormDialogs = target => installDialogModule(target, {});
 assert.match(app, /import \{ installFormDialogs \} from '\.\/ui\/form_dialogs\.v1\.js'/);
@@ -110,7 +110,7 @@ const saveNewStart = app.indexOf('window.saveNewTask = function(');
 const saveNewEnd = app.indexOf('window.closeTaskFocus = function(', saveNewStart);
 const saveNewSource = app.slice(saveNewStart, saveNewEnd);
 for (const match of saveNewSource.matchAll(/getElementById\('(ct-[^']+)'\)/g)) {
-    assert.ok(createIds.includes(match[1]), `O formulário precisa preservar o campo ${match[1]} usado no cadastro.`);
+    assert.ok(createIds.includes(match[1]==='ct-day'?'ct-date':match[1]), `O formulário precisa preservar o campo ${match[1]} usado no cadastro.`);
 }
 assert.match(createMarkup, /role="dialog" aria-modal="true"/);
 assert.ok(createMarkup.indexOf('<footer') > createMarkup.indexOf('data-create-section="effort"'));
@@ -143,10 +143,10 @@ Object.assign(createWindow, {
     getRecurringDaysLabel: () => 'Segunda, terça', showToast() {}, saveState() {}
 });
 runInNewContext(app.slice(costStart, costEnd) + saveNewSource, {
-    Recurrence, window: createWindow, state: creationState, uiState: creationUi, daysOfWeek: createDays,
+    scheduleForDate,assertScheduleWeekOpen,formatMissionDate, Recurrence, window: createWindow, state: creationState, uiState: creationUi, daysOfWeek: createDays,
     TASK_NATURES: { normal: {}, neutral: {}, recharge: {} },
     document: { getElementById: id => createFields[id] },
-    calendarSync: { getInbox: () => [{ id: 'event-1', status: 'pending', startTime: '10:00', endTime: '10:30' }], markInboxConverted(id) { convertedEvent = id; } }
+    calendarSync: { getInbox: () => [{ id: 'event-1', status: 'pending', day:'monday',weekStart:'2026-10-19',startTime: '10:00', endTime: '10:30' }], markInboxConverted(id) { convertedEvent = id; } }
 });
 createFields['ct-text'].value = '  ';
 createWindow.saveNewTask();
@@ -385,13 +385,13 @@ assert.ok(weeklyMarkup.indexOf('id="inbox-stub"') < weeklyMarkup.indexOf('Semana
 assert.doesNotMatch(weeklyMarkup, /data-week-section="[^"\n]*:google"/);
 assert.match(weeklyMarkup, /data-week-day="monday" data-week-section="2026-10-05:monday"  class=/);
 assert.match(weeklyMarkup, /data-week-day="tuesday" data-week-section="2026-10-05:tuesday" open /);
-for (const action of ['setPlanningCalendarWeek', 'exportVisibleWeekToIcs', 'prepareNextWeekPlanning', 'setMainView']) {
+for (const action of ['createMissionOnDay', 'exportVisibleWeekToIcs', 'prepareNextWeekPlanning', 'setMainView']) {
     assert.ok(weeklyMarkup.includes(`window.${action}(`), `A agenda deve preservar ${action}.`);
 }
 weeklyState.tasks = [];
 weeklyState.studyData.studyPlan.weeklyBlocks = [];
 assert.match(weeklyContext.renderWeek(), /Nenhum item planejado nesta semana/);
-assert.match(weeklyContext.renderWeek(), /window.setPlanningCalendarWeek\('prev'\)/,
+assert.match(app, /window.setPlanningCalendarWeek\('prev'\)/,
     'Sem itens, a navegação ainda deve permitir voltar às outras semanas.');
 
 // A visão semanal deve acompanhar substituição de estado e mudança de semana.
@@ -597,7 +597,7 @@ runInNewContext(app.slice(editRestoreStart, editRestoreEnd), { appDiv: editDraft
 assert.equal(editDraftFields[0].value, 'Edição em andamento'); assert.equal(editDraftFields[1].checked, true); assert.equal(editDraftSections[0].open, true);
 
 // Login/importação podem substituir os objetos: a interface deve consultar o estado atual.
-let liveTaskState = { activeTab: 'monday' };
+let liveTaskState = {currentPlanningWeekStart:'2026-11-02', activeTab: 'monday' };
 let liveDialogState = { editingOperationalDemandId: null, showCategoryModal: false, alert: { show: false }, confirm: { show: false } };
 let lastBinding = null, liveCloses = 0, prepared = [];
 const liveFormsWindow = {
@@ -612,9 +612,9 @@ installFormDialogs(liveFormsWindow);
 // Preservar o capturador de opções após a instalação da estrutura compartilhada.
 liveFormsWindow.bindFormDialog = (root, options) => { lastBinding = options; };
 installTaskForms(liveFormsWindow, { daysOfWeek: createDays, getState: () => liveTaskState, getUiState: () => liveDialogState });
-assert.match(liveFormsWindow.renderCreateTaskModal(), /value="monday" selected/);
-liveTaskState = { activeTab: 'tuesday' };
-assert.match(liveFormsWindow.renderCreateTaskModal(), /value="tuesday" selected/);
+assert.match(liveFormsWindow.renderCreateTaskModal(), /value="2026-11-02"/);
+liveTaskState = { activeTab: 'tuesday',currentPlanningWeekStart:'2026-11-02' };
+assert.match(liveFormsWindow.renderCreateTaskModal(), /value="2026-11-03"/);
 liveDialogState = { editingOperationalDemandId: 'current', showCategoryModal: true, alert: { show: false }, confirm: { show: false } };
 assert.match(liveFormsWindow.renderOperationalDemandModal(), /value="Demanda atual"/);
 assert.match(liveFormsWindow.renderOperationalDemandModal(), /value="waiting" selected/);

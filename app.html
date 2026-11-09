@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.76-clear-create-dates">
+    <meta name="app-build" content="v1.9.77-date-week-planning">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -145,7 +145,8 @@
         import { installFormDialogs } from './ui/form_dialogs.v1.js';
         import * as Recurrence from './recurrence.v1.js?v=1.9.66.1';
         import { installRecurrence } from './ui/recurrence.v1.js?v=1.9.66.1';
-        import { installTaskForms } from './ui/task_forms.v7.js?v=1.9.76';
+        import { planningPreview } from './planning_preview.v1.js?v=1.9.77';
+        import { installTaskForms } from './ui/task_forms.v8.js?v=1.9.77';
         import * as Library from './library.v2.js?v=1.9.70';
         import { installLibrary } from './ui/library.v3.js?v=1.9.71';
         import {installMissionChanges} from './ui/mission_changes.v1.js?v=1.9.75';
@@ -154,7 +155,7 @@
         import {installLibraryImports} from './ui/library_import.v1.js?v=1.9.71';
         import {createLibraryImportStore} from './ai/v2/library_browser.js?v=1.9.71';
         import {applyLibraryImport} from './library_import.v1.js?v=1.9.71';
-        import { installPlanningViews } from './ui/planning_views.v8.js?v=1.9.73';
+        import { installPlanningViews } from './ui/planning_views.v9.js?v=1.9.77';
         import { installAiInbox } from './ui/ai_inbox.v3.js';
         import { AI_CONFIG } from './ai/config.v1.js';
         import { AI_V2_CONFIG } from './ai/config.v2.js';
@@ -176,7 +177,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.76';
+        const APP_VERSION = 'v1.9.77';
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
             authDomain: "missao-tatica.firebaseapp.com",
@@ -1081,11 +1082,11 @@
         };
 
         window.getCurrentCalendarWeekStartKey = function() {
-            return dateKeyFromDate(getMondayStartDate(new Date()));
+            return scheduleForDate(Recurrence.recurrenceToday(new Date())).planningWeekStart;
         };
 
         window.getNextCalendarWeekStartKey = function() {
-            return dateKeyFromDate(addDaysToDate(getMondayStartDate(new Date()), 7));
+            return Recurrence.addRecurrenceDays(window.getCurrentCalendarWeekStartKey(),7);
         };
 
         window.getActivePlanningWeekStartDate = function() {
@@ -1094,14 +1095,13 @@
         };
 
         window.setPlanningCalendarWeek = function(mode) {
-            const current = getMondayStartDate(new Date());
+            const current = dateFromDateKey(window.getCurrentCalendarWeekStartKey());
             const active = window.getActivePlanningWeekStartDate();
             if (mode === 'current') state.currentPlanningWeekStart = dateKeyFromDate(current);
             else if (mode === 'next') state.currentPlanningWeekStart = dateKeyFromDate(addDaysToDate(current, 7));
             else if (mode === 'prev') state.currentPlanningWeekStart = dateKeyFromDate(addDaysToDate(active, -7));
             else if (mode === 'forward') state.currentPlanningWeekStart = dateKeyFromDate(addDaysToDate(active, 7));
             else state.currentPlanningWeekStart = dateKeyFromDate(current);
-            uiState.mainView = 'week';
             render();
             calendarSync.refreshInbox();
         };
@@ -3867,7 +3867,7 @@
                 const values = {
                     'ct-text': item.summary,
                     'ct-activity-type': item.activityType || 'task',
-                    'ct-day': item.day,
+                    'ct-date': Recurrence.occurrenceDate({day:item.day,planningWeekStart:item.weekStart},state),
                     'ct-time': item.duration || 30,
                     'ct-start-time': item.startTime || '',
                     'ct-end-time': item.endTime || ''
@@ -3889,6 +3889,7 @@
         installTaskForms(window, { document, daysOfWeek, getState: () => state, getUiState: () => uiState });
         window.__aiCloseCreate = () => { uiState.showCreateTaskModal = false; uiState.createTaskDraft = null; };
         window.__aiOpenCreate = fields => {
+            fields={...fields}; if(fields['ct-day']){fields['ct-date']=Recurrence.occurrenceDate({day:fields['ct-day']==='next_week'?'monday':fields['ct-day'],planningWeekStart:fields['ct-day']==='next_week'?window.nextPlanningWeek():state.currentPlanningWeekStart},state);delete fields['ct-day'];}
             uiState.calendarInboxEventId = null;
             uiState.showCreateTaskModal = true;
             uiState.createTaskDraft = { fields: Object.entries(fields).map(([id, value]) => ({ id, value })), sections: [{key:'schedule',open:true},{key:'subtasks',open:true}] };
@@ -4162,8 +4163,11 @@
             if (uiState.createTaskSubtasks?.map(s=>s.text).join('\n') === baseSubtasks.map(s=>s.text).join('\n')) baseSubtasks = uiState.createTaskSubtasks.map(s=>({...s}));
             const activeCategories = window.getTaskCategories();
             const selectedCategory = document.getElementById('ct-category').value || activeCategories[0]?.id || 'life';
-            const selectedDay = document.getElementById('ct-day').value;
-            const targetPlanningWeek = sourceInboxItem?.weekStart || (selectedDay === 'next_week' ? window.nextPlanningWeek?.() : state.currentPlanningWeekStart);
+            let selectedDate=sourceInboxItem ? Recurrence.occurrenceDate({day:sourceInboxItem.day,planningWeekStart:sourceInboxItem.weekStart},state) : document.getElementById('ct-date')?.value;
+            // Legacy programmatic drafts are converted at the boundary, never displayed as another date selector.
+            if (!selectedDate && !document.getElementById('ct-date')) { const legacy=document.getElementById('ct-day')?.value; if(legacy)selectedDate=Recurrence.occurrenceDate({day:legacy==='next_week'?'monday':legacy,planningWeekStart:legacy==='next_week'?window.nextPlanningWeek():state.currentPlanningWeekStart},state); }
+            let schedule;try{schedule=scheduleForDate(selectedDate);assertScheduleWeekOpen(state,schedule.planningWeekStart);}catch(error){window.showAlertModal(error.message);return;}
+            const selectedDay=schedule.day;let targetPlanningWeek=schedule.planningWeekStart;
             if (window.assertPlanningWeekWritable?.(targetPlanningWeek) === false) return;
             const calendarTime = sourceInboxItem ? { startTime: sourceInboxItem.startTime || '', endTime: sourceInboxItem.endTime || '' } : window.readCalendarTimeFields('ct', parseInt(document.getElementById('ct-time')?.value, 10) || 30);
             if (!calendarTime) return;
@@ -4174,9 +4178,11 @@
                 .filter(d => document.getElementById(`ct-repeat-${d.id}`)?.checked)
                 .map(d => d.id);
             const isRecurring = recurrenceDays.length > 0;
-            const recurrenceEndDate = window.readRecurrenceEndDate ? window.readRecurrenceEndDate('ct', recurrenceDays, targetPlanningWeek) : '';
+            if(isRecurring){const firstDate=Array.from({length:7},(_,i)=>Recurrence.addRecurrenceDays(selectedDate,i)).find(date=>recurrenceDays.includes(scheduleForDate(date).day));targetPlanningWeek=scheduleForDate(firstDate).planningWeekStart;try{assertScheduleWeekOpen(state,targetPlanningWeek);}catch(error){window.showAlertModal(error.message);return;}}
+            const recurrenceEndDate = window.readRecurrenceEndDate ? window.readRecurrenceEndDate('ct', recurrenceDays, selectedDate) : '';
             if (window.readRecurrenceEndDate && recurrenceEndDate === null) return;
-            const daysToCreate = (isRecurring ? recurrenceDays : [selectedDay === 'next_week' ? 'monday' : selectedDay]).filter(day=>!isRecurring || !recurrenceEndDate || Recurrence.occurrenceDate({day,planningWeekStart:targetPlanningWeek},state)<=recurrenceEndDate);
+            const daysToCreate = (isRecurring ? recurrenceDays : [selectedDay]).filter(day=>!isRecurring || (Recurrence.occurrenceDate({day,planningWeekStart:targetPlanningWeek},state)>=selectedDate && (!recurrenceEndDate || Recurrence.occurrenceDate({day,planningWeekStart:targetPlanningWeek},state)<=recurrenceEndDate)));
+            if(isRecurring && !daysToCreate.length){window.showAlertModal('Selecione um dia de repetição entre a data inicial e o fim desta semana, ou ajuste a data inicial.');return;}
             const recurrenceGroupId = isRecurring ? `rec-${Date.now()}-${Math.random().toString(16).slice(2)}` : null;
 
             let firstCreatedTaskId = null;
@@ -4202,7 +4208,7 @@
                     missionNature,
                     startTime: calendarTime.startTime,
                     endTime: calendarTime.endTime,
-                    order: window.getNextTaskOrder(targetDay),
+                    order: Math.max(0,...state.tasks.filter(t=>t.day===targetDay&&(t.googleCalendarWeekStart||t.planningWeekStart||state.planning?.legacyWeek||state.currentPlanningWeekStart)===targetPlanningWeek).map(t=>Number(t.order)||0))+1,
                     subtasks: window.cloneSubtasksForNewTask(baseSubtasks).map((s,i)=>({...s,completed:Boolean(baseSubtasks[i]?.completed)})),
                     isRecurring,
                     recurrenceDays: isRecurring ? [...recurrenceDays] : [],
@@ -4225,18 +4231,18 @@
             if (isRecurring) {
                 const firstOccurrence = state.tasks.find(t => String(t.recurrenceGroupId || '') === String(recurrenceGroupId));
                 if (firstOccurrence) {
-                    Recurrence.setRecurrenceRule(state,firstOccurrence,recurrenceDays,recurrenceEndDate,{from:targetPlanningWeek,create:true});
+                    Recurrence.setRecurrenceRule(state,firstOccurrence,recurrenceDays,recurrenceEndDate,{from:selectedDate,create:true});
                     window.upsertRecurringTaskOccurrences(firstOccurrence, recurrenceDays, { removeUnselected: true });
                 }
             }
-            [...new Set(daysToCreate)].forEach(dayId => { if (typeof window.reindexTaskOrderForDay === 'function') window.reindexTaskOrderForDay(dayId); });
+
 
             if (sourceInboxItem && firstCreatedTaskId !== null) calendarSync.markInboxConverted(sourceInboxItem.id, firstCreatedTaskId);
             uiState.showCreateTaskModal = false;
             uiState.createTaskDraft = null;
             uiState.calendarInboxEventId = null;
             const recurrenceMsg = isRecurring ? ` Missão recorrente: ${window.getRecurringDaysLabel(recurrenceDays)}.` : '';
-            window.showToast('Missão Alistada!', `${daysToCreate.length} missão(ões) adicionada(s).${baseSubtasks.length ? ` ${baseSubtasks.length} subtarefa(s).` : ''}${recurrenceMsg}`, 'crosshair', 'text-emerald-400');
+            window.showToast('Missão cadastrada para '+formatMissionDate(selectedDate), `${daysToCreate.length} missão(ões) adicionada(s).${baseSubtasks.length ? ` ${baseSubtasks.length} subtarefa(s).` : ''}${recurrenceMsg}`, 'crosshair', 'text-emerald-400');
             window.saveState();
             window.aiDraftAfterSave?.();
         };
@@ -5199,6 +5205,11 @@
             render();
         };
 
+        var cachedPlanningPreview=null;
+        window.getPlanningToday = () => Recurrence.recurrenceToday(new Date());
+        window.getPlanningPreview = () => cachedPlanningPreview ||= planningPreview(state,state.currentPlanningWeekStart,window.getCurrentCalendarWeekStartKey());
+        window.createMissionOnDay = function(day) { if(!daysOfWeek.some(d=>d.id===day))return;uiState.calendarInboxEventId=null;uiState.createTaskSubtasks=null;uiState.createTaskDraft={fields:[{id:'ct-date',value:Recurrence.occurrenceDate({day,planningWeekStart:state.currentPlanningWeekStart},state)}],sections:[]};uiState.showCreateTaskModal=true;render(); };
+        window.renderPlanningNavigation = function(){const week=state.currentPlanningWeekStart,e=window.escapeHtml;return `<nav aria-label="Navegação das semanas" class="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-900 p-2 font-sans"><p aria-live="polite" class="px-2 text-sm text-slate-200">${e(formatMissionDate(week))} a ${e(formatMissionDate(Recurrence.addRecurrenceDays(week,6)))}</p><div class="flex items-center gap-1"><button type="button" onclick="window.setPlanningCalendarWeek('prev')" aria-label="Semana anterior" class="min-h-11 min-w-11 rounded-lg px-3 text-slate-300 hover:bg-slate-800">←</button><button type="button" onclick="window.goToToday()" class="min-h-11 rounded-lg px-3 text-sm text-indigo-200 hover:bg-slate-800">Hoje</button><button type="button" onclick="window.setPlanningCalendarWeek('forward')" aria-label="Próxima semana" class="min-h-11 min-w-11 rounded-lg px-3 text-slate-300 hover:bg-slate-800">→</button></div></nav>`;};
         window.goToToday = function() {
             const today=Recurrence.recurrenceToday(new Date());const target=scheduleForDate(today);
             state.currentPlanningWeekStart=target.planningWeekStart;state.activeTab=target.day;
@@ -6632,6 +6643,7 @@
         // RENDERIZAÇÃO PRINCIPAL DO DOM
         // ==========================================
         function render() {
+            cachedPlanningPreview=null;
             const appDiv = document.getElementById('app');
             window.captureLibraryDraft?.();
             const viewPageKey = `${uiState.mainView}:${state.activeTab}`;
@@ -6966,13 +6978,14 @@
                     <div class="text-sm font-semibold text-slate-200">${compactViewMeta.title}</div>
                 </div>
                 <div class="grid grid-cols-3 gap-1 bg-slate-950 rounded-xl p-1 shrink-0">
-                    <button onclick="window.goToToday()" class="rounded-lg px-2.5 py-2 text-xs font-medium ${uiState.mainView === 'day' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}"><i data-lucide="layout-list" class="w-3.5 h-3.5 inline mr-1"></i>Hoje</button>
+                    <button onclick="window.setMainView('day')" class="rounded-lg px-2.5 py-2 text-xs font-medium ${uiState.mainView === 'day' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}"><i data-lucide="layout-list" class="w-3.5 h-3.5 inline mr-1"></i>Dia</button>
                     <button onclick="window.setMainView('week')" class="rounded-lg px-2.5 py-2 text-xs font-medium ${uiState.mainView === 'week' ? 'bg-cyan-700 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}"><i data-lucide="calendar-days" class="w-3.5 h-3.5 inline mr-1"></i>Semana${calendarInboxPending ? ` · ${calendarInboxPending}` : ''}</button>
                     <button onclick="window.setMainView('control')" class="rounded-lg px-2.5 py-2 text-xs font-medium ${uiState.mainView === 'control' ? 'bg-sky-700 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}"><i data-lucide="radar" class="w-3.5 h-3.5 inline mr-1"></i>Radar</button>
                 </div>
             </div>`;
 
-            if (uiState.mainView === 'week') {
+            if(uiState.mainView!=='control')html+=window.renderPlanningNavigation();
+            if (window.renderClosedPlanningWeek?.() && uiState.mainView!=='control') { html+=window.renderClosedPlanningWeek(); } else if (uiState.mainView === 'week') {
                 html += window.renderRadarWeekShortcut?.() || '';
                 const closedPlanningWeek = window.renderClosedPlanningWeek?.();
                 if (closedPlanningWeek) html += closedPlanningWeek;
@@ -6983,11 +6996,14 @@
             } else {
 
             html += window.renderRadarDailySummary?.() || '';
+            const predictions=window.getPlanningPreview().tasks.filter(t=>t.planningPreview&&t.day===state.activeTab);
+            if(predictions.length)html+=`<details class="mb-3 rounded-xl border border-violet-900/40 p-3 font-sans"><summary class="min-h-11 cursor-pointer text-sm text-violet-200">Repetições previstas · ${predictions.length}</summary><p class="mb-2 text-xs text-slate-400">Previsão da rotina. As ocorrências serão cadastradas no fechamento da semana anterior.</p>${predictions.map(t=>`<p class="py-1 text-sm text-slate-300">${window.escapeHtml(t.text)} · ${window.escapeHtml(t.time||'')}</p>`).join('')}</details>`;
             // TABS DIÁRIAS
             html += `<div class="flex overflow-x-auto scrollbar-hide gap-1 bg-slate-900 p-1.5 rounded-xl border border-slate-800 mb-3 font-sans">`;
             daysOfWeek.forEach(day => {
+                const dayIsToday=Recurrence.occurrenceDate({day:day.id,planningWeekStart:state.currentPlanningWeekStart},state)===Recurrence.recurrenceToday(new Date());
                 const activeClass = state.activeTab === day.id ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white';
-                html += `<button onclick="window.setTab('${day.id}')" class="whitespace-nowrap px-3 py-2 rounded-lg font-medium text-sm transition-all ${activeClass}">${day.label}</button>`;
+                html += `<button ${dayIsToday?'aria-current="date"':''} onclick="window.setTab('${day.id}')" class="whitespace-nowrap px-3 py-2 rounded-lg font-medium text-sm transition-all ${activeClass}">${day.label.slice(0,3)} ${formatMissionDate(Recurrence.occurrenceDate({day:day.id,planningWeekStart:state.currentPlanningWeekStart},state)).slice(0,5)}${dayIsToday?' · Hoje':''}</button>`;
             });
             html += `</div>`;
 
@@ -7004,7 +7020,7 @@
             </section>`;
 
             const olderPending=state.tasks.filter(t=>!t.completed&&!t.recurrenceCancelled&&t.googleCalendarSource!=='primary'&&window.taskPlanningWeek(t)<state.currentPlanningWeekStart).length;
-            if(olderPending)html+=`<button type="button" onclick="window.openPlanningReview()" class="mb-3 min-h-10 text-xs text-slate-400 hover:text-indigo-200">${olderPending} pendência${olderPending===1?' anterior':'s anteriores'} · Revisar</button>`;
+            if(olderPending)html+=`<button type="button" onclick="window.openPlanningReview()" class="mb-3 min-h-10 text-xs text-slate-400 hover:text-indigo-200">${olderPending} pendência${olderPending===1?'':'s'} de semanas anteriores à visualizada · Revisar</button>`;
             html += window.renderDailyCategoryBar();
 
             }
@@ -7358,7 +7374,8 @@
         }
 
         function renderDailyStudyPlanSection() {
-            const studies = window.getStudyBlocksForDay(state.activeTab).filter(block => block.status !== 'cancelled');
+            const preview=window.getPlanningPreview();
+            const studies = preview.studies.filter(block=>block.day===state.activeTab);
             const date = Library.addReadingDays(state.currentPlanningWeekStart, Math.max(0, daysOfWeek.findIndex(day => day.id === state.activeTab)));
             const readings = window.getLibraryOccurrences?.(date, date) || [];
             if (!studies.length && !readings.length) return '';
@@ -7368,7 +7385,7 @@
             return `<details data-view-key="daily-support-${state.currentPlanningWeekStart}-${state.activeTab}" class="group/support mb-4 rounded-xl border border-slate-800 bg-slate-950/35 font-sans">
                 <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm text-slate-300"><div><span class="font-medium">Estudos e leituras</span><span class="mt-1 block text-xs text-slate-400">${summary}</span></div><span class="shrink-0 text-right text-xs text-slate-400"><span class="block">${completed}/${count} realizados</span><span class="mt-1 block text-indigo-300"><span class="group-open/support:hidden">Abrir</span><span class="hidden group-open/support:inline">Recolher</span></span></span></summary>
                 <div class="space-y-4 border-t border-slate-800 p-3">
-                    ${studies.length ? `<section aria-label="Estudos planejados"><h3 class="mb-2 text-sm font-medium text-cyan-200">Estudos</h3><div class="grid grid-cols-1 gap-3">${studies.map(block => renderStudyPlanBlockCard(block, true)).join('')}</div></section>` : ''}
+                    ${studies.length ? `<section aria-label="Estudos planejados"><h3 class="mb-2 text-sm font-medium text-cyan-200">Estudos</h3><div class="grid grid-cols-1 gap-3">${studies.map(block => block.planningPreview ? `<p class="rounded-lg border border-slate-800 p-3 text-sm text-cyan-200">${window.escapeHtml(block.title)} · ${Number(block.plannedMinutes)||0} min · Previsão de estudo</p>` : renderStudyPlanBlockCard(block, true)).join('')}</div></section>` : ''}
                     ${readings.length ? `<section aria-label="Leituras planejadas"><h3 class="mb-2 text-sm font-medium text-indigo-200">Leituras</h3><div class="space-y-3">${readings.map(row => window.renderLibraryOccurrence(row)).join('')}</div></section>` : ''}
                 </div>
             </details>`;
