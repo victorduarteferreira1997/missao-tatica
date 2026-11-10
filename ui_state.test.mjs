@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {installFormDialogs} from './ui/form_dialogs.v1.js';
+import {installFormDialogs} from './ui/form_dialogs.v2.js';
 
 // Small DOM adapter exercises the renderer's actual capture/restore contract.
 class Node {
@@ -8,7 +8,7 @@ class Node {
  append(...nodes){for(const node of nodes){node.parentElement=this;node.doc=this.doc;this.children.push(node);}return this;}
  getAttribute(name){return this.attrs[name]??null;}
  hasAttribute(name){return Object.hasOwn(this.attrs,name);}
- matches(selector){return selector==='details'?this.tag==='details':selector==='[id]'?Boolean(this.id):selector==='[role="dialog"]'?this.attrs.role==='dialog':selector.startsWith('#')?this.id===selector.slice(1):false;}
+ matches(selector){return selector==='details'?this.tag==='details':selector==='[id]'?Boolean(this.id):selector==='[onclick]'?Boolean(this.attrs.onclick):selector==='[role="dialog"]'?this.attrs.role==='dialog':selector.startsWith('#')?this.id===selector.slice(1):false;}
  closest(selector){return this.matches(selector)?this:this.parentElement?.closest(selector)||null;}
  querySelectorAll(selector){return this.children.flatMap(child=>[...(child.matches(selector)?[child]:[]),...child.querySelectorAll(selector)]);}
  querySelector(selector){if(selector===':scope > summary')return this.children.find(child=>child.tag==='summary')||null;return this.querySelectorAll(selector)[0]||null;}
@@ -57,4 +57,28 @@ test('changing the main day or view does not reuse expansion from the previous p
  root.children=[];const next=detail(null,'Histórico');root.append(next);w.restoreViewState(root,snapshot,{pageKey:'week:monday'});assert.equal(next.open,false);
  w.restoreViewState(root,snapshot,{pageKey:'day:tuesday'});assert.equal(next.open,false);
  w.restoreViewState(root,snapshot,{pageKey:'day:monday'});assert.equal(next.open,true);
+});
+
+
+test('fechar formulário devolve foco ao botão de origem e preserva a rolagem da página',()=>{
+ const {root,w,doc}=dom();doc.scrollingElement={scrollTop:480,scrollLeft:0};doc.documentElement={style:{overflow:'auto'}};
+ const opener=new Node('button',{id:'new-mission'});root.append(opener);opener.focus();const before=w.captureViewState(root,{pageKey:'day:week1'});
+ const panel=dialog(root,'create-task-dialog'),field=new Node('input',{id:'title'});panel.append(field);field.focus();w.finishViewUpdate(root,before,{pageKey:'day:week1'});assert.equal(doc.documentElement.style.overflow,'hidden');
+ const opened=w.captureViewState(root,{pageKey:'day:week1'});root.children=[opener];doc.activeElement=null;doc.scrollingElement.scrollTop=0;w.finishViewUpdate(root,opened,{pageKey:'day:week1'});
+ assert.equal(doc.activeElement,opener);assert.equal(doc.scrollingElement.scrollTop,480);assert.equal(doc.documentElement.style.overflow,'auto');
+});
+test('uma semana diferente não recebe a posição de rolagem da anterior',()=>{
+ const {root,w,doc}=dom();doc.scrollingElement={scrollTop:600,scrollLeft:0};const snapshot=w.captureViewState(root,{pageKey:'day:week1:monday'});doc.scrollingElement.scrollTop=30;w.finishViewUpdate(root,snapshot,{pageKey:'day:week2:monday'});assert.equal(doc.scrollingElement.scrollTop,30);
+});
+test('cancelar descarte mantém edição; confirmar permite fechar sem loop',()=>{
+ const {root,w}=dom(),panel=dialog(root,'create-task-dialog');let discard,closed=0;
+ w.showConfirmModal=(message,callback)=>{assert.match(message,/não salvas/);discard=callback;};
+ w.bindFormDialog(root,{id:panel.id,initialFocus:'missing',close:()=>{}});panel.listeners.input();
+ assert.equal(w.confirmFormClose(panel.id,()=>closed++),false);assert.equal(closed,0);
+ assert.equal(w.confirmFormClose(panel.id,()=>closed++),false);discard();assert.equal(closed,1);assert.equal(w.confirmFormClose(panel.id,()=>closed++),true);
+});
+test('botão sem ID recupera foco pelo comando sem escolher controles ambíguos',()=>{
+ const {root,w,doc}=dom();const button=new Node('button',{onclick:'window.setTab("monday")'});root.append(button);button.focus();const snapshot=w.captureViewState(root);
+ root.children=[];const next=new Node('button',{onclick:'window.setTab("monday")'});root.append(next);doc.activeElement=null;w.restoreViewState(root,snapshot);assert.equal(doc.activeElement,next);
+ root.append(new Node('button',{onclick:'window.setTab("monday")'}));doc.activeElement=null;w.restoreViewState(root,snapshot);assert.equal(doc.activeElement,null);
 });
