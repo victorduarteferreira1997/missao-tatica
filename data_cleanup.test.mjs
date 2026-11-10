@@ -175,7 +175,7 @@ test('painel oferece revisão, backup e seleções acessíveis; rodapé inicial 
     ctx.window.selectAllDataCleanup(true); ctx.window.selectAllDataCleanup(false); assert.equal(ctx.uiState.dataManager.selected.length, 0);
     ctx.window.setDataCleanupSelection('finance', true); html = ctx.window.renderDataManager();
     assert.match(html, /XP, moedas, medalhas e histórico de campanhas serão preservados/);
-    const footer = section('// Ações principais da IA e manutenção dos dados.', 'appDiv.innerHTML = html');
+    const footer = section('// Ações principais da IA e manutenção dos dados.', 'updateAppView(appDiv, html');
     assert.match(footer, /<details[^>]*>[\s\S]*Backups e gerenciamento de dados/); assert.ok(!/<details[^>]*\bopen\b/.test(footer));
     assert.ok(!footer.includes('cleanup-finance')); assert.match(footer, /window.openDataManager/);
 });

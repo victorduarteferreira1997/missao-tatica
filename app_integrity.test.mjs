@@ -6,11 +6,11 @@ import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 import { installFormDialogs as installDialogModule } from './ui/form_dialogs.v2.js';
 import { installTaskForms } from './ui/task_forms.v9.js';
-import { installPlanningViews } from './ui/planning_views.v10.js';
+import { installPlanningViews } from './ui/planning_views.v11.js';
 
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
 const taskForms = await readFile(new URL('./ui/task_forms.v9.js', import.meta.url), 'utf8');
-const planningViews = await readFile(new URL('./ui/planning_views.v10.js', import.meta.url), 'utf8');
+const planningViews = await readFile(new URL('./ui/planning_views.v11.js', import.meta.url), 'utf8');
 const aiInbox = await readFile(new URL('./ui/ai_inbox.v3.js', import.meta.url), 'utf8');
 const aiAccess = await readFile(new URL('./ui/ai_access.v3.js', import.meta.url), 'utf8');
 const aiProposals = await readFile(new URL('./ui/ai_proposals.v2.js', import.meta.url), 'utf8');
@@ -23,7 +23,7 @@ const installPlanner = (target, options = {}) => installPlanningViews(target, {
     getState: () => ({}), getUiState: () => ({}), extractMinutesFromTask: () => 30,
     ...options
 });
-assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v10\.js\?v=1\.9\.78'/);
+assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v11\.js\?v=1\.9\.80'/);
 assert.match(app, /html \+= window\.renderWeeklyPlanningOverview\(\)/);
 assert.ok(!app.includes('window.renderDailyMissionBoard ='), 'As visões devem existir apenas no módulo do planejamento.');
 assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v9\.js\?v=1\.9\.78'/);
@@ -183,7 +183,7 @@ assert.equal(creationUi.createTaskDraft, null);
 const captureDraftStart = app.indexOf('const previousCreateDialog =');
 const captureDraftEnd = app.indexOf('// Preservar a expansão', captureDraftStart);
 const restoreDraftStart = app.indexOf('if (uiState.showCreateTaskModal && uiState.createTaskDraft)');
-const restoreDraftEnd = app.indexOf('lucide.createIcons();', restoreDraftStart);
+const restoreDraftEnd = app.indexOf('window.bindAiInbox', restoreDraftStart);
 const draftUi = { showCreateTaskModal: true };
 const draftFields = [{ id: 'ct-text', value: 'Título em edição' }, { id: 'ct-repeat-tuesday', type: 'checkbox', value: 'on', checked: true }];
 const draftSections = [{ dataset: { createSection: 'recurrence' }, open: true }];
