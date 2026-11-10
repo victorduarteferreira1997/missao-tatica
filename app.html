@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.78-ux-continuity">
+    <meta name="app-build" content="v1.9.79-disclosure-arrows">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-v2-16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-v2-180.png">
     <link rel="shortcut icon" href="assets/favicon-v2.ico">
-    <link rel="stylesheet" href="ui/experience.v1.css?v=1.9.78">
+    <link rel="stylesheet" href="ui/experience.v2.css?v=1.9.79">
     <meta name="theme-color" content="#0284c7">
 <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -178,7 +178,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.78';
+        const APP_VERSION = 'v1.9.79';
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
             authDomain: "missao-tatica.firebaseapp.com",
@@ -6917,7 +6917,7 @@
             // HUD PRINCIPAL SIMPLIFICADO — tempo, bateria e progresso discreto
             html += `
             <details id="daily-overview" class="daily-overview mb-3 rounded-xl border border-slate-800 bg-slate-900/70 font-sans">
-                <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm text-slate-300"><span>Bateria <strong class="${state.energy<35?'text-amber-300':'text-emerald-300'}">${state.energy}%</strong> <span class="overview-level">· Nível ${state.level}</span></span><span class="text-xs text-slate-300">Progresso e pausas <span aria-hidden="true">⌄</span></span></summary>
+                <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm text-slate-300"><span>Bateria <strong class="${state.energy<35?'text-amber-300':'text-emerald-300'}">${state.energy}%</strong> <span class="overview-level">· Nível ${state.level}</span></span><span class="text-xs text-slate-300">Progresso e pausas</span></summary>
                 <div class="grid grid-cols-1 md:grid-cols-[0.9fr_1.4fr] gap-3 p-3 pt-0">
                 <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col justify-center" id="time-operational-widget">
                     <div class="text-xs text-slate-500 animate-pulse">Iniciando sistemas de tempo...</div>
@@ -7890,7 +7890,7 @@
                     ${dayBlocks.length ? `<div class="mb-5"><div class="flex items-center justify-between gap-3 mb-3"><div><h3 class="text-xs font-black text-slate-300 uppercase tracking-widest">Plano completo do dia</h3><p class="text-[10px] text-slate-600 mt-1">Abra os cards apenas quando precisar executar, registrar, remarcar ou concluir.</p></div></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-3">${dayBlocks.map(b => renderStudyPlanBlockCard(b, true)).join('')}</div></div>` : ''}`;
 
                 if (dayBlocks.length > 0) {
-                    html += `<details class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden"><summary class="cursor-pointer list-none p-4 flex items-center justify-between gap-3 hover:bg-slate-900/60"><div class="flex items-center gap-2"><i data-lucide="sparkles" class="w-4 h-4 text-cyan-400"></i><span class="text-xs font-black text-slate-300 uppercase tracking-widest">Apoios para o plano</span></div><span class="text-[10px] text-slate-600">${recs.length} aviso${recs.length === 1 ? '' : 's'} • expandir</span></summary><div class="border-t border-slate-800 p-4"><p class="text-[10px] text-slate-600 mb-4">Avisos ligados apenas às disciplinas planejadas para ${selectedDay.label}.</p><div class="space-y-3">`;
+                    html += `<details class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden"><summary class="cursor-pointer list-none p-4 flex items-center justify-between gap-3 hover:bg-slate-900/60"><div class="flex items-center gap-2"><i data-lucide="sparkles" class="w-4 h-4 text-cyan-400"></i><span class="text-xs font-black text-slate-300 uppercase tracking-widest">Apoios para o plano</span></div><span class="text-[10px] text-slate-600">${recs.length} aviso${recs.length === 1 ? '' : 's'}</span></summary><div class="border-t border-slate-800 p-4"><p class="text-[10px] text-slate-600 mb-4">Avisos ligados apenas às disciplinas planejadas para ${selectedDay.label}.</p><div class="space-y-3">`;
                     if (recs.length === 0) html += `<div class="text-slate-500 italic text-sm border border-dashed border-slate-800 rounded-lg p-4">Nenhum alerta específico para os blocos planejados. Execute a agenda normalmente.</div>`;
                     recs.slice(0, 5).forEach(r => {
                         html += `<div class="bg-slate-900 border ${r.border} p-4 rounded-lg flex items-start gap-3"><i data-lucide="${r.icon || 'info'}" class="${r.color} w-5 h-5 mt-0.5"></i><div><h4 class="font-bold text-white text-sm">${r.title}</h4><p class="text-xs text-slate-400 mt-1">${r.desc}</p></div></div>`;
@@ -8057,7 +8057,7 @@
                     const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
                     return { label: day.label.substring(0,3), total, completed, percent };
                 });
-                html += `<details class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden"><summary class="cursor-pointer list-none p-4 flex items-center justify-between gap-3 hover:bg-slate-900/60"><div class="flex items-center gap-2"><i data-lucide="layout-dashboard" class="w-4 h-4 text-slate-500"></i><div><div class="text-xs font-black text-slate-400 uppercase tracking-widest">Contexto geral da semana</div><div class="text-[10px] text-slate-600 mt-0.5">Eficiência das missões gerais — informação preservada da versão anterior.</div></div></div><span class="text-[10px] text-slate-600">expandir</span></summary><div class="border-t border-slate-800 p-4 space-y-2.5">`;
+                html += `<details class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden"><summary class="cursor-pointer list-none p-4 flex items-center justify-between gap-3 hover:bg-slate-900/60"><div class="flex items-center gap-2"><i data-lucide="layout-dashboard" class="w-4 h-4 text-slate-500"></i><div><div class="text-xs font-black text-slate-400 uppercase tracking-widest">Contexto geral da semana</div><div class="text-[10px] text-slate-600 mt-0.5">Eficiência das missões gerais — informação preservada da versão anterior.</div></div></div></summary><div class="border-t border-slate-800 p-4 space-y-2.5">`;
                 efficiencyChartData.forEach(c => {
                     const barColor = c.percent === 100 ? 'bg-emerald-500' : (c.percent > 0 ? 'bg-indigo-500' : 'bg-slate-700');
                     const textColor = c.percent === 100 ? 'text-emerald-400' : (c.percent > 0 ? 'text-indigo-400' : 'text-slate-600');
