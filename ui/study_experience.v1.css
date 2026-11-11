@@ -1,0 +1,43 @@
+/* Scope every change to Intelligence. Finance and Body keep their own layout. */
+#study-module-dialog {font-size:14px;line-height:1.5;}
+#study-module-dialog .grid > * {min-width:0;}
+#study-module-dialog [class*="text-[8px]"],
+#study-module-dialog [class*="text-[9px]"],
+#study-module-dialog [class*="text-[10px]"],
+#study-module-dialog [class*="text-[11px]"] {font-size:12px;line-height:1.5;}
+#study-module-dialog .text-slate-600 {color:#94a3b8;}
+#study-module-dialog .text-slate-500 {color:#94a3b8;}
+#study-module-dialog label {font-size:14px;font-weight:500;letter-spacing:normal;text-transform:none;color:#cbd5e1;}
+#study-module-dialog button {min-height:44px;font-size:14px;font-weight:500;letter-spacing:normal;text-transform:none;}
+#study-module-dialog summary {font-weight:500;letter-spacing:normal;}
+#study-module-dialog input:not([type=checkbox]):not([type=radio]),
+#study-module-dialog select,#study-module-dialog textarea {width:100%;min-width:0;min-height:44px;font-size:14px;padding:10px 12px;border-radius:8px;color:#e2e8f0;}
+#study-module-dialog input:focus-visible,#study-module-dialog select:focus-visible,#study-module-dialog textarea:focus-visible {outline:2px solid #67e8f9;outline-offset:2px;}
+#study-module-dialog input[type=checkbox]:focus-visible + span {outline:2px solid #67e8f9;outline-offset:2px;}
+#study-module-dialog .study-days {grid-template-columns:repeat(7,minmax(0,1fr));}
+#study-module-dialog .study-days span {min-height:44px;}
+#study-module-dialog .study-area-nav .truncate {white-space:normal;overflow:visible;}
+#study-module-dialog .study-field-label {display:block;margin-bottom:6px;}
+#study-module-dialog .study-options {border-top:1px solid #334155;margin-top:8px;padding-top:8px;}
+#study-module-dialog .study-options > summary {font-size:14px;color:#cbd5e1;}
+@media(max-width:639px) {
+ .study-workspace.study-workspace {padding:0;}
+ #study-module-dialog {height:100dvh;max-height:100dvh;border-radius:0;}
+ #study-module-dialog > header {padding:12px 16px;}
+ #study-module-title {font-size:18px;}
+ #study-module-dialog > header > div > div > p {font-size:12px;}
+ #study-modal-scroll {padding:16px;padding-bottom:max(20px,env(safe-area-inset-bottom));}
+ #study-module-dialog .study-area-nav {grid-template-columns:repeat(2,minmax(0,1fr));margin-top:12px;}
+ #study-module-dialog .study-area-nav button {padding:8px 10px;}
+ #study-module-dialog .study-subnav {gap:6px;}
+ #study-module-dialog .study-subnav > div {display:flex;gap:4px;}
+ #study-module-dialog .study-subnav > div > button {flex:1;justify-content:center;padding:8px;font-size:13px;}
+ #study-module-dialog input:not([type=checkbox]):not([type=radio]),#study-module-dialog select,#study-module-dialog textarea {font-size:16px;}
+ #study-module-dialog h4.truncate,#study-module-dialog .font-bold.truncate {white-space:normal;overflow-wrap:anywhere;}
+}
+
+#study-module-dialog .study-summary-metrics [class*="text-[8px]"] {letter-spacing:normal;text-transform:none;font-weight:500;}
+@media(max-width:639px) {
+ #study-module-dialog .study-summary-metrics > div {padding:8px 4px;}
+ #study-module-dialog .study-field:has(#study-block-type) {grid-column:span 2;}
+}
