@@ -11,7 +11,7 @@ import {installLibraryImports} from '../ui/library_import.v1.js';
 import {createLibraryImportStore} from '../ai/v2/library_browser.js';
 import {applyLibraryImport} from '../library_import.v1.js';
 import * as Library from '../library.v2.js';
-import {installLibrary} from '../ui/library.v3.js';
+import {installLibrary} from '../ui/library.v4.js';
 import * as Recurrence from '../recurrence.v1.js';
 import {installRecurrence} from '../ui/recurrence.v1.js';
 import {installRadarMissions} from '../ui/radar_missions.v3.js';

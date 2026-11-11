@@ -1,0 +1,21 @@
+/* Presentation is limited to Library and its reading form. */
+#library-module-dialog,#reading-action-dialog {line-height:1.5;}
+#library-module-dialog .library-header-controls,#library-module-dialog .library-body-controls {min-width:0;margin:0;padding:0;border:0;}
+#library-module-dialog button,#reading-action-dialog button {min-height:44px;}
+#library-module-dialog button:disabled,#reading-action-dialog button:disabled {cursor:wait;opacity:.55;}
+#library-module-dialog .library-primary-action {background:#4f46e5;border-color:#6366f1;color:#fff;}
+#library-module-dialog .library-primary-action:hover {background:#4338ca;}
+#library-module-dialog [data-library-reading]:focus {outline:2px solid #a5b4fc;outline-offset:3px;}
+#library-module-dialog input:focus-visible,#library-module-dialog select:focus-visible,#library-module-dialog textarea:focus-visible,
+#reading-action-dialog input:focus-visible,#reading-action-dialog select:focus-visible,#reading-action-dialog textarea:focus-visible {outline:2px solid #a5b4fc;outline-offset:2px;}
+@media(max-width:639px){
+ .library-workspace.library-workspace,.reading-action-workspace.reading-action-workspace {padding:0;}
+ #library-module-dialog,#reading-action-dialog {height:100dvh;max-height:100dvh;border-radius:0;}
+ #library-module-dialog .library-reading-nav {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));overflow:visible;gap:4px;}
+ #library-module-dialog .library-reading-nav button {padding:8px 4px;font-size:13px;white-space:normal;}
+ #library-module-dialog input:not([type=checkbox]):not([type=radio]),#library-module-dialog select,#library-module-dialog textarea,
+ #reading-action-dialog input:not([type=checkbox]):not([type=radio]),#reading-action-dialog select,#reading-action-dialog textarea {font-size:16px;}
+ #library-scroll,#reading-action-scroll {padding-bottom:max(16px,env(safe-area-inset-bottom));}
+ #library-module-dialog footer,#reading-action-dialog footer {padding-bottom:max(12px,env(safe-area-inset-bottom));}
+ #library-close {min-width:44px;padding:8px;}
+}
