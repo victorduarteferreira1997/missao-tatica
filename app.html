@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.82-study-workspace">
+    <meta name="app-build" content="v1.9.83-library-workspace">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -15,6 +15,7 @@
     <link rel="shortcut icon" href="assets/favicon-v2.ico">
     <link rel="stylesheet" href="ui/experience.v2.css?v=1.9.79">
     <link rel="stylesheet" href="ui/study_experience.v1.css?v=1.9.82">
+    <link rel="stylesheet" href="ui/library_experience.v1.css?v=1.9.83">
     <meta name="theme-color" content="#0284c7">
 <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -153,7 +154,7 @@
         import { planningPreview } from './planning_preview.v1.js?v=1.9.77';
         import { installTaskForms } from './ui/task_forms.v10.js?v=1.9.81';
         import * as Library from './library.v2.js?v=1.9.70';
-        import { installLibrary } from './ui/library.v3.js?v=1.9.71';
+        import { installLibrary } from './ui/library.v4.js?v=1.9.83';
         import {installMissionChanges} from './ui/mission_changes.v1.js?v=1.9.75';
         import {createMissionChangeStore} from './ai/v2/mission_changes_browser.js';
         import {applyMissionChange} from './ai/v2/mission_change_apply.js';
@@ -182,7 +183,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.82';
+        const APP_VERSION = 'v1.9.83';
         const updateAppView = createViewUpdater(document);
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
@@ -7236,6 +7237,7 @@
             
             const studyWorkspaceDialog = appDiv.querySelector('#study-module-dialog');
             if(studyWorkspaceDialog) window.restoreStudyWorkspace?.(studyWorkspaceDialog);
+            window.restoreLibraryView?.();
             window.finishViewUpdate?.(appDiv, viewSnapshot, {pageKey:viewPageKey});
             // Render specific components that require external DOM access safely
             if(!clockInterval && currentUser) startClock(); else window.updateOperationalClock?.();
