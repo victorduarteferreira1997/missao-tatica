@@ -1,0 +1,29 @@
+/* Corpo presentation only: no medical interpretation or reward changes. */
+#health-module-dialog {font-size:14px;line-height:1.5;}
+#health-module-dialog .text-slate-500,#health-module-dialog .text-slate-600 {color:#94a3b8;}
+#health-module-dialog .grid > * {min-width:0;}
+#health-module-dialog button {min-height:44px;}
+#health-module-close {min-width:44px;}
+#health-module-dialog button:focus-visible,#health-module-dialog summary:focus-visible,
+#health-module-dialog input:focus-visible,#health-module-dialog select:focus-visible,#health-module-dialog textarea:focus-visible {outline:2px solid #fda4af;outline-offset:2px;}
+#health-module-dialog input:not([type=checkbox]):not([type=radio]),#health-module-dialog select,#health-module-dialog textarea {min-height:44px;min-width:0;}
+#health-module-dialog .health-area-nav {gap:4px;}
+#health-module-dialog .health-area-nav button {padding:8px 12px;}
+#health-module-dialog .health-values {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+#health-module-dialog .health-values p {overflow-wrap:anywhere;}
+#health-module-dialog .health-history-note {overflow-wrap:anywhere;white-space:pre-wrap;}
+#health-history:focus {outline:2px solid #fda4af;outline-offset:3px;}
+@media(max-width:639px){
+ .health-workspace.health-workspace {padding:0;}
+ #health-module-dialog {height:100dvh;max-height:100dvh;border-radius:0;}
+ #health-module-dialog > header {padding:12px 16px;}
+ #health-module-title {font-size:18px;}
+ #health-module-dialog .health-area-nav {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible;margin-top:12px;}
+ #health-module-dialog .health-area-nav button {padding:8px 4px;font-size:13px;white-space:normal;}
+ #health-module-dialog input:not([type=checkbox]):not([type=radio]),#health-module-dialog select,#health-module-dialog textarea {font-size:16px;}
+ #health-module-body {padding:16px;padding-bottom:max(20px,env(safe-area-inset-bottom));}
+ #health-module-dialog .health-summary-metrics {grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;}
+ #health-module-dialog .health-summary-metrics > :last-child {grid-column:1/-1;}
+ #health-module-dialog .health-summary-actions {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+ #health-module-dialog .health-summary-actions button {text-align:center;}
+}

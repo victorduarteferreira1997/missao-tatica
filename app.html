@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.84-finance-workspace">
+    <meta name="app-build" content="v1.9.85-health-workspace">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="ui/study_experience.v1.css?v=1.9.82">
     <link rel="stylesheet" href="ui/library_experience.v1.css?v=1.9.83">
     <link rel="stylesheet" href="ui/finance_experience.v1.css?v=1.9.84">
+    <link rel="stylesheet" href="ui/health_experience.v1.css?v=1.9.85">
     <meta name="theme-color" content="#0284c7">
 <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -147,6 +148,7 @@
         import { installSubtasks } from './ui/subtasks.v1.js?v=1.9.65';
         import {applyMissionSchedule,planMissionSchedule,scheduleForDate,formatMissionDate,assertScheduleWeekOpen} from './mission_schedule.v1.js?v=1.9.73';
         import {installMissionScheduling} from './ui/mission_schedule.v1.js?v=1.9.73';
+        import { installHealthWorkspace } from './ui/health_workspace.v1.js?v=1.9.85';
         import { installFinanceWorkspace } from './ui/finance_workspace.v1.js?v=1.9.84';
         import { installStudyWorkspace } from './ui/study_workspace.v1.js';
         import { createViewUpdater } from './ui/view_update.v1.js';
@@ -185,7 +187,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.84';
+        const APP_VERSION = 'v1.9.85';
         const updateAppView = createViewUpdater(document);
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
@@ -2229,7 +2231,7 @@
                 if (ids.includes('focus')) { uiState.pomodoroDraft = {}; uiState.pomodoroDraftReset = true; uiState.pomodoroSections = {}; uiState.focusHistoryPage = 0; }
                 if (ids.includes('health')) {
                     ['treinos','metricas','habitos'].forEach(tab=>window.clearWorkDraft?.('health',tab));
-                    uiState.healthSections = {}; uiState.healthPages = {};
+                    uiState.healthSections = {}; uiState.healthPages = {}; window.clearHealthWorkspace?.();
                 }
                 if (all) uiState.mainView = 'day';
                 const user = currentUser, generation = sessionGeneration;
@@ -3897,6 +3899,7 @@
 
         // Ponte temporária para os handlers existentes durante a modularização.
         installFormDialogs(window, document);
+        installHealthWorkspace(window,{document,getState:()=>state,getUiState:()=>uiState});
         installFinanceWorkspace(window,{document,getState:()=>state,getUiState:()=>uiState});
         installStudyWorkspace(window,{document,getUiState:()=>uiState});
         installMissionScheduling(window,{document,getState:()=>state,getUiState:()=>uiState,render,move:(task,date)=>window.applyMissionDate(task,date,true),saveConfirmed:()=>window.saveStateNow(true,'mission-reschedule')});
@@ -5740,9 +5743,9 @@
         window.setHealthTab = function(tab) { if (!HEALTH_TABS.some(item=>item.id===tab)) return;uiState.healthTab=tab;render(); };
         window.setHealthSection = function(tab,open) { uiState.healthSections ||= {};uiState.healthSections[tab]=Boolean(open); };
         window.openHealthForm = function(tab) { if(!['treinos','metricas','habitos'].includes(tab))return;uiState.healthTab=tab;window.setHealthSection(tab,true);render();const input=document.getElementById({treinos:'wo-type',metricas:'metric-weight',habitos:'habit-sleep'}[tab]);input?.scrollIntoView({block:'nearest'});input?.focus({preventScroll:true}); };
-        window.finishHealthForm = function(tab) { window.clearWorkDraft('health',tab);window.setHealthSection(tab,true); };
+        window.finishHealthForm = function(tab) { window.resetHealthSavedFields?.(tab);window.clearWorkDraft('health',tab);window.setHealthSection(tab,true); };
         window.getHealthRows = function(tab) { const key={treinos:'workouts',metricas:'bodyMetrics',habitos:'habits'}[tab];return (state.healthData?.[key] || []).slice().sort((a,b)=>(Date.parse(b.date)||0)-(Date.parse(a.date)||0)); };
-        window.setHealthPage = function(tab,page) { if(!['treinos','metricas','habitos'].includes(tab)||!Number.isInteger(page))return;uiState.healthPages ||= {};uiState.healthPages[tab]=Math.max(0,Math.min(Math.max(0,Math.ceil(window.getHealthRows(tab).length/10)-1),page));render(); };
+        window.setHealthPage = function(tab,page) { if(!['treinos','metricas','habitos'].includes(tab)||!Number.isInteger(page))return;uiState.healthPages ||= {};uiState.healthPages[tab]=Math.max(0,Math.min(Math.max(0,Math.ceil(window.getHealthRows(tab).length/10)-1),page));render();const history=document.getElementById('health-history');history?.focus({preventScroll:true});history?.scrollIntoView({block:'start',behavior:'auto'}); };
         window.getHealthSummary = function() {
             const today=window.getLocalDateKey(), start=new Date();start.setDate(start.getDate()-6);const startKey=window.getLocalDateKey(start);
             const workouts=window.getHealthRows('treinos');
@@ -5754,7 +5757,7 @@
         };
         window.renderHealthDialog = function() {
             const tab=uiState.healthTab || 'dashboard';
-            return `<div class="fixed inset-0 bg-slate-950/90 flex items-center justify-center p-3 sm:p-4 z-[60] backdrop-blur-sm font-sans"><section id="health-module-dialog" data-work-tab="${window.escapeHtml(tab)}" role="dialog" aria-modal="true" aria-labelledby="health-module-title" class="modal-enter w-full max-w-4xl max-h-[92dvh] rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col overflow-hidden"><header class="shrink-0 border-b border-slate-800 px-4 sm:px-6 py-4"><div class="flex items-start justify-between gap-4"><div><h2 id="health-module-title" class="text-xl font-semibold text-white">Corpo de Combate</h2><p class="text-sm text-slate-400 mt-1">Seus treinos, medidas e registros do dia.</p></div><button id="health-module-close" type="button" onclick="window.toggleHealthModal()" aria-label="Fechar Corpo de Combate" class="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="x" class="w-5 h-5"></i></button></div><nav aria-label="Áreas do Corpo" class="flex gap-1 overflow-x-auto mt-4">${HEALTH_TABS.map(item=>`<button type="button" onclick="window.setHealthTab('${item.id}')" aria-pressed="${tab===item.id}" class="rounded-lg px-3 py-2 text-sm whitespace-nowrap ${tab===item.id?'bg-rose-900/35 text-rose-200':'text-slate-400 hover:bg-slate-800 hover:text-white'}">${item.label}</button>`).join('')}</nav></header><div id="health-module-body" class="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6">${renderHealthContent()}</div></section></div>`;
+            return `<div class="health-workspace fixed inset-0 bg-slate-950/90 flex items-center justify-center p-3 sm:p-4 z-[60] backdrop-blur-sm font-sans"><section id="health-module-dialog" data-work-tab="${window.escapeHtml(tab)}" role="dialog" aria-modal="true" aria-labelledby="health-module-title" class="modal-enter w-full max-w-4xl max-h-[92dvh] rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col overflow-hidden"><header class="shrink-0 border-b border-slate-800 px-4 sm:px-6 py-4"><div class="flex items-start justify-between gap-4"><div><h2 id="health-module-title" class="text-xl font-semibold text-white">Corpo</h2><p class="text-sm text-slate-400 mt-1">Seus treinos, medidas e registros do dia.</p></div><button id="health-module-close" type="button" onclick="window.toggleHealthModal()" aria-label="Fechar Corpo" class="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="x" class="w-5 h-5"></i></button></div><nav aria-label="Áreas do Corpo" class="health-area-nav flex gap-1 overflow-x-auto mt-4">${HEALTH_TABS.map(item=>`<button type="button" onclick="window.setHealthTab('${item.id}')" aria-pressed="${tab===item.id}" class="rounded-lg px-3 py-2 text-sm whitespace-nowrap ${tab===item.id?'bg-rose-900/35 text-rose-200':'text-slate-400 hover:bg-slate-800 hover:text-white'}">${item.label}</button>`).join('')}</nav></header><div id="health-module-body" class="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6">${renderHealthContent()}</div></section></div>`;
         };
         window.logWorkout = function() {
             const type=document.getElementById('wo-type').value,intensity=document.getElementById('wo-intensity').value;
@@ -5811,6 +5814,7 @@
                 const tab = dialog.dataset.workTab, key = `${kind}:${tab}`;
                 if(kind === 'study') window.captureStudyWorkspace?.(dialog);
                 if(kind === 'finance') window.captureFinanceWorkspace?.(dialog);
+                if(kind === 'health') window.captureHealthWorkspace?.(dialog);
                 const body = dialog.querySelector(kind === 'finance' ? '#finance-module-body' : kind === 'health' ? '#health-module-body' : '#study-modal-scroll');
                 snapshots[kind] = { tab, scrollTop: body?.scrollTop || 0, focusId: dialog.contains(document.activeElement) ? document.activeElement.id : '' };
                 if ((kind === 'finance' || kind === 'health' || tab === 'log') && !uiState.workDraftReset?.[key]) {
@@ -7236,6 +7240,8 @@
             window.restoreLibraryView?.();
             const financeWorkspaceDialog = appDiv.querySelector('#finance-module-dialog');
             if(financeWorkspaceDialog) window.restoreFinanceWorkspace?.(financeWorkspaceDialog);
+            const healthWorkspaceDialog = appDiv.querySelector('#health-module-dialog');
+            if(healthWorkspaceDialog) window.restoreHealthWorkspace?.(healthWorkspaceDialog);
             window.finishViewUpdate?.(appDiv, viewSnapshot, {pageKey:viewPageKey});
             // Render specific components that require external DOM access safely
             if(!clockInterval && currentUser) startClock(); else window.updateOperationalClock?.();
@@ -8420,30 +8426,31 @@
             const input=(id,label,attrs='')=>`<label class="block text-sm text-slate-300">${label}<input id="${id}" ${attrs} class="${field}"></label>`;
             const select=(id,label,options,empty=false)=>`<label class="block text-sm text-slate-300">${label}<select id="${id}" class="${field}">${empty?'<option value="">Não informar</option>':''}${options.map(item=>`<option>${item}</option>`).join('')}</select></label>`;
             const configs={
-                treinos:{title:'Registrar treino',handler:'logWorkout',body:`<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">${select('wo-type','Modalidade',Object.keys(WORKOUT_TYPES))}${select('wo-intensity','Intensidade',Object.keys(WORKOUT_INTENSITIES))}</div>${input('wo-duration','Duração (min)','type="number" min="1" value="45"')}<label class="block text-sm text-slate-300">Anotações <span class="text-xs text-slate-500">(opcional)</span><textarea id="wo-notes" rows="3" maxlength="2000" class="${field}"></textarea></label><p class="text-xs text-slate-500">XP e bateria seguem as regras do jogo. A bateria não é uma avaliação da sua condição física.</p>`},
+                treinos:{title:'Registrar treino',handler:'logWorkout',body:`<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">${select('wo-type','Modalidade',Object.keys(WORKOUT_TYPES))}${select('wo-intensity','Intensidade',Object.keys(WORKOUT_INTENSITIES))}</div>${input('wo-duration','Duração (min) *','type="number" min="1" value="45"')}<details data-work-section="notes"><summary class="min-h-11 cursor-pointer py-2 text-sm text-slate-300">Anotações (opcional)</summary><div class="pt-2"><label class="block text-sm text-slate-300">Anotações <span class="text-xs text-slate-500">(opcional)</span><textarea id="wo-notes" rows="3" maxlength="2000" class="${field}"></textarea></label></div></details><p class="text-xs text-slate-500">XP e bateria seguem as regras do jogo. A bateria não é uma avaliação da sua condição física.</p>`},
                 metricas:{title:'Registrar medidas',handler:'logBodyMetric',body:`<p class="text-sm text-slate-400">Preencha as medidas que você acompanhou. As demais podem ficar em branco.</p><div class="grid grid-cols-1 sm:grid-cols-2 gap-4">${input('metric-weight','Peso (kg)','type="number" min="0.1" step="0.1" inputmode="decimal"')}${input('metric-waist','Cintura (cm)','type="number" min="0.1" step="0.1" inputmode="decimal"')}</div>`},
                 habitos:{title:'Registrar check-in',handler:'logHabit',body:`<p class="text-sm text-slate-400">Registre o que você sabe sobre o dia. Não precisa preencher tudo.</p><div class="grid grid-cols-1 sm:grid-cols-2 gap-4">${input('habit-sleep','Sono (horas)','type="number" min="0" max="24" step="0.5" inputmode="decimal"')}${input('habit-water','Água (litros)','type="number" min="0" step="0.1" inputmode="decimal"')}${select('habit-mood','Humor',['Muito ruim','Ruim','Neutro','Bom','Excelente'],true)}${select('habit-fatigue','Fadiga',['Nenhuma','Leve','Moderada','Alta'],true)}</div><p class="text-xs text-slate-500">Um registro concede 20 XP pelas regras atuais.</p>`}
             };
             const config=configs[tab];if(!config)return'';
-            return `<details ${uiState.healthSections?.[tab]?'open':''} ontoggle="window.setHealthSection('${tab}',this.open)" class="rounded-xl border border-slate-800 bg-slate-950/30 p-4"><summary class="cursor-pointer text-sm font-medium text-slate-300">${config.title}</summary><form novalidate onsubmit="event.preventDefault();window.${config.handler}()" class="space-y-4 mt-4">${config.body}<div class="flex justify-end"><button type="submit" class="rounded-lg border border-rose-800/60 bg-rose-900/30 px-4 py-2.5 text-sm text-rose-200 hover:bg-rose-900/60">${config.title}</button></div></form></details>`;
+            return `<details ${uiState.healthSections?.[tab]?'open':''} ontoggle="window.setHealthSection('${tab}',this.open)" class="rounded-xl border border-slate-800 bg-slate-950/30 p-4"><summary class="cursor-pointer text-sm font-medium text-slate-300">${config.title}</summary><form novalidate onsubmit="event.preventDefault();window.${config.handler}()" class="space-y-4 mt-4"><p class="text-xs text-slate-400">Registro com a data de hoje: ${window.formatFinanceDate(window.getLocalDateKey())}.${tab==='treinos'?' * Preenchimento obrigatório.':''}</p>${config.body}<div class="flex justify-end"><button type="submit" class="rounded-lg border border-rose-800/60 bg-rose-900/30 px-4 py-2.5 text-sm text-rose-200 hover:bg-rose-900/60">${config.title}</button></div></form></details>`;
         };
         window.renderHealthRow = function(row,tab) {
             const esc=window.escapeHtml;
-            const metric=(value,unit)=>value!==null&&value!==undefined&&String(value).trim()!==''&&Number.isFinite(Number(value))?`${Number(value)} ${unit}`:'Não informado';
-            const content=tab==='treinos'?`<h4 class="text-sm font-medium text-slate-200">${esc(row.type || 'Treino')}</h4><p class="text-xs text-slate-400 mt-1">${esc(row.intensity || 'Intensidade não informada')} · ${metric(row.duration,'min')}</p>${row.notes?`<p class="text-sm text-slate-400 mt-2 whitespace-pre-line break-words">${esc(row.notes)}</p>`:''}`:tab==='metricas'?`<p class="text-sm text-slate-200">Peso: ${metric(row.weight,'kg')} · Cintura: ${metric(row.waist,'cm')}</p>`:`<p class="text-sm text-slate-200">Sono: ${metric(row.sleep,'h')} · Água: ${metric(row.water,'L')}</p><p class="text-xs text-slate-400 mt-1">Humor: ${esc(row.mood || 'Não informado')} · Fadiga: ${esc(row.fatigue || 'Não informada')}</p>`;
-            return `<article class="py-4"><p class="text-xs text-slate-500 mb-2">${window.formatFinanceDate(row.date)}</p>${content}</article>`;
+            const metric=(value,unit)=>value!==null&&value!==undefined&&String(value).trim()!==''&&Number.isFinite(Number(value))?`${Number(value).toLocaleString('pt-BR',{maximumFractionDigits:20})} ${unit}`:'Não informado';
+            const value=(label,text)=>`<div><p class="text-xs text-slate-400">${label}</p><p class="mt-1 text-sm text-slate-200">${text}</p></div>`;
+            const content=tab==='treinos'?`<h4 class="break-words text-sm font-medium text-slate-200">${esc(row.type || 'Treino')}</h4><div class="health-values mt-3">${value('Duração',metric(row.duration,'min'))}${value('Intensidade',esc(row.intensity || 'Não informada'))}</div>${row.notes?`<p class="health-history-note text-sm text-slate-400 mt-3">${esc(row.notes)}</p>`:''}`:tab==='metricas'?`<div class="health-values">${value('Peso',metric(row.weight,'kg'))}${value('Cintura',metric(row.waist,'cm'))}</div>`:`<div class="health-values">${value('Sono',metric(row.sleep,'h'))}${value('Água',metric(row.water,'L'))}${value('Humor',esc(row.mood || 'Não informado'))}${value('Fadiga',esc(row.fatigue || 'Não informada'))}</div>`;
+            return `<article class="py-4"><p class="text-xs text-slate-400 mb-2">${window.formatFinanceDate(row.date)}</p>${content}</article>`;
         };
         window.renderHealthHistory = function(tab) {
             const rows=window.getHealthRows(tab),pages=Math.max(1,Math.ceil(rows.length/10)),page=Math.min(pages-1,Math.max(0,Number(uiState.healthPages?.[tab])||0));
-            return `<section class="rounded-xl border border-slate-800 px-4"><div class="flex justify-between items-center gap-3 pt-4"><h3 class="text-sm font-medium text-slate-300">Histórico</h3><span class="text-xs text-slate-500">${rows.length} registro${rows.length===1?'':'s'}</span></div><div class="divide-y divide-slate-800">${rows.slice(page*10,page*10+10).map(row=>window.renderHealthRow(row,tab)).join('') || '<p class="text-sm text-slate-500 py-4">Nenhum registro ainda.</p>'}</div>${pages>1?`<div class="flex justify-between items-center border-t border-slate-800 py-3"><button type="button" onclick="window.setHealthPage('${tab}',${page-1})" ${page?'':'disabled'} class="text-xs text-slate-300 disabled:opacity-30 px-3 py-2 border border-slate-700 rounded-lg">Anterior</button><span class="text-xs text-slate-500">${page+1} de ${pages}</span><button type="button" onclick="window.setHealthPage('${tab}',${page+1})" ${page<pages-1?'':'disabled'} class="text-xs text-slate-300 disabled:opacity-30 px-3 py-2 border border-slate-700 rounded-lg">Próxima</button></div>`:''}</section>`;
+            return `<section id="health-history" tabindex="-1" aria-label="Histórico de ${tab==='treinos'?'treinos':tab==='metricas'?'medidas':'check-ins'}" class="rounded-xl border border-slate-800 px-4"><div class="flex justify-between items-center gap-3 pt-4"><h3 class="text-sm font-medium text-slate-300">Histórico</h3><span class="text-xs text-slate-500">${rows.length} registro${rows.length===1?'':'s'}</span></div><div class="divide-y divide-slate-800">${rows.slice(page*10,page*10+10).map(row=>window.renderHealthRow(row,tab)).join('') || '<p class="text-sm text-slate-500 py-4">Nenhum registro ainda.</p>'}</div>${pages>1?`<div class="flex justify-between items-center border-t border-slate-800 py-3"><button type="button" onclick="window.setHealthPage('${tab}',${page-1})" ${page?'':'disabled'} class="text-xs text-slate-300 disabled:opacity-30 px-3 py-2 border border-slate-700 rounded-lg">Anterior</button><span class="text-xs text-slate-500">${page+1} de ${pages}</span><button type="button" onclick="window.setHealthPage('${tab}',${page+1})" ${page<pages-1?'':'disabled'} class="text-xs text-slate-300 disabled:opacity-30 px-3 py-2 border border-slate-700 rounded-lg">Próxima</button></div>`:''}</section>`;
         };
         function renderHealthContent() {
             const tab=uiState.healthTab || 'dashboard';
             if(tab==='dashboard'){
                 const summary=window.getHealthSummary();
-                return `<div class="space-y-5"><section class="rounded-xl border border-slate-800 p-5"><div class="flex flex-wrap justify-between items-start gap-4"><div><h3 class="text-sm font-medium text-slate-300">Seu movimento registrado</h3><p class="text-xs text-slate-500 mt-2">Acompanhe o histórico no seu ritmo.</p></div><button type="button" onclick="window.openHealthForm('treinos')" class="rounded-lg border border-rose-800/60 bg-rose-900/30 px-4 py-2.5 text-sm text-rose-200 hover:bg-rose-900/60">Registrar treino</button></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5 pt-4 border-t border-slate-800"><div><p class="text-xs text-slate-500">Últimos 7 dias, incluindo hoje</p><p class="text-xl font-medium text-slate-100 mt-1">${summary.recent} treino${summary.recent===1?'':'s'}</p><p class="text-xs text-slate-500 mt-1">${summary.minutes} min registrados</p></div><div><p class="text-xs text-slate-500">Todo o histórico</p><p class="text-xl font-medium text-slate-100 mt-1">${summary.total} treino${summary.total===1?'':'s'}</p></div><div><p class="text-xs text-slate-500">Último treino com data válida</p><p class="text-lg font-medium text-slate-100 mt-1">${summary.lastKey?window.formatFinanceDate(summary.lastKey):'Nenhum ainda'}</p>${summary.days!==null?`<p class="text-xs text-slate-500 mt-1">${summary.days===0?'Hoje':`Há ${summary.days} dia${summary.days===1?'':'s'}`}</p>`:''}</div></div></section><div class="flex flex-wrap gap-3"><button type="button" onclick="window.openHealthForm('habitos')" class="text-sm text-slate-300 border border-slate-700 rounded-lg px-3 py-2 hover:bg-slate-800">Check-in do dia</button><button type="button" onclick="window.openHealthForm('metricas')" class="text-sm text-slate-400 rounded-lg px-3 py-2 hover:bg-slate-800">Registrar medidas</button></div><section class="rounded-xl border border-slate-800 px-4"><div class="flex justify-between items-center gap-3 pt-4"><h3 class="text-sm font-medium text-slate-300">Treinos recentes</h3><button type="button" onclick="window.setHealthTab('treinos')" class="text-xs text-slate-400 hover:text-white">Ver histórico</button></div><div class="divide-y divide-slate-800">${window.getHealthRows('treinos').slice(0,3).map(row=>window.renderHealthRow(row,'treinos')).join('')||'<p class="text-sm text-slate-500 py-4">Nenhum treino registrado. Seu histórico aparece após o primeiro registro.</p>'}</div></section></div>`;
+                return `<div class="space-y-5"><section class="rounded-xl border border-slate-800 p-5"><div class="flex flex-wrap justify-between items-start gap-4"><div><h3 class="text-sm font-medium text-slate-300">Seu movimento registrado</h3><p class="text-xs text-slate-500 mt-2">Acompanhe o histórico no seu ritmo.</p></div><button type="button" onclick="window.openHealthForm('treinos')" class="rounded-lg border border-rose-800/60 bg-rose-900/30 px-4 py-2.5 text-sm text-rose-200 hover:bg-rose-900/60">Registrar treino</button></div><div class="health-summary-metrics grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5 pt-4 border-t border-slate-800"><div><p class="text-xs text-slate-500">Últimos 7 dias, incluindo hoje</p><p class="text-xl font-medium text-slate-100 mt-1">${summary.recent} treino${summary.recent===1?'':'s'}</p><p class="text-xs text-slate-500 mt-1">${summary.minutes} min registrados</p></div><div><p class="text-xs text-slate-500">Todo o histórico</p><p class="text-xl font-medium text-slate-100 mt-1">${summary.total} treino${summary.total===1?'':'s'}</p></div><div><p class="text-xs text-slate-500">Último treino com data válida</p><p class="text-lg font-medium text-slate-100 mt-1">${summary.lastKey?window.formatFinanceDate(summary.lastKey):'Nenhum ainda'}</p>${summary.days!==null?`<p class="text-xs text-slate-500 mt-1">${summary.days===0?'Hoje':`Há ${summary.days} dia${summary.days===1?'':'s'}`}</p>`:''}</div></div></section><div class="health-summary-actions flex flex-wrap gap-3"><button type="button" onclick="window.openHealthForm('habitos')" class="text-sm text-slate-300 border border-slate-700 rounded-lg px-3 py-2 hover:bg-slate-800">Check-in do dia</button><button type="button" onclick="window.openHealthForm('metricas')" class="text-sm text-slate-400 rounded-lg px-3 py-2 hover:bg-slate-800">Registrar medidas</button></div><section class="rounded-xl border border-slate-800 px-4"><div class="flex justify-between items-center gap-3 pt-4"><h3 class="text-sm font-medium text-slate-300">Treinos recentes</h3><button type="button" onclick="window.setHealthTab('treinos')" class="text-xs text-slate-400 hover:text-white">Ver histórico</button></div><div class="divide-y divide-slate-800">${window.getHealthRows('treinos').slice(0,3).map(row=>window.renderHealthRow(row,'treinos')).join('')||'<p class="text-sm text-slate-500 py-4">Nenhum treino registrado. Seu histórico aparece após o primeiro registro.</p>'}</div></section></div>`;
             }
-            return `<div class="space-y-5"><div class="flex justify-end"><button type="button" onclick="window.openHealthForm('${tab}')" class="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800">${tab==='treinos'?'Registrar treino':tab==='metricas'?'Registrar medidas':'Registrar check-in'}</button></div>${window.renderHealthForm(tab)}${window.renderHealthHistory(tab)}</div>`;
+            return `<div class="space-y-5">${window.renderHealthForm(tab)}${window.renderHealthHistory(tab)}</div>`;
         }
 
         // --- FINANÇAS ---
