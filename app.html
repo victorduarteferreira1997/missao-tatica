@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.81-radar-alerts">
+    <meta name="app-build" content="v1.9.82-study-workspace">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -14,6 +14,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-v2-180.png">
     <link rel="shortcut icon" href="assets/favicon-v2.ico">
     <link rel="stylesheet" href="ui/experience.v2.css?v=1.9.79">
+    <link rel="stylesheet" href="ui/study_experience.v1.css?v=1.9.82">
     <meta name="theme-color" content="#0284c7">
 <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -144,6 +145,7 @@
         import { installSubtasks } from './ui/subtasks.v1.js?v=1.9.65';
         import {applyMissionSchedule,planMissionSchedule,scheduleForDate,formatMissionDate,assertScheduleWeekOpen} from './mission_schedule.v1.js?v=1.9.73';
         import {installMissionScheduling} from './ui/mission_schedule.v1.js?v=1.9.73';
+        import { installStudyWorkspace } from './ui/study_workspace.v1.js';
         import { createViewUpdater } from './ui/view_update.v1.js';
         import { installFormDialogs } from './ui/form_dialogs.v2.js';
         import * as Recurrence from './recurrence.v1.js?v=1.9.66.1';
@@ -180,7 +182,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.81';
+        const APP_VERSION = 'v1.9.82';
         const updateAppView = createViewUpdater(document);
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
@@ -2220,7 +2222,7 @@
                     uiState.financeSections = {}; uiState.financePages = {};
                 }
                 if (ids.includes('rewards')) { uiState.rewardEditor = null; uiState.rewardDraft = {}; uiState.rewardSections = {}; uiState.rewardGroup = 'small'; uiState.rewardHistoryPage = 0; }
-                if (ids.includes('study')) window.clearWorkDraft?.('study', 'log');
+                if (ids.includes('study')) {window.clearWorkDraft?.('study', 'log');window.clearStudyWorkspaceDrafts?.();}
                 if (ids.includes('focus')) { uiState.pomodoroDraft = {}; uiState.pomodoroDraftReset = true; uiState.pomodoroSections = {}; uiState.focusHistoryPage = 0; }
                 if (ids.includes('health')) {
                     ['treinos','metricas','habitos'].forEach(tab=>window.clearWorkDraft?.('health',tab));
@@ -3892,6 +3894,7 @@
 
         // Ponte temporária para os handlers existentes durante a modularização.
         installFormDialogs(window, document);
+        installStudyWorkspace(window,{document,getUiState:()=>uiState});
         installMissionScheduling(window,{document,getState:()=>state,getUiState:()=>uiState,render,move:(task,date)=>window.applyMissionDate(task,date,true),saveConfirmed:()=>window.saveStateNow(true,'mission-reschedule')});
         installTaskForms(window, { document, daysOfWeek, getState: () => state, getUiState: () => uiState });
         window.__aiCloseCreate = () => { uiState.showCreateTaskModal = false; uiState.createTaskDraft = null; };
@@ -4799,7 +4802,7 @@
             const openErrors = (state.studyData?.errorLog || []).filter(e => e.status === 'open').length;
 
             return `
-                <div class="grid grid-cols-4 gap-1 mt-4">
+                <nav aria-label="Áreas de Inteligência" class="study-area-nav grid grid-cols-4 gap-1 mt-4">
                     ${areas.map(area => `
                         <button type="button" aria-pressed="${currentArea === area.id}" onclick="window.setStudyArea('${area.id}')" class="text-left rounded-lg border px-2 sm:px-3 py-2 transition-all ${currentArea === area.id ? 'bg-cyan-950/45 border-cyan-700/60 text-white' : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'}">
                             <div class="flex items-center justify-between gap-2">
@@ -4809,8 +4812,8 @@
                             <div class="hidden sm:block text-xs mt-1 ${currentArea === area.id ? 'text-cyan-500' : 'text-slate-600'}">${area.desc}</div>
                         </button>
                     `).join('')}
-                </div>
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-950 border border-slate-800 rounded-lg p-1.5 mt-2">
+                </nav>
+                <div class="study-subnav flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-950 border border-slate-800 rounded-lg p-1.5 mt-2">
                     <div class="flex flex-wrap gap-2">
                         ${(secondary[currentArea] || []).map(tab => `
                             <button type="button" aria-pressed="${uiState.studyTab === tab.id}" onclick="window.setStudyTab('${tab.id}')" class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${uiState.studyTab === tab.id ? 'bg-cyan-900/60 text-cyan-100 border border-cyan-700/60' : 'text-slate-400 border border-transparent hover:bg-slate-900 hover:text-slate-200'}">
@@ -4832,6 +4835,7 @@
             if (duplicate) { window.showAlertModal('Esta disciplina já existe dentro da trilha escolhida.'); return; }
             state.studyData.subjects.push({ id: Date.now(), name, trackId, color, createdAt: new Date().toISOString() });
             const track = window.getStudyTrack(trackId);
+            window.clearStudySavedFields?.('new-subject-name');
             window.showToast('Disciplina adicionada', `${name} entrou na trilha ${track.name}.`, 'book', track.color || 'text-cyan-400');
             window.saveStudyPlanningState();
         };
@@ -5288,6 +5292,7 @@
                 border: color.includes('blue') ? 'border-blue-900/50' : color.includes('purple') ? 'border-purple-900/50' : color.includes('emerald') ? 'border-emerald-900/50' : color.includes('yellow') ? 'border-yellow-900/50' : 'border-cyan-900/50',
                 weeklyGoalMinutes: Math.max(0, Math.min(3000, goal)), priority: 'media', active: true, system: false, createdAt: new Date().toISOString()
             });
+            window.clearStudySavedFields?.('study-track-name');
             window.saveStudyPlanningState();
             window.showToast('Trilha criada', 'Nova frente de estudo adicionada ao planejamento.', 'route', 'text-cyan-400');
         };
@@ -5441,6 +5446,7 @@
                     createdAt
                 });
             });
+            window.clearStudySavedFields?.('study-block-title','study-block-notes','study-block-start-time','study-block-end-time');
             window.saveStudyPlanningState();
             window.showToast('Planejamento criado', selectedDays.length > 1 ? `O estudo foi adicionado em ${selectedDays.length} dias da semana.` : 'O estudo foi adicionado ao calendário.', 'calendar-plus', 'text-cyan-400');
         };
@@ -5449,18 +5455,21 @@
             if (event) { event.stopPropagation(); event.preventDefault(); }
             const block = state.studyData?.studyPlan?.weeklyBlocks?.find(b => String(b.id) === String(blockId));
             if (!block) { window.showAlertModal('Bloco de planejamento não encontrado.'); return; }
+            window.resetStudyEditorDraft?.(String(block.id));
             uiState.editingStudyBlockId = String(block.id);
             uiState.studyPlanningTrackId = String(block.trackId || '');
             uiState.showStudyModal = true;
             uiState.studyTab = 'planning';
             render();
             setTimeout(window.guardAccountCallback(() => {
-                document.getElementById('study-plan-editor-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if(!uiState.showStudyModal || uiState.studyTab !== 'planning' || String(uiState.editingStudyBlockId) !== String(block.id)) return;
+                document.getElementById('study-plan-editor-card')?.scrollIntoView({ behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ? 'auto' : 'smooth', block: 'center' });
                 document.getElementById('study-block-title')?.focus();
             }), 80);
         };
 
         window.cancelEditStudyPlanBlock = function() {
+            window.resetStudyEditorDraft?.(String(uiState.editingStudyBlockId));
             uiState.editingStudyBlockId = null;
             render();
         };
@@ -5551,6 +5560,7 @@
                 return !belongsToEditedSeries || keptIds.has(String(item.id));
             });
 
+            window.resetStudyEditorDraft?.(String(block.id));
             uiState.editingStudyBlockId = null;
             uiState.studyPlanningTrackId = String(trackId);
             window.showToast('Planejamento atualizado', selectedDays.length > 1 ? `A repetição foi ajustada para ${selectedDays.length} dias.` : 'As alterações do bloco foram salvas.', 'pencil', 'text-cyan-400');
@@ -5664,6 +5674,8 @@
             window.showConfirmModal('Excluir este bloco de planejamento?', () => {
                 state.studyData.studyPlan.weeklyBlocks = state.studyData.studyPlan.weeklyBlocks.filter(b => String(b.id) !== String(blockId));
                 if (String(uiState.editingStudyBlockId || '') === String(blockId)) uiState.editingStudyBlockId = null;
+                window.resetStudyEditorDraft?.(String(blockId));
+                if(String(uiState.editingStudyBlockId) === String(blockId)) uiState.editingStudyBlockId = null;
                 window.saveStudyPlanningState();
             });
         };
@@ -5776,14 +5788,15 @@
         window.renderWorkDialog = function(kind) {
             const finance = kind === 'finance';
             const tab = finance ? uiState.financeTab || 'dashboard' : uiState.studyTab || 'plano';
-            const title = finance ? 'Tesouraria Tática' : 'Centro de Inteligência';
+            const title = finance ? 'Tesouraria Tática' : 'Inteligência · Estudos';
             const bodyId = finance ? 'finance-module-body' : 'study-modal-scroll';
-            return `<div class="fixed inset-0 bg-slate-950/90 flex items-center justify-center p-3 sm:p-4 z-[60] backdrop-blur-sm font-sans"><section id="${kind}-module-dialog" data-work-tab="${window.escapeHtml(tab)}" role="dialog" aria-modal="true" aria-labelledby="${kind}-module-title" class="modal-enter w-full ${finance ? 'max-w-4xl' : 'max-w-5xl'} max-h-[92dvh] rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col overflow-hidden"><header class="shrink-0 border-b border-slate-800 px-4 sm:px-6 py-4"><div class="flex items-start justify-between gap-4"><div><h2 id="${kind}-module-title" class="text-xl font-semibold text-white">${title}</h2><p class="text-sm text-slate-400 mt-1">${finance ? 'Acompanhe seus registros e escolha o próximo passo.' : 'Planeje, registre e acompanhe seus estudos.'}</p></div><button id="${kind}-module-close" type="button" onclick="window.${finance ? 'toggleFinanceModal' : 'toggleStudyModal'}()" aria-label="Fechar ${title}" class="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="x" class="w-5 h-5"></i></button></div>${finance ? `<nav aria-label="Áreas da Tesouraria" class="flex gap-1 overflow-x-auto mt-4 pb-1">${FINANCE_TABS.map(item=>`<button type="button" onclick="window.setFinanceTab('${item.id}')" aria-pressed="${tab === item.id}" class="rounded-lg px-3 py-2 text-sm whitespace-nowrap ${tab === item.id ? 'bg-yellow-900/35 text-yellow-200' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}">${item.label}</button>`).join('')}</nav><label class="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-3">Período<select id="finance-period" onchange="window.setFinancePeriod(this.value)" class="rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-200">${[{id:'all',label:'Todo o histórico'},{id:'current',label:'Este mês'},{id:'previous',label:'Mês passado'}].map(period=>`<option value="${period.id}" ${(uiState.financePeriod || 'all') === period.id ? 'selected' : ''}>${period.label}</option>`).join('')}</select>${tab === 'fixas' ? '<span>Contas fixas são exibidas em todos os períodos.</span>' : ''}</label><div class="flex flex-wrap items-center justify-between gap-2 mt-3"><button type="button" onclick="window.exportFinanceSpreadsheet()" class="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800"><i data-lucide="download" class="w-4 h-4"></i>Exportar planilha (.xlsx)</button><span class="text-xs text-slate-500">Todo o histórico · pronta para anexar ao consultor</span></div>` : renderStudyNavigation()}</header><div id="${bodyId}" class="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6">${finance ? renderFinanceContent() : renderStudyContent()}</div></section></div>`;
+            return `<div class="${finance ? '' : 'study-workspace'} fixed inset-0 bg-slate-950/90 flex items-center justify-center p-3 sm:p-4 z-[60] backdrop-blur-sm font-sans"><section id="${kind}-module-dialog" data-work-tab="${window.escapeHtml(tab)}" ${!finance && tab === 'planning' ? `data-study-record="${window.escapeHtml(String(uiState.editingStudyBlockId || 'new'))}"` : ''} role="dialog" aria-modal="true" aria-labelledby="${kind}-module-title" class="modal-enter w-full ${finance ? 'max-w-4xl' : 'max-w-5xl'} max-h-[92dvh] rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl flex flex-col overflow-hidden"><header class="shrink-0 border-b border-slate-800 px-4 sm:px-6 py-4"><div class="flex items-start justify-between gap-4"><div><h2 id="${kind}-module-title" class="text-xl font-semibold text-white">${title}</h2><p class="text-sm text-slate-400 mt-1">${finance ? 'Acompanhe seus registros e escolha o próximo passo.' : 'Planeje, registre e acompanhe seus estudos.'}</p></div><button id="${kind}-module-close" type="button" onclick="window.${finance ? 'toggleFinanceModal' : 'toggleStudyModal'}()" aria-label="Fechar ${title}" class="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"><i data-lucide="x" class="w-5 h-5"></i></button></div>${finance ? `<nav aria-label="Áreas da Tesouraria" class="flex gap-1 overflow-x-auto mt-4 pb-1">${FINANCE_TABS.map(item=>`<button type="button" onclick="window.setFinanceTab('${item.id}')" aria-pressed="${tab === item.id}" class="rounded-lg px-3 py-2 text-sm whitespace-nowrap ${tab === item.id ? 'bg-yellow-900/35 text-yellow-200' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}">${item.label}</button>`).join('')}</nav><label class="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-3">Período<select id="finance-period" onchange="window.setFinancePeriod(this.value)" class="rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-200">${[{id:'all',label:'Todo o histórico'},{id:'current',label:'Este mês'},{id:'previous',label:'Mês passado'}].map(period=>`<option value="${period.id}" ${(uiState.financePeriod || 'all') === period.id ? 'selected' : ''}>${period.label}</option>`).join('')}</select>${tab === 'fixas' ? '<span>Contas fixas são exibidas em todos os períodos.</span>' : ''}</label><div class="flex flex-wrap items-center justify-between gap-2 mt-3"><button type="button" onclick="window.exportFinanceSpreadsheet()" class="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800"><i data-lucide="download" class="w-4 h-4"></i>Exportar planilha (.xlsx)</button><span class="text-xs text-slate-500">Todo o histórico · pronta para anexar ao consultor</span></div>` : renderStudyNavigation()}</header><div id="${bodyId}" class="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6">${finance ? renderFinanceContent() : renderStudyContent()}</div></section></div>`;
         };
         window.clearWorkDraft = function(kind, tab) {
             uiState.workDrafts ||= {}; uiState.workDraftReset ||= {};
             const key = `${kind}:${tab}`;
             delete uiState.workDrafts[key]; uiState.workDraftReset[key] = true;
+            if(kind === 'study' && tab === 'planning') window.clearStudyWorkspaceDrafts?.('planning');
         };
         window.captureWorkDialogs = function(root) {
             const snapshots = {};
@@ -5792,6 +5805,7 @@
                 const dialog = root.querySelector(`#${kind}-module-dialog`);
                 if (!dialog) continue;
                 const tab = dialog.dataset.workTab, key = `${kind}:${tab}`;
+                if(kind === 'study') window.captureStudyWorkspace?.(dialog);
                 const body = dialog.querySelector(kind === 'finance' ? '#finance-module-body' : kind === 'health' ? '#health-module-body' : '#study-modal-scroll');
                 snapshots[kind] = { tab, scrollTop: body?.scrollTop || 0, focusId: dialog.contains(document.activeElement) ? document.activeElement.id : '' };
                 if ((kind === 'finance' || kind === 'health' || tab === 'log') && !uiState.workDraftReset?.[key]) {
@@ -7220,6 +7234,8 @@
             if (uiState.alert.show) window.bindFormDialog(appDiv, {id:'alert-dialog',initialFocus:'alert-close',close:window.closeAlertModal});
 
             
+            const studyWorkspaceDialog = appDiv.querySelector('#study-module-dialog');
+            if(studyWorkspaceDialog) window.restoreStudyWorkspace?.(studyWorkspaceDialog);
             window.finishViewUpdate?.(appDiv, viewSnapshot, {pageKey:viewPageKey});
             // Render specific components that require external DOM access safely
             if(!clockInterval && currentUser) startClock(); else window.updateOperationalClock?.();
@@ -7425,7 +7441,7 @@
                             <div class="flex items-center gap-2 mb-1"><i data-lucide="calendar-days" class="w-5 h-5 text-cyan-300"></i><h3 class="text-sm font-black text-white uppercase tracking-widest">Planejamento da semana</h3></div>
                             <p class="text-xs text-slate-500">Organize quando estudar. Detalhes e configurações ficam recolhidos para não competir com o calendário.</p>
                         </div>
-                        <div class="grid grid-cols-3 gap-2 shrink-0">
+                        <div class="study-summary-metrics grid grid-cols-3 gap-2 shrink-0">
                             <div class="rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2 text-center"><div class="text-base font-black text-white">${activeBlocks.length}</div><div class="text-[8px] uppercase tracking-widest text-slate-600 font-black">blocos</div></div>
                             <div class="rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2 text-center"><div class="text-base font-black text-cyan-200">${(plannedMinutes/60).toFixed(1)}h</div><div class="text-[8px] uppercase tracking-widest text-slate-600 font-black">planejado</div></div>
                             <div class="rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2 text-center"><div class="text-base font-black ${executionPct >= 100 && activeBlocks.length ? 'text-emerald-300' : 'text-cyan-300'}">${activeBlocks.length ? executionPct + '%' : '—'}</div><div class="text-[8px] uppercase tracking-widest text-slate-600 font-black">execução</div></div>
@@ -7441,7 +7457,7 @@
                     </div>
                 </section>
 
-                <details ${editingMode || activeBlocks.length === 0 ? 'open' : ''} class="group rounded-2xl border ${editingMode ? 'border-cyan-700/60' : 'border-slate-800'} bg-slate-950/65 overflow-hidden">
+                <details data-work-section="plan-editor" ${editingMode || activeBlocks.length === 0 ? 'open' : ''} class="group rounded-2xl border ${editingMode ? 'border-cyan-700/60' : 'border-slate-800'} bg-slate-950/65 overflow-hidden">
                     <summary class="cursor-pointer list-none flex items-center justify-between gap-3 p-4 hover:bg-slate-900/60 transition-colors">
                         <div class="flex items-center gap-2"><i data-lucide="calendar-plus" class="w-4 h-4 text-cyan-300"></i><div><div class="text-xs font-black text-slate-200 uppercase tracking-widest">${editingMode ? 'Editar estudo' : 'Adicionar estudo'}</div><div class="text-[10px] text-slate-600 mt-0.5">${editingMode ? 'O editor foi aberto porque há um bloco em edição.' : 'Abra somente quando quiser alterar o calendário.'}</div></div></div>
                         <i data-lucide="chevron-down" class="w-4 h-4 text-slate-500 group-open:rotate-180 transition-transform"></i>
@@ -7454,31 +7470,31 @@
                         </div>
                         ${editingMode ? `<div class="mb-3 rounded-lg border border-cyan-900/50 bg-cyan-950/20 p-3"><p class="text-[11px] text-cyan-200 font-bold">Editando: ${window.escapeHtml(editingBlock.title)}</p><p class="text-[10px] text-slate-500 mt-1">Altere os dados e marque todos os dias em que este estudo deve aparecer. Dias já existentes preservam o status; novos dias começam como planejados.</p></div>` : ''}
                         <div class="grid grid-cols-2 gap-2 mb-2">
-                            <input id="study-block-title" value="${window.escapeHtml(editingBlock?.title || '')}" placeholder="Tema/atividade" class="col-span-2 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
+                            <div class="study-field col-span-2"><label for="study-block-title" class="study-field-label">O que você vai estudar?</label><input id="study-block-title" value="${window.escapeHtml(editingBlock?.title || '')}" placeholder="Tema/atividade" class="col-span-2 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"></div>
                             <div class="col-span-2">
                                 <div class="flex items-center justify-between gap-2 mb-2"><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Dias da semana</label><span class="text-[9px] text-cyan-700">Marque um ou vários dias</span></div>
-                                <div class="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                                <div class="study-days grid grid-cols-4 sm:grid-cols-7 gap-1.5">
                                     ${daysOfWeek.map(d => `<label class="cursor-pointer"><input type="checkbox" name="study-block-days" value="${d.id}" class="peer sr-only" ${formDays.has(d.id) ? 'checked' : ''}><span class="flex items-center justify-center min-h-[38px] rounded-lg border border-slate-700 bg-slate-900 text-[10px] font-black text-slate-400 peer-checked:border-cyan-500 peer-checked:bg-cyan-950/60 peer-checked:text-cyan-200 transition-colors">${d.label.slice(0, 3)}</span></label>`).join('')}
                                 </div>
                                 <p class="text-[9px] text-slate-600 mt-1.5">Exemplo: para uma aula que se repete, marque Ter e Qui. O sistema criará um card em cada dia, ligados à mesma repetição.</p>
                             </div>
-                            <div class="col-span-2"><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Trilha</label><select id="study-block-track" onchange="window.setStudyPlanningTrack(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="" ${!planningTrackId ? 'selected' : ''} disabled>Escolha a trilha</option>${tracks.map(t => `<option value="${t.id}" ${String(t.id) === String(planningTrackId) ? 'selected' : ''}>${window.escapeHtml(t.name)}</option>`).join('')}</select></div>
-                            <div class="col-span-2"><label id="study-block-subject-label" class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">${planningTrack ? `Disciplina de ${window.escapeHtml(planningTrack.name)}` : 'Disciplina da trilha'}</label><select id="study-block-subject" ${planningTrackId ? '' : 'disabled'} class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none disabled:opacity-50 disabled:cursor-not-allowed">${planningTrackId ? window.renderStudySubjectOptions({ trackId: planningTrackId, selectedId: editingBlock?.subjectId || '', includeEmpty: true, emptyLabel: 'Sem disciplina vinculada' }) : '<option value="">Escolha primeiro uma trilha</option>'}</select><p id="study-block-subject-helper" class="text-[9px] text-slate-600 mt-1">${planningTrackId ? (planningSubjects.length ? `${planningSubjects.length} disciplina${planningSubjects.length === 1 ? '' : 's'} encontrada${planningSubjects.length === 1 ? '' : 's'} em ${window.escapeHtml(planningTrack.name)}.` : `Nenhuma disciplina está vinculada à trilha ${window.escapeHtml(planningTrack.name)}. Confira Conteúdo > Disciplinas.`) : 'Selecione uma trilha para carregar somente as disciplinas vinculadas a ela.'}</p></div>
-                            <select id="study-block-type" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="teoria" ${formType === 'teoria' ? 'selected' : ''}>Teoria</option><option value="questoes" ${formType === 'questoes' ? 'selected' : ''}>Questões</option><option value="revisao" ${formType === 'revisao' ? 'selected' : ''}>Revisão</option><option value="flashcards" ${formType === 'flashcards' ? 'selected' : ''}>Flashcards</option><option value="listening" ${formType === 'listening' ? 'selected' : ''}>Listening</option><option value="conversacao" ${formType === 'conversacao' ? 'selected' : ''}>Conversação</option><option value="leitura" ${formType === 'leitura' ? 'selected' : ''}>Leitura</option><option value="simulado" ${formType === 'simulado' ? 'selected' : ''}>Simulado</option><option value="erros" ${formType === 'erros' ? 'selected' : ''}>Correção de erros</option><option value="carreira" ${formType === 'carreira' ? 'selected' : ''}>Carreira técnica</option></select>
-                            <input id="study-block-minutes" type="number" value="${editingBlock?.plannedMinutes || 30}" min="5" max="480" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
-                            <select id="study-block-priority" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="alta" ${formPriority === 'alta' ? 'selected' : ''}>Prioridade alta</option><option value="media" ${formPriority === 'media' ? 'selected' : ''}>Prioridade média</option><option value="baixa" ${formPriority === 'baixa' ? 'selected' : ''}>Prioridade baixa</option></select>
-                            <select id="study-block-energy" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="alta" ${formEnergy === 'alta' ? 'selected' : ''}>Energia alta</option><option value="media" ${formEnergy === 'media' ? 'selected' : ''}>Energia média</option><option value="baixa" ${formEnergy === 'baixa' ? 'selected' : ''}>Energia baixa</option></select>
-                            <input id="study-block-notes" value="${window.escapeHtml(editingBlock?.notes || '')}" placeholder="Observação opcional" class="col-span-2 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
+                            <div class="col-span-2"><label for="study-block-track" class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Trilha</label><select id="study-block-track" onchange="window.setStudyPlanningTrack(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="" ${!planningTrackId ? 'selected' : ''} disabled>Escolha a trilha</option>${tracks.map(t => `<option value="${t.id}" ${String(t.id) === String(planningTrackId) ? 'selected' : ''}>${window.escapeHtml(t.name)}</option>`).join('')}</select></div>
+                            <div class="col-span-2"><label for="study-block-subject" id="study-block-subject-label" class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">${planningTrack ? `Disciplina de ${window.escapeHtml(planningTrack.name)}` : 'Disciplina da trilha'}</label><select id="study-block-subject" ${planningTrackId ? '' : 'disabled'} class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none disabled:opacity-50 disabled:cursor-not-allowed">${planningTrackId ? window.renderStudySubjectOptions({ trackId: planningTrackId, selectedId: editingBlock?.subjectId || '', includeEmpty: true, emptyLabel: 'Sem disciplina vinculada' }) : '<option value="">Escolha primeiro uma trilha</option>'}</select><p id="study-block-subject-helper" class="text-[9px] text-slate-600 mt-1">${planningTrackId ? (planningSubjects.length ? `${planningSubjects.length} disciplina${planningSubjects.length === 1 ? '' : 's'} encontrada${planningSubjects.length === 1 ? '' : 's'} em ${window.escapeHtml(planningTrack.name)}.` : `Nenhuma disciplina está vinculada à trilha ${window.escapeHtml(planningTrack.name)}. Confira Conteúdo > Disciplinas.`) : 'Selecione uma trilha para carregar somente as disciplinas vinculadas a ela.'}</p></div>
+                            <div class="study-field"><label for="study-block-type" class="study-field-label">Tipo de estudo</label><select id="study-block-type" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="teoria" ${formType === 'teoria' ? 'selected' : ''}>Teoria</option><option value="questoes" ${formType === 'questoes' ? 'selected' : ''}>Questões</option><option value="revisao" ${formType === 'revisao' ? 'selected' : ''}>Revisão</option><option value="flashcards" ${formType === 'flashcards' ? 'selected' : ''}>Flashcards</option><option value="listening" ${formType === 'listening' ? 'selected' : ''}>Listening</option><option value="conversacao" ${formType === 'conversacao' ? 'selected' : ''}>Conversação</option><option value="leitura" ${formType === 'leitura' ? 'selected' : ''}>Leitura</option><option value="simulado" ${formType === 'simulado' ? 'selected' : ''}>Simulado</option><option value="erros" ${formType === 'erros' ? 'selected' : ''}>Correção de erros</option><option value="carreira" ${formType === 'carreira' ? 'selected' : ''}>Carreira técnica</option></select></div>
+                            <div class="study-field"><label for="study-block-minutes" class="study-field-label">Duração (minutos)</label><input id="study-block-minutes" type="number" value="${editingBlock?.plannedMinutes || 30}" min="5" max="480" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"></div>
+                            <details data-work-section="plan-options" class="study-options col-span-2"><summary>Detalhes opcionais</summary><div class="grid grid-cols-2 gap-3 py-3"><div class="study-field"><label for="study-block-priority" class="study-field-label">Prioridade</label><select id="study-block-priority" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="alta" ${formPriority === 'alta' ? 'selected' : ''}>alta</option><option value="media" ${formPriority === 'media' ? 'selected' : ''}>média</option><option value="baixa" ${formPriority === 'baixa' ? 'selected' : ''}>baixa</option></select></div>
+                            <div class="study-field"><label for="study-block-energy" class="study-field-label">Energia necessária</label><select id="study-block-energy" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="alta" ${formEnergy === 'alta' ? 'selected' : ''}>alta</option><option value="media" ${formEnergy === 'media' ? 'selected' : ''}>média</option><option value="baixa" ${formEnergy === 'baixa' ? 'selected' : ''}>baixa</option></select></div>
+                            <div class="study-field col-span-2"><label for="study-block-notes" class="study-field-label">Observações</label><input id="study-block-notes" value="${window.escapeHtml(editingBlock?.notes || '')}" placeholder="Observação opcional" class="col-span-2 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"></div>
                             <div class="col-span-2 rounded-xl border border-cyan-900/40 bg-slate-900/70 p-3">
-                                <div class="flex items-start gap-2 mb-2"><i data-lucide="calendar-clock" class="w-4 h-4 text-cyan-300 mt-0.5"></i><div><label class="text-[9px] font-black text-cyan-300 uppercase tracking-widest block">Agenda / Google Calendar</label><p class="text-[9px] text-slate-600 mt-0.5">Opcional. Sem horário, o estudo será exportado como evento de dia inteiro.</p></div></div>
+                                <div class="flex items-start gap-2 mb-2"><i data-lucide="calendar-clock" class="w-4 h-4 text-cyan-300 mt-0.5"></i><div><label class="text-[9px] font-black text-cyan-300 uppercase tracking-widest block">Horário (opcional)</label><p class="text-[9px] text-slate-600 mt-0.5">Opcional. Sem horário, o estudo será exportado como evento de dia inteiro.</p></div></div>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <input id="study-block-start-time" type="time" value="${formStartTime}" class="bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
-                                    <input id="study-block-end-time" type="time" value="${formEndTime}" class="bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
+                                    <div class="study-field"><label for="study-block-start-time" class="study-field-label">Início</label><input id="study-block-start-time" type="time" value="${formStartTime}" class="bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"></div>
+                                    <div class="study-field"><label for="study-block-end-time" class="study-field-label">Fim</label><input id="study-block-end-time" type="time" value="${formEndTime}" class="bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"></div>
                                 </div>
-                            </div>
+                            </div></div></details>
                         </div>
                         ${editingMode ? `<div class="grid grid-cols-2 gap-2 mb-2"><button onclick="window.saveStudyPlanBlockChanges()" class="bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-black uppercase tracking-widest rounded-lg py-2.5 flex items-center justify-center gap-2"><i data-lucide="save" class="w-4 h-4"></i> Salvar alterações</button><button onclick="window.cancelEditStudyPlanBlock()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-black uppercase tracking-widest rounded-lg py-2.5">Cancelar</button></div>` : `<button onclick="window.addStudyPlanBlock()" class="w-full bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-black uppercase tracking-widest rounded-lg py-2 mb-2">Adicionar ao calendário</button>`}
-                        ${!editingMode ? `<div class="grid grid-cols-2 gap-2"><button onclick="window.applyStudyTemplate('balanced')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-black uppercase rounded-lg py-2">Template equilibrado</button><button onclick="window.applyStudyTemplate('maintenance')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-black uppercase rounded-lg py-2">Semana leve</button></div>` : ''}
+                        ${!editingMode ? `<details data-work-section="plan-templates" class="study-options"><summary>Modelos de semana</summary><div class="grid grid-cols-2 gap-2 py-3"><button onclick="window.applyStudyTemplate('balanced')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-black uppercase rounded-lg py-2">Template equilibrado</button><button onclick="window.applyStudyTemplate('maintenance')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-black uppercase rounded-lg py-2">Semana leve</button></div></details>` : ''}
                     </div>
                     </div>
                 </details>
@@ -7497,7 +7513,7 @@
                 <section class="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
                     <div class="grid grid-cols-2 gap-2">
                         <button type="button" onclick="window.setStudyPlanningView('overview')" class="rounded-lg px-3 py-2.5 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 ${uiState.studyPlanningView === 'overview' ? 'bg-cyan-900/70 text-cyan-100 border border-cyan-700' : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-200'}"><i data-lucide="table-2" class="w-4 h-4"></i> Visão semanal</button>
-                        <button type="button" onclick="window.setStudyPlanningView('board')" class="rounded-lg px-3 py-2.5 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 ${(uiState.studyPlanningView || 'board') === 'board' ? 'bg-cyan-900/70 text-cyan-100 border border-cyan-700' : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-200'}"><i data-lucide="layout-dashboard" class="w-4 h-4"></i> Board por dia</button>
+                        <button type="button" onclick="window.setStudyPlanningView('board')" class="rounded-lg px-3 py-2.5 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 ${(uiState.studyPlanningView || 'board') === 'board' ? 'bg-cyan-900/70 text-cyan-100 border border-cyan-700' : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-200'}"><i data-lucide="layout-dashboard" class="w-4 h-4"></i> Por dia</button>
                     </div>
                 </section>
 
@@ -8000,7 +8016,7 @@
                     <section class="rounded-2xl border border-slate-800 bg-slate-950/75 p-4 sm:p-5">
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                             <div><div class="flex items-center gap-2"><i data-lucide="library-big" class="w-5 h-5 text-cyan-300"></i><h3 class="text-sm font-black text-white uppercase tracking-widest">Conteúdo de estudo</h3></div><p class="text-xs text-slate-500 mt-1">Trilhas agrupam objetivos; disciplinas são os conteúdos que você estuda.</p></div>
-                            <div class="grid grid-cols-3 gap-2 shrink-0">
+                            <div class="study-summary-metrics grid grid-cols-3 gap-2 shrink-0">
                                 <div class="rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2 text-center"><div class="text-base font-black text-white">${activeTrackCount}</div><div class="text-[8px] text-slate-600 uppercase tracking-widest font-black">trilhas</div></div>
                                 <div class="rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2 text-center"><div class="text-base font-black text-cyan-200">${activeSubjectCount}</div><div class="text-[8px] text-slate-600 uppercase tracking-widest font-black">disciplinas</div></div>
                                 <button type="button" onclick="window.setStudyTab('erros')" class="rounded-xl border ${openErrorsCount ? 'border-fuchsia-900/60 bg-fuchsia-950/20' : 'border-slate-800 bg-slate-900/70'} px-3 py-2 text-center hover:border-fuchsia-800/70"><div class="text-base font-black ${openErrorsCount ? 'text-fuchsia-300' : 'text-slate-400'}">${openErrorsCount}</div><div class="text-[8px] text-slate-600 uppercase tracking-widest font-black">erros abertos</div></button>
@@ -8009,19 +8025,19 @@
                     </section>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <details class="group rounded-2xl border border-slate-800 bg-slate-950/65 overflow-hidden">
+                        <details data-work-section="subject-create" class="group rounded-2xl border border-slate-800 bg-slate-950/65 overflow-hidden">
                             <summary class="cursor-pointer list-none flex items-center justify-between gap-3 p-4 hover:bg-slate-900/60"><div class="flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4 text-emerald-400"></i><div><div class="text-xs font-black text-slate-200 uppercase tracking-widest">Nova disciplina</div><div class="text-[10px] text-slate-600 mt-0.5">Cadastre só quando precisar.</div></div></div><i data-lucide="chevron-down" class="w-4 h-4 text-slate-500 group-open:rotate-180 transition-transform"></i></summary>
                             <div class="border-t border-slate-800 p-4">
                                 <div class="space-y-3">
-                                    <div><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Nome</label><input type="text" id="new-subject-name" placeholder="Ex: Direito Constitucional" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500"></div>
-                                    <div><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Trilha</label><select id="new-subject-track" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-cyan-500"><option value="">Selecione a trilha...</option>${activeTracks.map(t => `<option value="${t.id}">${window.escapeHtml(t.name)}</option>`).join('')}</select></div>
-                                    <div><label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Cor visual</label><select id="new-subject-color" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-300 focus:outline-none"><option value="bg-cyan-500">Ciano</option><option value="bg-indigo-500">Índigo</option><option value="bg-emerald-500">Esmeralda</option><option value="bg-rose-500">Rosa</option><option value="bg-yellow-500">Amarelo</option><option value="bg-fuchsia-500">Fúcsia</option></select></div>
+                                    <div><label for="new-subject-name" class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Nome</label><input type="text" id="new-subject-name" placeholder="Ex: Direito Constitucional" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500"></div>
+                                    <div><label for="new-subject-track" class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Trilha</label><select id="new-subject-track" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-cyan-500"><option value="">Selecione a trilha...</option>${activeTracks.map(t => `<option value="${t.id}">${window.escapeHtml(t.name)}</option>`).join('')}</select></div>
+                                    <div><label for="new-subject-color" class="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Cor visual</label><select id="new-subject-color" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-300 focus:outline-none"><option value="bg-cyan-500">Ciano</option><option value="bg-indigo-500">Índigo</option><option value="bg-emerald-500">Esmeralda</option><option value="bg-rose-500">Rosa</option><option value="bg-yellow-500">Amarelo</option><option value="bg-fuchsia-500">Fúcsia</option></select></div>
                                     <button onclick="window.addSubject()" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-black uppercase tracking-widest text-xs py-2.5 px-4 rounded-lg">Cadastrar disciplina</button>
                                 </div>
                             </div>
                         </details>
 
-                        <details class="group rounded-2xl border border-slate-800 bg-slate-950/65 overflow-hidden">
+                        <details data-work-section="tracks-manage" class="group rounded-2xl border border-slate-800 bg-slate-950/65 overflow-hidden">
                             <summary class="cursor-pointer list-none flex items-center justify-between gap-3 p-4 hover:bg-slate-900/60"><div class="flex items-center gap-2"><i data-lucide="route" class="w-4 h-4 text-cyan-300"></i><div><div class="text-xs font-black text-slate-200 uppercase tracking-widest">Gerenciar trilhas</div><div class="text-[10px] text-slate-600 mt-0.5">Criar, definir meta ou arquivar.</div></div></div><i data-lucide="chevron-down" class="w-4 h-4 text-slate-500 group-open:rotate-180 transition-transform"></i></summary>
                             <div class="border-t border-slate-800 p-4">
                                 <div class="space-y-2 mb-4">
@@ -8029,10 +8045,10 @@
                                     ${archivedTracks.length ? `<details data-view-key="study-archived-tracks" class="rounded-lg border border-slate-800"><summary class="cursor-pointer px-3 py-2 text-xs text-slate-400">Trilhas arquivadas (${archivedTracks.length})</summary><div class="px-3 pb-3"><p class="text-xs text-slate-500 mb-2">Histórico preservado.</p>${archivedTracks.map(t => `<div class="flex flex-wrap items-center justify-between gap-3 py-3 border-t border-slate-800"><span class="min-w-0 flex-1 text-sm text-slate-300 break-words">${window.escapeHtml(t.name)}</span><div class="flex items-center gap-1 shrink-0"><button type="button" onclick="window.restoreStudyTrack(${window.recoveryHandlerArgument(t.id)})" class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs text-cyan-300 hover:bg-slate-800"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>Restaurar</button><button type="button" onclick="window.openStudyTrackDeletion(${window.recoveryHandlerArgument(t.id)})" class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs text-rose-300 hover:bg-rose-950/40" aria-label="Excluir definitivamente ${window.escapeHtml(t.name)}"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i>Excluir</button></div></div>`).join('')}</div></details>` : ''}
                                 </div>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <input id="study-track-name" placeholder="Nova trilha" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
-                                    <input id="study-track-goal" type="number" placeholder="Meta min/sem" value="60" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none">
-                                    <select id="study-track-icon" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="book-open">Livro</option><option value="languages">Idiomas</option><option value="scale">Concurso/Direito</option><option value="shield-check">Carreira/GRC</option><option value="brain">Cognição</option></select>
-                                    <select id="study-track-color" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="text-cyan-400">Ciano</option><option value="text-blue-400">Azul</option><option value="text-purple-400">Roxo</option><option value="text-emerald-400">Verde</option><option value="text-yellow-400">Amarelo</option></select>
+                                    <div class="study-field"><label for="study-track-name" class="study-field-label">Nome da trilha</label><input id="study-track-name" placeholder="Nova trilha" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"></div>
+                                    <div class="study-field"><label for="study-track-goal" class="study-field-label">Meta semanal (minutos)</label><input id="study-track-goal" type="number" placeholder="Meta min/sem" value="60" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"></div>
+                                    <details data-work-section="track-options" class="study-options col-span-2"><summary>Personalizar aparência (opcional)</summary><div class="grid grid-cols-2 gap-3 py-3"><div class="study-field"><label for="study-track-icon" class="study-field-label">Ícone</label><select id="study-track-icon" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="book-open">Livro</option><option value="languages">Idiomas</option><option value="scale">Concurso/Direito</option><option value="shield-check">Carreira/GRC</option><option value="brain">Cognição</option></select></div>
+                                    <div class="study-field"><label for="study-track-color" class="study-field-label">Cor da trilha</label><select id="study-track-color" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none"><option value="text-cyan-400">Ciano</option><option value="text-blue-400">Azul</option><option value="text-purple-400">Roxo</option><option value="text-emerald-400">Verde</option><option value="text-yellow-400">Amarelo</option></select></div></div></details>
                                 </div>
                                 <button onclick="window.addStudyTrack()" class="mt-3 w-full bg-cyan-800 hover:bg-cyan-700 text-white text-xs font-black uppercase tracking-widest rounded-lg py-2.5">Criar trilha</button>
                             </div>
