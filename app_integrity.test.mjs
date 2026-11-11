@@ -5,11 +5,11 @@ import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 import { installFormDialogs as installDialogModule } from './ui/form_dialogs.v2.js';
-import { installTaskForms } from './ui/task_forms.v9.js';
+import { installTaskForms } from './ui/task_forms.v10.js';
 import { installPlanningViews } from './ui/planning_views.v11.js';
 
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
-const taskForms = await readFile(new URL('./ui/task_forms.v9.js', import.meta.url), 'utf8');
+const taskForms = await readFile(new URL('./ui/task_forms.v10.js', import.meta.url), 'utf8');
 const planningViews = await readFile(new URL('./ui/planning_views.v11.js', import.meta.url), 'utf8');
 const aiInbox = await readFile(new URL('./ui/ai_inbox.v3.js', import.meta.url), 'utf8');
 const aiAccess = await readFile(new URL('./ui/ai_access.v3.js', import.meta.url), 'utf8');
@@ -26,7 +26,7 @@ const installPlanner = (target, options = {}) => installPlanningViews(target, {
 assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v11\.js\?v=1\.9\.80'/);
 assert.match(app, /html \+= window\.renderWeeklyPlanningOverview\(\)/);
 assert.ok(!app.includes('window.renderDailyMissionBoard ='), 'As visões devem existir apenas no módulo do planejamento.');
-assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v9\.js\?v=1\.9\.78'/);
+assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v10\.js\?v=1\.9\.81'/);
 assert.match(app, /installTaskForms\(window, \{ document, daysOfWeek, getState: \(\) => state, getUiState: \(\) => uiState \}\)/);
 const installFormDialogs = target => installDialogModule(target, {});
 assert.match(app, /import \{ installFormDialogs \} from '\.\/ui\/form_dialogs\.v2\.js'/);

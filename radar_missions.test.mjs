@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {radarWeek,setRadarLink,taskStatus,weekDate,allPlanningMissions} from './radar_missions.v1.js';
+import {radarWeek,setRadarLink,taskStatus,weekDate,allPlanningMissions} from './radar_missions.v2.js';
 import {linkedTasks,validateRelations,blockingDependencies} from './planning.v1.js';
 import {boot,plain} from './test-support/app_boot.mjs';
 const week='2026-10-19',today='2026-10-20';

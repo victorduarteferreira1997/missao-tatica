@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.80-partial-view">
+    <meta name="app-build" content="v1.9.81-radar-alerts">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -139,7 +139,8 @@
     <script type="module">
         import { createCalendarSync } from './calendar_sync.v3.js?v=1.9.73';
         import { installPlanningTools } from './ui/planning_tools.v4.js?v=1.9.73';
-        import { installRadarMissions } from './ui/radar_missions.v2.js';
+        import { installRadarMissions } from './ui/radar_missions.v3.js';
+        import {operationalSignals,deadlineHorizon} from './radar_attention.v1.js';
         import { installSubtasks } from './ui/subtasks.v1.js?v=1.9.65';
         import {applyMissionSchedule,planMissionSchedule,scheduleForDate,formatMissionDate,assertScheduleWeekOpen} from './mission_schedule.v1.js?v=1.9.73';
         import {installMissionScheduling} from './ui/mission_schedule.v1.js?v=1.9.73';
@@ -148,7 +149,7 @@
         import * as Recurrence from './recurrence.v1.js?v=1.9.66.1';
         import { installRecurrence } from './ui/recurrence.v1.js?v=1.9.66.1';
         import { planningPreview } from './planning_preview.v1.js?v=1.9.77';
-        import { installTaskForms } from './ui/task_forms.v9.js?v=1.9.78';
+        import { installTaskForms } from './ui/task_forms.v10.js?v=1.9.81';
         import * as Library from './library.v2.js?v=1.9.70';
         import { installLibrary } from './ui/library.v3.js?v=1.9.71';
         import {installMissionChanges} from './ui/mission_changes.v1.js?v=1.9.75';
@@ -179,7 +180,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.80';
+        const APP_VERSION = 'v1.9.81';
         const updateAppView = createViewUpdater(document);
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
@@ -1493,7 +1494,7 @@
             if (!Array.isArray(operationalControl.shutdowns)) operationalControl.shutdowns = [];
             if (!operationalControl.config || typeof operationalControl.config !== 'object') operationalControl.config = {};
             operationalControl.config.wipLimit = Math.max(1, Math.min(10, parseInt(operationalControl.config.wipLimit, 10) || 3));
-            operationalControl.config.dueSoonDays = Math.max(0, Math.min(30, parseInt(operationalControl.config.dueSoonDays, 10) || 2));
+            operationalControl.config.dueSoonDays = Math.max(0, Math.min(30, Number.isFinite(parseInt(operationalControl.config.dueSoonDays, 10)) ? parseInt(operationalControl.config.dueSoonDays, 10) : 2));
             operationalControl.config.staleDays = Math.max(1, Math.min(90, parseInt(operationalControl.config.staleDays, 10) || 5));
             operationalControl.config.waitingDays = Math.max(1, Math.min(90, parseInt(operationalControl.config.waitingDays, 10) || 3));
 
@@ -6339,93 +6340,14 @@
         };
 
         window.getOperationalSignalsForDate = function(referenceDateKey = dateKeyFromDate(new Date()), horizonDays = null) {
-            const operationalControl = window.getOperationalControl();
-            const horizon = horizonDays === null
-                ? Math.max(0, parseInt(operationalControl.config?.dueSoonDays, 10) || 2)
-                : Math.max(0, parseInt(horizonDays, 10) || 0);
-            const rows = [];
-            const activeDemands = operationalControl.demands.filter(d => d.workflowStatus !== 'closed' && d.workflowStatus !== 'backlog');
-
-            const addSignal = (bucket, kind, severity, label, dateKey = '') => {
-                bucket.signals.push({ kind, severity, label, dateKey });
-                const rank = { critical: 0, attention: 1, upcoming: 2, info: 3 }[severity] ?? 9;
-                bucket.severityRank = Math.min(bucket.severityRank, rank);
-            };
-
-            activeDemands.forEach(demand => {
-                const bucket = { demand, signals: [], severityRank: 9, nextRelevantDate: '9999-12-31' };
-
-                if (demand.attentionLevel === 'immediate') {
-                    addSignal(bucket, 'manual-immediate', 'critical', 'Marcada como ação imediata');
-                } else if (demand.attentionLevel === 'attention') {
-                    addSignal(bucket, 'manual-attention', 'attention', 'Marcada para atenção');
-                }
-
-                if (!String(demand.nextAction || '').trim() && demand.workflowStatus === 'active') {
-                    addSignal(bucket, 'missing-next-action', 'attention', 'Sem próxima ação definida');
-                }
-
-                if (!String(demand.nextReviewAt || '').trim()) {
-                    addSignal(bucket, 'missing-review', 'attention', 'Sem próxima data de revisão');
-                }
-
-                if (demand.workflowStatus === 'waiting' && !String(demand.waitingFor || '').trim()) {
-                    addSignal(bucket, 'missing-waiting-for', 'attention', 'Aguardando terceiro sem responsável informado');
-                }
-
-                if (demand.workflowStatus === 'waiting' && !String(demand.followUpAt || '').trim()) {
-                    addSignal(bucket, 'missing-followup', 'attention', 'Aguardando sem data de follow-up');
-                }
-
-                const evaluateDate = (dateKey, kind, labels, overdueSeverity = 'attention', todaySeverity = 'attention', upcomingSeverity = 'upcoming') => {
-                    if (!dateKey) return;
-                    const diff = window.getOperationalDateDiffDays(referenceDateKey, dateKey);
-                    if (diff === null) return;
-                    if (diff < 0) addSignal(bucket, kind, overdueSeverity, `${labels.overdue} ${Math.abs(diff)}d`, dateKey);
-                    else if (diff === 0) addSignal(bucket, kind, todaySeverity, labels.today, dateKey);
-                    else if (diff <= horizon) addSignal(bucket, kind, upcomingSeverity, diff === 1 ? labels.tomorrow : `${labels.inDays} ${diff}d`, dateKey);
-                    if (diff >= 0 && dateKey < bucket.nextRelevantDate) bucket.nextRelevantDate = dateKey;
-                };
-
-                evaluateDate(
-                    demand.dueDate,
-                    'due',
-                    { overdue: 'Prazo final vencido há', today: 'Prazo final hoje', tomorrow: 'Prazo final amanhã', inDays: 'Prazo final em' },
-                    'critical', 'critical', 'attention'
-                );
-
-                if (demand.workflowStatus === 'waiting') {
-                    evaluateDate(
-                        demand.followUpAt,
-                        'followup',
-                        { overdue: 'Follow-up atrasado há', today: 'Follow-up hoje', tomorrow: 'Follow-up amanhã', inDays: 'Follow-up em' },
-                        'critical', 'attention', 'upcoming'
-                    );
-                }
-
-                evaluateDate(
-                    demand.nextReviewAt,
-                    'review',
-                    { overdue: 'Revisão atrasada há', today: 'Revisão prevista para hoje', tomorrow: 'Revisão amanhã', inDays: 'Revisão em' },
-                    'attention', 'attention', 'upcoming'
-                );
-
-                if (bucket.signals.length) rows.push(bucket);
-            });
-
-            rows.sort((a, b) =>
-                a.severityRank - b.severityRank ||
-                String(a.nextRelevantDate).localeCompare(String(b.nextRelevantDate)) ||
-                String(a.demand.title || '').localeCompare(String(b.demand.title || ''), 'pt-BR')
-            );
-            return rows;
+            const control = window.getOperationalControl();
+            return operationalSignals(control, referenceDateKey, horizonDays ?? control.config?.dueSoonDays);
         };
 
         window.renderOperationalDayPanel = function() {
             const referenceDateKey = window.getOperationalDayDateKey(state.activeTab);
-            const horizon = Math.max(0, parseInt(window.getOperationalControl().config?.dueSoonDays, 10) || 2);
+            const horizon = deadlineHorizon(window.getOperationalControl().config?.dueSoonDays);
             const rows = window.getOperationalSignalsForDate(referenceDateKey, horizon);
-            const untilDateKey = dateKeyFromDate(addDaysToDate(dateFromDateKey(referenceDateKey), horizon));
 
             const severityMeta = {
                 critical: { cls: 'border-red-900/60 bg-red-950/20 text-red-300', icon: 'triangle-alert' },
@@ -6436,10 +6358,10 @@
 
             if (!rows.length) {
                 return `
-                    <section class="mb-4 rounded-2xl border border-emerald-900/40 bg-emerald-950/10 px-3 py-3 font-mono flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <section class="mb-4 rounded-2xl border border-emerald-900/40 bg-emerald-950/10 px-3 py-3 font-sans flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                         <div class="flex items-start gap-2 min-w-0">
                             <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400 mt-0.5 shrink-0"></i>
-                            <div class="min-w-0"><div class="text-xs font-black text-emerald-300">Situação operacional sob controle</div><div class="text-[10px] text-slate-500 mt-0.5">Nenhuma demanda conhecida requer atenção até ${window.formatOperationalDate(untilDateKey)}.</div></div>
+                            <div class="min-w-0"><div class="text-xs font-black text-emerald-300">RADAR sem avisos neste dia</div><div class="text-[10px] text-slate-500 mt-0.5">Nenhum aviso do RADAR para ${window.formatOperationalDate(referenceDateKey)}.</div></div>
                         </div>
                         ${window.renderPlanningReviewButton?.() || ''}
                     <button onclick="window.setMainView('control')" class="shrink-0 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-sky-300">Abrir Radar</button>
@@ -6451,34 +6373,31 @@
                 const mainSignal = row.signals[0];
                 const meta = severityMeta[mainSignal.severity] || severityMeta.info;
                 return `
-                    <div class="rounded-xl border ${meta.cls} px-3 py-2.5">
+                    <div data-radar-day-id="${window.escapeHtml(String(demand.id))}" class="rounded-xl border ${meta.cls} px-3 py-2.5">
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <div class="min-w-0 flex-1">
                                 <div class="flex flex-wrap items-center gap-1.5 mb-1">
-                                    <span class="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wide"><i data-lucide="${meta.icon}" class="w-3 h-3"></i>${window.escapeHtml(mainSignal.label)}</span>
-                                    ${demand.workflowStatus === 'waiting' && demand.waitingFor ? `<span class="text-[9px] text-amber-200/80">Aguardando ${window.escapeHtml(demand.waitingFor)}</span>` : ''}
+                                    ${row.signals.map(signal=>`<span class="inline-flex items-center gap-1 text-xs font-medium"><i data-lucide="${severityMeta[signal.severity]?.icon || 'info'}" class="w-3 h-3"></i>${window.escapeHtml(signal.label)}</span>`).join('')}
+                                    ${demand.workflowStatus === 'waiting' && demand.waitingFor ? `<span class="text-xs text-amber-200/80">Aguardando ${window.escapeHtml(demand.waitingFor)}</span>` : ''}
                                 </div>
-                                <div class="font-black text-white text-xs sm:text-sm truncate">${window.escapeHtml(demand.title)}</div>
-                                <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[9px] sm:text-[10px] text-slate-400">
-                                    ${demand.followUpAt ? `<span><strong class="text-slate-500 uppercase">Follow-up</strong> ${window.formatOperationalDate(demand.followUpAt)}</span>` : ''}
-                                    ${demand.dueDate ? `<span><strong class="text-slate-500 uppercase">Prazo</strong> ${window.formatOperationalDate(demand.dueDate)}</span>` : ''}
-                                    ${demand.nextReviewAt ? `<span><strong class="text-slate-500 uppercase">Revisão</strong> ${window.formatOperationalDate(demand.nextReviewAt)}</span>` : ''}
-                                </div>
+                                <div class="font-semibold text-white text-sm break-words">${window.escapeHtml(demand.title)}</div>
+                                ${demand.nextAction ? `<p class="mt-1 text-xs text-slate-400 break-words">${window.escapeHtml(demand.nextAction)}</p>` : ''}
                             </div>
-                            <button onclick="window.openOperationalDemandModal('${String(demand.id)}')" class="shrink-0 rounded-lg border border-slate-700 bg-slate-950/50 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-slate-300 hover:text-sky-300 hover:border-sky-700">Ver</button>
+                            <button onclick="window.openOperationalDemandModal('${String(demand.id)}')" class="shrink-0 min-h-11 rounded-lg border border-slate-700 bg-slate-950/50 px-3 py-2 text-xs font-medium text-slate-300 hover:text-sky-300 hover:border-sky-700">Ver demanda</button>
                         </div>
                     </div>`;
             }).join('');
 
             return `
-                <section class="mb-4 rounded-2xl border border-sky-900/50 bg-sky-950/10 p-3 font-mono">
+                <section class="mb-4 rounded-2xl border border-sky-900/50 bg-sky-950/10 p-3 font-sans">
                     <div class="flex items-center justify-between gap-3 mb-2">
                         <div class="min-w-0">
-                            <div class="flex items-center gap-2 text-sky-300"><i data-lucide="radar" class="w-4 h-4"></i><span class="text-[10px] font-black uppercase tracking-[0.18em]">Situação Operacional</span></div>
-                            <div class="text-[10px] text-slate-500 mt-0.5">${rows.length} item(ns) conhecido(s) pedem atenção.</div>
+                            <div class="flex items-center gap-2 text-sky-300"><i data-lucide="radar" class="w-4 h-4"></i><span class="text-xs font-semibold">Avisos do RADAR</span></div>
+
                         </div>
-                        <button onclick="window.setMainView('control')" class="shrink-0 inline-flex items-center gap-1 rounded-lg border border-sky-900/70 bg-sky-950/40 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-sky-300 hover:bg-sky-900/50"><i data-lucide="arrow-up-right" class="w-3 h-3"></i>Radar</button>
+                        <button onclick="window.setMainView('control')" class="shrink-0 min-h-11 inline-flex items-center gap-1 rounded-lg border border-sky-900/70 bg-sky-950/40 px-3 py-2 text-xs font-medium text-sky-300 hover:bg-sky-900/50"><i data-lucide="arrow-up-right" class="w-3 h-3"></i>Radar</button>
                     </div>
+                    <p class="mb-3 text-xs leading-relaxed text-slate-400">${window.formatOperationalDate(referenceDateKey)} · ${rows.length} ${rows.length === 1 ? 'demanda' : 'demandas'}. Follow-ups e revisões na data; prazos ${horizon ? `até ${horizon} ${horizon === 1 ? 'dia' : 'dias'} antes` : 'somente na data'}.</p>
                     <div class="space-y-1.5">${compactRows}</div>
                     ${rows.length > 2 ? `<div class="text-[9px] text-slate-600 mt-2">+ ${rows.length - 2} no Radar.</div>` : ''}
                 </section>`;
