@@ -831,8 +831,8 @@ test('gravação real registra promoção, origem e metadados na mesma cópia pe
     const ctx = engine({ xp: 32287, level: 10, userProfile: { displayName: 'Ana', gender: 'feminino', configured: true } });
     ctx.window.initializeCampaignRecordOrigins();
     let serialized;
-    ctx.sessionReady=true;ctx.currentUser={uid:'fixture'};ctx.state.ownerUid='fixture';
-    ctx.saveAccountCache=()=>{serialized=JSON.stringify(ctx.state);return true;};
+    ctx.sessionReady=true;ctx.saveRevision=0;ctx.currentUser={uid:'fixture'};ctx.state.ownerUid='fixture';
+    ctx.saveAccountCache=()=>{serialized=JSON.stringify(ctx.state);return serialized;};
     ctx.calendarSync = { schedule() {} };
     ctx.window.touchState = () => {};
     ctx.window.saveToFirestore = () => {};

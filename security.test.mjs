@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
+const transientDialogs = await readFile(new URL('./ui/transient_dialogs.v1.js',import.meta.url),'utf8');
 
 assert.match(app, /firebasejs\/11\.6\.1\/firebase-app-check\.js/, 'O módulo do App Check deve usar a mesma versão do Firebase.');
 assert.match(app, /new ReCaptchaEnterpriseProvider\('6Lf1edctAAAAAESE5LJWvWMvJ5p2082iAUDQ0-yN'\)/, 'O App Check deve usar a chave de site registrada.');
@@ -26,7 +27,7 @@ assert.match(toastSource, /data-toast-title[^]*\.textContent = String\(title/, '
 assert.match(toastSource, /data-toast-desc[^]*\.textContent = String\(desc/, 'A descrição da notificação deve usar textContent.');
 assert.doesNotMatch(toastSource, /innerHTML\s*=\s*`[^`]*\$\{(?:title|desc|iconName|colorClass)\}/, 'Dados dinâmicos não podem entrar no innerHTML da notificação.');
 
-assert.match(app, /window\.escapeHtml\(uiState\.confirm\.message\)/, 'Confirmações devem escapar conteúdo dinâmico.');
-assert.match(app, /window\.escapeHtml\(uiState\.alert\.message\)/, 'Alertas devem escapar conteúdo dinâmico.');
+assert.match(transientDialogs, /window\.escapeHtml\(uiState\.confirm\.message\)/, 'Confirmações devem escapar conteúdo dinâmico.');
+assert.match(transientDialogs, /window\.escapeHtml\(uiState\.alert\.message\)/, 'Alertas devem escapar conteúdo dinâmico.');
 
 console.log('Segurança: App Check, proprietário, notificações, alertas e confirmações conferidos.');

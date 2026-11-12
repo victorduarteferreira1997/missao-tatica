@@ -1,3 +1,4 @@
+import {installTransientDialogs} from '../ui/transient_dialogs.v1.js';
 import {installHealthWorkspace} from '../ui/health_workspace.v1.js';
 import {installFinanceWorkspace} from '../ui/finance_workspace.v1.js';
 import {installStudyWorkspace} from '../ui/study_workspace.v1.js';
@@ -18,13 +19,13 @@ import * as Recurrence from '../recurrence.v1.js';
 import {installRecurrence} from '../ui/recurrence.v1.js';
 import {installRadarMissions} from '../ui/radar_missions.v3.js';
 import {installSubtasks} from '../ui/subtasks.v1.js';
-import {createAccountStorage,createAccountRecovery,createSyncReceipts,sameRecoveryContent,validateAccountState,AUTH_TRANSITION_KEY} from '../account_storage.v2.js';
+import {createAccountStorage,createAccountRecovery,createSyncReceipts,sameRecoveryContent,validateAccountState,AUTH_TRANSITION_KEY} from '../account_storage.v3.js';
 import {authorizeAccount} from '../account_access.v1.js';
 import {AI_OWNER_UID} from '../ai/contract.v1.js';
 import {AI_V2_CONFIG} from '../ai/config.v2.js';
 import {applyEntity,radarTarget} from '../ai/v2/entity_apply.js';
 import {createCloudStateStore} from '../ai/v2/cloud_state.js';
-import {createConfirmedStateWriter} from '../ai/v2/saved_state.js';
+import {createConfirmedStateWriter} from '../ai/v2/saved_state.v2.js';
 import {createV2BrowserStore} from '../ai/v2/browser.js';
 import {installAiAccess} from '../ui/ai_access.v3.js';
 import {createV2ProposalsBrowserStore} from '../ai/v2/proposals_browser.js';
@@ -49,7 +50,7 @@ export function boot(saved=null,applyEnabled=false,seedSession=true){
  const stored=new Map(),writes=[];
  const document={activeElement:null,getElementById:id=>elements[id]||null,querySelector(){return null;},querySelectorAll(){return [];},addEventListener(){}};
  const window={lucide:{createIcons(){}},location:{origin:'https://victorduarteferreira1997.github.io',pathname:'/missao-tatica/app.html'},addEventListener:(name,callback)=>events.set(name,callback)};
- const c={installHealthWorkspace,installFinanceWorkspace,installStudyWorkspace,operationalSignals,deadlineHorizon,createViewUpdater,installMissionChanges,createMissionChangeStore,applyMissionChange,window,document,Date:FixedDate,console,TextEncoder,Uint8Array,Uint32Array,DataView,URL,Blob,Intl,localStorage:{getItem:key=>stored.get(key)||null,setItem:(key,value)=>{stored.set(key,value);writes.push(key);},removeItem:key=>stored.delete(key)},
+ const c={installTransientDialogs,installHealthWorkspace,installFinanceWorkspace,installStudyWorkspace,operationalSignals,deadlineHorizon,createViewUpdater,installMissionChanges,createMissionChangeStore,applyMissionChange,window,document,Date:FixedDate,console,TextEncoder,Uint8Array,Uint32Array,DataView,URL,Blob,Intl,localStorage:{getItem:key=>stored.get(key)||null,setItem:(key,value)=>{stored.set(key,value);writes.push(key);},removeItem:key=>stored.delete(key)},
  setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),setInterval:()=>1,clearInterval(){},lucide:window.lucide,initializeApp:()=>({}),initializeAppCheck(){},ReCaptchaEnterpriseProvider:class{},getAuth:()=>c.firebaseAuth={currentUser:null},getFirestore:()=>({}),GoogleAuthProvider:class{},signInWithPopup(){},signInWithRedirect(){},signOut:async()=>{},onAuthStateChanged:(auth,callback)=>c.authCallback=user=>{auth.currentUser=user;return callback(user);},doc:(db,...parts)=>parts.join('/'),getDocFromServer:(...args)=>c.getDoc(...args),createAccountStorage,createAccountRecovery,createSyncReceipts,sameRecoveryContent,validateAccountState,AUTH_TRANSITION_KEY,authorizeAccount,AI_OWNER_UID,getDoc(){throw Error('A inicialização não deve ler a nuvem sem login.');},setDoc(){throw Error('O teste não deve gravar na nuvem.');},applyMissionSchedule,planMissionSchedule,scheduleForDate,formatMissionDate,assertScheduleWeekOpen,installMissionScheduling,createCalendarSync:options=>{c.calendarOnChange=options.onChange;return createCalendarSync(options);},Library,installLibrary,installLibraryImports,createLibraryImportStore,applyLibraryImport,Recurrence,installRecurrence,installRadarMissions,installSubtasks,installPlanningTools,installFormDialogs,planningPreview,installTaskForms,installPlanningViews,installAiInbox,AI_CONFIG,createAiBrowserStore,AI_V2_CONFIG:{...AI_V2_CONFIG,applyEnabled},createCloudStateStore,applyEntity,radarTarget,createConfirmedStateWriter,createV2BrowserStore,installAiAccess,createV2ProposalsBrowserStore,installAiV2Proposals:(w,options)=>{c.v2ProposalsOptions=options;return installAiV2Proposals(w,options);}};
  runInNewContext(moduleSource+'\nwindow.startupForTest = {getState:()=>state,getUI:()=>uiState,getTimer:()=>pomodoro,render,seedTestAccount:(saved)=>{currentUser={uid:AI_OWNER_UID};state=saved||state;state.ownerUid=AI_OWNER_UID;accountStorage.load(currentUser.uid);sessionReady=true;window.validateState();}};',c,{timeout:3000});
  if(seedSession)window.startupForTest.seedTestAccount(saved);

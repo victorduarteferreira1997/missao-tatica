@@ -1,0 +1,95 @@
+{
+  "baseline": "v1.9.85 / 14c26a03cfcf897bb80896e738caa7b3ebb0c00c",
+  "candidate": "v1.9.86",
+  "localSaveBefore": {
+    "runtime": "v24.22.1",
+    "scope": "synchronous local save; no DOM, network or background receipt",
+    "results": [
+      {
+        "tasks": 100,
+        "bytes": 45227,
+        "medianLocalSaveMs": 1.354,
+        "stringifiesBeforeReturn": 2,
+        "parsesBeforeReturn": 1
+      },
+      {
+        "tasks": 500,
+        "bytes": 203207,
+        "medianLocalSaveMs": 2.41,
+        "stringifiesBeforeReturn": 2,
+        "parsesBeforeReturn": 1
+      },
+      {
+        "tasks": 1500,
+        "bytes": 599157,
+        "medianLocalSaveMs": 6.74,
+        "stringifiesBeforeReturn": 2,
+        "parsesBeforeReturn": 1
+      }
+    ]
+  },
+  "localSaveAfter": {
+    "runtime": "v24.22.1",
+    "scope": "synchronous local save; no DOM, network or background receipt",
+    "results": [
+      {
+        "tasks": 100,
+        "bytes": 45227,
+        "medianLocalSaveMs": 0.434,
+        "stringifiesBeforeReturn": 1,
+        "parsesBeforeReturn": 0
+      },
+      {
+        "tasks": 500,
+        "bytes": 203207,
+        "medianLocalSaveMs": 1.663,
+        "stringifiesBeforeReturn": 1,
+        "parsesBeforeReturn": 0
+      },
+      {
+        "tasks": 1500,
+        "bytes": 599157,
+        "medianLocalSaveMs": 2.21,
+        "stringifiesBeforeReturn": 1,
+        "parsesBeforeReturn": 0
+      }
+    ]
+  },
+  "browser": {
+    "syntheticTasks": 1500,
+    "cardsOnSelectedDay": 300,
+    "scope": "Synchronous handler work measured with performance.now, not network completion or end-to-end interaction latency",
+    "baselineOpenMs": [
+      506,
+      285.1,
+      199.4
+    ],
+    "baselineCancelMs": [
+      250.2,
+      210.9,
+      227.3
+    ],
+    "candidateOpenMs": [
+      222.4,
+      25,
+      19.2
+    ],
+    "candidateCancelMs": [
+      19.7,
+      21.3,
+      16.3
+    ],
+    "finalCandidateOpenMs": 20.8,
+    "finalCandidateCancelMs": 21.5,
+    "fullRendersDuringCandidateOpenCancel": 0,
+    "simulatedWriteDelayMs": 800,
+    "localDeleteObservedBeforeCloudConfirmation": true,
+    "fullDataChangeSynchronousMs": 416.7
+  },
+  "limitations": [
+    "Synthetic data, isolated cloud browser, no measurements on the user device or production Firestore.",
+    "First opening includes additional layout work; sample size is small.",
+    "Local-save benchmark excludes DOM, network, cloud queue and receipts.",
+    "Large list changes still use the full render path."
+  ]
+}
