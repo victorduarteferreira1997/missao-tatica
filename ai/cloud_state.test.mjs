@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createCloudStateStore} from './v2/cloud_state.js';
 import {installAiV2Proposals} from '../ui/ai_proposals.v2.js';
 import {AI_OWNER_UID} from './contract.v1.js';
-import {createConfirmedStateWriter} from './v2/saved_state.js';
+import {createConfirmedStateWriter} from './v2/saved_state.v2.js';
 function fixture(){let user={uid:'synthetic-owner'},row={data:JSON.stringify({tasks:[],xp:7,financeData:{incomes:[{id:'keep'}]}})},adopted=[];let tail=Promise.resolve(),failAfterCommit=false;
  const transact=(u,work)=>{const run=tail.then(async()=>{let next;const r=await work({get:async()=>structuredClone(row),set:v=>next={...row,...structuredClone(v)}});if(next)row=next;if(failAfterCommit){failAfterCommit=false;throw Error('Resposta perdida');}return r;});tail=run.catch(()=>{});return run;};
  const create=()=>createCloudStateStore({getUser:()=>user,transact,onAdopt:s=>adopted.push(s)}),a=create(),b=create();a.observe(user,row);b.observe(user,row);

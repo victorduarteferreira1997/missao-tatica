@@ -15,9 +15,9 @@ function engine() {
     let persisted;
     const arrays = keys => Object.fromEntries(keys.map(key => [key, [{ id: key, amount: 20, campaignId: 1 }]]));
     const ctx = { Library,
-        accountRecovery:{preserve(){},list:()=>[]},currentUser:{uid: 'test-owner'}, sessionGeneration:1, sessionReady:true, APP_OWNER_UID:'test-owner',validateAccountState,
+        accountRecovery:{preserve(){},list:()=>[]},currentUser:{uid: 'test-owner'}, sessionGeneration:1, sessionReady:true, saveRevision:0, APP_OWNER_UID:'test-owner',validateAccountState,
         isSession:(user,generation)=>user===ctx.currentUser && generation===ctx.sessionGeneration,
-        saveAccountCache:()=>{persisted=JSON.stringify(ctx.state);return true;},
+        saveAccountCache:()=>{persisted=JSON.stringify(ctx.state);return persisted;},
         state: {
             activeTab: 'monday', currentFilter: 'all', currentPlanningWeekStart: '2026-10-05',
             ownerUid: 'test-owner', xp: 25100, level: 10, coins: 90, combo: 3, energy: 61,

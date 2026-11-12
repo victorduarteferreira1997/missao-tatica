@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.85-health-workspace">
+    <meta name="app-build" content="v1.9.86-responsive-actions">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -148,6 +148,7 @@
         import { installSubtasks } from './ui/subtasks.v1.js?v=1.9.65';
         import {applyMissionSchedule,planMissionSchedule,scheduleForDate,formatMissionDate,assertScheduleWeekOpen} from './mission_schedule.v1.js?v=1.9.73';
         import {installMissionScheduling} from './ui/mission_schedule.v1.js?v=1.9.73';
+        import { installTransientDialogs } from './ui/transient_dialogs.v1.js?v=1.9.86';
         import { installHealthWorkspace } from './ui/health_workspace.v1.js?v=1.9.85';
         import { installFinanceWorkspace } from './ui/finance_workspace.v1.js?v=1.9.84';
         import { installStudyWorkspace } from './ui/study_workspace.v1.js';
@@ -171,7 +172,7 @@
         import { AI_V2_CONFIG } from './ai/config.v2.js';
         import { applyEntity, radarTarget } from './ai/v2/entity_apply.js';
         import { createCloudStateStore } from './ai/v2/cloud_state.js?v=1.9.75';
-        import { createConfirmedStateWriter } from './ai/v2/saved_state.js?v=1.9.74';
+        import { createConfirmedStateWriter } from './ai/v2/saved_state.v2.js?v=1.9.86';
         import { createV2BrowserStore } from './ai/v2/browser.js?v=1.9.75';
         import { installAiAccess } from './ui/ai_access.v3.js?v=1.9.75';
         import { createV2ProposalsBrowserStore } from './ai/v2/proposals_browser.js';
@@ -179,7 +180,7 @@
         import { createAiBrowserStore } from './ai/bridge_rest.v1.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { initializeAppCheck, ReCaptchaEnterpriseProvider, getToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app-check.js";
-        import { createAccountStorage, createAccountRecovery, createSyncReceipts, sameRecoveryContent, validateAccountState, AUTH_TRANSITION_KEY } from './account_storage.v2.js?v=1.9.74';
+        import { createAccountStorage, createAccountRecovery, createSyncReceipts, sameRecoveryContent, validateAccountState, AUTH_TRANSITION_KEY } from './account_storage.v3.js?v=1.9.86';
         import { authorizeAccount } from './account_access.v1.js';
         import { getAuth, signInWithPopup, signInWithRedirect, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDocFromServer, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -187,7 +188,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.85';
+        const APP_VERSION = 'v1.9.86';
         const updateAppView = createViewUpdater(document);
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
@@ -466,7 +467,7 @@
         let currentSyncStatus = 'Desconectado';
 
         let state = null; // No personal cache is read before authorization.
-        let sessionGeneration = 0, sessionReady = false;
+        let sessionGeneration = 0, sessionReady = false, saveRevision = 0;
         const accountStorage = createAccountStorage(localStorage, APP_OWNER_UID);
         const accountRecovery = createAccountRecovery(localStorage, APP_OWNER_UID);
         const syncReceipts = createSyncReceipts(localStorage, APP_OWNER_UID);
@@ -477,7 +478,7 @@
         };
         function saveAccountCache() {
             if (!currentUser || !sessionReady || state?.ownerUid !== currentUser.uid) return false;
-            try { accountStorage.save(currentUser.uid, state); return true; }
+            try { return accountStorage.save(currentUser.uid, state); }
             catch (error) {
                 window.updateSyncStatus(error.message || 'Erro na cópia local');
                 window.showAlertModal(error.message || 'Não foi possível preservar a cópia local. Baixe um backup antes de continuar.');
@@ -1830,19 +1831,19 @@
             onSaved: (snapshot, uid) => { if (uid === APP_OWNER_UID) return window.onAiV2Saved?.(snapshot, uid); },
             onError: (error, user) => { console.error('Falha ao salvar ou sincronizar dados.'); if (AI_V2_CONFIG.applyEnabled === true && isSession(user) && error?.message) window.updateSyncStatus(error.message); }
         });
-        async function writeStateToFirestore(userSnapshot = currentUser) {
+        async function writeStateToFirestore(userSnapshot = currentUser, payload = null) {
             if (!sessionReady || state?.ownerUid !== userSnapshot?.uid) return false;
-            return confirmedStateWriter(userSnapshot, state);
+            return payload === null ? confirmedStateWriter(userSnapshot, state) : confirmedStateWriter.serialized(userSnapshot,payload,state.lastSavedAt||state.updatedAt||'');
         }
 
-        window.saveToFirestore = function() {
+        window.saveToFirestore = function(preparedPayload = null) {
             if (!currentUser || !sessionReady) return;
-            const userSnapshot = currentUser, generation = sessionGeneration, snapshot = JSON.parse(JSON.stringify(state));
+            const userSnapshot = currentUser, generation = sessionGeneration, payload = preparedPayload ?? JSON.stringify(state), savedAt = state.lastSavedAt||state.updatedAt||'';
             window.updateSyncStatus('Salvando...');
             clearTimeout(saveTimeout);
             saveTimeout = setTimeout(window.guardAccountCallback(async () => {
                 saveTimeout = null;
-                if (isSession(userSnapshot, generation) && sessionReady) await confirmedStateWriter(userSnapshot, snapshot,{background:true});
+                if (isSession(userSnapshot, generation) && sessionReady) await confirmedStateWriter.serialized(userSnapshot,payload,savedAt,{background:true});
             }), 1000);
         };
 
@@ -1857,11 +1858,13 @@
 
         window.saveState = function(skipRender = false, reason = '') {
             if (!sessionReady || state?.ownerUid !== currentUser?.uid) return false;
+            saveRevision++;
             window.stampCampaignRecords();
             if (typeof window.checkLevelUp === 'function') window.checkLevelUp();
             window.touchState(reason);
-            if (!saveAccountCache()) return false;
-            window.saveToFirestore();
+            const payload = saveAccountCache();
+            if (!payload) return false;
+            window.saveToFirestore(payload);
             calendarSync.schedule();
             if(!skipRender) render();
         };
@@ -1869,14 +1872,16 @@
         window.saveStateNow = async function(skipRender = false, reason = '') {
             if (!sessionReady || state?.ownerUid !== currentUser?.uid) return false;
             const user = currentUser, generation = sessionGeneration;
+            saveRevision++;
             window.stampCampaignRecords();
             if (typeof window.checkLevelUp === 'function') window.checkLevelUp();
             window.touchState(reason);
-            if (!saveAccountCache()) return false;
+            const payload = saveAccountCache();
+            if (!payload) return false;
             clearTimeout(saveTimeout);
             saveTimeout = null;
             window.updateSyncStatus('Salvando...');
-            const saving=writeStateToFirestore(user);
+            const saving=writeStateToFirestore(user,payload);
             // Local changes are durable in this browser. Render before network I/O;
             // status/toasts still distinguish pending work from a cloud confirmation.
             if(!skipRender)render();
@@ -2545,16 +2550,19 @@
         };
 
         window.showConfirmModal = function(message, onConfirmCallback) {
-            uiState.confirm.show = true; uiState.confirm.message = message; uiState.confirm.onConfirm = onConfirmCallback; render();
+            uiState.confirm.show = true; uiState.confirm.message = message; uiState.confirm.onConfirm = onConfirmCallback; if(window.refreshTransientDialogs)window.refreshTransientDialogs();else render();
         };
         window.handleConfirmResult = function(accepted) {
             const callback = uiState.confirm.onConfirm;
             uiState.confirm.show = false; uiState.confirm.onConfirm = null;
-            if (accepted && callback) callback();
-            render();
+            const revision=window.transientFullRevision?.();
+            if (accepted && callback) {
+                callback();
+                if(revision===undefined||revision===window.transientFullRevision?.())render();
+            } else if(window.refreshTransientDialogs)window.refreshTransientDialogs();else render();
         };
-        window.showAlertModal = function(message) { uiState.alert.show = true; uiState.alert.message = message; render(); };
-        window.closeAlertModal = function() { uiState.alert.show = false; render(); };
+        window.showAlertModal = function(message) { uiState.alert.show = true; uiState.alert.message = message; if(window.refreshTransientDialogs)window.refreshTransientDialogs();else render(); };
+        window.closeAlertModal = function() { uiState.alert.show = false; if(window.refreshTransientDialogs)window.refreshTransientDialogs();else render(); };
         window.togglePanicModal = function(show) {
             uiState.showPanic = show;
             if (show) {
@@ -3064,12 +3072,12 @@
             const task = state.tasks.find(t => String(t.id) === String(taskId));
             if (!task) { window.showAlertModal('Missão não encontrada.'); return; }
             uiState.deleteTaskPrompt = { show: true, taskId: task.id };
-            render();
+            if(window.refreshTransientDialogs)window.refreshTransientDialogs();else render();
         };
 
         window.cancelDeleteTaskPrompt = function() {
             uiState.deleteTaskPrompt = { show: false, taskId: null };
-            render();
+            if(window.refreshTransientDialogs)window.refreshTransientDialogs();else render();
         };
 
         window.confirmDeleteMainTask = async function(reason = 'excluida', event = null) {
@@ -3899,6 +3907,7 @@
 
         // Ponte temporária para os handlers existentes durante a modularização.
         installFormDialogs(window, document);
+        installTransientDialogs(window,{document,getState:()=>state,getUiState:()=>uiState,getUser:()=>sessionReady?currentUser:null,getRevision:()=>saveRevision,render,daysOfWeek,hasRecurrence:Recurrence.hasRecurrence,createIcons:options=>lucide.createIcons(options)});
         installHealthWorkspace(window,{document,getState:()=>state,getUiState:()=>uiState});
         installFinanceWorkspace(window,{document,getState:()=>state,getUiState:()=>uiState});
         installStudyWorkspace(window,{document,getUiState:()=>uiState});
@@ -6654,35 +6663,9 @@
             const xpPercent = window.getRankProgress().percent;
             const calendarInboxPending = calendarSync.getInbox().length;
 
-            let html = ``;
+            let html = window.renderTransientDialogs();
 
             // MODAIS NATIVOS GERAIS
-            if (uiState.confirm.show) {
-                html += `
-                <div class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-[999] backdrop-blur-sm font-mono">
-                    <div id="confirmation-dialog" role="dialog" aria-modal="true" aria-labelledby="confirmation-title" class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm w-full shadow-2xl modal-enter">
-                        <h3 id="confirmation-title" class="text-lg font-bold text-white mb-2 flex items-center gap-2"><i data-lucide="help-circle" class="text-indigo-400"></i> Confirmação Tática</h3>
-                        <p class="text-slate-300 text-sm mb-6 leading-relaxed whitespace-pre-line">${window.escapeHtml(uiState.confirm.message)}</p>
-                        <div class="flex gap-3">
-                            <button id="confirmation-cancel" type="button" onclick="window.handleConfirmResult(false)" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-lg text-sm font-bold transition-colors">Cancelar</button>
-                            <button id="confirmation-accept" type="button" onclick="window.handleConfirmResult(true)" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">Confirmar</button>
-                        </div>
-                    </div>
-                </div>`;
-            }
-
-            if (uiState.alert.show) {
-                html += `
-                <div class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-[999] backdrop-blur-sm font-mono">
-                    <div id="alert-dialog" role="dialog" aria-modal="true" aria-labelledby="alert-title" class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm w-full shadow-2xl modal-enter">
-                        <h3 id="alert-title" class="text-lg font-bold text-white mb-2 flex items-center gap-2"><i data-lucide="alert-circle" class="text-yellow-500"></i> Alerta</h3>
-                        <p class="text-slate-300 text-sm mb-6 leading-relaxed whitespace-pre-line">${window.escapeHtml(uiState.alert.message)}</p>
-                        <button id="alert-close" type="button" onclick="window.closeAlertModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-lg text-sm font-bold transition-colors">OK</button>
-                    </div>
-                </div>`;
-            }
-
-
             html += window.renderRadarMissionDialogs?.() || '';
             html += window.renderSubtaskEditor?.() || '';
             html += window.renderDataManager();
@@ -6694,34 +6677,6 @@
             const profileNeedsSetup = !state?.userProfile?.configured;
             if (!uiState.dataCleanupSaving && (profileNeedsSetup || uiState.showProfileModal)) {
                 html += window.renderProfileModal(profileNeedsSetup);
-            }
-
-            if (uiState.deleteTaskPrompt?.show) {
-                const delTask = state.tasks.find(t => String(t.id) === String(uiState.deleteTaskPrompt.taskId));
-                if (delTask) {
-                    const dependents = [...new Map([...state.tasks, ...(state.planning?.history || []).flatMap(week => week.tasks || [])]
-                        .filter(task => (task.dependsOnTaskIds || []).some(id => String(id) === String(delTask.id)))
-                        .map(task => [String(task.id), task])).values()];
-                    const recurring = Recurrence.hasRecurrence(delTask);
-                    const repeatDay = daysOfWeek.find(day => day.id === delTask.day)?.label || delTask.day;
-                    html += `
-                    <div class="fixed inset-0 bg-black/80 flex items-center justify-center p-3 sm:p-4 z-[1000] backdrop-blur-sm font-sans">
-                        <section id="delete-mission-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-mission-heading" aria-describedby="delete-mission-description" class="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl modal-enter">
-                            <header class="border-b border-slate-800 px-5 py-4"><h3 id="delete-mission-heading" class="text-lg font-semibold text-slate-100">Excluir missão?</h3><p id="delete-mission-description" class="mt-2 text-sm text-slate-300">Seu Frenesi será preservado. Excluir não conta como conclusão e não gera recompensa.</p></header>
-                            <div class="min-h-0 overflow-y-auto space-y-3 px-5 py-4">
-                                <p class="break-words rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm font-medium text-slate-100">${window.escapeHtml(delTask.text)}</p>
-                                ${delTask.completed ? '<p class="text-sm text-slate-400">As recompensas já registradas pela conclusão serão mantidas.</p>' : ''}
-                                ${recurring ? `<p class="rounded-lg border border-amber-900/60 bg-amber-950/20 p-3 text-sm text-amber-200">Esta missão se repete. Excluir também retira ${window.escapeHtml(repeatDay)} das próximas repetições desta série. Os outros dias da repetição permanecem. Para encerrar a série, use Editar missão → Repetição.</p>` : ''}
-                                ${dependents.length ? `<div class="rounded-lg border border-amber-900/60 bg-amber-950/20 p-3 text-sm text-amber-200"><p>${dependents.length === 1 ? 'Uma missão depende desta.' : `${dependents.length} missões dependem desta.`} A exclusão não remove essas dependências nem libera missões automaticamente. Revise os pré-requisitos depois.</p><ul class="mt-2 list-disc space-y-1 pl-5">${dependents.slice(0, 3).map(task => `<li>${window.escapeHtml(task.text)}</li>`).join('')}</ul></div>` : ''}
-                                ${delTask.radarDemandId ? '<p class="text-sm text-slate-400">O status do RADAR e suas outras missões serão mantidos.</p>' : ''}
-                            </div>
-                            <footer class="flex shrink-0 flex-wrap justify-end gap-2 border-t border-slate-800 px-5 py-3">
-                                <button id="delete-mission-cancel" type="button" onclick="window.cancelDeleteTaskPrompt()" class="min-h-11 rounded-lg border border-slate-600 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800">Manter missão</button>
-                                <button id="delete-mission-confirm" type="button" onclick="window.confirmDeleteMainTask('excluida', event)" class="min-h-11 rounded-lg bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-600">Excluir missão</button>
-                            </footer>
-                        </section>
-                    </div>`;
-                }
             }
 
             if (uiState.customPrompt.show) {
@@ -7243,6 +7198,7 @@
             const healthWorkspaceDialog = appDiv.querySelector('#health-module-dialog');
             if(healthWorkspaceDialog) window.restoreHealthWorkspace?.(healthWorkspaceDialog);
             window.finishViewUpdate?.(appDiv, viewSnapshot, {pageKey:viewPageKey});
+            window.noteTransientFullRender?.();
             // Render specific components that require external DOM access safely
             if(!clockInterval && currentUser) startClock(); else window.updateOperationalClock?.();
             window.updateSyncStatus(currentSyncStatus);
