@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.86-responsive-actions">
+    <meta name="app-build" content="v1.9.87-mission-lists">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -152,7 +152,7 @@
         import { installHealthWorkspace } from './ui/health_workspace.v1.js?v=1.9.85';
         import { installFinanceWorkspace } from './ui/finance_workspace.v1.js?v=1.9.84';
         import { installStudyWorkspace } from './ui/study_workspace.v1.js';
-        import { createViewUpdater } from './ui/view_update.v1.js';
+        import { createViewUpdater } from './ui/view_update.v2.js?v=1.9.87';
         import { installFormDialogs } from './ui/form_dialogs.v2.js';
         import * as Recurrence from './recurrence.v1.js?v=1.9.66.1';
         import { installRecurrence } from './ui/recurrence.v1.js?v=1.9.66.1';
@@ -166,7 +166,7 @@
         import {installLibraryImports} from './ui/library_import.v1.js?v=1.9.71';
         import {createLibraryImportStore} from './ai/v2/library_browser.js?v=1.9.71';
         import {applyLibraryImport} from './library_import.v1.js?v=1.9.71';
-        import { installPlanningViews } from './ui/planning_views.v11.js?v=1.9.80';
+        import { installPlanningViews } from './ui/planning_views.v12.js?v=1.9.87';
         import { installAiInbox } from './ui/ai_inbox.v3.js';
         import { AI_CONFIG } from './ai/config.v1.js';
         import { AI_V2_CONFIG } from './ai/config.v2.js';
@@ -188,8 +188,9 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.86';
+        const APP_VERSION = 'v1.9.87';
         const updateAppView = createViewUpdater(document);
+        window.renderMissionRowIsland=(id,html)=>updateAppView.island(id,html);
         const firebaseConfig = {
             apiKey: "AIzaSyDaenZA-iq-VpN_02N3Cw4-tqlQQVOBWWQ",
             authDomain: "missao-tatica.firebaseapp.com",
@@ -6617,6 +6618,7 @@
         // RENDERIZAÇÃO PRINCIPAL DO DOM
         // ==========================================
         function render() {
+            updateAppView.begin();
             cachedPlanningPreview=null;
             const appDiv = document.getElementById('app');
             window.captureLibraryDraft?.();
