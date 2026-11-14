@@ -1,0 +1,82 @@
+{
+  "version": "v1.9.87",
+  "date": "2026-11-14",
+  "baseline": {
+    "version": "v1.9.86",
+    "commit": "c571a3cdeae7e9ff25fa22faae671d1e3eb398a0"
+  },
+  "environment": {
+    "browser": "Chrome, cloud browser",
+    "data": "synthetic only; isolated local preview with fake Firebase",
+    "totalMissions": 1500,
+    "selectedDayCards": 300,
+    "subtasksPerMission": 4,
+    "simulatedFirestoreDelayMsPerWrite": 800
+  },
+  "method": "One paired UI sequence per build from the same fixture. performance.now around synchronous event-handler invocation; excludes promise settlement, cloud confirmation and paint. Not a statistical benchmark.",
+  "samples": [
+    {
+      "action": "complete",
+      "beforeSyncMs": 487.8,
+      "afterSyncMs": 342.3,
+      "afterCardsParsed": 1,
+      "afterCardsReused": 299
+    },
+    {
+      "action": "reopen",
+      "beforeSyncMs": 416.4,
+      "afterSyncMs": 285.2,
+      "afterCardsParsed": 1,
+      "afterCardsReused": 299
+    },
+    {
+      "action": "saveEditedTask",
+      "beforeSyncMs": 528.1,
+      "afterSyncMs": 357,
+      "afterCardsParsed": 1,
+      "afterCardsReused": 299
+    },
+    {
+      "action": "delete",
+      "beforeSyncMs": 418.3,
+      "afterSyncMs": 271.4,
+      "afterCardsParsed": 0,
+      "afterCardsReused": 299
+    }
+  ],
+  "additionalCandidateSample": {
+    "action": "reorder",
+    "syncMs": 226.1,
+    "cardsParsed": 0,
+    "cardsReused": 299,
+    "firstThreeIdsAfter": [
+      "10018",
+      "10013",
+      "10023"
+    ]
+  },
+  "checks": {
+    "untouchedCardNodePreserved": true,
+    "editedTitleVisible": true,
+    "deletedCardAbsent": true,
+    "completionAndReopenCountCorrect": true,
+    "subtaskProgressUpdated": "2/4 -> 3/4",
+    "focusModeAndReturn": true,
+    "noMountedIslandPlaceholders": true,
+    "mobileCompletion": true,
+    "mobileIframeWidthPx": 320,
+    "mobileLayoutViewportPx": 305,
+    "mobileDocumentScrollWidthPx": 305
+  },
+  "unitTests": {
+    "passed": 566,
+    "failed": 0,
+    "newTests": 11
+  },
+  "limits": [
+    "HTML string generation and other synchronous render work still run.",
+    "Only daily mission cards use islands; weekly, RADAR and other module contents use existing reconciliation.",
+    "Network and cloud confirmation latency is unchanged.",
+    "Cloud browser and single paired samples do not predict all user devices."
+  ]
+}
