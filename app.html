@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.87-mission-lists">
+    <meta name="app-build" content="v1.9.88-dialog-continuity">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -148,12 +148,13 @@
         import { installSubtasks } from './ui/subtasks.v1.js?v=1.9.65';
         import {applyMissionSchedule,planMissionSchedule,scheduleForDate,formatMissionDate,assertScheduleWeekOpen} from './mission_schedule.v1.js?v=1.9.73';
         import {installMissionScheduling} from './ui/mission_schedule.v1.js?v=1.9.73';
-        import { installTransientDialogs } from './ui/transient_dialogs.v1.js?v=1.9.86';
+        import { installTransientDialogs } from './ui/transient_dialogs.v2.js?v=1.9.88';
         import { installHealthWorkspace } from './ui/health_workspace.v1.js?v=1.9.85';
         import { installFinanceWorkspace } from './ui/finance_workspace.v1.js?v=1.9.84';
         import { installStudyWorkspace } from './ui/study_workspace.v1.js';
         import { createViewUpdater } from './ui/view_update.v2.js?v=1.9.87';
-        import { installFormDialogs } from './ui/form_dialogs.v2.js';
+        import { installAuxiliaryDialogs } from './ui/auxiliary_dialogs.v1.js?v=1.9.88';
+        import { installFormDialogs } from './ui/form_dialogs.v3.js?v=1.9.88';
         import * as Recurrence from './recurrence.v1.js?v=1.9.66.1';
         import { installRecurrence } from './ui/recurrence.v1.js?v=1.9.66.1';
         import { planningPreview } from './planning_preview.v1.js?v=1.9.77';
@@ -188,7 +189,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.87';
+        const APP_VERSION = 'v1.9.88';
         const updateAppView = createViewUpdater(document);
         window.renderMissionRowIsland=(id,html)=>updateAppView.island(id,html);
         const firebaseConfig = {
@@ -2700,12 +2701,13 @@
             const name = window.escapeHtml(state.userProfile?.displayName || '');
             const gender = state.userProfile?.gender || '';
             const theme = window.getCampaignDefinition();
-            const campaignField = needsSetup ? `<div><label for="profile-campaign-theme" class="text-sm font-semibold text-slate-300">Sua campanha</label><p class="text-xs text-slate-400 mt-1">Escolha o tema dos seus níveis e títulos.</p><select id="profile-campaign-theme" onchange="window.updateProfilePreview()" class="w-full mt-2 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white">${CAMPAIGN_CATEGORIES.map(category => `<optgroup label="${category.name}">${CAMPAIGN_THEMES.filter(item => item.category === category.id).map(item => `<option value="${item.id}" ${item.id === theme.id ? 'selected' : ''}>${item.name}</option>`).join('')}</optgroup>`).join('')}</select></div>` : '';
-            return `<div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[1000] backdrop-blur-md font-sans"><section role="dialog" aria-modal="true" aria-labelledby="profile-heading" class="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl modal-enter"><div class="flex justify-between gap-4"><div><h3 id="profile-heading" class="text-xl font-black text-white">Seu perfil</h3><p class="text-sm text-slate-400 mt-2">Escolha como seu nome e seus títulos aparecem.</p></div>${needsSetup ? '' : '<button type="button" aria-label="Fechar perfil" onclick="window.closeProfileModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>'}</div><div class="space-y-5 mt-6"><div><label for="profile-display-name" class="text-sm font-semibold text-slate-300">Como você quer ser chamado?</label><input id="profile-display-name" type="text" maxlength="60" autocomplete="nickname" oninput="window.updateProfilePreview()" value="${name}" placeholder="Seu nome ou apelido" class="w-full mt-2 bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none focus:border-indigo-400"></div><fieldset><legend class="text-sm font-semibold text-slate-300">Linguagem dos títulos</legend><p class="text-xs text-slate-400 mt-1">É uma preferência de apresentação. Não altera XP nem conquistas. Sem gênero exibe nível e tema no lugar do título pessoal.</p><div class="grid grid-cols-3 gap-2 mt-3">${[['feminino', 'Feminina'], ['masculino', 'Masculina'], ['neutro', 'Sem gênero']].map(([value, label]) => `<label class="flex items-center gap-2 bg-slate-950 border border-slate-700 rounded-lg p-3 cursor-pointer text-sm text-slate-200"><input type="radio" name="profile-gender" value="${value}" onchange="window.updateProfilePreview()" class="accent-indigo-500" ${gender === value ? 'checked' : ''}>${label}</label>`).join('')}</div></fieldset>${campaignField}<div class="rounded-xl border border-slate-700 bg-slate-800/40 p-4"><p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Prévia do perfil</p><p id="profile-preview-name" class="text-lg font-bold text-white mt-3">${name || 'Seu nome'}</p><p id="profile-preview-title" class="text-sm mt-1" style="color:${theme.color}">${window.escapeHtml(window.getRankName())}</p><p id="profile-preview-campaign" class="text-xs text-slate-400 mt-2">${theme.name} · Campanha ${window.normalizePrestige().campaign}</p></div><div class="flex justify-end gap-3">${needsSetup ? '' : '<button type="button" onclick="window.closeProfileModal()" class="text-sm font-semibold text-slate-300 border border-slate-700 px-4 py-2.5 rounded-lg">Cancelar</button>'}<button type="button" onclick="window.saveUserProfile()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-4 py-2.5 rounded-lg">Salvar perfil</button></div></div></section></div>`;
+            const campaignField = needsSetup ? `<div><label for="profile-campaign-theme" class="text-sm font-semibold text-slate-300">Sua campanha</label><p class="text-xs text-slate-400 mt-1">Escolha o tema dos seus níveis e títulos.</p><select id="profile-campaign-theme" onchange="window.updateProfilePreview()" class="w-full mt-2 bg-slate-950 border border-slate-700 rounded-lg min-h-11 p-3 text-base sm:text-sm text-white">${CAMPAIGN_CATEGORIES.map(category => `<optgroup label="${category.name}">${CAMPAIGN_THEMES.filter(item => item.category === category.id).map(item => `<option value="${item.id}" ${item.id === theme.id ? 'selected' : ''}>${item.name}</option>`).join('')}</optgroup>`).join('')}</select></div>` : '';
+            return `<div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[80] backdrop-blur-md font-sans"><section id="profile-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-heading" class="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl modal-enter"><div class="flex justify-between gap-4"><div><h3 id="profile-heading" class="text-xl font-black text-white">Seu perfil</h3><p class="text-sm text-slate-400 mt-2">Escolha como seu nome e seus títulos aparecem.</p></div>${needsSetup ? '' : '<button id="profile-close" type="button" aria-label="Fechar perfil" onclick="window.closeProfileModal()" class="min-h-11 min-w-11 shrink-0 rounded-lg text-slate-300 hover:bg-slate-800"><i data-lucide="x" class="w-5 h-5"></i></button>'}</div><div class="space-y-5 mt-6"><div><label for="profile-display-name" class="text-sm font-semibold text-slate-300">Como você quer ser chamado?</label><input id="profile-display-name" type="text" maxlength="60" autocomplete="nickname" oninput="window.updateProfilePreview()" value="${name}" placeholder="Seu nome ou apelido" class="w-full mt-2 bg-slate-950 border border-slate-700 rounded-lg min-h-11 p-3 text-base sm:text-sm text-white outline-none focus:border-indigo-400"></div><fieldset><legend class="text-sm font-semibold text-slate-300">Linguagem dos títulos</legend><p class="text-xs text-slate-400 mt-1">É uma preferência de apresentação. Não altera XP nem conquistas. Sem gênero exibe nível e tema no lugar do título pessoal.</p><div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">${[['feminino', 'Feminina'], ['masculino', 'Masculina'], ['neutro', 'Sem gênero']].map(([value, label]) => `<label class="flex items-center gap-2 bg-slate-950 border border-slate-700 rounded-lg p-3 cursor-pointer text-sm text-slate-200"><input type="radio" name="profile-gender" value="${value}" onchange="window.updateProfilePreview()" class="accent-indigo-500" ${gender === value ? 'checked' : ''}>${label}</label>`).join('')}</div></fieldset>${campaignField}<div class="rounded-xl border border-slate-700 bg-slate-800/40 p-4"><p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Prévia do perfil</p><p id="profile-preview-name" class="text-lg font-bold text-white mt-3">${name || 'Seu nome'}</p><p id="profile-preview-title" class="text-sm mt-1" style="color:${theme.color}">${window.escapeHtml(window.getRankName())}</p><p id="profile-preview-campaign" class="text-xs text-slate-400 mt-2">${theme.name} · Campanha ${window.normalizePrestige().campaign}</p></div><div class="flex justify-end gap-3">${needsSetup ? '' : '<button type="button" onclick="window.closeProfileModal()" class="text-sm font-semibold text-slate-300 border border-slate-700 min-h-11 px-4 py-2.5 rounded-lg">Cancelar</button>'}<button type="button" onclick="window.saveUserProfile()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold min-h-11 px-4 py-2.5 rounded-lg">Salvar perfil</button></div></div></section></div>`;
         };
         window.openProfileModal = function() { uiState.showProfileModal = true; render(); };
         window.closeProfileModal = function() {
             if (!state?.userProfile?.configured) return;
+            if(!window.confirmFormClose('profile-dialog',()=>{uiState.showProfileModal=false;render();})) return;
             uiState.showProfileModal = false;
             render();
         };
@@ -3209,7 +3211,10 @@
                 .replace(/^-+|-+$/g, '') || `categoria-${Date.now()}`;
         };
 
-        window.toggleCategoryModal = function() { uiState.showCategoryModal = !uiState.showCategoryModal; render(); };
+        window.toggleCategoryModal = function() {
+            if(uiState.showCategoryModal && !window.confirmFormClose('task-categories-dialog',()=>{uiState.showCategoryModal=false;render();})) return;
+            uiState.showCategoryModal = !uiState.showCategoryModal; render();
+        };
 
         window.addTaskCategory = function() {
             const name = document.getElementById('task-category-name')?.value.trim();
@@ -3219,6 +3224,8 @@
             let id = window.slugifyCategoryName(name);
             if (state.taskCategories.some(c => c.id === id)) id = `${id}-${Date.now()}`;
             state.taskCategories.push({ id, label: name, icon, color, active: true, system: false, createdAt: new Date().toISOString() });
+            document.getElementById('task-category-name').value='';
+            window.resetFormChanges('task-categories-dialog');
             window.saveState();
             window.showToast('Categoria criada', `${name} foi adicionada às missões.`, 'tags', 'text-emerald-400');
         };
@@ -3908,6 +3915,7 @@
 
         // Ponte temporária para os handlers existentes durante a modularização.
         installFormDialogs(window, document);
+        installAuxiliaryDialogs(window,{document,getState:()=>state,getUiState:()=>uiState,getUser:()=>sessionReady?currentUser?.uid:null});
         installTransientDialogs(window,{document,getState:()=>state,getUiState:()=>uiState,getUser:()=>sessionReady?currentUser:null,getRevision:()=>saveRevision,render,daysOfWeek,hasRecurrence:Recurrence.hasRecurrence,createIcons:options=>lucide.createIcons(options)});
         installHealthWorkspace(window,{document,getState:()=>state,getUiState:()=>uiState});
         installFinanceWorkspace(window,{document,getState:()=>state,getUiState:()=>uiState});
@@ -6624,6 +6632,7 @@
             window.captureLibraryDraft?.();
             const viewPageKey = `${currentUser?.uid || ""}:${uiState.mainView}:${state.currentPlanningWeekStart}:${state.activeTab}`;
             const viewSnapshot = window.captureViewState?.(appDiv, {pageKey: appDiv.__viewPageKey || viewPageKey});
+            const auxiliarySnapshot = window.captureAuxiliaryDialogs(appDiv);
             const recoverySnapshots = window.captureRecoveryDialogs(appDiv);
             const workSnapshots = window.captureWorkDialogs(appDiv);
             window.capturePomodoroDraft(appDiv);
@@ -6684,10 +6693,10 @@
             if (uiState.customPrompt.show) {
                 if(uiState.customPrompt.type === 'reviewDifficulty') {
                     html += `
-                    <div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[999] backdrop-blur-md font-mono">
-                        <div class="bg-slate-900 border border-fuchsia-900/50 rounded-2xl p-6 max-w-md w-full shadow-2xl modal-enter text-center">
+                    <div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[80] backdrop-blur-md font-mono">
+                        <div id="review-difficulty-dialog" role="dialog" aria-modal="true" aria-labelledby="review-difficulty-title" class="bg-slate-900 border border-fuchsia-900/50 rounded-2xl p-6 max-w-md w-full shadow-2xl modal-enter text-center">
                             <i data-lucide="brain-circuit" class="text-fuchsia-500 w-12 h-12 mx-auto mb-4"></i>
-                            <h3 class="text-lg font-bold text-white mb-2">Calibração Neural</h3>
+                            <h3 id="review-difficulty-title" class="text-lg font-bold text-white mb-2">Como foi a revisão?</h3>
                             <p class="text-slate-400 text-sm mb-6">Como foi recuperar essa informação agora?</p>
                             <div class="grid grid-cols-2 gap-3 mb-4">
                                 <button onclick="window.processReviewDifficulty('easy')" class="bg-slate-800 border border-emerald-900 hover:bg-emerald-900/50 text-emerald-400 p-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-all"><span class="text-xs uppercase">Fácil</span><span class="text-[10px] text-slate-500">+20 XP</span></button>
@@ -6695,7 +6704,7 @@
                                 <button onclick="window.processReviewDifficulty('hard')" class="bg-slate-800 border border-orange-900 hover:bg-orange-900/50 text-orange-400 p-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-all"><span class="text-xs uppercase">Difícil</span><span class="text-[10px] text-slate-500">+50 XP</span></button>
                                 <button onclick="window.processReviewDifficulty('forgot')" class="bg-slate-800 border border-red-900 hover:bg-red-900/50 text-red-400 p-3 rounded-xl font-bold flex flex-col items-center gap-1 transition-all"><span class="text-xs uppercase">Não lembrei</span><span class="text-[10px] text-slate-500">+60 XP</span></button>
                             </div>
-                            <button onclick="window.closeCustomPrompt()" class="text-slate-500 hover:text-white text-xs underline">Cancelar fechamento</button>
+                            <button id="review-difficulty-close" type="button" onclick="window.closeCustomPrompt()" class="min-h-11 rounded-lg px-4 text-sm text-slate-300 hover:bg-slate-800">Voltar sem concluir</button>
                         </div>
                     </div>`;
                 } else if(uiState.customPrompt.type === 'financeGuardian') {
@@ -6703,14 +6712,14 @@
                 } else if(uiState.customPrompt.type === 'pomodoroEvaluation') {
                     const evalData = uiState.pomodoroEvaluationData || {};
                     html += `
-                    <div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[999] backdrop-blur-md font-sans">
-                        <div class="bg-slate-900 border-2 border-yellow-600/50 rounded-2xl p-6 max-w-lg w-full shadow-[0_0_50px_rgba(234,179,8,0.12)] modal-enter">
+                    <div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[80] backdrop-blur-md font-sans">
+                        <div id="pomodoro-evaluation-dialog" role="dialog" aria-modal="true" aria-labelledby="pomodoro-evaluation-title" class="bg-slate-900 border-2 border-yellow-600/50 rounded-2xl p-6 max-w-lg w-full shadow-[0_0_50px_rgba(234,179,8,0.12)] modal-enter">
                             <div class="flex items-start justify-between gap-4 mb-4">
                                 <div>
-                                    <h3 class="text-xl font-black text-white tracking-widest uppercase flex items-center gap-2"><i data-lucide="radar" class="text-yellow-400 w-5 h-5"></i> Como foi o ciclo?</h3>
+                                    <h3 id="pomodoro-evaluation-title" class="text-xl font-black text-white tracking-widest uppercase flex items-center gap-2"><i data-lucide="radar" class="text-yellow-400 w-5 h-5"></i> Como foi o ciclo?</h3>
                                     <p class="text-slate-400 text-xs mt-1 leading-relaxed">Uma autoavaliação breve ajuda a acompanhar seus ciclos.</p>
                                 </div>
-                                <button onclick="window.skipPomodoroEvaluation()" class="text-slate-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+                                <button id="pomodoro-evaluation-close" type="button" aria-label="Fechar avaliação do ciclo" onclick="window.skipPomodoroEvaluation()" class="min-h-11 min-w-11 rounded-lg text-slate-300 hover:bg-slate-800"><i data-lucide="x" class="w-5 h-5"></i></button>
                             </div>
                             <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-4">
                                 <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Tarefa vinculada</p>
@@ -7037,28 +7046,28 @@
             if (uiState.showCategoryModal) {
                 const activeCats = window.getTaskCategories(true);
                 html += `
-                <div class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-[70] backdrop-blur-sm font-mono">
-                    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-2xl w-full shadow-2xl modal-enter overflow-y-auto max-h-[90vh]">
+                <div class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-[70] backdrop-blur-sm font-sans">
+                    <div id="task-categories-dialog" role="dialog" aria-modal="true" aria-labelledby="task-categories-title" class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-2xl w-full shadow-2xl modal-enter overflow-y-auto max-h-[90dvh]">
                         <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
                             <div>
-                                <h2 class="text-lg font-black text-cyan-400 flex items-center gap-2"><i data-lucide="tags"></i> Categorias de Missões</h2>
+                                <h2 id="task-categories-title" class="text-lg font-semibold text-cyan-300 flex items-center gap-2"><i data-lucide="tags"></i> Categorias de Missões</h2>
                                 <p class="text-xs text-slate-500 mt-1">Crie categorias próprias e exclua definitivamente as que não quiser usar.</p>
                             </div>
-                            <button onclick="window.toggleCategoryModal()" class="text-slate-500 hover:text-white"><i data-lucide="x"></i></button>
+                            <button id="task-categories-close" type="button" aria-label="Fechar categorias" onclick="window.toggleCategoryModal()" class="min-h-11 min-w-11 rounded-lg text-slate-300 hover:bg-slate-800"><i data-lucide="x"></i></button>
                         </div>
                         <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 mb-4">
                             <h3 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Nova categoria</h3>
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div><label class="text-[10px] font-bold text-slate-500 uppercase">Nome</label><input id="task-category-name" type="text" placeholder="Ex.: Igreja, Clientes, Security+" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-cyan-500"></div>
-                                <div><label class="text-[10px] font-bold text-slate-500 uppercase">Ícone</label><select id="task-category-icon" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-cyan-500">${['target','briefcase','book-open','scale','home','heart','pill','dollar-sign','gamepad-2','church','users','shield','brain','dumbbell','file-text','laptop','calendar-check','star'].map(icon => `<option value="${icon}">${icon}</option>`).join('')}</select></div>
-                                <div><label class="text-[10px] font-bold text-slate-500 uppercase">Cor</label><select id="task-category-color" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white outline-none focus:border-cyan-500"><option value="text-cyan-400">Ciano</option><option value="text-emerald-400">Verde</option><option value="text-indigo-400">Índigo</option><option value="text-yellow-400">Amarelo</option><option value="text-rose-400">Rosa</option><option value="text-orange-400">Laranja</option><option value="text-purple-400">Roxo</option><option value="text-slate-400">Cinza</option></select></div>
+                                <div><label for="task-category-name" class="text-sm font-medium text-slate-300">Nome</label><input id="task-category-name" type="text" placeholder="Ex.: Igreja, Clientes, Security+" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg min-h-11 p-2.5 text-base sm:text-sm text-white outline-none focus:border-cyan-500"></div>
+                                <div><label for="task-category-icon" class="text-sm font-medium text-slate-300">Ícone</label><select id="task-category-icon" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg min-h-11 p-2.5 text-base sm:text-sm text-white outline-none focus:border-cyan-500">${['target','briefcase','book-open','scale','home','heart','pill','dollar-sign','gamepad-2','church','users','shield','brain','dumbbell','file-text','laptop','calendar-check','star'].map(icon => `<option value="${icon}">${icon}</option>`).join('')}</select></div>
+                                <div><label for="task-category-color" class="text-sm font-medium text-slate-300">Cor</label><select id="task-category-color" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg min-h-11 p-2.5 text-base sm:text-sm text-white outline-none focus:border-cyan-500"><option value="text-cyan-400">Ciano</option><option value="text-emerald-400">Verde</option><option value="text-indigo-400">Índigo</option><option value="text-yellow-400">Amarelo</option><option value="text-rose-400">Rosa</option><option value="text-orange-400">Laranja</option><option value="text-purple-400">Roxo</option><option value="text-slate-400">Cinza</option></select></div>
                             </div>
                             <button onclick="window.addTaskCategory()" class="mt-3 w-full bg-cyan-700 hover:bg-cyan-600 text-white font-black uppercase tracking-widest py-2.5 rounded-lg text-xs transition-colors">Criar Categoria</button>
                         </div>
                         <div class="space-y-2">
                             ${activeCats.map(cat => {
                                 const taskCount = state.tasks.filter(t => t.category === cat.id).length;
-                                return `<div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-3"><div class="flex items-center gap-3"><div class="bg-slate-900 border border-slate-700 rounded-lg p-2"><i data-lucide="${cat.icon || 'target'}" class="w-4 h-4 ${cat.color || 'text-slate-400'}"></i></div><div><div class="text-sm font-bold text-white">${cat.label}</div><div class="text-[10px] uppercase tracking-widest text-slate-500">${taskCount} missão(ões) • ${cat.system ? 'Padrão' : 'Personalizada'}</div></div></div><button onclick="window.deleteTaskCategory('${cat.id}')" class="px-3 py-1.5 rounded-lg bg-red-950/20 hover:bg-red-950/50 text-red-300 border border-red-900/50 text-xs font-bold flex items-center gap-1"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Excluir</button></div>`;
+                                return `<div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3"><div class="flex min-w-0 items-center gap-3"><div class="bg-slate-900 border border-slate-700 rounded-lg p-2"><i data-lucide="${cat.icon || 'target'}" class="w-4 h-4 ${cat.color || 'text-slate-400'}"></i></div><div class="min-w-0"><div class="text-sm font-medium text-white break-words">${window.escapeHtml(cat.label)}</div><div class="text-xs text-slate-400">${taskCount} missão(ões) • ${cat.system ? 'Padrão' : 'Personalizada'}</div></div></div><button onclick="window.deleteTaskCategory('${cat.id}')" class="min-h-11 px-3 py-2 rounded-lg bg-red-950/20 hover:bg-red-950/50 text-red-300 border border-red-900/50 text-xs font-bold flex items-center gap-1"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Excluir</button></div>`;
                             }).join('')}
                         </div>
                     </div>
@@ -7145,6 +7154,7 @@
                 });
             }
             window.bindAiInbox?.(appDiv);
+            window.restoreAuxiliaryDialogs(appDiv,auxiliarySnapshot);
             window.bindAiAccess?.(appDiv);
             window.bindAiV2Proposals?.(appDiv);
             window.bindMissionChanges?.(appDiv);
@@ -7185,6 +7195,7 @@
             window.bindSubtaskEditor?.(appDiv);
             window.bindLibrary?.(appDiv);
             window.bindLibraryImports?.(appDiv);
+            window.bindAuxiliaryDialogs(appDiv);
             if (uiState.deleteTaskPrompt?.show) window.bindFormDialog(appDiv, {id:'delete-mission-dialog',initialFocus:'delete-mission-cancel',close:window.cancelDeleteTaskPrompt,blocked:uiState.confirm.show || uiState.alert.show});
             if (uiState.studyTrackDeletion) window.bindFormDialog(appDiv, {id:'study-track-delete-dialog',initialFocus:'study-track-delete-close',close:window.closeStudyTrackDeletion,blocked:uiState.confirm.show || uiState.alert.show});
             if (uiState.customPrompt.show && uiState.customPrompt.type === 'financeGuardian') window.bindFormDialog(appDiv, {id:'finance-guardian-dialog',initialFocus:'finance-guardian-back',close:window.backToFinanceForm,blocked:uiState.confirm.show || uiState.alert.show});

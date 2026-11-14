@@ -43,3 +43,15 @@ test('menu de módulos fecha antes de abrir destino e ignora ações desconhecid
  b.window.openLibrary=()=>{assert.equal(b.elements['resource-menu'].open,false);opened++;};
  b.window.openAppResource('openLibrary');b.window.openAppResource('saveNewTask');assert.equal(opened,1);assert.equal(focused,1);
 });
+
+
+test('criar categorias em sequência limpa apenas o nome e não duplica no segundo clique',()=>{
+ const b=boot();b.ui.showCategoryModal=true;b.elements['task-category-name']={value:'Família'};b.elements['task-category-icon']={value:'heart'};b.elements['task-category-color']={value:'text-rose-400'};b.window.showToast=()=>{};
+ const n=b.state.taskCategories.length;b.window.addTaskCategory();assert.equal(b.state.taskCategories.length,n+1);assert.equal(b.ui.showCategoryModal,true);assert.equal(b.elements['task-category-name'].value,'');assert.equal(b.elements['task-category-icon'].value,'heart');assert.equal(b.elements['task-category-color'].value,'text-rose-400');
+ b.window.addTaskCategory();assert.equal(b.state.taskCategories.length,n+1);assert.equal(b.ui.alert.show,true);
+});
+test('cancelar descarte mantém janelas auxiliares; confirmar fecha somente a janela escolhida',()=>{
+ const b=boot();b.state.userProfile.configured=true;b.ui.showProfileModal=true;b.ui.showCategoryModal=true;b.ui.showCreateTaskModal=true;let close;
+ b.window.confirmFormClose=(id,callback)=>{close=callback;return false;};b.window.toggleCategoryModal();assert.equal(b.ui.showCategoryModal,true);assert.equal(b.ui.showCreateTaskModal,true);close();assert.equal(b.ui.showCategoryModal,false);assert.equal(b.ui.showCreateTaskModal,true);
+ b.window.closeProfileModal();assert.equal(b.ui.showProfileModal,true);close();assert.equal(b.ui.showProfileModal,false);assert.equal(b.ui.showCreateTaskModal,true);
+});

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {installFormDialogs} from './ui/form_dialogs.v2.js';
+import {installAuxiliaryDialogs} from './ui/auxiliary_dialogs.v1.js';
+import {installFormDialogs} from './ui/form_dialogs.v3.js';
 
 // Small DOM adapter exercises the renderer's actual capture/restore contract.
 class Node {
@@ -8,7 +9,7 @@ class Node {
  append(...nodes){for(const node of nodes){node.parentElement=this;node.doc=this.doc;this.children.push(node);}return this;}
  getAttribute(name){return this.attrs[name]??null;}
  hasAttribute(name){return Object.hasOwn(this.attrs,name);}
- matches(selector){return selector==='details'?this.tag==='details':selector==='[id]'?Boolean(this.id):selector==='[onclick]'?Boolean(this.attrs.onclick):selector==='[role="dialog"]'?this.attrs.role==='dialog':selector.startsWith('#')?this.id===selector.slice(1):false;}
+ matches(selector){if(selector==='input[name="profile-gender"]')return this.tag==='input'&&this.attrs.name==='profile-gender';if(selector==='button, input, select, textarea, summary, [tabindex="0"]')return ['button','input','select','textarea','summary'].includes(this.tag)||this.attrs.tabindex==='0';return selector==='details'?this.tag==='details':selector==='[id]'?Boolean(this.id):selector==='[onclick]'?Boolean(this.attrs.onclick):selector==='[role="dialog"]'?this.attrs.role==='dialog':selector.startsWith('#')?this.id===selector.slice(1):false;}
  closest(selector){return this.matches(selector)?this:this.parentElement?.closest(selector)||null;}
  querySelectorAll(selector){return this.children.flatMap(child=>[...(child.matches(selector)?[child]:[]),...child.querySelectorAll(selector)]);}
  querySelector(selector){if(selector===':scope > summary')return this.children.find(child=>child.tag==='summary')||null;return this.querySelectorAll(selector)[0]||null;}
@@ -81,4 +82,60 @@ test('botão sem ID recupera foco pelo comando sem escolher controles ambíguos'
  const {root,w,doc}=dom();const button=new Node('button',{onclick:'window.setTab("monday")'});root.append(button);button.focus();const snapshot=w.captureViewState(root);
  root.children=[];const next=new Node('button',{onclick:'window.setTab("monday")'});root.append(next);doc.activeElement=null;w.restoreViewState(root,snapshot);assert.equal(doc.activeElement,next);
  root.append(new Node('button',{onclick:'window.setTab("monday")'}));doc.activeElement=null;w.restoreViewState(root,snapshot);assert.equal(doc.activeElement,null);
+});
+
+
+test('a camada visual prevalece sobre a ordem do HTML; somente a janela da frente recebe Escape e Tab',()=>{
+ const {root,w,doc}=dom();const categories=dialog(root,'categories'),mission=dialog(root,'mission');categories.attrs.class='z-[70]';mission.attrs.class='z-50';
+ const first=new Node('input',{id:'category-name'}),last=new Node('button',{id:'category-close'}),title=new Node('input',{id:'mission-title'});categories.append(first,last);mission.append(title);
+ let catClosed=0,missionClosed=0;w.bindFormDialog(root,{id:mission.id,initialFocus:title.id,close:()=>missionClosed++});assert.equal(doc.activeElement,null);
+ w.bindFormDialog(root,{id:categories.id,initialFocus:first.id,close:()=>catClosed++});assert.equal(doc.activeElement,first);
+ const key=value=>({key:value,preventDefault(){},stopPropagation(){}});mission.listeners.keydown(key('Escape'));assert.equal(missionClosed,0);
+ last.focus();categories.listeners.keydown(key('Tab'));assert.equal(doc.activeElement,first);
+ first.focus();categories.listeners.keydown({...key('Tab'),shiftKey:true});assert.equal(doc.activeElement,last);
+ categories.listeners.keydown(key('Escape'));assert.equal(catClosed,1);assert.equal(missionClosed,0);
+});
+test('restaurar posição não devolve foco para trás de uma janela filha; camadas ocultas são ignoradas',()=>{
+ const {root,w,doc}=dom(),parent=dialog(root,'mission'),field=new Node('input',{id:'title'});parent.attrs.class='z-50';parent.append(field);field.focus();const snapshot=w.captureViewState(root);
+ const child=dialog(root,'subtasks');child.attrs.class='z-[95]';doc.activeElement=null;w.restoreViewState(root,snapshot);assert.equal(doc.activeElement,null);
+ child.visible=false;w.restoreViewState(root,snapshot);assert.equal(doc.activeElement,field);
+});
+test('camada de confirmação e alerta permanece à frente de exclusão e respeita o z-index do contêiner',()=>{
+ const {root,w}=dom(),host=new Node('div');root.append(host);const confirmation=dialog(host,'confirmation'),alert=dialog(host,'alert');confirmation.attrs.class='z-[1100]';alert.attrs.class='z-[1200]';
+ const overlay=new Node('div',{class:'z-[1000]'});root.append(overlay);dialog(overlay,'delete');assert.equal(w.getTopFormDialog(root),alert);
+ alert.visible=false;assert.equal(w.getTopFormDialog(root),confirmation);
+});
+function auxiliary(){
+ const f=dom();let owner='a',state={userProfile:{configured:false}},ui={showProfileModal:true,showCategoryModal:true,confirm:{},alert:{}};let previews=0;
+ f.w.updateProfilePreview=()=>previews++;
+ installAuxiliaryDialogs(f.w,{document:f.doc,getState:()=>state,getUiState:()=>ui,getUser:()=>owner});
+ const make=()=>{f.root.children=[];const profile=dialog(f.root,'profile-dialog'),name=new Node('input',{id:'profile-display-name'}),theme=new Node('select',{id:'profile-campaign-theme'});name.value='';theme.value='default';profile.append(name,theme);
+ const radios=['feminino','masculino','neutro'].map(value=>{const node=new Node('input',{name:'profile-gender'});node.value=value;node.checked=false;profile.append(node);return node;});
+ const categories=dialog(f.root,'task-categories-dialog'),fields={};for(const id of ['name','icon','color']){const node=new Node('input',{id:'task-category-'+id});node.value='default';categories.append(node);fields[id]=node;}
+ return {profile,name,theme,radios,categories,fields};};
+ return {...f,make,get state(){return state;},get ui(){return ui;},switchOwner(){owner='b';},replaceState(){state={userProfile:{configured:false}};},get previews(){return previews;}};
+}
+test('perfil e categoria conservam campos, rádio e seleção durante reconstrução sem salvar dados',()=>{
+ const f=auxiliary(),old=f.make();f.w.bindAuxiliaryDialogs(f.root);old.name.value='Nome revisado';old.theme.value='tema';old.radios[0].checked=true;old.fields.name.value='Família';old.fields.icon.value='heart';old.fields.color.value='green';
+ const before=JSON.stringify(f.state),snapshot=f.w.captureAuxiliaryDialogs(f.root),next=f.make();f.w.restoreAuxiliaryDialogs(f.root,snapshot);
+ assert.equal(next.name.value,'Nome revisado');assert.equal(next.theme.value,'tema');assert.equal(next.radios[0].checked,true);assert.equal(next.radios[1].checked,false);assert.equal(next.fields.name.value,'Família');assert.equal(next.fields.icon.value,'heart');assert.equal(next.fields.color.value,'green');assert.equal(f.previews,1);assert.equal(JSON.stringify(f.state),before);
+});
+test('rascunho de outra conta ou objeto de estado não é capturado nem restaurado',()=>{
+ for(const change of ['switchOwner','replaceState']){const f=auxiliary(),old=f.make();f.w.bindAuxiliaryDialogs(f.root);old.name.value='Privado';const snapshot=f.w.captureAuxiliaryDialogs(f.root);f[change]();assert.equal(f.w.captureAuxiliaryDialogs(f.root).snapshots.length,0);const next=f.make();f.w.restoreAuxiliaryDialogs(f.root,snapshot);assert.equal(next.name.value,'');}
+});
+test('fechar formulário descarta sua captura e perfil configurado não recebe campos do primeiro acesso',()=>{
+ const f=auxiliary(),old=f.make();f.w.bindAuxiliaryDialogs(f.root);old.name.value='Rascunho';f.ui.showCategoryModal=false;f.ui.showProfileModal=false;f.state.userProfile.configured=true;
+ const snapshot=f.w.captureAuxiliaryDialogs(f.root);assert.equal(snapshot.snapshots.length,0);const next=f.make();f.ui.showProfileModal=true;f.w.restoreAuxiliaryDialogs(f.root,snapshot);assert.equal(next.name.value,'');
+});
+test('redesenho sem montagem vinculada nunca recupera valores do DOM de um contexto anterior',()=>{
+ const f=auxiliary(),old=f.make();old.name.value='Antigo';assert.equal(f.w.captureAuxiliaryDialogs(f.root).snapshots.length,0);
+});
+test('campos auxiliares pedem descarte somente quando modificados e bloqueiam foco durante confirmação',()=>{
+ const f=auxiliary(),fields=f.make();f.ui.alert.show=true;f.w.bindAuxiliaryDialogs(f.root);assert.equal(fields.profile.listeners.input,undefined);assert.equal(f.doc.activeElement,null);
+ f.ui.alert.show=false;f.w.bindAuxiliaryDialogs(f.root);fields.profile.listeners.input();let discard,closed=0;f.w.showConfirmModal=(message,callback)=>{discard=callback;};assert.equal(f.w.confirmFormClose('profile-dialog',()=>closed++),false);discard();assert.equal(closed,1);assert.equal(f.w.confirmFormClose('profile-dialog',()=>closed++),true);
+});
+
+
+test('retorno ao botão certo distingue ações iguais na página e no formulário',()=>{
+ const {root,w,doc}=dom(),pageButton=new Node('button',{onclick:'window.toggleCategoryModal()'});root.append(pageButton);const parent=dialog(root,'create-task-dialog'),opener=new Node('button',{onclick:'window.toggleCategoryModal()'});parent.append(opener);opener.focus();const snapshot=w.captureViewState(root);doc.activeElement=null;w.restoreViewState(root,snapshot);assert.equal(doc.activeElement,opener);
 });
