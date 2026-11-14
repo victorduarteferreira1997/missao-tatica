@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.88-dialog-continuity">
+    <meta name="app-build" content="v1.9.89-integrated-validation">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -189,7 +189,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.88';
+        const APP_VERSION = 'v1.9.89';
         const updateAppView = createViewUpdater(document);
         window.renderMissionRowIsland=(id,html)=>updateAppView.island(id,html);
         const firebaseConfig = {
@@ -4789,7 +4789,7 @@
             uiState.studyTab = defaults[area] || 'plano';
             render();
         };
-        window.setStudyTab = function(tab) { if (!['plano','log','planning','ciclos','subjects','erros','dashboard','reviews'].includes(tab)) return; uiState.studyTab = tab; render(); };
+        window.setStudyTab = function(tab) { if (!['plano','log','planning','ciclos','subjects','erros','dashboard','reviews'].includes(tab)) return; uiState.studySessionPlanOrigin=null; uiState.studyTab = tab; render(); };
 
         function renderStudyNavigation() {
             const currentArea = window.getStudyAreaForTab(uiState.studyTab);
@@ -5010,6 +5010,13 @@
                 xpAwarded: xpEarned, xpCampaign: window.normalizePrestige().campaign, energyDeltaApplied: energyDelta, generatedReviewIds: generatedReviewIds, createdAt: new Date().toISOString()
             });
 
+            const origin=uiState.studySessionPlanOrigin,block=origin?.block;
+            if(origin?.state===state && origin.week===state.currentPlanningWeekStart
+                && state.studyData.studyPlan?.weeklyBlocks?.includes(block)
+                && JSON.stringify([block.title,String(block.subjectId),block.plannedMinutes,block.studyType,block.day,block.status])===origin.signature && block.status==='planned'
+                && String(block.subjectId)===String(subjectId) && block.title===topic) {
+                block.status='partial'; block.updatedAt=new Date().toISOString();
+            }
             state.xp += xpEarned; window.changeEnergy(energyDelta);
             window.checkLevelUp();
             if (typeof window.checkGameTriggers === "function") window.checkGameTriggers();
@@ -5708,10 +5715,13 @@
         window.prefillStudySessionFromPlan = function(blockId) {
             const block = state.studyData.studyPlan.weeklyBlocks.find(b => String(b.id) === String(blockId));
             if (!block) return;
+            const origin={state,week:state.currentPlanningWeekStart,block,signature:JSON.stringify([block.title,String(block.subjectId),block.plannedMinutes,block.studyType,block.day,block.status])};
+            uiState.studySessionPlanOrigin=origin;
             uiState.showStudyModal = true;
             uiState.studyTab = 'log';
             render();
             setTimeout(window.guardAccountCallback(() => {
+                if(uiState.studySessionPlanOrigin!==origin || state!==origin.state || state.currentPlanningWeekStart!==origin.week || !uiState.showStudyModal || uiState.studyTab!=='log' || !state.studyData.studyPlan.weeklyBlocks.includes(block)) return;
                 const subjectEl = document.getElementById('session-subject');
                 const typeEl = document.getElementById('session-type');
                 const durationEl = document.getElementById('session-duration');
@@ -5720,9 +5730,7 @@
                 if (typeEl) typeEl.value = SESSION_TYPES[block.studyType] ? block.studyType : (block.studyType === 'questoes' ? 'questoes' : block.studyType === 'flashcards' ? 'flashcards' : block.studyType === 'revisao' ? 'revisao' : 'leitura');
                 if (durationEl) durationEl.value = block.plannedMinutes;
                 if (topicEl) topicEl.value = block.title;
-                block.status = block.status === 'planned' ? 'partial' : block.status;
-                block.updatedAt = new Date().toISOString();
-                window.saveStudyPlanningState(true);
+                // Opening the form must not record progress or save planning data.
             }), 80);
         };
 
@@ -5821,6 +5829,7 @@
             uiState.workDrafts ||= {}; uiState.workDraftReset ||= {};
             const key = `${kind}:${tab}`;
             delete uiState.workDrafts[key]; uiState.workDraftReset[key] = true;
+            if(kind === 'study' && tab === 'log') uiState.studySessionPlanOrigin=null;
             if(kind === 'study' && tab === 'planning') window.clearStudyWorkspaceDrafts?.('planning');
         };
         window.captureWorkDialogs = function(root) {

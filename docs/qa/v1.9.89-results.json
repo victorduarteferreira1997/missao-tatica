@@ -1,0 +1,58 @@
+{
+  "version": "v1.9.89",
+  "date": "2026-11-14",
+  "baseline": "767a810c4204f741d958d204c4a65cb670e1ab26",
+  "automated": {
+    "passed": 581,
+    "failed": 0,
+    "newTests": 4
+  },
+  "browser": {
+    "engine": "Chrome cloud browser",
+    "services": "Synthetic Firebase/Auth/App Check and proposal HTTP responses; no production writes",
+    "desktop": [
+      "edited mission values and date",
+      "failed acknowledgment and retry without duplication",
+      "three proposal destinations",
+      "RADAR follow-up without mission",
+      "cross-week reschedule and edit",
+      "subtask order and completion",
+      "RADAR link versus prerequisite",
+      "blocked completion and unlock",
+      "RADAR stays active after mission completion",
+      "study plan and session",
+      "book/catalog, reading plan and reading log",
+      "mission/proposal persist on desktop page reload"
+    ],
+    "mobile": {
+      "iframePx": [
+        320,
+        740
+      ],
+      "viewportWidthPx": 305,
+      "documentWidthPx": 305,
+      "checks": [
+        "study proposal accepted",
+        "reading session: page 15, actual 18 minutes",
+        "study opening/cancel remains planned",
+        "valid 25-minute session marks partial",
+        "one study and one reading together"
+      ]
+    },
+    "fixtures": "Separate stages; mobile fixture storage reload not certified as physical-device persistence"
+  },
+  "fix": {
+    "cause": "Opening study session changed block to partial and saved before submission; delayed fill lacked view/block/week guard",
+    "files": [
+      "app.html",
+      "study_session_flow.test.mjs"
+    ],
+    "migration": false,
+    "existingRecordsReclassified": false
+  },
+  "limits": [
+    "Production OAuth/ChatGPT submission, Firebase, Cloudflare and Google Calendar not exercised live",
+    "No physical device or screen-reader QA",
+    "No new latency benchmark in this release"
+  ]
+}
