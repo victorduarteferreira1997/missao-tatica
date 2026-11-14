@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
-import { installFormDialogs as installDialogModule } from './ui/form_dialogs.v2.js';
+import { installFormDialogs as installDialogModule } from './ui/form_dialogs.v3.js';
 import { installTaskForms } from './ui/task_forms.v10.js';
 import { installPlanningViews } from './ui/planning_views.v12.js';
 
@@ -16,7 +16,7 @@ const aiAccess = await readFile(new URL('./ui/ai_access.v3.js', import.meta.url)
 const aiProposals = await readFile(new URL('./ui/ai_proposals.v2.js', import.meta.url), 'utf8');
 const aiEntityReview = await readFile(new URL('./ui/ai_entity_review.v1.js', import.meta.url), 'utf8');
 const planningTools = await readFile(new URL('./ui/planning_tools.v4.js', import.meta.url), 'utf8');
-const extraInterfaces = (await Promise.all(['./ui/transient_dialogs.v1.js','./ui/mission_changes.v1.js','./ui/library.v4.js','./ui/library_import.v1.js','./ui/reading_activity.v2.js','./ui/mission_schedule.v1.js','./ui/radar_missions.v2.js','./ui/subtasks.v1.js','./ui/recurrence.v1.js'].map(path=>readFile(new URL(path,import.meta.url),'utf8')))).join('\n');
+const extraInterfaces = (await Promise.all(['./ui/transient_dialogs.v2.js','./ui/mission_changes.v1.js','./ui/library.v4.js','./ui/library_import.v1.js','./ui/reading_activity.v2.js','./ui/mission_schedule.v1.js','./ui/radar_missions.v2.js','./ui/subtasks.v1.js','./ui/recurrence.v1.js'].map(path=>readFile(new URL(path,import.meta.url),'utf8')))).join('\n');
 const interfaceSource = extraInterfaces + planningTools + aiEntityReview + app + taskForms + planningViews + aiInbox + aiAccess + aiProposals;
 const installPlanner = (target, options = {}) => installPlanningViews(target, {
     document: { addEventListener() {} }, daysOfWeek: [], ICONS: { default: 'target' },
@@ -29,7 +29,7 @@ assert.ok(!app.includes('window.renderDailyMissionBoard ='), 'As visões devem e
 assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v10\.js\?v=1\.9\.81'/);
 assert.match(app, /installTaskForms\(window, \{ document, daysOfWeek, getState: \(\) => state, getUiState: \(\) => uiState \}\)/);
 const installFormDialogs = target => installDialogModule(target, {});
-assert.match(app, /import \{ installFormDialogs \} from '\.\/ui\/form_dialogs\.v2\.js'/);
+assert.match(app, /import \{ installFormDialogs \} from '\.\/ui\/form_dialogs\.v3\.js\?v=1\.9\.88'/);
 assert.match(app, /installFormDialogs\(window, document\)/);
 assert.ok(!app.includes('window.renderFormDialog ='), 'A estrutura deve existir apenas no módulo compartilhado.');
 
@@ -651,6 +651,7 @@ const firstControl = control(), lastControl = control();
 const hiddenControl = { ...control(), getClientRects: () => [] };
 const keyboardEvents = {};
 const keyboardDialog = {
+    getClientRects: () => [1], getAttribute: () => null,
     contains: el => el === firstControl || el === lastControl,
     querySelector: () => firstControl,
     querySelectorAll: () => [hiddenControl, firstControl, lastControl],
@@ -660,7 +661,7 @@ const keyboardDocument = { get activeElement() { return activeControl; } };
 const keyboardWindow = {};
 installDialogModule(keyboardWindow, keyboardDocument);
 const dialogOptions = { id: 'test-dialog', initialFocus: 'test-title', close: () => { keyboardCloseCount++; }, prepare: () => { prepareCount++; } };
-const keyboardRoot = { querySelector: () => keyboardDialog };
+const keyboardRoot = { querySelector: () => keyboardDialog, querySelectorAll: () => [keyboardDialog] };
 keyboardWindow.bindFormDialog(keyboardRoot, { ...dialogOptions, blocked: true });
 assert.equal(bindingCount, 0); assert.equal(prepareCount, 0);
 keyboardWindow.bindFormDialog(keyboardRoot, dialogOptions);
