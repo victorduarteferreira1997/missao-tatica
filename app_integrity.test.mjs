@@ -7,24 +7,24 @@ import { runInNewContext } from 'node:vm';
 import { installFormDialogs as installDialogModule } from './ui/form_dialogs.v3.js';
 import { installTaskForms } from './ui/task_forms.v10.js';
 import {installRadarWorkspace} from './ui/radar_workspace.v1.js';
-import { installPlanningViews } from './ui/planning_views.v12.js';
+import { installPlanningViews } from './ui/planning_views.v13.js';
 
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
 const taskForms = await readFile(new URL('./ui/task_forms.v10.js', import.meta.url), 'utf8');
-const planningViews = await readFile(new URL('./ui/planning_views.v12.js', import.meta.url), 'utf8');
+const planningViews = await readFile(new URL('./ui/planning_views.v13.js', import.meta.url), 'utf8');
 const aiInbox = await readFile(new URL('./ui/ai_inbox.v3.js', import.meta.url), 'utf8');
 const aiAccess = await readFile(new URL('./ui/ai_access.v3.js', import.meta.url), 'utf8');
 const aiProposals = await readFile(new URL('./ui/ai_proposals.v2.js', import.meta.url), 'utf8');
 const aiEntityReview = await readFile(new URL('./ui/ai_entity_review.v1.js', import.meta.url), 'utf8');
 const planningTools = await readFile(new URL('./ui/planning_tools.v4.js', import.meta.url), 'utf8');
 const extraInterfaces = (await Promise.all(['./ui/transient_dialogs.v2.js','./ui/mission_changes.v1.js','./ui/library.v4.js','./ui/library_import.v1.js','./ui/reading_activity.v2.js','./ui/mission_schedule.v1.js','./ui/radar_missions.v2.js','./ui/subtasks.v1.js','./ui/recurrence.v1.js'].map(path=>readFile(new URL(path,import.meta.url),'utf8')))).join('\n');
-const interfaceSource = extraInterfaces + planningTools + aiEntityReview + app + taskForms + planningViews + aiInbox + aiAccess + aiProposals;
+const interfaceSource = (await readFile(new URL('./ui/planning_workspace.v1.js',import.meta.url),'utf8')) + extraInterfaces + planningTools + aiEntityReview + app + taskForms + planningViews + aiInbox + aiAccess + aiProposals;
 const installPlanner = (target, options = {}) => installPlanningViews(target, {
     document: { addEventListener() {} }, daysOfWeek: [], ICONS: { default: 'target' },
     getState: () => ({}), getUiState: () => ({}), extractMinutesFromTask: () => 30,
     ...options
 });
-assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v12\.js\?v=1\.9\.87'/);
+assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v13\.js\?v=1\.9\.91'/);
 assert.match(app, /html \+= window\.renderWeeklyPlanningOverview\(\)/);
 assert.ok(!app.includes('window.renderDailyMissionBoard ='), 'As visões devem existir apenas no módulo do planejamento.');
 assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v10\.js\?v=1\.9\.81'/);
@@ -382,11 +382,11 @@ assert.ok(weeklyMarkup.indexOf('Estudo cedo') < weeklyMarkup.indexOf('Missão ta
 assert.ok(weeklyMarkup.indexOf('Missão tarde') < weeklyMarkup.indexOf('&lt;Missão livre&gt;'));
 assert.doesNotMatch(weeklyMarkup, /Cancelado/);
 assert.ok(weeklyMarkup.indexOf('id="sync-stub"') < weeklyMarkup.indexOf('id="inbox-stub"'));
-assert.ok(weeklyMarkup.indexOf('id="inbox-stub"') < weeklyMarkup.indexOf('Semana Geral'));
+assert.ok(weeklyMarkup.indexOf('id="inbox-stub"') > weeklyMarkup.indexOf('Semana Geral'));
 assert.doesNotMatch(weeklyMarkup, /data-week-section="[^"\n]*:google"/);
 assert.match(weeklyMarkup, /data-week-day="monday" data-week-section="2026-10-05:monday"  class=/);
 assert.match(weeklyMarkup, /data-week-day="tuesday" data-week-section="2026-10-05:tuesday" open /);
-for (const action of ['createMissionOnDay', 'exportVisibleWeekToIcs', 'prepareNextWeekPlanning', 'setMainView']) {
+for (const action of ['createMissionOnDay', 'exportVisibleWeekToIcs', 'prepareNextWeekPlanning', 'openPlanningDay']) {
     assert.ok(weeklyMarkup.includes(`window.${action}(`), `A agenda deve preservar ${action}.`);
 }
 weeklyState.tasks = [];
