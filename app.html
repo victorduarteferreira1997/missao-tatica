@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.91-day-week-workspace">
+    <meta name="app-build" content="v1.9.92-mission-feedback">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="ui/experience.v2.css?v=1.9.79">
     <link rel="stylesheet" href="ui/radar_experience.v1.css?v=1.9.90">
     <link rel="stylesheet" href="ui/planning_experience.v1.css?v=1.9.91">
+    <link rel="stylesheet" href="ui/mission_feedback.v1.css?v=1.9.92">
     <link rel="stylesheet" href="ui/study_experience.v1.css?v=1.9.82">
     <link rel="stylesheet" href="ui/library_experience.v1.css?v=1.9.83">
     <link rel="stylesheet" href="ui/finance_experience.v1.css?v=1.9.84">
@@ -161,7 +162,8 @@
         import * as Recurrence from './recurrence.v1.js?v=1.9.66.1';
         import { installRecurrence } from './ui/recurrence.v1.js?v=1.9.66.1';
         import { planningPreview } from './planning_preview.v1.js?v=1.9.77';
-        import { installTaskForms } from './ui/task_forms.v10.js?v=1.9.81';
+        import {installMissionFeedback} from './ui/mission_feedback.v1.js?v=1.9.92';
+        import { installTaskForms } from './ui/task_forms.v11.js?v=1.9.92';
         import * as Library from './library.v2.js?v=1.9.70';
         import { installLibrary } from './ui/library.v4.js?v=1.9.83';
         import {installMissionChanges} from './ui/mission_changes.v1.js?v=1.9.75';
@@ -193,7 +195,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.91';
+        const APP_VERSION = 'v1.9.92';
         const updateAppView = createViewUpdater(document);
         window.renderMissionRowIsland=(id,html)=>updateAppView.island(id,html);
         const firebaseConfig = {
@@ -926,11 +928,13 @@
             const start = normalizeClockTime(document.getElementById(`${prefix}-start-time`)?.value || '');
             const end = normalizeClockTime(document.getElementById(`${prefix}-end-time`)?.value || '');
             if (end && !start) {
-                window.showAlertModal('Preencha o horário de início ou deixe os dois campos de agenda em branco.');
+                if(['ct','et'].includes(prefix))window.showMissionFieldError(prefix,'start-time','Preencha o início ou deixe os dois horários em branco.');
+                else window.showAlertModal('Preencha o horário de início ou deixe os dois campos de agenda em branco.');
                 return null;
             }
             if (start && end && !isValidClockRange(start, end)) {
-                window.showAlertModal('O horário final precisa ser depois do horário inicial.');
+                if(['ct','et'].includes(prefix))window.showMissionFieldError(prefix,'end-time','O fim precisa ser depois do início.');
+                else window.showAlertModal('O horário final precisa ser depois do horário inicial.');
                 return null;
             }
             return {
@@ -1922,6 +1926,7 @@
             clearInterval(uiState.breathingInterval);
             calendarSync.setOwner(null);
             window.resetMissionScheduling?.();
+            window.resetMissionFeedback?.();
             window.resetAiInbox?.(); window.resetAiAccess?.();
             uiState = JSON.parse(initialUiState);
             pomodoro = JSON.parse(initialPomodoro);
@@ -3975,10 +3980,12 @@
 
         window.closeEditTaskModal = function() {
             if(!window.confirmFormClose?.('edit-task-dialog',window.closeEditTaskModal))return;
+            const returnTaskId=uiState.editingTaskId;
             uiState.editTaskDraft = null;
             uiState.showEditTaskModal = false;
             uiState.editingTaskId = null;
             render();
+            window.restoreMissionFormOrigin(returnTaskId);
         };
 
         window.setEditTaskRecurrence = function(mode) {
@@ -4018,6 +4025,8 @@
         };
 
         window.saveEditedTask = async function() {
+            if (uiState.editingTaskId === null) return;
+            if (window.missionFormAlreadySubmitted('et')) return;
             const task = state.tasks.find(t => t.id == uiState.editingTaskId);
             if (!task) { window.showAlertModal('Missão não encontrada.'); return; }
             const text = document.getElementById('et-text')?.value.trim();
@@ -4028,14 +4037,14 @@
                 input?.focus();
                 return;
             }
+            if (!window.validateMissionNumbers('et')) return;
             const relations = window.readTaskRelations?.('et',task);
             if (relations === null) return;
             const dateField=document.getElementById('et-date');
             const requestedDate=dateField ? dateField.value : Recurrence.occurrenceDate({day:document.getElementById('et-day')?.value||task.day,planningWeekStart:window.taskPlanningWeek(task)},state);
             let datePlan;
-            try { datePlan=planMissionSchedule(state,task,requestedDate); } catch(error) { window.showAlertModal(error.message); return; }
+            try { datePlan=planMissionSchedule(state,task,requestedDate); } catch(error) { window.showMissionFieldError('et','date',error.message); return; }
             const newDay=datePlan.day;
-            const editState=state;
             const activeCategories = window.getTaskCategories();
             const selectedCategory = document.getElementById('et-category')?.value || activeCategories[0]?.id || task.category || 'geral';
             const priority = document.getElementById('et-priority')?.value || task.priority || 'media';
@@ -4047,7 +4056,7 @@
             const activityType = task.sanitizedOrigin === 'coaktion' ? 'meeting' : (document.getElementById('et-activity-type')?.value || task.activityType || 'task');
             const calendarTime = task.googleCalendarSource === 'primary' ? { startTime: task.startTime || '', endTime: task.endTime || '' } : window.readCalendarTimeFields('et', timeVal);
             if (!calendarTime) return;
-            if (activityType === 'meeting' && !task.googleCalendarAllDay && (!calendarTime.startTime || !calendarTime.endTime)) { window.showAlertModal('Informe início e fim da reunião.'); return; }
+            if (activityType === 'meeting' && !task.googleCalendarAllDay && (!calendarTime.startTime || !calendarTime.endTime)) { window.showMissionFieldError('et',!calendarTime.startTime?'start-time':'end-time','Informe início e fim da reunião.'); return; }
             const recurrenceDays = task.googleCalendarSource === 'primary' ? [] : daysOfWeek
                 .filter(d => document.getElementById(`et-repeat-${d.id}`)?.checked)
                 .map(d => d.id);
@@ -4089,11 +4098,11 @@
                     Recurrence.reconcileKnownRecurrenceWeeks(staged, groupId, { applyChanges: true, now: new Date().toISOString() });
                     state.tasks=staged.tasks; state.planning=staged.planning;
                 } catch (error) { window.showAlertModal(error.message); return; }
+                window.markMissionFormSubmitted('et');
                 uiState.editTaskDraft = null;
                 uiState.showEditTaskModal = false;
                 uiState.editingTaskId = null;
-                window.showToast('Recorrência atualizada', 'Próximas ocorrências ajustadas; histórico e trabalho iniciado preservados.', 'repeat', 'text-violet-300');
-                window.saveState();
+                await window.saveMissionWithFeedback({reason:'mission-edit-recurrence',returnTaskId:task.id,label:'Repetição atualizada · '+text});
                 return;
             }
             if (Recurrence.hasRecurrence(task)) { window.showAlertModal('Para parar esta série, use Encerrar repetição. Para continuar, selecione ao menos um dia.'); return; }
@@ -4103,12 +4112,11 @@
             task.isRecurring = false;
             task.recurrenceDays = [];
             delete task.recurrenceGroupId;
+            window.markMissionFormSubmitted('et');
             uiState.editTaskDraft = null;
             uiState.showEditTaskModal = false;
             uiState.editingTaskId = null;
-            render();
-            const saved=await window.saveStateNow(true,'mission-edit');if(state!==editState)return;
-            render();window.showToast(saved?'Missão atualizada':'Alteração aguardando sincronização',saved?formatMissionDate(requestedDate)+' · Salva na nuvem.':'A edição local ainda não foi confirmada na nuvem.','pencil',saved?'text-cyan-300':'text-amber-300');
+            await window.saveMissionWithFeedback({reason:'mission-edit',returnTaskId:task.id,label:'Missão atualizada · '+text+' · '+formatMissionDate(requestedDate)});
         };
 
         window.calculateTaskCost = function(priority, complexity, time, impactType, missionNature = 'normal') {
@@ -4177,6 +4185,7 @@
         };
 
         window.saveNewTask = function() {
+            if (window.missionFormAlreadySubmitted('ct')) return;
             const continueCreating=Boolean(document.getElementById('ct-add-another')?.checked) && !uiState.calendarInboxEventId && !window.aiDraftMetadata?.().aiProposalId;
             const nextDefaults=continueCreating?['ct-date','ct-category','ct-time','ct-priority'].map(id=>({id,value:document.getElementById(id)?.value})):[];
             if (window.aiDraftBeforeSave?.() === false) return;
@@ -4188,6 +4197,7 @@
                 titleInput.focus({ preventScroll: false });
                 return;
             }
+            if (!window.validateMissionNumbers('ct')) return;
             const relations = window.readTaskRelations?.('ct');
             if (relations === null) return;
             const sourceInboxItem = uiState.calendarInboxEventId
@@ -4210,12 +4220,12 @@
             let selectedDate=sourceInboxItem ? Recurrence.occurrenceDate({day:sourceInboxItem.day,planningWeekStart:sourceInboxItem.weekStart},state) : document.getElementById('ct-date')?.value;
             // Legacy programmatic drafts are converted at the boundary, never displayed as another date selector.
             if (!selectedDate && !document.getElementById('ct-date')) { const legacy=document.getElementById('ct-day')?.value; if(legacy)selectedDate=Recurrence.occurrenceDate({day:legacy==='next_week'?'monday':legacy,planningWeekStart:legacy==='next_week'?window.nextPlanningWeek():state.currentPlanningWeekStart},state); }
-            let schedule;try{schedule=scheduleForDate(selectedDate);assertScheduleWeekOpen(state,schedule.planningWeekStart);}catch(error){window.showAlertModal(error.message);return;}
+            let schedule;try{schedule=scheduleForDate(selectedDate);assertScheduleWeekOpen(state,schedule.planningWeekStart);}catch(error){window.showMissionFieldError('ct','date',error.message);return;}
             const selectedDay=schedule.day;let targetPlanningWeek=schedule.planningWeekStart;
             if (window.assertPlanningWeekWritable?.(targetPlanningWeek) === false) return;
             const calendarTime = sourceInboxItem ? { startTime: sourceInboxItem.startTime || '', endTime: sourceInboxItem.endTime || '' } : window.readCalendarTimeFields('ct', parseInt(document.getElementById('ct-time')?.value, 10) || 30);
             if (!calendarTime) return;
-            if (activityType === 'meeting' && !sourceInboxItem?.allDay && (!calendarTime.startTime || !calendarTime.endTime)) { window.showAlertModal('Informe início e fim da reunião.'); return; }
+            if (activityType === 'meeting' && !sourceInboxItem?.allDay && (!calendarTime.startTime || !calendarTime.endTime)) { window.showMissionFieldError('ct',!calendarTime.startTime?'start-time':'end-time','Informe início e fim da reunião.'); return; }
             const duration = activityType === 'meeting' && calendarTime.startTime && calendarTime.endTime ? (sourceInboxItem ? sourceInboxItem.duration : minutesFromClock(calendarTime.endTime) - minutesFromClock(calendarTime.startTime)) : (parseInt(document.getElementById('ct-time')?.value, 10) || 30);
             cost = window.calculateTaskCost(document.getElementById('ct-priority').value, document.getElementById('ct-complexity').value, duration, document.getElementById('ct-impact-type').value, missionNature);
             const recurrenceDays = sourceInboxItem ? [] : daysOfWeek
@@ -4281,19 +4291,21 @@
             }
 
 
+            window.markMissionFormSubmitted('ct');
             if (sourceInboxItem && firstCreatedTaskId !== null) calendarSync.markInboxConverted(sourceInboxItem.id, firstCreatedTaskId);
             uiState.showCreateTaskModal = false;
             uiState.createTaskDraft = null;
             uiState.calendarInboxEventId = null;
-            const recurrenceMsg = isRecurring ? ` Missão recorrente: ${window.getRecurringDaysLabel(recurrenceDays)}.` : '';
-            window.showToast('Missão cadastrada para '+formatMissionDate(selectedDate), `${daysToCreate.length} missão(ões) adicionada(s).${baseSubtasks.length ? ` ${baseSubtasks.length} subtarefa(s).` : ''}${recurrenceMsg}`, 'crosshair', 'text-emerald-400');
-            window.saveState();
-            window.aiDraftAfterSave?.();
             if(continueCreating) {
                 uiState.showCreateTaskModal=true;uiState.createTaskSubtasks=null;
                 uiState.createTaskDraft={fields:[...nextDefaults,{id:'ct-add-another',checked:true}],sections:[]};
-                render();window.resetFormChanges?.('create-task-dialog');
+                // Do not recapture the submitted form into the next blank draft.
+                uiState.createTaskDraftPrepared=true;
             }
+            const saving=window.saveMissionWithFeedback({reason:'mission-create',label:`${daysToCreate.length} ${daysToCreate.length===1?'missão cadastrada':'missões cadastradas'} · ${text} · ${formatMissionDate(selectedDate)}`});
+            if(continueCreating)window.resetFormChanges?.('create-task-dialog');
+            window.aiDraftAfterSave?.();
+            return saving;
         };
 
         window.setCategoryFilter = function(filterId) { if(filterId!=='all'&&!window.getTaskCategories().some(c=>c.id===filterId))return; state.currentFilter = filterId; render(); };
@@ -6549,12 +6561,13 @@
                 };
             }
             const previousCreateDialog = appDiv.querySelector('#create-task-dialog');
-            if (uiState.showCreateTaskModal && previousCreateDialog) {
+            if (uiState.showCreateTaskModal && previousCreateDialog && !uiState.createTaskDraftPrepared) {
                 uiState.createTaskDraft = {
                     fields: [...previousCreateDialog.querySelectorAll('input[id], select[id], textarea[id]')].map(el => ({ id: el.id, value: el.value, checked: el.checked })),
                     sections: [...previousCreateDialog.querySelectorAll('details[data-create-section]')].map(el => ({ key: el.dataset.createSection, open: el.open }))
                 };
             }
+            delete uiState.createTaskDraftPrepared;
             // Preservar a expansão escolhida pelo usuário antes de reconstruir a lista.
             appDiv.querySelectorAll('details[data-subtasks-task-id]').forEach(details => {
                 uiState.expandedSubtasks[details.dataset.subtasksTaskId] = details.open;
@@ -6777,6 +6790,7 @@
                 </div>
             </div>`;
 
+            html += window.renderMissionSaveFeedback?.() || '';
             if(uiState.mainView!=='control')html+=`<div class="planning-date-panel">${window.renderPlanningNavigation()}${uiState.mainView==='day'&&!window.renderClosedPlanningWeek?.()?window.renderPlanningDayTabs():''}</div>`;
             if (window.renderClosedPlanningWeek?.() && uiState.mainView!=='control') { html+=window.renderClosedPlanningWeek(); } else if (uiState.mainView === 'week') {
                 html += window.renderRadarWeekShortcut?.() || '';
@@ -7382,6 +7396,7 @@
         }
 
         // --- Q.G. ---
+        installMissionFeedback(window,{document,getState:()=>state,getUser:()=>sessionReady?currentUser:null,getUiState:()=>uiState,render});
         installPlanningWorkspace(window, { document, calendarSync, getState: () => state, getUiState: () => uiState, render, daysOfWeek });
 
         window.formatCampaignDate = function(value) {
