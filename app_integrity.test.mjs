@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 import { installFormDialogs as installDialogModule } from './ui/form_dialogs.v3.js';
 import { installTaskForms } from './ui/task_forms.v10.js';
+import {installRadarWorkspace} from './ui/radar_workspace.v1.js';
 import { installPlanningViews } from './ui/planning_views.v12.js';
 
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
@@ -411,8 +412,7 @@ assert.match(boardWindow.renderDailyMissionBoard([importedTask]), /data-subtasks
 importedBoardUi = { expandedSubtasks: { '77': false } };
 assert.doesNotMatch(boardWindow.renderDailyMissionBoard([importedTask]), /data-subtasks-task-id="77" open /);
 
-const radarStart = app.indexOf('        window.renderOperationalControl = function()');
-const radarEnd = app.indexOf('        // ==========================================\n        // COCKPIT DIÁRIO', radarStart);
+
 const radarDemands = [
     { id: 'safe', title: 'Rotina controlada', workflowStatus: 'active', attentionLevel: 'controlled', nextAction: 'Planejar' },
     { id: 'urgent', title: '<Prazo urgente>', workflowStatus: 'waiting', attentionLevel: 'controlled', nextAction: 'Cobrar retorno', waitingFor: 'Cliente', dueDate: '2026-10-05', followUpAt: '2026-10-06', owner: 'Victor' },
@@ -422,31 +422,26 @@ const radarDemands = [
 const radarOriginal = JSON.stringify(radarDemands);
 const radarWindow = {
     getOperationalControl: () => ({ demands: radarDemands, config: { dueSoonDays: 2 } }),
-    getOperationalSignalsForDate: () => [{ demand: radarDemands[1], severityRank: 0, signals: [
-        { severity: 'attention', label: 'Revisão hoje' },
-        { severity: 'critical', label: 'Prazo final hoje' }
-    ] }],
     escapeHtml: value => String(value).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'),
     formatOperationalDate: value => value || '—'
 };
 const radarUi = { radarExpandedSections: { 'demand:urgent': true, history: true } };
-runInNewContext(app.slice(radarStart, radarEnd), { window: radarWindow, uiState: radarUi, dateKeyFromDate: () => '2026-10-05' });
+installRadarWorkspace(radarWindow, {document: {getElementById: () => null}, getState: () => ({tasks: [], operationalControl: {demands: radarDemands}}), getUiState: () => radarUi, render() {}, today: () => '2026-10-05'});
 const radarMarkup = radarWindow.renderOperationalControl();
 assert.ok(radarMarkup.indexOf('&lt;Prazo urgente&gt;') < radarMarkup.indexOf('Rotina controlada'),
     'Prazos críticos devem aparecer antes dos assuntos sem alertas.');
-assert.ok(radarMarkup.indexOf('Prazo final hoje') < radarMarkup.indexOf('Revisão hoje'),
+assert.ok(radarMarkup.indexOf('Prazo neste dia') < radarMarkup.indexOf('Follow-up'),
     'O sinal mais urgente deve ocupar o destaque do cartão.');
 assert.match(radarMarkup, /aria-expanded="true" aria-controls="radar-details-urgent"/);
 assert.match(radarMarkup, /data-radar-section="history" open /);
 assert.match(radarMarkup, /Cobrar retorno/);
 assert.match(radarMarkup, /Cliente/);
 assert.match(radarMarkup, /Para depois/);
-assert.match(radarMarkup, /window.closeOperationalDemand\(&quot;urgent&quot;\)/);
-assert.match(radarMarkup, /window.reopenOperationalDemand\(&quot;closed&quot;\)/);
+assert.match(radarMarkup, /window.runRadarAction\('close',&quot;urgent&quot;,event\)/);
+assert.match(radarMarkup, /window.runRadarAction\('reopen',&quot;closed&quot;,event\)/);
 assert.equal(JSON.stringify(radarDemands), radarOriginal, 'A nova apresentação não altera demandas ou status.');
-assert.equal((radarMarkup.match(/Prazo final hoje/g) || []).length, 1,
+assert.equal((radarMarkup.match(/Prazo neste dia/g) || []).length, 1,
     'O alerta principal não deve se repetir na área expandida.');
-const radarToggleStart = app.indexOf('        window.toggleRadarDetails = function(');
 const radarPanel = { hidden: true };
 const radarToggleLabel = { textContent: 'Detalhes' };
 const radarChevron = { style: {} };
@@ -456,10 +451,7 @@ const radarButton = {
     setAttribute: (name, value) => { radarAttributes[name] = value; },
     querySelector: selector => selector === '[data-radar-details-label]' ? radarToggleLabel : radarChevron
 };
-runInNewContext(app.slice(radarToggleStart, radarStart), {
-    window: radarWindow, uiState: radarUi,
-    document: { getElementById: id => id === 'radar-details-urgent' ? radarPanel : null }
-});
+installRadarWorkspace(radarWindow, {getState: () => ({tasks: [], operationalControl: {demands: radarDemands}}), getUiState: () => radarUi, render() {}, today: () => '2026-10-05', document: { getElementById: id => id === 'radar-details-urgent' ? radarPanel : null }});
 radarWindow.toggleRadarDetails('demand:urgent', { currentTarget: radarButton });
 assert.equal(radarPanel.hidden, false);
 assert.equal(radarAttributes['aria-expanded'], 'true');
@@ -472,7 +464,6 @@ assert.equal(radarToggleLabel.textContent, 'Detalhes');
 assert.equal(radarUi.radarExpandedSections['demand:urgent'], false);
 assert.doesNotThrow(() => radarWindow.toggleRadarDetails('unknown'));
 radarDemands.length = 0;
-radarWindow.getOperationalSignalsForDate = () => [];
 assert.match(radarWindow.renderOperationalControl(), /Nenhuma demanda em acompanhamento/);
 assert.match(radarWindow.renderOperationalControl(), /window.openOperationalDemandModal\(\)/);
 

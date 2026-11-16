@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.89-integrated-validation">
+    <meta name="app-build" content="v1.9.90-radar-workspace">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -14,6 +14,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon-v2-180.png">
     <link rel="shortcut icon" href="assets/favicon-v2.ico">
     <link rel="stylesheet" href="ui/experience.v2.css?v=1.9.79">
+    <link rel="stylesheet" href="ui/radar_experience.v1.css?v=1.9.90">
     <link rel="stylesheet" href="ui/study_experience.v1.css?v=1.9.82">
     <link rel="stylesheet" href="ui/library_experience.v1.css?v=1.9.83">
     <link rel="stylesheet" href="ui/finance_experience.v1.css?v=1.9.84">
@@ -144,6 +145,7 @@
         import { createCalendarSync } from './calendar_sync.v3.js?v=1.9.73';
         import { installPlanningTools } from './ui/planning_tools.v4.js?v=1.9.73';
         import { installRadarMissions } from './ui/radar_missions.v3.js';
+        import { installRadarWorkspace } from './ui/radar_workspace.v1.js?v=1.9.90';
         import {operationalSignals,deadlineHorizon} from './radar_attention.v1.js';
         import { installSubtasks } from './ui/subtasks.v1.js?v=1.9.65';
         import {applyMissionSchedule,planMissionSchedule,scheduleForDate,formatMissionDate,assertScheduleWeekOpen} from './mission_schedule.v1.js?v=1.9.73';
@@ -189,7 +191,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.89';
+        const APP_VERSION = 'v1.9.90';
         const updateAppView = createViewUpdater(document);
         window.renderMissionRowIsland=(id,html)=>updateAppView.island(id,html);
         const firebaseConfig = {
@@ -514,6 +516,7 @@
             expandedSubtasks: {},
             weeklyExpandedSections: {},
             radarExpandedSections: {},
+            radarWorkspace: { filter: 'all', query: '', historyQuery: '', historyPage: 0 },
             calendarInboxEventId: null,
             showEditTaskModal: false, editingTaskId: null, editTaskDraft: null,
             showProfileModal: false,
@@ -6212,15 +6215,18 @@
             return window.getOperationalControl().demands.find(d => String(d.id) === String(demandId)) || null;
         };
 
-        window.openOperationalDemandModal = function(demandId = null) {
+        window.openOperationalDemandModal = function(demandId = null, focusField = 'op-demand-title') {
             uiState.editingOperationalDemandId = demandId === null ? null : String(demandId);
             uiState.operationalDemandDraft = null;
             uiState.showOperationalDemandModal = true;
             render();
             setTimeout(window.guardAccountCallback(() => {
-                const titleInput = document.getElementById('op-demand-title');
-                if (titleInput) titleInput.focus();
                 if (typeof window.syncOperationalWaitingFields === 'function') window.syncOperationalWaitingFields();
+                const titleInput = document.getElementById(focusField) || document.getElementById('op-demand-title');
+                if (titleInput) {
+                    titleInput.focus({ preventScroll: true });
+                    if (focusField !== 'op-demand-title') titleInput.scrollIntoView?.({ block: 'center', behavior: 'auto' });
+                }
             }), 40);
         };
 
@@ -6459,119 +6465,7 @@
                 </section>`;
         };
 
-        window.toggleRadarDetails = function(sectionKey, event) {
-            const button = event?.currentTarget;
-            const panelId = button?.getAttribute('aria-controls');
-            const panel = panelId ? document.getElementById(panelId) : null;
-            if (!button || !panel) return;
-            const open = button.getAttribute('aria-expanded') !== 'true';
-            uiState.radarExpandedSections[sectionKey] = open;
-            panel.hidden = !open;
-            button.setAttribute('aria-expanded', String(open));
-            const label = button.querySelector('[data-radar-details-label]');
-            if (label) label.textContent = open ? 'Ocultar detalhes' : 'Detalhes';
-            const chevron = button.querySelector('[data-radar-details-chevron]');
-            if (chevron) chevron.style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
-        };
-
-        window.renderOperationalControl = function() {
-            const operationalControl = window.getOperationalControl();
-            const demands = [...operationalControl.demands];
-            const active = demands.filter(d => d.workflowStatus !== 'closed');
-            const closed = demands.filter(d => d.workflowStatus === 'closed');
-            const waiting = active.filter(d => d.workflowStatus === 'waiting');
-            const todayKey = dateKeyFromDate(new Date());
-            const nearTermSignals = window.getOperationalSignalsForDate(todayKey, operationalControl.config?.dueSoonDays ?? 2);
-
-            const signalsByDemand = new Map(nearTermSignals.map(row => [String(row.demand.id), row]));
-            const signalRank = demand => signalsByDemand.get(String(demand.id))?.severityRank ?? (demand.attentionLevel === 'immediate' ? 0 : demand.attentionLevel === 'attention' ? 1 : 9);
-            const attentionOrder = { immediate: 0, attention: 1, controlled: 2 };
-            const statusOrder = { active: 0, waiting: 1, backlog: 2 };
-            active.sort((a, b) =>
-                signalRank(a) - signalRank(b) ||
-                ((attentionOrder[a.attentionLevel] ?? 9) - (attentionOrder[b.attentionLevel] ?? 9)) ||
-                ((statusOrder[a.workflowStatus] ?? 9) - (statusOrder[b.workflowStatus] ?? 9)) ||
-                String(a.followUpAt || a.dueDate || a.nextReviewAt || '9999-12-31').localeCompare(String(b.followUpAt || b.dueDate || b.nextReviewAt || '9999-12-31')) ||
-                String(a.title).localeCompare(String(b.title), 'pt-BR')
-            );
-
-            const statusMeta = {
-                active: { label: 'Ativa', icon: 'play-circle', cls: 'text-sky-300 border-sky-900/60 bg-sky-950/30' },
-                waiting: { label: 'Aguardando', icon: 'clock-3', cls: 'text-amber-300 border-amber-900/60 bg-amber-950/30' },
-                backlog: { label: 'Para depois', icon: 'archive', cls: 'text-slate-400 border-slate-800 bg-slate-900' },
-                closed: { label: 'Encerrada', icon: 'check-circle-2', cls: 'text-emerald-300 border-emerald-900/60 bg-emerald-950/30' }
-            };
-            const attentionMeta = {
-                controlled: { label: 'Sob controle', cls: 'text-emerald-300' },
-                attention: { label: 'Atenção', cls: 'text-amber-300' },
-                immediate: { label: 'Ação imediata', cls: 'text-red-300' }
-            };
-
-            const severityMeta = {
-                critical: 'text-red-300', attention: 'text-amber-300', upcoming: 'text-sky-300', info: 'text-slate-400'
-            };
-            const renderDemandCard = (demand, isClosed = false) => {
-                const status = statusMeta[demand.workflowStatus] || statusMeta.active;
-                const att = attentionMeta[demand.attentionLevel] || attentionMeta.controlled;
-                const areaProject = [demand.area, demand.project].filter(Boolean).join(' · ');
-                const isWaiting = demand.workflowStatus === 'waiting';
-                const signal = !isClosed ? signalsByDemand.get(String(demand.id)) : null;
-                const sortedSignals = [...(signal?.signals || [])].sort((a, b) => ({ critical: 0, attention: 1, upcoming: 2, info: 3 }[a.severity] ?? 9) - ({ critical: 0, attention: 1, upcoming: 2, info: 3 }[b.severity] ?? 9));
-                const mainSignal = sortedSignals[0];
-                const demandArg = window.escapeHtml(JSON.stringify(String(demand.id)));
-                const sectionKey = `demand:${demand.id}`;
-                const dateLabel = value => window.escapeHtml(window.formatOperationalDate(value));
-                return `<article class="rounded-xl border ${mainSignal?.severity === 'critical' ? 'border-red-900/60' : 'border-slate-800'} bg-slate-900/70 p-3 sm:p-4">
-                    <div class="flex flex-wrap items-start justify-between gap-2">
-                        <div class="min-w-0 flex-1"><h3 class="break-words text-base font-semibold leading-snug text-slate-100">${window.escapeHtml(demand.title)}</h3>${areaProject ? `<p class="mt-1 text-xs text-slate-400">${window.escapeHtml(areaProject)}</p>` : ''}</div>
-                        <span class="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs ${status.cls}"><i data-lucide="${status.icon}" class="h-3.5 w-3.5"></i>${status.label}</span>
-                    </div>
-                    ${mainSignal ? `<p class="mt-2 flex items-start gap-1.5 text-xs ${severityMeta[mainSignal.severity] || severityMeta.info}"><i data-lucide="${mainSignal.severity === 'critical' ? 'triangle-alert' : 'calendar-clock'}" class="mt-0.5 h-3.5 w-3.5 shrink-0"></i>${window.escapeHtml(mainSignal.label)}${sortedSignals.length > 1 ? `<span class="text-slate-400">· +${sortedSignals.length - 1} avisos</span>` : ''}</p>` : (!isClosed && demand.attentionLevel !== 'controlled' ? `<p class="mt-2 text-xs ${att.cls}">${att.label}</p>` : '')}
-                    <div class="mt-3"><p class="text-xs font-medium text-slate-400">Próxima ação</p><p class="mt-1 break-words text-sm ${demand.nextAction ? 'text-slate-200' : 'text-amber-200'}">${demand.nextAction ? window.escapeHtml(demand.nextAction) : 'Defina a próxima ação ao editar.'}</p></div>
-                    <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
-                        ${demand.dueDate ? `<span>Prazo: <span class="text-slate-300">${dateLabel(demand.dueDate)}</span></span>` : ''}
-                        ${isWaiting ? `<span>Aguardando: <span class="text-amber-200">${window.escapeHtml(demand.waitingFor || 'Responsável não informado')}</span></span>` : ''}
-                        ${isWaiting && demand.followUpAt ? `<span>Retorno: <span class="text-amber-200">${dateLabel(demand.followUpAt)}</span></span>` : ''}
-                    </div>
-                    <div class="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-2">
-                        <button type="button" onclick="window.toggleRadarDetails(${window.escapeHtml(JSON.stringify(sectionKey))}, event)" aria-expanded="${Boolean(uiState.radarExpandedSections[sectionKey])}" aria-controls="radar-details-${encodeURIComponent(String(demand.id))}" class="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400">
-                            <i data-lucide="chevron-down" data-radar-details-chevron class="h-4 w-4 transition-transform" style="transform:rotate(${uiState.radarExpandedSections[sectionKey] ? '180' : '0'}deg)"></i><span data-radar-details-label>${uiState.radarExpandedSections[sectionKey] ? 'Ocultar detalhes' : 'Detalhes'}</span>
-                        </button>
-                        <div class="ml-auto flex items-center gap-2">
-                        <button type="button" onclick="window.openOperationalDemandModal(${demandArg})" class="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800"><i data-lucide="pencil" class="h-3.5 w-3.5"></i>Editar</button>
-                        ${isClosed ? `<button type="button" onclick="window.reopenOperationalDemand(${demandArg})" class="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-sky-900/60 px-3 py-2 text-xs font-medium text-sky-200 hover:bg-sky-950/50"><i data-lucide="rotate-ccw" class="h-3.5 w-3.5"></i>Reabrir</button>` : `<button type="button" onclick="window.closeOperationalDemand(${demandArg})" class="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-emerald-200"><i data-lucide="check" class="h-3.5 w-3.5"></i>Encerrar</button>`}
-                        <button type="button" onclick="window.deleteOperationalDemand(${demandArg})" aria-label="Excluir definitivamente ${window.escapeHtml(demand.title)}" title="Excluir demanda" class="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-400 hover:bg-rose-950/30 hover:text-rose-300"><i data-lucide="trash-2" class="h-3.5 w-3.5"></i>Excluir</button>
-                        </div>
-                    </div>
-                    ${window.renderDemandMissions?.(demand) || ''}
-                    <div id="radar-details-${encodeURIComponent(String(demand.id))}" role="region" aria-label="Detalhes de ${window.escapeHtml(demand.title)}" ${uiState.radarExpandedSections[sectionKey] ? '' : 'hidden'} class="mt-3 border-t border-slate-800 pt-3">
-                        <div class="flex flex-col items-start sm:flex-row gap-4 sm:gap-6">
-                            <dl class="w-full min-w-0 flex-1 grid content-start grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-                                <div><dt class="text-xs text-slate-400">Próxima revisão</dt><dd class="mt-1 text-sm text-slate-200">${dateLabel(demand.nextReviewAt)}</dd></div>
-                                <div><dt class="text-xs text-slate-400">Responsável</dt><dd class="mt-1 break-words text-sm text-slate-200">${window.escapeHtml(demand.owner || 'Não informado')}</dd></div>
-                                <div class="sm:col-span-2"><dt class="text-xs text-slate-400">Solicitante</dt><dd class="mt-1 break-words text-sm text-slate-200">${window.escapeHtml(demand.requester || 'Não informado')}</dd></div>
-                                ${isWaiting ? `<div><dt class="text-xs text-slate-400">Aguardando desde</dt><dd class="mt-1 text-sm text-slate-200">${dateLabel(demand.waitingSince)}</dd></div>` : ''}
-                            </dl>
-                            ${sortedSignals.length > 1 ? `<div class="w-full min-w-0 flex-1 border-t sm:border-t-0 sm:border-l border-slate-800 pt-3 sm:pt-0 sm:pl-6"><h4 class="text-xs font-medium text-slate-300">Outros pontos de atenção</h4><ul class="mt-2 space-y-2 text-sm leading-relaxed">${sortedSignals.slice(1).map(item => `<li class="flex items-start gap-2 ${item.severity === 'critical' ? 'text-red-300' : 'text-slate-300'}"><i data-lucide="circle-dot" class="mt-1 h-3.5 w-3.5 shrink-0 ${severityMeta[item.severity] || severityMeta.info}"></i><span class="min-w-0 flex-1 break-words">${window.escapeHtml(item.label)}</span></li>`).join('')}</ul></div>` : ''}
-                        </div>
-                    </div>
-                </article>`;
-            };
-            return `<section class="space-y-3 font-sans">
-                <header class="rounded-xl border border-slate-800 bg-slate-900/70 p-3 sm:p-4">
-                    <div class="flex flex-wrap items-center justify-between gap-3">
-                        <div><h2 class="text-lg font-semibold text-white">Radar de demandas</h2><p class="mt-1 text-sm text-slate-400">Acompanhe próximas ações, prazos e retornos.</p></div>
-                        <button type="button" onclick="window.openOperationalDemandModal()" class="inline-flex min-h-10 items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"><i data-lucide="plus" class="h-4 w-4"></i>Nova demanda</button>
-                    </div>
-                    <div class="mt-3 flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-800 pt-3 text-xs text-slate-400"><span>${active.length} em acompanhamento</span><span>${waiting.length} aguardando retorno</span><span class="${nearTermSignals.length ? 'text-amber-200' : 'text-slate-400'}">${nearTermSignals.length} precisam de atenção</span></div>
-                </header>
-                ${!active.length ? `<div class="rounded-xl border border-dashed border-slate-700 p-6 text-center"><h3 class="text-sm font-semibold text-slate-200">Nenhuma demanda em acompanhamento</h3><p class="mt-2 text-sm text-slate-400">Use o Radar para assuntos que precisam de várias ações ou de retorno de outras pessoas.</p><p class="mt-1 text-xs text-slate-400">Comece pelo botão Nova demanda.</p></div>` : `<div class="space-y-3" aria-label="Demandas em acompanhamento">${active.map(d => renderDemandCard(d)).join('')}</div>`}
-                ${closed.length ? `<details data-radar-section="history" ${uiState.radarExpandedSections.history ? 'open' : ''} class="rounded-xl border border-slate-800 bg-slate-900/50">
-                    <summary class="list-none cursor-pointer flex items-center justify-between gap-3 p-3 text-sm text-slate-300 hover:text-white"><span>Demandas encerradas · ${closed.length}</span><i data-lucide="chevron-down" class="h-4 w-4"></i></summary>
-                    <div class="space-y-3 border-t border-slate-800 p-3">${closed.slice(0, 30).map(d => renderDemandCard(d, true)).join('')}</div>
-                </details>` : ''}
-            </section>`;
-        };
+        installRadarWorkspace(window, { document, getState: () => state, getUiState: () => uiState, render, today: () => dateKeyFromDate(new Date()) });
 
         // ==========================================
         // COCKPIT DIÁRIO — APRESENTAÇÃO (v1.9.2)
@@ -7151,6 +7045,7 @@
 
             updateAppView(appDiv, html, {ownerKey: currentUser?.uid || '', createIcons: options => lucide.createIcons(options)});
             appDiv.__viewPageKey = viewPageKey;
+            window.bindRadarWorkspace(appDiv);
             window.restoreViewState?.(appDiv, viewSnapshot, {pageKey: viewPageKey, blocked: true});
             if (uiState.showCreateTaskModal && uiState.createTaskDraft) {
                 uiState.createTaskDraft.fields.forEach(field => {
