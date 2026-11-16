@@ -1,3 +1,4 @@
+import {installMissionFeedback} from '../ui/mission_feedback.v1.js';
 import * as Recurrence from '../recurrence.v1.js';
 import {scheduleForDate,assertScheduleWeekOpen,formatMissionDate} from '../mission_schedule.v1.js';
 import test from 'node:test';
@@ -262,6 +263,7 @@ test('o formulário existente calcula a missão e só após salvar marca a propo
     const input={'ct-text':{value:'Título revisado'},'ct-nature':{value:'normal'},'ct-priority':{value:'media'},'ct-complexity':{value:'2'},'ct-time':{value:'30'},'ct-impact-type':{value:'drain'},'ct-subtasks':{value:'Passo revisado'},'ct-category':{value:'work'},'ct-day':{value:'wednesday'}};
     const uiState={},existing=JSON.stringify(b.s.financeData);b.s.xp=200;b.s.energy=80;
     Object.assign(b.window,{calculateTaskCost:()=>({xp:82,hp:6}),getTaskCategories:()=>[{id:'work'}],readCalendarTimeFields:()=>({startTime:'10:00',endTime:'10:30'}),getNextTaskOrder:()=>0,cloneSubtasksForNewTask:a=>structuredClone(a),showToast(){},saveState:()=>b.events.push(['save',structuredClone(b.s)])});
+    b.window.saveStateNow=async()=>{b.window.saveState();return true;};installMissionFeedback(b.window,{document:{getElementById:id=>input[id]},getState:()=>b.s,getUser:()=>null,render(){}});
     runInNewContext(app.slice(start,end),{Recurrence,scheduleForDate,assertScheduleWeekOpen,formatMissionDate,window:b.window,document:{getElementById:id=>input[id]},state:b.s,uiState,calendarSync:{},daysOfWeek:[{id:'monday'},{id:'wednesday'}],Date,Math});
     b.window.saveNewTask();await new Promise(r=>setImmediate(r));
     const created=b.s.tasks.at(-1);assert.equal(created.text,'Título revisado');assert.equal(created.xp,82);assert.equal(created.energyCost,6);assert.equal(created.aiProposalId,hash(proposal()));assert.equal(created.completed,false);

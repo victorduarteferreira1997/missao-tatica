@@ -4,6 +4,16 @@ Aplicação pessoal de planejamento semanal com Missões, Semana, Radar, Estudos
 Finanças, Corpo, Pomodoro e gamificação por campanhas. Inclui sincronização
 bidirecional com o Google Agenda, recompensas configuráveis e backups JSON.
 
+## Cadastro e edição de missões · v1.9.92
+
+Cadastro, edição avulsa e edição de repetição agora mostram o envio pendente,
+a confirmação da nuvem ou uma nova tentativa. Tentar novamente salva o estado
+atual sem recriar missões ou repetir o reagendamento. A confirmação de rede não
+reconstrói os formulários abertos pelo usuário. Erros de data, duração,
+dificuldade e horário aparecem junto aos campos; o foco retorna à missão editada.
+
+- [Mudanças, validação e limites](docs/ux/v1.9.92.md)
+
 ## Dia e Semana · v1.9.91
 
 Navegação por datas reunida, filtro de categoria compacto e foco nas missões do dia.
@@ -42,7 +52,7 @@ A integração privada com IA continua exclusiva do proprietário.
 - [Aplicação oficial](https://victorduarteferreira1997.github.io/missao-tatica/)
 - [Endereço direto](https://victorduarteferreira1997.github.io/missao-tatica/app.html)
 
-A versão atual é **v1.9.91**. A raiz, `teste_novos_modulos.html` e as prévias
+A versão atual é **v1.9.92**. A raiz, `teste_novos_modulos.html` e as prévias
 estáticas v1.9.11/v1.9.13 encaminham para a aplicação oficial. Parâmetros e
 fragmentos dos favoritos são preservados.
 

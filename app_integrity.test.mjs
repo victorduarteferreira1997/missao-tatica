@@ -1,3 +1,4 @@
+import {installMissionFeedback} from './ui/mission_feedback.v1.js';
 import {applyMissionSchedule,planMissionSchedule,scheduleForDate,formatMissionDate,assertScheduleWeekOpen} from './mission_schedule.v1.js';
 import * as Recurrence from './recurrence.v1.js';
 import assert from 'node:assert/strict';
@@ -5,12 +6,12 @@ import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 import { installFormDialogs as installDialogModule } from './ui/form_dialogs.v3.js';
-import { installTaskForms } from './ui/task_forms.v10.js';
+import { installTaskForms } from './ui/task_forms.v11.js';
 import {installRadarWorkspace} from './ui/radar_workspace.v1.js';
 import { installPlanningViews } from './ui/planning_views.v13.js';
 
 const app = await readFile(new URL('./app.html', import.meta.url), 'utf8');
-const taskForms = await readFile(new URL('./ui/task_forms.v10.js', import.meta.url), 'utf8');
+const taskForms = await readFile(new URL('./ui/task_forms.v11.js', import.meta.url), 'utf8');
 const planningViews = await readFile(new URL('./ui/planning_views.v13.js', import.meta.url), 'utf8');
 const aiInbox = await readFile(new URL('./ui/ai_inbox.v3.js', import.meta.url), 'utf8');
 const aiAccess = await readFile(new URL('./ui/ai_access.v3.js', import.meta.url), 'utf8');
@@ -27,7 +28,7 @@ const installPlanner = (target, options = {}) => installPlanningViews(target, {
 assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v13\.js\?v=1\.9\.91'/);
 assert.match(app, /html \+= window\.renderWeeklyPlanningOverview\(\)/);
 assert.ok(!app.includes('window.renderDailyMissionBoard ='), 'As visões devem existir apenas no módulo do planejamento.');
-assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v10\.js\?v=1\.9\.81'/);
+assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v11\.js\?v=1\.9\.92'/);
 assert.match(app, /installTaskForms\(window, \{ document, daysOfWeek, getState: \(\) => state, getUiState: \(\) => uiState \}\)/);
 const installFormDialogs = target => installDialogModule(target, {});
 assert.match(app, /import \{ installFormDialogs \} from '\.\/ui\/form_dialogs\.v3\.js\?v=1\.9\.88'/);
@@ -143,6 +144,8 @@ Object.assign(createWindow, {
     upsertRecurringTaskOccurrences() { recurrenceCalls++; },
     getRecurringDaysLabel: () => 'Segunda, terça', showToast() {}, saveState() {}
 });
+createWindow.saveStateNow=async()=>{createWindow.saveState();return true;};
+installMissionFeedback(createWindow,{document:{getElementById:id=>createFields[id]},getState:()=>creationState,getUiState:()=>creationUi,getUser:()=>null,render(){}});
 runInNewContext(app.slice(costStart, costEnd) + saveNewSource, {
     scheduleForDate,assertScheduleWeekOpen,formatMissionDate, Recurrence, window: createWindow, state: creationState, uiState: creationUi, daysOfWeek: createDays,
     TASK_NATURES: { normal: {}, neutral: {}, recharge: {} },
@@ -560,6 +563,8 @@ Object.assign(editWindow, {
     upsertRecurringTaskOccurrences: (task, days, options) => { recurringUpdate = { days: [...days], removeUnselected: options.removeUnselected }; },
     reindexTaskOrderForDay() {}, getRecurringDaysLabel: () => 'Terça', showToast() {}, saveState: () => { editSaves++; }, showAlertModal() { throw new Error('Alerta inesperado'); }
 });
+editWindow.saveStateNow=async()=>{editWindow.saveState();return true;};
+installMissionFeedback(editWindow,{document:{getElementById:id=>editElements[id]},getState:()=>editState,getUser:()=>null,render(){}});
 const saveEditStart = app.indexOf('        window.saveEditedTask = async function(');
 const saveEditEnd = app.indexOf('        window.calculateTaskCost = function(', saveEditStart);
 runInNewContext(app.slice(saveEditStart, saveEditEnd), {applyMissionSchedule,planMissionSchedule,scheduleForDate,formatMissionDate, Recurrence:{...Recurrence,recurrenceCutoff:()=> '2026-10-19'}, window: editWindow, state: editState, uiState: editUi, daysOfWeek: [{ id: 'monday' }, { id: 'tuesday' }], document: { getElementById: id => id === 'et-title-error' ? localError : editElements[id] } });

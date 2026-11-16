@@ -1,0 +1,13 @@
+.mission-save-feedback{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 16px;padding:12px 14px;margin:12px 0;border:1px solid #475569;border-radius:10px;background:#101c30;color:#e2e8f0;font:14px/1.5 ui-sans-serif,system-ui,sans-serif}
+.mission-save-feedback[hidden]{display:none}
+.mission-save-message{min-width:0;flex:1 1 180px}
+.mission-save-message strong{font-weight:600}
+.mission-save-message p{margin:3px 0 0;color:#cbd5e1;font-size:13px;overflow-wrap:anywhere}
+.mission-feedback-button,.mission-feedback-dismiss{min-height:44px;padding:8px 12px;border-radius:8px;font-size:14px;color:#c7d2fe}
+.mission-feedback-button{border:1px solid #64748b;background:#17243b}
+.mission-feedback-button:focus-visible,.mission-feedback-dismiss:focus-visible{outline:2px solid #a5b4fc;outline-offset:2px}
+#create-task-dialog footer button,#edit-task-dialog footer button{min-height:44px}
+#create-task-dialog [aria-invalid=true],#edit-task-dialog [aria-invalid=true]{border-color:#fca5a5}
+.mission-field-error{margin-top:6px;color:#fca5a5;font-size:14px;line-height:1.5}
+.mission-field-error[hidden]{display:none}
+@media(max-width:639px){.mission-save-feedback{padding:10px 12px}.mission-feedback-button{width:100%}}
