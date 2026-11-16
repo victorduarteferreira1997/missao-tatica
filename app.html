@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.90-radar-workspace">
+    <meta name="app-build" content="v1.9.91-day-week-workspace">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -15,6 +15,7 @@
     <link rel="shortcut icon" href="assets/favicon-v2.ico">
     <link rel="stylesheet" href="ui/experience.v2.css?v=1.9.79">
     <link rel="stylesheet" href="ui/radar_experience.v1.css?v=1.9.90">
+    <link rel="stylesheet" href="ui/planning_experience.v1.css?v=1.9.91">
     <link rel="stylesheet" href="ui/study_experience.v1.css?v=1.9.82">
     <link rel="stylesheet" href="ui/library_experience.v1.css?v=1.9.83">
     <link rel="stylesheet" href="ui/finance_experience.v1.css?v=1.9.84">
@@ -169,7 +170,8 @@
         import {installLibraryImports} from './ui/library_import.v1.js?v=1.9.71';
         import {createLibraryImportStore} from './ai/v2/library_browser.js?v=1.9.71';
         import {applyLibraryImport} from './library_import.v1.js?v=1.9.71';
-        import { installPlanningViews } from './ui/planning_views.v12.js?v=1.9.87';
+        import { installPlanningViews } from './ui/planning_views.v13.js?v=1.9.91';
+        import { installPlanningWorkspace } from './ui/planning_workspace.v1.js?v=1.9.91';
         import { installAiInbox } from './ui/ai_inbox.v3.js';
         import { AI_CONFIG } from './ai/config.v1.js';
         import { AI_V2_CONFIG } from './ai/config.v2.js';
@@ -191,7 +193,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.90';
+        const APP_VERSION = 'v1.9.91';
         const updateAppView = createViewUpdater(document);
         window.renderMissionRowIsland=(id,html)=>updateAppView.island(id,html);
         const firebaseConfig = {
@@ -497,6 +499,7 @@
             getUser: () => currentUser,
             enableInbound: true,
             onChange: () => {
+                if (window.refreshPlanningCalendar?.()) { window.lucide?.createIcons(); return; }
                 const panel = document.getElementById('calendar-sync-panel');
                 if (panel && typeof window.renderCalendarSyncPanel === 'function') {
                     panel.outerHTML = window.renderCalendarSyncPanel();
@@ -6418,19 +6421,9 @@
                 info: { cls: 'border-slate-800 bg-slate-900 text-slate-300', icon: 'info' }
             };
 
-            if (!rows.length) {
-                return `
-                    <section class="mb-4 rounded-2xl border border-emerald-900/40 bg-emerald-950/10 px-3 py-3 font-sans flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                        <div class="flex items-start gap-2 min-w-0">
-                            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400 mt-0.5 shrink-0"></i>
-                            <div class="min-w-0"><div class="text-xs font-black text-emerald-300">RADAR sem avisos neste dia</div><div class="text-[10px] text-slate-500 mt-0.5">Nenhum aviso do RADAR para ${window.formatOperationalDate(referenceDateKey)}.</div></div>
-                        </div>
-                        ${window.renderPlanningReviewButton?.() || ''}
-                    <button onclick="window.setMainView('control')" class="shrink-0 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-sky-300">Abrir Radar</button>
-                    </section>`;
-            }
+            if (!rows.length) return `<div class="planning-radar-clear"><span>Nenhum aviso do RADAR para ${window.formatOperationalDate(referenceDateKey)}.</span><button type="button" class="planning-button" onclick="window.setMainView('control')">Abrir RADAR</button></div>`;
 
-            const compactRows = rows.slice(0, 2).map(row => {
+            const renderSignalRow = row => {
                 const demand = row.demand;
                 const mainSignal = row.signals[0];
                 const meta = severityMeta[mainSignal.severity] || severityMeta.info;
@@ -6445,10 +6438,11 @@
                                 <div class="font-semibold text-white text-sm break-words">${window.escapeHtml(demand.title)}</div>
                                 ${demand.nextAction ? `<p class="mt-1 text-xs text-slate-400 break-words">${window.escapeHtml(demand.nextAction)}</p>` : ''}
                             </div>
-                            <button onclick="window.openOperationalDemandModal('${String(demand.id)}')" class="shrink-0 min-h-11 rounded-lg border border-slate-700 bg-slate-950/50 px-3 py-2 text-xs font-medium text-slate-300 hover:text-sky-300 hover:border-sky-700">Ver demanda</button>
+                            <button type="button" id="planning-radar-day-open-${encodeURIComponent(String(demand.id))}" onclick="window.openPlanningRadarDemand(${window.escapeHtml(JSON.stringify(String(demand.id)))})" class="shrink-0 min-h-11 rounded-lg border border-slate-700 bg-slate-950/50 px-3 py-2 text-xs font-medium text-slate-300 hover:text-sky-300 hover:border-sky-700">Abrir demanda</button>
                         </div>
                     </div>`;
-            }).join('');
+            };
+            const compactRows=rows.slice(0,2).map(renderSignalRow).join('');
 
             return `
                 <section class="mb-4 rounded-2xl border border-sky-900/50 bg-sky-950/10 p-3 font-sans">
@@ -6461,7 +6455,7 @@
                     </div>
                     <p class="mb-3 text-xs leading-relaxed text-slate-400">${window.formatOperationalDate(referenceDateKey)} · ${rows.length} ${rows.length === 1 ? 'demanda' : 'demandas'}. Follow-ups e revisões na data; prazos ${horizon ? `até ${horizon} ${horizon === 1 ? 'dia' : 'dias'} antes` : 'somente na data'}.</p>
                     <div class="space-y-1.5">${compactRows}</div>
-                    ${rows.length > 2 ? `<div class="text-[9px] text-slate-600 mt-2">+ ${rows.length - 2} no Radar.</div>` : ''}
+                    ${rows.length > 2 ? `<details data-view-key="radar-day-more-${referenceDateKey}" class="mt-3"><summary class="planning-radar-more">Mais ${rows.length-2} ${rows.length===3?'demanda':'demandas'} com avisos neste dia</summary><div class="space-y-2">${rows.slice(2).map(renderSignalRow).join('')}</div></details>` : ''}
                 </section>`;
         };
 
@@ -6777,13 +6771,13 @@
                     <div class="text-sm font-semibold text-slate-200">${compactViewMeta.title}</div>
                 </div>
                 <div class="grid grid-cols-3 gap-1 bg-slate-950 rounded-xl p-1 shrink-0">
-                    <button onclick="window.setMainView('day')" class="rounded-lg px-2.5 py-2 text-xs font-medium ${uiState.mainView === 'day' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}"><i data-lucide="layout-list" class="w-3.5 h-3.5 inline mr-1"></i>Dia</button>
-                    <button onclick="window.setMainView('week')" class="rounded-lg px-2.5 py-2 text-xs font-medium ${uiState.mainView === 'week' ? 'bg-cyan-700 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}"><i data-lucide="calendar-days" class="w-3.5 h-3.5 inline mr-1"></i>Semana${calendarInboxPending ? ` · ${calendarInboxPending}` : ''}</button>
-                    <button onclick="window.setMainView('control')" class="rounded-lg px-2.5 py-2 text-xs font-medium ${uiState.mainView === 'control' ? 'bg-sky-700 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}"><i data-lucide="radar" class="w-3.5 h-3.5 inline mr-1"></i>Radar</button>
+                    <button onclick="window.setMainView('day')" aria-pressed="${uiState.mainView === 'day'}" class="rounded-lg px-2.5 py-2 text-xs font-medium ${uiState.mainView === 'day' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}"><i data-lucide="layout-list" class="w-3.5 h-3.5 inline mr-1"></i>Dia</button>
+                    <button onclick="window.setMainView('week')" aria-pressed="${uiState.mainView === 'week'}" class="rounded-lg px-2.5 py-2 text-xs font-medium ${uiState.mainView === 'week' ? 'bg-cyan-700 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}"><i data-lucide="calendar-days" class="w-3.5 h-3.5 inline mr-1"></i>Semana${calendarInboxPending ? ` · ${calendarInboxPending}` : ''}</button>
+                    <button onclick="window.setMainView('control')" aria-pressed="${uiState.mainView === 'control'}" class="rounded-lg px-2.5 py-2 text-xs font-medium ${uiState.mainView === 'control' ? 'bg-sky-700 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'}"><i data-lucide="radar" class="w-3.5 h-3.5 inline mr-1"></i>Radar</button>
                 </div>
             </div>`;
 
-            if(uiState.mainView!=='control')html+=window.renderPlanningNavigation();
+            if(uiState.mainView!=='control')html+=`<div class="planning-date-panel">${window.renderPlanningNavigation()}${uiState.mainView==='day'&&!window.renderClosedPlanningWeek?.()?window.renderPlanningDayTabs():''}</div>`;
             if (window.renderClosedPlanningWeek?.() && uiState.mainView!=='control') { html+=window.renderClosedPlanningWeek(); } else if (uiState.mainView === 'week') {
                 html += window.renderRadarWeekShortcut?.() || '';
                 const closedPlanningWeek = window.renderClosedPlanningWeek?.();
@@ -6796,30 +6790,14 @@
 
             const predictions=window.getPlanningPreview().tasks.filter(t=>t.planningPreview&&t.day===state.activeTab);
             if(predictions.length)html+=`<details class="mb-3 rounded-xl border border-violet-900/40 p-3 font-sans"><summary class="min-h-11 cursor-pointer text-sm text-violet-200">Repetições previstas · ${predictions.length}</summary><p class="mb-2 text-xs text-slate-400">Previsão da rotina. As ocorrências serão cadastradas no fechamento da semana anterior.</p>${predictions.map(t=>`<p class="py-1 text-sm text-slate-300">${window.escapeHtml(t.text)} · ${window.escapeHtml(t.time||'')}</p>`).join('')}</details>`;
-            // TABS DIÁRIAS
-            html += `<div id="planning-day-tabs" aria-label="Dias da semana selecionada" class="day-tabs flex overflow-x-auto gap-1 bg-slate-900 p-1.5 rounded-xl border border-slate-800 mb-3 font-sans">`;
-            daysOfWeek.forEach(day => {
-                const dayIsToday=Recurrence.occurrenceDate({day:day.id,planningWeekStart:state.currentPlanningWeekStart},state)===Recurrence.recurrenceToday(new Date());
-                const activeClass = state.activeTab === day.id ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white';
-                html += `<button ${dayIsToday?'aria-current="date"':''} aria-pressed="${state.activeTab===day.id}" onclick="window.setTab('${day.id}')" class="whitespace-nowrap px-3 py-2 rounded-lg font-medium text-sm transition-all ${activeClass}"><span>${day.label.slice(0,3)}</span> <span class="day-date">${formatMissionDate(Recurrence.occurrenceDate({day:day.id,planningWeekStart:state.currentPlanningWeekStart},state)).slice(0,5)}</span>${dayIsToday?'<span class="day-today">Hoje</span>':''}</button>`;
-            });
-            html += `</div>`;
-
             const selectedDayLabel = daysOfWeek.find(d => d.id === state.activeTab)?.label || 'Hoje';
             const pendingDailyCount = filteredTasks.filter(t => !t.completed && !(t.activityType === 'meeting' && window.getMeetingStatus(t) === 'not_held')).length;
             const completedDailyCount = filteredTasks.filter(t => t.completed).length;
             if (!state.focusMode || !window.isIndependentPomodoro()) {
-            html += `<section data-view-part="day-heading" class="mb-3 px-1 py-1 font-sans">
-                <div class="flex items-end justify-between gap-3">
-                    <div class="min-w-0">
-                        <div class="flex flex-wrap items-baseline gap-2"><h2 class="text-lg font-semibold text-white">${selectedDayLabel}, ${formatMissionDate(Recurrence.occurrenceDate({day:state.activeTab,planningWeekStart:state.currentPlanningWeekStart},state)).slice(0,5)}</h2><span class="text-xs text-slate-400">${pendingDailyCount} pendentes · ${completedDailyCount} concluídas</span></div>
-                    </div>
-                </div>
-            </section>`;
+            html += `<section data-view-part="day-heading" class="planning-day-header"><div><h2 id="planning-day-heading" tabindex="-1">${selectedDayLabel}, ${formatMissionDate(Recurrence.occurrenceDate({day:state.activeTab,planningWeekStart:state.currentPlanningWeekStart},state))}</h2><p>${pendingDailyCount} ${pendingDailyCount===1?'pendente':'pendentes'} · ${completedDailyCount} ${completedDailyCount===1?'concluída':'concluídas'}</p></div>${window.renderDailyCategoryBar()}</section>`;
 
             const olderPending=state.tasks.filter(t=>!t.completed&&!t.recurrenceCancelled&&t.googleCalendarSource!=='primary'&&window.taskPlanningWeek(t)<state.currentPlanningWeekStart).length;
-            if(olderPending)html+=`<button type="button" onclick="window.openPlanningReview()" class="mb-3 min-h-10 text-xs text-slate-400 hover:text-indigo-200">${olderPending} pendência${olderPending===1?'':'s'} de semanas anteriores à visualizada · Revisar</button>`;
-            html += window.renderDailyCategoryBar();
+            if(olderPending)html+=`<button type="button" onclick="window.openPlanningReview()" class="planning-older-pending">${olderPending} pendência${olderPending===1?'':'s'} anteriores · Revisar</button>`;
 
             }
 
@@ -7404,6 +7382,8 @@
         }
 
         // --- Q.G. ---
+        installPlanningWorkspace(window, { document, calendarSync, getState: () => state, getUiState: () => uiState, render, daysOfWeek });
+
         window.formatCampaignDate = function(value) {
             if (!value || Number.isNaN(new Date(value).getTime())) return 'Data não registrada';
             return new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });

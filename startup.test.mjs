@@ -56,24 +56,25 @@ test('versão exibida no cabeçalho coincide com a versão publicada e usada na 
  assert.match(app,/\['Versão',APP_VERSION\]/);
 });
 
-function assertVisibleCalendarPanels(markup){
+function assertVisibleCalendarPanels(markup,expanded=true){
  const details=[];const seen=[];
  for(const [tag] of markup.matchAll(/<details\b[^>]*>|<\/details>|<section\b[^>]*>/g)){
   if(tag.startsWith('<details'))details.push(/\sopen(?:\s|>)/.test(tag));
   else if(tag==='</details>')details.pop();
   else if(/id="calendar-(?:sync|inbox)-panel"/.test(tag)){
-   assert.ok(details.every(Boolean),'Os painéis da Agenda não podem ficar escondidos em um grupo fechado.');
+   assert.ok(!expanded || details.every(Boolean),'Os painéis da Agenda não podem ficar escondidos em um grupo fechado.');
    seen.push(tag.match(/id="([^"]+)"/)[1]);
   }
  }
  assert.deepEqual(seen,['calendar-sync-panel','calendar-inbox-panel']);
- assert.ok(markup.indexOf('id="calendar-inbox-panel"')<markup.indexOf('id="weekly-planning-title"'));
+ assert.ok(markup.indexOf('id="weekly-planning-title"')<markup.indexOf('id="calendar-inbox-panel"'));
+ assert.equal(markup.indexOf('id="calendar-inbox-panel"')<markup.indexOf('aria-label="Planejamento por dia"'),expanded);
  assert.ok(markup.indexOf('id="weekly-planning-title"')<markup.indexOf('aria-label="Planejamento por dia"'));
 }
 
-test('Semana mantém Agenda e Entrada visíveis com semana vazia e grupo antigo fechado',()=>{
+test('Semana vazia mantém Agenda disponível e recolhida após os dias quando não há pendências',()=>{
  const b=boot();b.ui.mainView='week';b.ui.weeklyExpandedSections[`${b.state.currentPlanningWeekStart}:google`]=false;
- b.render();const html=b.elements.app.innerHTML;assertVisibleCalendarPanels(html);
+ b.render();const html=b.elements.app.innerHTML;assertVisibleCalendarPanels(html,false);
  assert.match(html,/Conectar Google Agenda/);assert.match(html,/Conecte ou reconecte/);
  assert.match(html,/Nenhum item planejado nesta semana/);assert.match(html,/Semana Geral/);
  assert.match(html,/window.setPlanningCalendarWeek\('prev'\)/);
