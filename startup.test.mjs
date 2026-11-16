@@ -212,7 +212,7 @@ function radarDeletionFixture(status='active'){
 }
 test('exclusão RADAR revisa vínculos únicos, cancelar preserva dados e a mesma tela',()=>{
  const b=radarDeletionFixture(),before=JSON.stringify(b.state);b.window.deleteOperationalDemand('radar-delete');assert.equal(JSON.stringify(b.state),before);assert.equal(b.ui.confirm.show,true);assert.match(b.ui.confirm.message,/2 missão\(ões\)/);assert.match(b.ui.confirm.message,/incluindo o histórico/);assert.match(b.ui.confirm.message,/não pode ser desfeita/);
- b.window.handleConfirmResult(false);assert.equal(JSON.stringify(b.state),before);assert.equal(b.ui.mainView,'control');assert.match(b.elements.app.innerHTML,/window.deleteOperationalDemand/);assert.match(b.elements.app.innerHTML,/Demanda &lt;teste&gt;/);
+ b.window.handleConfirmResult(false);assert.equal(JSON.stringify(b.state),before);assert.equal(b.ui.mainView,'control');assert.match(b.elements.app.innerHTML,/window.runRadarAction\('delete',/);assert.match(b.elements.app.innerHTML,/Demanda &lt;teste&gt;/);
 });
 test('excluir demanda ativa ou encerrada preserva missões, histórico, pré-requisitos, recibos e outros módulos',()=>{
  for(const status of ['active','closed']){

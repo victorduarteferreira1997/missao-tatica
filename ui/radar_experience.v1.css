@@ -1,0 +1,110 @@
+/* RADAR: a consistent reading order and one contextual action per demand. */
+.radar-workspace { color:#e2e8f0; font-family:ui-sans-serif,system-ui,sans-serif; }
+.radar-header { padding:20px; border:1px solid #25334b; border-radius:16px; background:#0d1627; }
+.radar-header-top,.radar-card-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.radar-header h2 { margin:0; font-size:20px; font-weight:650; line-height:1.4; color:#f1f5f9; }
+.radar-header-top p { margin:5px 0 0; color:#b5c3d7; font-size:14px; line-height:1.6; }
+.radar-button,.radar-actions > summary { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:10px 14px; border:1px solid transparent; border-radius:9px; font-size:14px; font-weight:550; line-height:20px; cursor:pointer; text-decoration:none; }
+.radar-button svg,.radar-button > i,.radar-actions > summary svg,.radar-actions > summary > i { width:16px; height:16px; flex:0 0 16px; }
+.radar-button-primary { background:#4f46e5; border-color:#6366f1; color:#fff; }
+.radar-button-primary:hover { background:#4338ca; }
+.radar-button-secondary { background:#142036; border-color:#475569; color:#e2e8f0; }
+.radar-button-secondary:hover,.radar-button-quiet:hover,.radar-actions > summary:hover { background:#1e293b; }
+.radar-button-quiet { color:#cbd5e1; }
+.radar-button:disabled { cursor:default; opacity:.45; }
+.radar-button:focus-visible,.radar-filters button:focus-visible,.radar-signal-more:focus-visible,.radar-actions > summary:focus-visible,.radar-search input:focus-visible,.radar-history > summary:focus-visible { outline:2px solid #a5b4fc; outline-offset:3px; }
+.radar-filters { display:flex; flex-wrap:wrap; gap:8px; margin-top:20px; padding-top:16px; border-top:1px solid #25334b; }
+.radar-filter { display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:8px 12px; border:1px solid #334155; border-radius:9px; color:#cbd5e1; font-size:14px; line-height:20px; background:#0f172a; }
+.radar-filter:hover { background:#1e293b; }
+.radar-filter.is-selected { background:#242451; border-color:#818cf8; color:#e0e7ff; }
+.radar-filter span { min-width:20px; padding:1px 5px; border-radius:5px; background:#1e293b; color:#cbd5e1; font-size:12px; text-align:center; }
+.radar-filter.is-selected span { background:#37306c; color:#e0e7ff; }
+.radar-search { margin-top:16px; }
+.radar-search label { display:block; margin-bottom:6px; color:#cbd5e1; font-size:13px; }
+.radar-search-controls { display:flex; align-items:center; gap:8px; }
+.radar-search input { width:100%; min-width:0; min-height:44px; padding:10px 12px; border:1px solid #475569; border-radius:9px; background:#080f20; color:#f1f5f9; font-size:14px; line-height:22px; }
+.radar-search input::placeholder { color:#94a3b8; }
+.radar-results { margin:16px 2px 12px; color:#b5c3d7; font-size:13px; line-height:1.6; }
+.radar-list { display:grid; gap:12px; }
+.radar-card { min-width:0; padding:20px; border:1px solid #25334b; border-radius:14px; background:#0d1627; }
+.radar-card-critical { border-left:3px solid #f87171; }
+.radar-card-title { min-width:0; }
+.radar-card h3 { margin:0; color:#f1f5f9; font-size:17px; font-weight:650; line-height:1.5; overflow-wrap:anywhere; }
+.radar-context { margin:4px 0 0; color:#94a3b8; font-size:13px; line-height:1.5; overflow-wrap:anywhere; }
+.radar-status { display:inline-flex; align-items:center; gap:6px; flex-shrink:0; padding:5px 8px; border:1px solid #334155; border-radius:7px; color:#cbd5e1; font-size:12px; line-height:18px; }
+.radar-status svg,.radar-status > i { width:14px; height:14px; }
+.radar-status-active { color:#7dd3fc; background:#082332; border-color:#14506a; }
+.radar-status-waiting { color:#fde68a; background:#2a2114; border-color:#785322; }
+.radar-status-closed { color:#a7f3d0; background:#0a2924; border-color:#1f5c4a; }
+.radar-signal { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:12px; color:#fcd34d; font-size:14px; line-height:1.5; }
+.radar-signal p { flex:1; min-width:150px; margin:0; overflow-wrap:anywhere; }
+.radar-signal svg,.radar-signal > i { width:16px; height:16px; flex:0 0 16px; }
+.radar-signal-critical { color:#fca5a5; }
+.radar-signal-more { min-height:44px; padding:6px 10px; border-radius:8px; color:#c7d2fe; font-size:13px; text-decoration:underline; text-underline-offset:3px; }
+.radar-signal-more:hover { background:#1e293b; }
+.radar-next-action { margin-top:16px; }
+.radar-eyebrow { margin:0 0 4px; color:#94a3b8; font-size:12px; line-height:1.5; }
+.radar-action-text { margin:0; color:#e2e8f0; font-size:16px; line-height:1.6; overflow-wrap:anywhere; white-space:pre-line; }
+.radar-card-context { display:flex; flex-wrap:wrap; gap:6px 20px; margin-top:10px; color:#cbd5e1; font-size:13px; line-height:1.6; }
+.radar-card-context p { margin:0; overflow-wrap:anywhere; }
+.radar-card-context p span { margin-right:4px; color:#94a3b8; }
+.radar-card-controls { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:16px; padding-top:12px; border-top:1px solid #25334b; }
+.radar-details-button { margin-left:auto; }
+.radar-details-button [data-radar-details-chevron] { transition:transform 160ms ease; }
+.radar-actions { position:relative; }
+.radar-actions[data-radar-actions] > summary { list-style:none; color:#cbd5e1; }
+.radar-actions[data-radar-actions] > summary::after { display:none; }
+.radar-actions-list { position:absolute; right:0; top:calc(100% + 6px); z-index:25; width:240px; max-width:calc(100vw - 48px); padding:6px; border:1px solid #475569; border-radius:12px; background:#142036; box-shadow:0 12px 32px #0009; }
+.radar-actions-list .radar-button { justify-content:flex-start; width:100%; text-align:left; }
+.radar-action-danger { margin-top:4px; padding-top:4px; border-top:1px solid #334155; }
+.radar-action-danger .radar-button { color:#fda4af; }
+.radar-action-danger .radar-button:hover { background:#3a1e31; }
+.radar-detail-panel { margin-top:16px; padding-top:16px; border-top:1px solid #25334b; }
+.radar-detail-panel[hidden] { display:none; }
+.radar-detail-panel dl { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.radar-detail-panel dt { color:#94a3b8; font-size:12px; }
+.radar-detail-panel dd { margin-top:4px; color:#e2e8f0; font-size:14px; overflow-wrap:anywhere; }
+.radar-detail-panel h4 { margin-top:18px; font-size:14px; font-weight:600; }
+.radar-other-signals { margin:8px 0 0; padding-left:20px; color:#fcd34d; font-size:14px; line-height:1.7; }
+.radar-history { margin-top:24px; border:1px solid #334155; border-radius:12px; background:#0d1627; }
+.radar-history > summary { padding:12px 16px; color:#cbd5e1; font-size:14px; }
+.radar-history-body { padding:0 16px 16px; border-top:1px solid #25334b; }
+.radar-pagination { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:16px; color:#cbd5e1; font-size:13px; }
+.radar-empty { padding:28px 20px; border:1px dashed #475569; border-radius:12px; }
+.radar-empty h3 { font-size:16px; font-weight:600; }
+.radar-empty p { margin-top:8px; color:#b5c3d7; font-size:14px; line-height:1.7; }
+@media(max-width:639px) {
+    .radar-header,.radar-card { padding:16px; }
+    .radar-header-top { flex-wrap:wrap; }
+    .radar-header-top > .radar-button { width:100%; }
+    .radar-card-heading { gap:10px; flex-wrap:wrap; }
+    .radar-card-heading .radar-card-title { flex:1 1 170px; }
+    .radar-filters { gap:6px; }
+    .radar-filter { padding:8px 10px; font-size:13px; }
+    .radar-search input { font-size:16px; }
+    .radar-search-controls { flex-wrap:wrap; }
+    .radar-search input { flex:1 1 140px; }
+    .radar-search-controls .radar-button { padding:10px; }
+    .radar-card-controls > .radar-button-primary,.radar-card-controls > .radar-button-secondary { flex:1 0 100%; }
+    .radar-details-button { margin-left:0; margin-right:auto; padding-left:6px; padding-right:6px; }
+    .radar-actions { margin-left:auto; }
+    .radar-detail-panel dl { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .radar-history-body { padding:0 10px 10px; }
+}
+@media(prefers-reduced-motion:reduce) { .radar-details-button [data-radar-details-chevron] { transition:none; } }
+
+.radar-card-closed { padding:14px 16px; }
+.radar-card-closed h3 { font-size:15px; }
+.radar-card-closed .radar-card-controls { margin-top:6px; padding-top:0; border-top:0; }
+.radar-card-closed .radar-details-button { margin-left:0; margin-right:auto; }
+.radar-archived-action { margin-bottom:16px; font-size:14px; }
+.radar-pagination + .radar-list { margin-top:16px; }
+
+.radar-filter-select { display:none; }
+@media(max-width:639px) {
+    .radar-filters { display:none; }
+    .radar-filter-select { display:block; margin-top:16px; padding-top:12px; border-top:1px solid #25334b; }
+    .radar-filter-select label { display:block; margin-bottom:6px; color:#cbd5e1; font-size:13px; }
+    .radar-filter-select select { width:100%; min-height:44px; padding:10px 12px; border:1px solid #475569; border-radius:9px; background:#080f20; color:#f1f5f9; font-size:16px; color-scheme:dark; }
+    .radar-filter-select select:focus-visible { outline:2px solid #a5b4fc; outline-offset:3px; }
+}

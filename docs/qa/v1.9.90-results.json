@@ -1,0 +1,46 @@
+{
+  "version": "1.9.90",
+  "baseline": "ac2ed71b49772ce00c4c794b78d8e28aefb4b5f3",
+  "date": "2026-11-14",
+  "scope": "RADAR: lista, ações contextuais, filtros, busca e histórico paginado",
+  "automated": {
+    "command": "TZ=America/Sao_Paulo node --test '*.test.mjs' 'ai/*.test.mjs'",
+    "passed": 592,
+    "failed": 0,
+    "added": 11
+  },
+  "browser": {
+    "environment": "Chrome gerenciado, aplicação local com Firebase e fetch simulados; dados fictícios; CSP sem conexões externas",
+    "checks": [
+      "Filtro de atenção exibiu somente a demanda vencida; aguardando com follow-up futuro ficou fora",
+      "+ avisos abriu motivos e datas no painel local",
+      "Menu secundário manteve a confirmação de exclusão; cancelamento preservou demanda",
+      "Histórico com 35 registros: páginas 1–20 e 21–35; busca independente acessível",
+      "Editar retorno preservou filtro Aguardando, atualizou a data e fechou somente o editor",
+      "Recarregar a prévia preservou o follow-up salvo na nuvem simulada",
+      "Ver missões abriu e expandiu vínculos com status, sem recriar registros",
+      "320 px e 390 px: filtro nativo, edição/salvamento, sem rolagem horizontal",
+      "Menu em 320 px mediu left 40 e right 280; cinco botões com 44 px de altura; Escape recolheu o menu"
+    ],
+    "widths": [
+      1348,
+      320,
+      390
+    ],
+    "screenshots": [
+      "docs/ux/v1.9.90-radar-desktop.jpg",
+      "docs/ux/v1.9.90-radar-mobile.jpg"
+    ]
+  },
+  "data": {
+    "migration": false,
+    "production_account_writes": false,
+    "changes": "Somente projeção de leitura e estado temporário de interface; armazenamento e regras de domínio existentes"
+  },
+  "limits": [
+    "Não foram realizados testes em aparelho físico ou leitor de tela",
+    "Firebase/OAuth/App Check/Agenda/ChatGPT reais não foram exercitados",
+    "Não foi medida latência em produção",
+    "Dia e Semana não foram redesenhados nesta etapa"
+  ]
+}
