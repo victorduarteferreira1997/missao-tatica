@@ -175,9 +175,10 @@ test('painel oferece revisão, backup e seleções acessíveis; rodapé inicial 
     ctx.window.selectAllDataCleanup(true); ctx.window.selectAllDataCleanup(false); assert.equal(ctx.uiState.dataManager.selected.length, 0);
     ctx.window.setDataCleanupSelection('finance', true); html = ctx.window.renderDataManager();
     assert.match(html, /XP, moedas, medalhas e histórico de campanhas serão preservados/);
-    const footer = section('// Ações principais da IA e manutenção dos dados.', 'updateAppView(appDiv, html');
-    assert.match(footer, /<details[^>]*>[\s\S]*Backups e gerenciamento de dados/); assert.ok(!/<details[^>]*\bopen\b/.test(footer));
-    assert.ok(!footer.includes('cleanup-finance')); assert.match(footer, /window.openDataManager/);
+    const footer = section('// Configurações ficam fora do fluxo de execução;', 'updateAppView(appDiv, html');
+    assert.match(footer, /window.openSettingsWorkspace/);
+    assert.doesNotMatch(footer, /window.openDataManager|cleanup-finance|Exportar backup|renderAiV2ProposalsButton/);
+
 });
 
 test('seleção combinada limpa somente Estudos, Finanças e Corpo; dados novos fora dela continuam', async () => {
