@@ -17,7 +17,7 @@ test('módulo completo migra estado anterior com alvo oficial antes dos helpers 
 });
 test('integração completa monta Missões, Semana, Radar e todas as janelas sem dados pessoais',()=>{
  const b=boot();b.state.userProfile={displayName:'Teste',gender:'feminino',configured:true};
- for(const view of ['day','week','radar']){b.ui.mainView=view;b.render();assert.match(b.elements.app.innerHTML,/MISSÃO TÁTICA/);assert.ok(!b.elements.app.innerHTML.includes('undefined'))}
+ for(const view of ['day','week','radar']){b.ui.mainView=view;b.render();assert.match(b.elements.app.innerHTML,/Missão Tática/);assert.ok(!b.elements.app.innerHTML.includes('undefined'))}
  for(const tab of ['roadmap','badges','performance','shop']){b.ui.showStatsModal=true;b.ui.statsTab=tab;b.render();assert.match(b.elements.app.innerHTML,/Quartel General/);}b.ui.showStatsModal=false;
  for(const [flag,tabs,tabKey] of [['showFinanceModal',['dashboard','receitas','fixas','variaveis','diario'],'financeTab'],['showStudyModal',['plano','planning','log','ciclos','subjects','erros','dashboard','reviews'],'studyTab'],['showHealthModal',['dashboard','treinos','metricas','habitos'],'healthTab']]){b.ui[flag]=true;for(const tab of tabs){b.ui[tabKey]=tab;b.render();assert.ok(b.elements.app.innerHTML.length>1000);}b.ui[flag]=false;}
  for(const flag of ['showRitualModal','showRechargeModal','showProfileModal']){b.ui[flag]=true;b.render();assert.ok(b.elements.app.innerHTML.length>1000);b.ui[flag]=false;}
