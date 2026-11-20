@@ -4,6 +4,16 @@ Aplicação pessoal de planejamento semanal com Missões, Semana, Radar, Estudos
 Finanças, Corpo, Pomodoro e gamificação por campanhas. Inclui sincronização
 bidirecional com o Google Agenda, recompensas configuráveis e backups JSON.
 
+## Tipografia e leitura · v1.9.94
+
+Fonte Inter hospedada junto ao aplicativo, com uma escala compartilhada de leitura:
+texto principal de 16 px, controles e rótulos de 14 px, metadados de 13 px
+(valores na configuração padrão do navegador). Reduz negrito excessivo, caixa alta
+e espaçamento artificial; melhora o contraste dos textos secundários e permite
+que navegação e formulários se acomodem ao aumento do texto.
+
+- [Mudanças, validação e limites](docs/ux/v1.9.94.md)
+
 ## Configurações · v1.9.93
 
 Conta, conexões e backups ficam em uma janela própria, acessível em Módulos →
@@ -62,7 +72,7 @@ A integração privada com IA continua exclusiva do proprietário.
 - [Aplicação oficial](https://victorduarteferreira1997.github.io/missao-tatica/)
 - [Endereço direto](https://victorduarteferreira1997.github.io/missao-tatica/app.html)
 
-A versão atual é **v1.9.93**. A raiz, `teste_novos_modulos.html` e as prévias
+A versão atual é **v1.9.94**. A raiz, `teste_novos_modulos.html` e as prévias
 estáticas v1.9.11/v1.9.13 encaminham para a aplicação oficial. Parâmetros e
 fragmentos dos favoritos são preservados.
 
