@@ -142,6 +142,10 @@ export function installTaskForms(window, { daysOfWeek, getState, getUiState, doc
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div class="col-span-2 min-w-0"><label for="ct-date" class="${labelClass}">Data da missão</label><input id="ct-date" type="date" required value="${dateForDay(baseWeek,selectedDay)}" aria-describedby="ct-date-hint" ${calendarInboxSource ? 'disabled' : ''} oninput="window.updateCreateMissionDate()" class="${fieldClass} w-full min-w-0"><p id="ct-date-hint" aria-live="polite" class="mt-1.5 text-xs leading-relaxed text-slate-400">${window.escapeHtml(weekDescription(baseWeek))}</p></div>
+                            </div>
+                            <details id="ct-options" ${calendarInboxSource ? 'open' : ''}>
+                                <summary class="${summaryClass}"><span>Personalizar missão</span><i data-lucide="chevron-down"></i></summary>
+                                <div class="grid grid-cols-2 gap-3 py-3">
                                 <div><label for="ct-activity-type" class="${labelClass}">Atividade</label><select id="ct-activity-type" data-all-day="${Boolean(calendarInboxSource?.allDay)}" ${calendarInboxSource?.sanitizedOrigin === 'coaktion' ? 'disabled' : ''} onchange="window.handleActivityTypeChange('ct')" class="${fieldClass}"><option value="task" ${calendarInboxSource?.activityType !== 'meeting' ? 'selected' : ''}>Tarefa</option><option value="meeting" ${calendarInboxSource?.activityType === 'meeting' ? 'selected' : ''}>Reunião</option></select></div>
                                 <div><label for="ct-category" class="${labelClass}">Categoria</label><select id="ct-category" class="${fieldClass}">${window.getTaskCategories().map(cat => `<option value="${window.escapeHtml(cat.id)}">${window.escapeHtml(cat.label)}</option>`).join('')}</select><button type="button" onclick="window.toggleCategoryModal()" class="mt-1.5 text-xs text-slate-400 underline decoration-slate-600 underline-offset-2 hover:text-slate-200">Gerenciar categorias</button></div>
                             </div>
@@ -172,7 +176,7 @@ export function installTaskForms(window, { daysOfWeek, getState, getUiState, doc
                                     <summary class="${summaryClass}"><span>Ajustar dificuldade</span><i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i></summary>
                                     <div class="pt-2 pb-4"><label for="ct-complexity" class="${labelClass}">Dificuldade de 1 a 5</label><input id="ct-complexity" type="number" min="1" max="5" value="2" oninput="window.updatePreviewCalc()" class="${fieldClass} max-w-24"><p class="mt-2 text-xs leading-relaxed text-slate-400">1 é simples; 5 exige muito esforço. O padrão é 2.</p></div>
                                 </details>
-                            </div>`,
+                            </div></details>`,
                 footer: `
                             ${window.renderMissionSaveFeedback?.('form') || ''}
                             ${!calendarInboxSource&&!window.aiDraftMetadata?.().aiProposalId?'<label class="mb-2 flex min-h-11 cursor-pointer items-center gap-2 text-sm text-slate-300"><input id="ct-add-another" type="checkbox" class="h-4 w-4 accent-indigo-500">Continuar cadastrando</label>':''}

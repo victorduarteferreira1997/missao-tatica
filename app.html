@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.94-readable-typography">
+    <meta name="app-build" content="v1.9.95-focus-planning-pilot">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -24,6 +24,7 @@
     <link rel="stylesheet" href="ui/health_experience.v1.css?v=1.9.85">
     <link rel="preload" href="assets/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="ui/typography.v1.css?v=1.9.94">
+    <link rel="stylesheet" href="ui/planning_pilot.css?v=1.9.95">
     <meta name="theme-color" content="#0284c7">
 <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -150,7 +151,7 @@
         import { createCalendarSync } from './calendar_sync.v3.js?v=1.9.73';
         import { installPlanningTools } from './ui/planning_tools.v4.js?v=1.9.73';
         import { installRadarMissions } from './ui/radar_missions.v3.js';
-        import { installRadarWorkspace } from './ui/radar_workspace.v1.js?v=1.9.90';
+        import { installRadarWorkspace } from './ui/radar_workspace.v1.js?v=1.9.95';
         import {operationalSignals,deadlineHorizon} from './radar_attention.v1.js';
         import { installSubtasks } from './ui/subtasks.v1.js?v=1.9.65';
         import {applyMissionSchedule,planMissionSchedule,scheduleForDate,formatMissionDate,assertScheduleWeekOpen} from './mission_schedule.v1.js?v=1.9.73';
@@ -167,7 +168,7 @@
         import { planningPreview } from './planning_preview.v1.js?v=1.9.77';
         import {installSettingsWorkspace} from './ui/settings_workspace.v1.js?v=1.9.93';
         import {installMissionFeedback} from './ui/mission_feedback.v1.js?v=1.9.92';
-        import { installTaskForms } from './ui/task_forms.v11.js?v=1.9.92';
+        import { installTaskForms } from './ui/task_forms.v11.js?v=1.9.95';
         import * as Library from './library.v2.js?v=1.9.70';
         import { installLibrary } from './ui/library.v4.js?v=1.9.83';
         import {installMissionChanges} from './ui/mission_changes.v1.js?v=1.9.75';
@@ -176,7 +177,7 @@
         import {installLibraryImports} from './ui/library_import.v1.js?v=1.9.71';
         import {createLibraryImportStore} from './ai/v2/library_browser.js?v=1.9.71';
         import {applyLibraryImport} from './library_import.v1.js?v=1.9.71';
-        import { installPlanningViews } from './ui/planning_views.v13.js?v=1.9.91';
+        import { installPlanningViews } from './ui/planning_views.v13.js?v=1.9.95';
         import { installPlanningWorkspace } from './ui/planning_workspace.v1.js?v=1.9.91';
         import { installAiInbox } from './ui/ai_inbox.v3.js';
         import { AI_CONFIG } from './ai/config.v1.js';
@@ -199,7 +200,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.94';
+        const APP_VERSION = 'v1.9.95';
         const updateAppView = createViewUpdater(document);
         window.renderMissionRowIsland=(id,html)=>updateAppView.island(id,html);
         const firebaseConfig = {
@@ -3441,9 +3442,8 @@
             const dayTasks = state.tasks.filter(t => t.day === state.activeTab && t.activityType !== 'meeting' && (window.isPlanningTaskVisible ? window.isPlanningTaskVisible(t) : (!t.googleCalendarWeekStart || t.googleCalendarWeekStart === state.currentPlanningWeekStart)));
             const eligibleTasks = dayTasks.filter(t => !window.getTaskBlockers?.(t).length);
             const targetTasks = state.currentFilter === 'all' ? eligibleTasks : eligibleTasks.filter(t => t.category === state.currentFilter);
-            return (window.findTaskByExactId(state.focusedTaskId) && !window.findTaskByExactId(state.focusedTaskId).completed && window.findTaskByExactId(state.focusedTaskId).day === state.activeTab && eligibleTasks.includes(window.findTaskByExactId(state.focusedTaskId)))
-                ? window.findTaskByExactId(state.focusedTaskId)
-                : (targetTasks.find(t => !t.completed) || null);
+            const pending = targetTasks.filter(task => !task.completed);
+            return pending.find(task => String(task.id) === String(state.focusedTaskId)) || pending[0] || null;
         };
 
         window.isIndependentPomodoro = function() { return pomodoro.independent === true || (!pomodoro.currentFocusStartedAt && state.focusContext === 'independent'); };
@@ -6710,7 +6710,7 @@
 
             // Stable navigation: frequent actions stay visible; modules share one menu.
             html += `
-            <header class="app-header rounded-xl border border-slate-800 bg-slate-900 p-3 mb-3 font-sans">
+            <header data-view="${uiState.mainView}" class="app-header rounded-xl border border-slate-800 bg-slate-900 p-3 mb-3 font-sans">
               <div class="app-brand-row flex items-center justify-between gap-2">
                 <span class="font-semibold text-slate-100">Missão Tática <span class="app-version text-xs text-slate-400">${APP_VERSION}</span></span>
                 <div id="sync-status" role="status" class="flex items-center gap-1.5 text-xs text-slate-300"><span class="w-2 h-2 rounded-full shrink-0" id="sync-indicator"></span><span id="sync-text"></span></div>
@@ -6827,26 +6827,24 @@
                 const focusTasks = dailyTasks.filter(t => t.activityType !== 'meeting');
                 const targetTasks = state.currentFilter === 'all' ? focusTasks : focusTasks.filter(t => t.category === state.currentFilter);
                 const lockedFocusTask = (pomodoro.mode === 'focus' && pomodoro.currentFocusStartedAt && pomodoro.focusLock?.id) ? window.findTaskByExactId(pomodoro.focusLock.id) : null;
-                const stateFocusedTask = window.findTaskByExactId(state.focusedTaskId);
-                const pendingTask = window.isIndependentPomodoro() ? null : (lockedFocusTask && lockedFocusTask.activityType !== 'meeting' && !lockedFocusTask.completed && lockedFocusTask.day === state.activeTab)
-                    ? lockedFocusTask
-                    : ((stateFocusedTask && stateFocusedTask.activityType !== 'meeting' && !stateFocusedTask.completed && stateFocusedTask.day === state.activeTab) ? stateFocusedTask : targetTasks.find(t => !t.completed));
+                const pendingTask = window.isIndependentPomodoro() ? null : lockedFocusTask || window.getCurrentFocusTargetTask();
+                const lockedOutsideView = lockedFocusTask && !targetTasks.includes(lockedFocusTask);
                 const allPending = targetTasks.filter(t => !t.completed);
-                const isPomodoroTargetLocked = !!(pomodoro.mode === 'focus' && pomodoro.currentFocusStartedAt && pomodoro.focusLock?.id);
+                const isPomodoroTargetLocked = Boolean(lockedFocusTask);
 
                 html += `<div class="bg-slate-900 border border-yellow-500/30 rounded-xl p-3 sm:p-4 mb-4 font-mono">
                     <div class="flex items-center justify-between gap-3 border-b border-slate-800 pb-3 mb-3">
                         <h2 class="text-yellow-400 text-xs font-bold inline-flex items-center gap-2"><i data-lucide="timer" class="w-4 h-4"></i>${window.isIndependentPomodoro()?'Pomodoro livre':'Modo foco'}</h2>
                         <button onclick="window.closeTaskFocus()" class="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 px-3 py-2 text-xs font-bold text-white"><i data-lucide="arrow-left" class="w-4 h-4"></i>Voltar às missões</button>
                     </div>`;
-                if (allPending.length > 0 || window.isIndependentPomodoro()) {
+                if (pendingTask || window.isIndependentPomodoro()) {
                     if(window.isIndependentPomodoro())html += window.renderIndependentActivity();
                     else html += `
                     <div class="rounded-xl border border-slate-800 bg-slate-950/50 p-3 mb-3">
                         <input type="hidden" id="pomodoro-focused-task-select" value="${window.escapeHtml(String(pendingTask?.id ?? ''))}">
                         <div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Missão em foco</div>
                         <h3 class="text-sm sm:text-base font-bold text-white break-words">${window.escapeHtml(pendingTask?.text || '')}</h3>
-                        ${isPomodoroTargetLocked ? '<p class="text-[11px] text-yellow-400 mt-2"><i data-lucide="lock" class="inline w-3 h-3 mr-1"></i>Missão travada neste ciclo. Reinicie o Pomodoro para trocar.</p>' : (allPending.length > 1 ? `
+                        ${isPomodoroTargetLocked ? '<p class="text-[11px] text-yellow-400 mt-2"><i data-lucide="lock" class="inline w-3 h-3 mr-1"></i>Ciclo vinculado a ' + formatMissionDate(Recurrence.occurrenceDate({day:lockedFocusTask.day, planningWeekStart:window.taskPlanningWeek(lockedFocusTask)})) + '. Reinicie o Pomodoro para trocar.</p>'  : (allPending.length > 1 ? `
                         <details class="mt-3 border-t border-slate-800 pt-2">
                             <summary class="cursor-pointer text-xs font-bold text-indigo-300">Trocar missão</summary>
                             <div class="mt-2 max-h-60 overflow-y-auto space-y-2">
@@ -6882,14 +6880,15 @@
 
                     html += `<details ${uiState.pomodoroSections?.history?'open':''} ontoggle="window.setPomodoroSection('history',this.open)" class="bg-slate-950 border border-slate-800 rounded-xl p-3 mb-3 font-sans"><summary class="cursor-pointer text-sm text-slate-300">Histórico e autoavaliação</summary><div class="pt-3">${window.renderFocusEfficiencyChart()}${window.renderFocusHistory()}</div></details>`;
 
-                    if (pendingTask) {
+                    if (pendingTask && !lockedOutsideView && !pendingTask.completed) {
+                        const taskArg = window.escapeHtml(JSON.stringify(String(pendingTask.id)));
                         const focusSubtasks = Array.isArray(pendingTask.subtasks) ? pendingTask.subtasks : [];
                         const focusDoneSubtasks = focusSubtasks.filter(st => st.completed).length;
                         const focusSubtaskPercent = focusSubtasks.length ? Math.round((focusDoneSubtasks / focusSubtasks.length) * 100) : 0;
 
                         html += `
                         <div class="bg-slate-800 border-2 border-slate-700 p-4 rounded-lg">
-                            <p class="text-lg font-bold text-white mb-4">${pendingTask.text}</p>
+                            <p class="text-lg font-bold text-white mb-4">${window.escapeHtml(pendingTask.text)}</p>
                             <div class="flex flex-wrap gap-2 mb-4">
                                 ${window.getTaskNature(pendingTask) !== 'normal' ? `<span class="text-xs font-bold ${window.getTaskNatureMeta(pendingTask).color} ${window.getTaskNatureMeta(pendingTask).bg} px-2 py-1 rounded border ${window.getTaskNatureMeta(pendingTask).border}"><i data-lucide="${window.getTaskNatureMeta(pendingTask).icon}" class="inline w-3 h-3 mr-1"></i>${window.getTaskNatureMeta(pendingTask).shortLabel}</span>` : ''}
                                 <span class="text-xs font-bold text-slate-300 bg-slate-900 px-2 py-1 rounded border border-slate-700"><i data-lucide="zap" class="inline w-3 h-3 text-indigo-400 mr-1"></i>+${pendingTask.xp || 0} XP</span>
@@ -6906,27 +6905,28 @@
                                 <div class="space-y-2 mb-3">
                                     ${focusSubtasks.length ? focusSubtasks.map(st => `
                                         <div class="flex items-center justify-between gap-2 bg-slate-900/80 border border-slate-800 rounded-lg px-3 py-2">
-                                            <button onclick="window.toggleSubtask(${pendingTask.id}, ${st.id}, event)" class="flex items-center gap-2 text-left min-w-0 flex-1 group">
+                                            <button aria-pressed="${Boolean(st.completed)}" onclick="window.toggleSubtask(${taskArg}, ${window.escapeHtml(JSON.stringify(String(st.id)))}, event)" class="flex items-center gap-2 text-left min-w-0 flex-1 group">
                                                 <span class="w-5 h-5 rounded border flex items-center justify-center shrink-0 ${st.completed ? 'bg-emerald-600 border-emerald-500' : 'border-slate-600 group-hover:border-cyan-400'}">
                                                     ${st.completed ? '<i data-lucide="check" class="w-3 h-3 text-white"></i>' : ''}
                                                 </span>
-                                                <span class="text-xs ${st.completed ? 'text-slate-500 line-through' : 'text-slate-200'} truncate">${st.text}</span>
+                                                <span class="text-xs ${st.completed ? 'text-slate-500 line-through' : 'text-slate-200'} truncate">${window.escapeHtml(st.text)}</span>
                                             </button>
-                                            <button onclick="window.deleteSubtask(${pendingTask.id}, ${st.id}, event)" class="text-slate-600 hover:text-red-400 p-1" title="Excluir subtarefa"><i data-lucide="x" class="w-3 h-3"></i></button>
+                                            <button onclick="window.deleteSubtask(${taskArg}, ${window.escapeHtml(JSON.stringify(String(st.id)))}, event)" class="text-slate-600 hover:text-red-400 p-1" title="Excluir subtarefa"><i data-lucide="x" class="w-3 h-3"></i></button>
                                         </div>
                                     `).join('') : `<p class="text-xs text-slate-500 italic">Nenhuma subtarefa cadastrada para esta missão.</p>`}
                                 </div>
                                 <div class="flex gap-2">
-                                    <input id="subtask-input-${pendingTask.id}" type="text" placeholder="Nova subtarefa do alvo..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 outline-none focus:border-cyan-500" onkeypress="if(event.key === 'Enter') { event.stopPropagation(); window.addSubtask(${pendingTask.id}); }">
-                                    <button onclick="window.addSubtask(${pendingTask.id})" class="bg-cyan-700 hover:bg-cyan-600 text-white px-3 py-2 rounded-lg text-xs font-bold"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                                    <input id="subtask-input-${window.escapeHtml(String(pendingTask.id))}" type="text" placeholder="Nova subtarefa do alvo..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 outline-none focus:border-cyan-500" onkeypress="if(event.key === 'Enter') { event.stopPropagation(); window.addSubtask(${taskArg}); }">
+                                    <button aria-label="Adicionar subtarefa" onclick="window.addSubtask(${taskArg})" class="bg-cyan-700 hover:bg-cyan-600 text-white px-3 py-2 rounded-lg text-xs font-bold"><i data-lucide="plus" class="w-4 h-4"></i></button>
                                 </div>
                             </div>
 
-                            <button onclick="window.toggleTask(${pendingTask.id}, event)" class="bg-emerald-600 hover:bg-emerald-500 text-white p-3 rounded-lg font-bold w-full flex justify-center items-center gap-2"><i data-lucide="check-circle" class="w-5 h-5"></i> CONCLUIR MISSÃO</button>
+                            <button onclick="window.toggleTask(${taskArg}, event)" class="bg-emerald-600 hover:bg-emerald-500 text-white p-3 rounded-lg font-bold w-full flex justify-center items-center gap-2"><i data-lucide="check-circle" class="w-5 h-5"></i> CONCLUIR MISSÃO</button>
                         </div>`;
                     }
                 } else {
-                    html += `<div class="text-center p-8 text-slate-400 font-bold"><i data-lucide="trophy" class="mx-auto text-yellow-500 mb-3 w-12 h-12"></i>Dia Concluído!</div>`;
+                    const scope = state.currentFilter === 'all' ? dailyTasks : dailyTasks.filter(t => t.category === state.currentFilter);
+                    html += window.renderMissionEmptyState(dailyTasks, scope, true);
                 }
                 html += `</div>`;
             } else {

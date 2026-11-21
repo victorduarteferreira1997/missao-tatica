@@ -25,10 +25,10 @@ const installPlanner = (target, options = {}) => installPlanningViews(target, {
     getState: () => ({}), getUiState: () => ({}), extractMinutesFromTask: () => 30,
     ...options
 });
-assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v13\.js\?v=1\.9\.91'/);
+assert.match(app, /import \{ installPlanningViews \} from '\.\/ui\/planning_views\.v13\.js\?v=1\.9\.95'/);
 assert.match(app, /html \+= window\.renderWeeklyPlanningOverview\(\)/);
 assert.ok(!app.includes('window.renderDailyMissionBoard ='), 'As visões devem existir apenas no módulo do planejamento.');
-assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v11\.js\?v=1\.9\.92'/);
+assert.match(app, /import \{ installTaskForms \} from '\.\/ui\/task_forms\.v11\.js\?v=1\.9\.95'/);
 assert.match(app, /installTaskForms\(window, \{ document, daysOfWeek, getState: \(\) => state, getUiState: \(\) => uiState \}\)/);
 const installFormDialogs = target => installDialogModule(target, {});
 assert.match(app, /import \{ installFormDialogs \} from '\.\/ui\/form_dialogs\.v3\.js\?v=1\.9\.88'/);
@@ -95,7 +95,7 @@ const focusPanelStart = app.indexOf('if (state.focusMode) {');
 const focusPanelEnd = app.indexOf('html += window.renderDailyMissionBoard(filteredTasks)', focusPanelStart);
 const focusPanel = app.slice(focusPanelStart, focusPanelEnd);
 assert.ok(focusPanel.indexOf('onclick="window.closeTaskFocus()"') >= 0
-    && focusPanel.indexOf('onclick="window.closeTaskFocus()"') < focusPanel.indexOf('if (allPending.length > 0 || window.isIndependentPomodoro())'),
+    && focusPanel.indexOf('onclick="window.closeTaskFocus()"') < focusPanel.indexOf('if (pendingTask || window.isIndependentPomodoro())'),
     'O retorno deve aparecer mesmo quando não houver missões pendentes.');
 
 const createDays = [{ id: 'monday', label: 'Segunda' }, { id: 'tuesday', label: 'Terça' }];
