@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.94-readable-typography">
+    <meta name="app-build" content="v1.9.95-focus-planning-pilot">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -24,7 +24,7 @@
     <link rel="stylesheet" href="ui/health_experience.v1.css?v=1.9.85">
     <link rel="preload" href="assets/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="ui/typography.v1.css?v=1.9.94">
-    <link rel="stylesheet" href="ui/planning_pilot.css">
+    <link rel="stylesheet" href="ui/planning_pilot.css?v=1.9.95">
     <meta name="theme-color" content="#0284c7">
 <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -151,7 +151,7 @@
         import { createCalendarSync } from './calendar_sync.v3.js?v=1.9.73';
         import { installPlanningTools } from './ui/planning_tools.v4.js?v=1.9.73';
         import { installRadarMissions } from './ui/radar_missions.v3.js';
-        import { installRadarWorkspace } from './ui/radar_workspace.v1.js?v=1.9.90';
+        import { installRadarWorkspace } from './ui/radar_workspace.v1.js?v=1.9.95';
         import {operationalSignals,deadlineHorizon} from './radar_attention.v1.js';
         import { installSubtasks } from './ui/subtasks.v1.js?v=1.9.65';
         import {applyMissionSchedule,planMissionSchedule,scheduleForDate,formatMissionDate,assertScheduleWeekOpen} from './mission_schedule.v1.js?v=1.9.73';
@@ -168,7 +168,7 @@
         import { planningPreview } from './planning_preview.v1.js?v=1.9.77';
         import {installSettingsWorkspace} from './ui/settings_workspace.v1.js?v=1.9.93';
         import {installMissionFeedback} from './ui/mission_feedback.v1.js?v=1.9.92';
-        import { installTaskForms } from './ui/task_forms.v11.js?v=1.9.92';
+        import { installTaskForms } from './ui/task_forms.v11.js?v=1.9.95';
         import * as Library from './library.v2.js?v=1.9.70';
         import { installLibrary } from './ui/library.v4.js?v=1.9.83';
         import {installMissionChanges} from './ui/mission_changes.v1.js?v=1.9.75';
@@ -177,7 +177,7 @@
         import {installLibraryImports} from './ui/library_import.v1.js?v=1.9.71';
         import {createLibraryImportStore} from './ai/v2/library_browser.js?v=1.9.71';
         import {applyLibraryImport} from './library_import.v1.js?v=1.9.71';
-        import { installPlanningViews } from './ui/planning_views.v13.js?v=1.9.91';
+        import { installPlanningViews } from './ui/planning_views.v13.js?v=1.9.95';
         import { installPlanningWorkspace } from './ui/planning_workspace.v1.js?v=1.9.91';
         import { installAiInbox } from './ui/ai_inbox.v3.js';
         import { AI_CONFIG } from './ai/config.v1.js';
@@ -200,7 +200,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.94';
+        const APP_VERSION = 'v1.9.95';
         const updateAppView = createViewUpdater(document);
         window.renderMissionRowIsland=(id,html)=>updateAppView.island(id,html);
         const firebaseConfig = {
