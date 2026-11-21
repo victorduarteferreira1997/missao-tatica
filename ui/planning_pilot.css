@@ -140,3 +140,48 @@ body #study-module-title, body #library-heading {
   #study-modal-scroll, #library-scroll { padding: 1rem; }
   #study-module-dialog .study-area-nav button { padding-inline: .35rem; }
 }
+
+/* Finance and Body use the same heading, navigation, and form roles. */
+body #finance-module-title, body #health-module-title {
+  font-size: var(--pilot-title); line-height: 1.2; font-weight: 600;
+  letter-spacing: -.035em;
+}
+#finance-module-dialog > header, #health-module-dialog > header { padding: 1.25rem; }
+#finance-module-body, #health-module-body { padding: 1.25rem; }
+#finance-module-dialog .finance-area-nav, #health-module-dialog .health-area-nav {
+  gap: 0; border-bottom: 1px solid var(--pilot-line); padding-bottom: 0;
+}
+#finance-module-dialog .finance-area-nav button, #health-module-dialog .health-area-nav button {
+  background: transparent; border: 0; border-bottom: 3px solid transparent;
+  border-radius: 0; color: var(--pilot-muted); padding: .65rem .75rem;
+}
+#finance-module-dialog .finance-area-nav button[aria-pressed="true"],
+#health-module-dialog .health-area-nav button[aria-pressed="true"] {
+  border-bottom-color: #afa8ff; color: #f7f8fe;
+}
+#finance-module-dialog form button[type="submit"],
+#health-module-dialog form button[type="submit"],
+#finance-module-dialog .module-primary-action, #health-module-dialog .module-primary-action {
+  background: var(--pilot-action); border-color: var(--pilot-action); color: #fff;
+}
+#finance-module-dialog .finance-summary-panel {
+  background: #10182a; border-color: #34405a; border-radius: .85rem;
+}
+body #finance-module-dialog .finance-result {
+  font-size: clamp(1.75rem, 5vw, 2.25rem); line-height: 1.25;
+  font-weight: 600; letter-spacing: -.035em; font-variant-numeric: tabular-nums;
+}
+#finance-module-dialog h3, #health-module-dialog h3 { line-height: 1.4; font-weight: 600; }
+#finance-module-dialog button:focus-visible, #health-module-dialog button:focus-visible,
+#finance-module-dialog summary:focus-visible, #health-module-dialog summary:focus-visible,
+#finance-module-dialog input:focus-visible, #health-module-dialog input:focus-visible,
+#finance-module-dialog select:focus-visible, #health-module-dialog select:focus-visible,
+#finance-module-dialog textarea:focus-visible, #health-module-dialog textarea:focus-visible {
+  outline: 2px solid #b9b1ff; outline-offset: 2px;
+}
+@media(max-width:639px) {
+  #finance-module-dialog > header, #health-module-dialog > header,
+  #finance-module-body, #health-module-body { padding: 1rem; }
+  #finance-module-dialog .finance-area-nav button,
+  #health-module-dialog .health-area-nav button { padding-inline: .4rem; }
+}
