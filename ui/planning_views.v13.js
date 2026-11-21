@@ -342,7 +342,7 @@ export function installPlanningViews(window, {
                     <summary class="week-day-summary list-none cursor-pointer flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-800/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400 focus-visible:outline-offset-[-2px]">
                         <div class="min-w-0">
                             <div class="week-day-heading flex flex-wrap items-center gap-2"><h3 class="text-sm font-semibold text-slate-100">${row.day.label}</h3><span class="text-xs text-slate-400">${dateLabel}</span>${isToday ? '<span class="rounded bg-indigo-950 px-2 py-0.5 text-xs text-indigo-200">Hoje</span>' : ''}</div>
-                            <div class="week-day-meta mt-1 text-xs text-slate-400"><span class="week-day-load">${row.minutes} min previstos</span> · ${row.total ? `${plural(row.dayTasks.length, 'missão', 'missões')}${row.dayStudies.length ? ` · ${plural(row.dayStudies.length, 'estudo', 'estudos')}` : ''}${row.dayReadings.length ? ` · ${plural(row.dayReadings.length, 'leitura', 'leituras')}` : ''} · ${plural(row.pending, 'pendente', 'pendentes')}` : 'Sem itens planejados'}</div>
+                            <div class="week-day-meta mt-1 text-xs text-slate-400">${row.total ? `<span class="week-day-load">${row.minutes} min previstos</span> · ` : ''}${row.total ? `${plural(row.dayTasks.length, 'missão', 'missões')}${row.dayStudies.length ? ` · ${plural(row.dayStudies.length, 'estudo', 'estudos')}` : ''}${row.dayReadings.length ? ` · ${plural(row.dayReadings.length, 'leitura', 'leituras')}` : ''} · ${plural(row.pending, 'pendente', 'pendentes')}` : 'Sem itens planejados'}</div>
                         </div>
                         <div class="flex items-center gap-3 shrink-0">
                             ${row.total ? `<span class="text-xs ${row.pending === 0 ? 'text-emerald-300' : 'text-slate-400'}">${row.completed}/${row.total}</span>` : ''}
@@ -359,12 +359,12 @@ export function installPlanningViews(window, {
 
             return `<div id="weekly-workspace" class="space-y-3 font-sans">
                 ${preview?.tasks.some(t=>t.planningPreview)?'<p class="text-xs text-violet-200">Repetições previstas entram na carga, mas ainda não são novas missões. Serão cadastradas no fechamento da semana anterior.</p>':''}
-                <section aria-labelledby="weekly-planning-title" class="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                <section aria-labelledby="weekly-planning-title" class="week-overview rounded-xl border border-slate-800 bg-slate-900/70 p-4">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <div><h2 id="weekly-planning-title" tabindex="-1" class="text-lg font-semibold text-white">Semana Geral</h2><p class="mt-1 text-xs text-slate-400">${weekLabel} · ${isCurrentCalendarWeek ? 'Semana atual' : isNextCalendarWeek ? 'Próxima semana' : 'Planejamento semanal'}</p></div>
 
                     </div>
-                    <div class="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-3 text-xs text-slate-300">
+                    <div class="week-overview-metrics mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-3 text-xs text-slate-300">
                         <span>${plural(totalTasks, 'missão', 'missões')} · ${plural(totalStudies, 'estudo', 'estudos')}${totalReadings ? ' · ' + plural(totalReadings, 'leitura', 'leituras') : ''}${plannedMinutes ? ` · ${Math.floor(plannedMinutes/60)?Math.floor(plannedMinutes/60)+'h ':''}${plannedMinutes%60?plannedMinutes%60+'min ':''}de carga prevista` : ''}</span>
                         ${totalItems ? `<span class="inline-flex items-center gap-2"><span>${completedItems}/${totalItems} ${completedItems === 1 ? 'concluído' : 'concluídos'}</span><span class="h-1.5 w-16 overflow-hidden rounded-full bg-slate-800"><span class="block h-full ${progressPct === 100 ? 'bg-emerald-500' : 'bg-indigo-400'}" style="width:${progressPct}%"></span></span></span>` : ''}
                     </div>
