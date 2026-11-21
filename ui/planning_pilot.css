@@ -56,3 +56,48 @@ body .radar-header-top { align-items: center; }
   #create-task-dialog > header, #create-task-dialog-scroll { padding: 1rem; }
   body .main-view-nav button { padding-inline: .65rem; }
 }
+
+/* Week and Focus share the same titles, surfaces, and action emphasis. */
+body #weekly-workspace #weekly-planning-title, body #focus-workspace-title {
+  font-size: var(--pilot-title);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -.035em;
+  color: #f1f5f9;
+}
+#weekly-workspace .week-overview {
+  padding: 1.1rem 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+#weekly-workspace .week-overview-metrics { padding-top: .85rem; }
+#weekly-workspace .week-day-panel { background: #10182a; border-color: #29344b; }
+#weekly-workspace .week-day-panel[open] { border-color: #615a95; }
+#weekly-workspace .week-day-summary { padding: 1rem 1.15rem; min-height: 72px; }
+#weekly-workspace .week-day-heading h3 { font-size: 1rem; font-weight: 600; }
+#weekly-workspace .week-day-meta { margin-top: .4rem; line-height: 1.6; }
+#weekly-workspace .week-day-summary + div { padding: 1rem; }
+#focus-workspace .focus-header { margin: 1.4rem 0 1rem; flex-wrap: wrap; }
+#focus-workspace .focus-header > button { background: transparent; font-weight: 500; }
+#focus-workspace #pomodoro-timer {
+  background: #10182a; border-color: #34405a; border-radius: 1rem;
+  padding: 2rem 1rem;
+}
+body #focus-workspace #pomodoro-display {
+  font-size: clamp(3.5rem, 10vw, 5rem);
+  line-height: 1.2; font-weight: 500; color: #f1f5f9; letter-spacing: -.055em;
+  font-variant-numeric: tabular-nums;
+}
+#focus-workspace #pomodoro-timer button { min-height: 44px; }
+#focus-workspace #pomodoro-timer button:first-of-type { background: var(--pilot-action); }
+#focus-workspace .focus-mission-actions {
+  margin-bottom: 1rem; padding: 1.15rem;
+  background: #10182a; border: 1px solid #29344b; border-radius: .85rem;
+}
+#focus-workspace > details { background: transparent; padding: .85rem 1rem; }
+#focus-workspace summary { min-height: 44px; display: flex; align-items: center; }
+@media (max-width: 639px) {
+  #focus-workspace .focus-header > button { width: 100%; }
+  #weekly-workspace .week-day-summary { padding: .85rem; }
+}
