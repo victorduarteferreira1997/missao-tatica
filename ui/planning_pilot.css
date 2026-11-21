@@ -185,3 +185,56 @@ body #finance-module-dialog .finance-result {
   #finance-module-dialog .finance-area-nav button,
   #health-module-dialog .health-area-nav button { padding-inline: .4rem; }
 }
+
+/* Recovery, progression, and settings complete the shared presentation. */
+body #recharge-module-title, body #ritual-module-title,
+body #qg-title, body #settings-title {
+  font-size: var(--pilot-title); line-height: 1.2; font-weight: 600;
+  letter-spacing: -.035em;
+}
+#recharge-module-dialog > header, #ritual-module-dialog > header,
+#settings-dialog .settings-header { padding: 1.25rem; }
+#recharge-module-body, #ritual-module-body, #settings-dialog .settings-body { padding: 1.25rem; }
+#qg-dialog > div { padding: 1.25rem; }
+#qg-title { margin-bottom: 1.25rem; }
+#qg-title svg, #qg-title i { width: 24px; height: 24px; }
+#qg-close, #settings-close, #ritual-module-close, #recharge-module-close {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; min-height: 44px; border-radius: .6rem; background: transparent;
+}
+#qg-dialog .qg-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+#qg-dialog .qg-tabs button { min-width: 0; }
+#qg-dialog .qg-tabs, #settings-dialog .settings-tabs {
+  background: transparent; border: 0; border-bottom: 1px solid var(--pilot-line);
+  border-radius: 0; padding: 0; gap: 0;
+}
+#settings-dialog .settings-tabs { margin: 0 1.25rem; }
+#qg-dialog .qg-tabs button, #settings-dialog .settings-tabs button {
+  min-height: 44px; padding: .65rem .6rem; border-radius: 0;
+  background: transparent; border: 0; border-bottom: 3px solid transparent;
+  color: var(--pilot-muted); font-weight: 500;
+}
+#qg-dialog .qg-tabs button[aria-pressed="true"],
+#settings-dialog .settings-tabs button[aria-pressed="true"] {
+  border-bottom-color: #afa8ff; color: #f7f8fe;
+}
+#recharge-module-dialog .recovery-primary-action,
+#recharge-module-dialog form button[type="submit"],
+#ritual-module-dialog form button[type="submit"] {
+  min-height: 44px; background: var(--pilot-action);
+  border-color: var(--pilot-action); color: #fff;
+}
+#recharge-module-dialog h3, #ritual-module-dialog h3, #settings-dialog h3 {
+  line-height: 1.4; font-weight: 600;
+}
+:is(#recharge-module-dialog, #ritual-module-dialog, #qg-dialog, #settings-dialog)
+:is(button, summary, input, select, textarea):focus-visible {
+  outline: 2px solid #b9b1ff; outline-offset: 2px;
+}
+@media(max-width:639px) {
+  #recharge-module-dialog > header, #ritual-module-dialog > header,
+  #settings-dialog .settings-header, #recharge-module-body,
+  #ritual-module-body, #settings-dialog .settings-body, #qg-dialog > div { padding: 1rem; }
+  #settings-dialog .settings-tabs { margin-inline: 1rem; }
+  #qg-dialog .qg-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

@@ -38,11 +38,11 @@ test('abrir as visões preserva todos os dados; cadastros, histórico e gestão 
     const recharge=ctx.window.renderRechargeModule(), ritual=ctx.window.renderRitualsSection();
     assert.equal(JSON.stringify(ctx.state),before);
     for (const html of [recharge,ritual]) assert.ok(!/<details[^>]*\sopen(?:\s|>)/.test(html));
-    assert.match(recharge,/Registrar recarga/); assert.ok(!recharge.includes('Executar recarga'));
+    assert.match(recharge,/Já fiz esta pausa/); assert.ok(!recharge.includes('Executar recarga'));
     assert.match(recharge,/não inicia um cronômetro/); assert.match(ritual,/Sua rotina de hoje/);
     assert.ok(!ritual.includes('+10 XP'), 'Ritual de 0 XP não pode prometer 10 XP.');
     assert.match(ctx.window.renderRecoveryDialog('ritual'), /role="dialog" aria-modal="true"/);
-    assert.match(ctx.window.renderRecoveryDialog('recharge'), /max-h-\[92vh\]/);
+    assert.match(ctx.window.renderRecoveryDialog('recharge'), /max-h-\[92dvh\]/);
 });
 
 test('filtro de tempo mostra todas as opções correspondentes, incluindo personalizadas', () => {
