@@ -66,11 +66,27 @@ export function installPlanningViews(window, {
             window.scrollTo({left: scrollX, top: scrollY, behavior: 'instant'});
         };
 
+        window.renderMissionEmptyState = function(dayTasks, visibleTasks, focus = false) {
+            let title = 'Nenhuma missão planejada para este dia';
+            let action = 'Criar missão';
+            let handler = 'window.toggleCreateTaskModal()';
+            if (dayTasks.length && !visibleTasks.length) {
+                title = 'Nenhuma missão nesta categoria';
+                action = 'Limpar filtro';
+                handler = "window.setCategoryFilter('all')";
+            } else if (focus && visibleTasks.length) {
+                title = dayTasks.every(task => task.completed) ? 'Dia concluído' : 'Nenhuma missão disponível para foco nesta seleção';
+                action = 'Ver missões';
+                handler = 'window.closeTaskFocus()';
+            }
+            return `<div class="mission-empty"><h3>${title}</h3><button type="button" onclick="${handler}">${action}</button></div>`;
+        };
+
         window.renderDailyMissionBoard = function(filteredTasks) {
             const uiState = getUiState();
             const tasks = Array.isArray(filteredTasks) ? filteredTasks : [];
             if (!tasks.length) {
-                return `<div class="rounded-xl border border-dashed border-slate-800 bg-slate-950/35 p-7 text-center font-mono mb-4"><i data-lucide="circle-dashed" class="w-6 h-6 text-slate-700 mx-auto mb-2"></i><div class="text-sm font-bold text-slate-300">Nenhuma missão neste filtro</div><div class="text-[10px] text-slate-600 mt-1">Crie uma missão ou escolha outro filtro.</div></div>`;
+                return window.renderMissionEmptyState(window.sortTasksForDay(getState().activeTab), tasks);
             }
 
             const priorityMeta = {

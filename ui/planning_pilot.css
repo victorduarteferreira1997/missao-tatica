@@ -1,0 +1,58 @@
+/* The masthead, views, and forms use the same reading and action hierarchy. */
+:root {
+  --pilot-title: clamp(1.4rem, 2.4vw, 1.75rem);
+  --pilot-action: #5648cc;
+  --pilot-line: #34405a;
+  --pilot-muted: #bac4d5;
+}
+body .app-header {
+  background: transparent;
+  border: 0;
+  padding: .75rem 0;
+}
+.app-brand-row > span { letter-spacing: -.035em; }
+body .app-header .app-actions { margin-top: .55rem; }
+.app-header .app-action { border-radius: .6rem; }
+.app-header .app-action-primary, .radar-workspace .radar-button-primary,
+#create-task-dialog footer button[type="submit"] { background: var(--pilot-action); color: white; }
+.app-header[data-view="control"] .app-action-primary { background: transparent; border-color: var(--pilot-line); }
+body .main-view-nav {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--pilot-line);
+  border-radius: 0;
+  padding: 0;
+  margin: 1rem 0;
+}
+.main-view-nav .view-heading { display: none; }
+body .main-view-nav > .grid { background: transparent; padding: 0; }
+body .main-view-nav button {
+  background: transparent; border-radius: 0; border-bottom: 3px solid transparent;
+  padding: .6rem 1.15rem; color: var(--pilot-muted);
+}
+body .main-view-nav button[aria-pressed="true"] { color: #f7f8fe; border-bottom-color: #afa8ff; }
+body .planning-day-header { margin: 1.4rem 0 1rem; }
+body .planning-day-header h2, body .radar-header h2, #create-task-title {
+  font-size: var(--pilot-title); line-height: 1.2; font-weight: 600; letter-spacing: -.035em;
+}
+body .radar-header { background: transparent; border: 0; padding: 1rem 0; }
+body .radar-header-top { align-items: center; }
+.mission-empty, .radar-workspace .radar-empty {
+  padding: clamp(1.25rem,4vw,2.5rem); background: #10182a; border: 1px solid #29344b; border-radius: .85rem;
+}
+.mission-empty h3, .radar-workspace .radar-empty h3 { font-size: 1.125rem; font-weight: 600; }
+.mission-empty button { margin-top: .65rem; min-height: 44px; color: #cecaff; text-decoration: underline; text-underline-offset: .22em; }
+#create-task-dialog { border-radius: 1rem; }
+#create-task-dialog > header { padding: 1.4rem 1.5rem .95rem; }
+#create-task-dialog-scroll { padding: 1.2rem 1.5rem; }
+#ct-options { border-top: 1px solid var(--pilot-line); }
+#ct-options > summary { color: #d7d4ff; min-height: 46px; }
+@media (min-width: 740px) {
+  body .app-header { display: flex; align-items: center; gap: 1.5rem; }
+  .app-header .app-brand-row { flex: 1; flex-wrap: wrap; }
+  body .app-header .app-actions { margin: 0; }
+}
+@media (max-width: 639px) {
+  #create-task-dialog > header, #create-task-dialog-scroll { padding: 1rem; }
+  body .main-view-nav button { padding-inline: .65rem; }
+}
