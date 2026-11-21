@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.96-week-focus">
+    <meta name="app-build" content="v1.9.97-study-library">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -24,7 +24,7 @@
     <link rel="stylesheet" href="ui/health_experience.v1.css?v=1.9.85">
     <link rel="preload" href="assets/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="ui/typography.v1.css?v=1.9.94">
-    <link rel="stylesheet" href="ui/planning_pilot.css?v=1.9.96">
+    <link rel="stylesheet" href="ui/planning_pilot.css?v=1.9.97">
     <meta name="theme-color" content="#0284c7">
 <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -170,7 +170,7 @@
         import {installMissionFeedback} from './ui/mission_feedback.v1.js?v=1.9.92';
         import { installTaskForms } from './ui/task_forms.v11.js?v=1.9.95';
         import * as Library from './library.v2.js?v=1.9.70';
-        import { installLibrary } from './ui/library.v4.js?v=1.9.83';
+        import { installLibrary } from './ui/library.v4.js?v=1.9.97';
         import {installMissionChanges} from './ui/mission_changes.v1.js?v=1.9.75';
         import {createMissionChangeStore} from './ai/v2/mission_changes_browser.js';
         import {applyMissionChange} from './ai/v2/mission_change_apply.js';
@@ -200,7 +200,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.96';
+        const APP_VERSION = 'v1.9.97';
         const updateAppView = createViewUpdater(document);
         window.renderMissionRowIsland=(id,html)=>updateAppView.island(id,html);
         const firebaseConfig = {
@@ -4859,7 +4859,7 @@
                                 <div class="flex items-center gap-2 min-w-0"><i data-lucide="${area.icon}" class="hidden sm:block w-4 h-4 shrink-0 ${currentArea === area.id ? 'text-cyan-300' : 'text-slate-500'}"></i><span class="text-xs sm:text-sm font-medium truncate">${area.label}</span></div>
                                 ${area.id === 'progress' && dueReviews ? `<span class="hidden sm:inline shrink-0 rounded-full bg-red-950 text-red-300 border border-red-900/60 px-1.5 py-0.5 text-[9px] font-black">${dueReviews}</span>` : ''}
                             </div>
-                            <div class="hidden sm:block text-xs mt-1 ${currentArea === area.id ? 'text-cyan-500' : 'text-slate-600'}">${area.desc}</div>
+
                         </button>
                     `).join('')}
                 </nav>
@@ -7686,10 +7686,10 @@
                     <div class="grid grid-cols-1 lg:grid-cols-[1.45fr_0.55fr] gap-4 mb-5">
                         <div class="bg-cyan-950/15 border border-cyan-900/40 rounded-2xl p-5">
                             <div class="flex items-center justify-between gap-3 mb-3">
-                                <div><div class="text-[9px] text-cyan-500 uppercase font-black tracking-[0.2em]">Estudo de ${selectedDay.label}</div><h3 class="text-lg font-black text-white mt-1">${nextBlock ? 'Próximo estudo' : (dayBlocks.length ? 'Plano concluído' : 'Nada planejado ainda')}</h3></div>
-                                <div class="text-right"><div class="text-xl font-black text-cyan-200">${completedBlocks}/${dayBlocks.length}</div><div class="text-[9px] text-slate-600 uppercase font-bold">blocos</div></div>
+                                <div><div class="text-[9px] text-cyan-500 uppercase font-black tracking-[0.2em]">Estudo de ${selectedDay.label}</div><h3 class="text-lg font-black text-white mt-1">${nextBlock ? 'Próximo estudo' : (dayBlocks.length ? 'Plano concluído' : 'Nenhum estudo planejado')}</h3></div>
+                                ${dayBlocks.length ? `<div class="text-right"><div class="text-xl font-black text-cyan-200">${completedBlocks}/${dayBlocks.length}</div><div class="text-[9px] text-slate-600 uppercase font-bold">blocos</div></div>` : ''}
                             </div>
-                            ${nextBlock ? `<div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4"><div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div class="min-w-0"><div class="text-base font-black text-white break-words">${window.escapeHtml(nextBlock.title)}</div><div class="text-xs text-slate-400 mt-1">${nextSubject ? window.escapeHtml(nextSubject.name) + ' • ' : ''}${window.getStudyTypeLabel(nextBlock.studyType)} • ${nextBlock.plannedMinutes} min${nextBlock.startTime ? ' • ' + window.getCalendarTimeLabel(nextBlock, nextBlock.plannedMinutes) : ''}</div></div><button type="button" onclick="window.prefillStudySessionFromPlan('${nextBlock.id}')" class="shrink-0 bg-cyan-700 hover:bg-cyan-600 text-white px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"><i data-lucide="clipboard-pen" class="w-3.5 h-3.5"></i> Registrar sessão</button></div></div>` : dayBlocks.length ? `<div class="bg-emerald-950/20 border border-emerald-900/40 rounded-xl p-4 text-sm text-emerald-300 flex items-center gap-2"><i data-lucide="check-circle-2" class="w-5 h-5"></i> Todos os blocos planejados para ${selectedDay.label} estão concluídos.</div>` : `<div class="border border-dashed border-slate-800 rounded-xl p-5 text-center"><p class="text-sm text-slate-500 mb-3">Nenhum estudo planejado para ${selectedDay.label}.</p><button onclick="window.setStudyTab('planning')" class="bg-cyan-800 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest">Planejar estudo</button></div>`}
+                            ${nextBlock ? `<div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4"><div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div class="min-w-0"><div class="text-base font-black text-white break-words">${window.escapeHtml(nextBlock.title)}</div><div class="text-xs text-slate-400 mt-1">${nextSubject ? window.escapeHtml(nextSubject.name) + ' • ' : ''}${window.getStudyTypeLabel(nextBlock.studyType)} • ${nextBlock.plannedMinutes} min${nextBlock.startTime ? ' • ' + window.getCalendarTimeLabel(nextBlock, nextBlock.plannedMinutes) : ''}</div></div><button type="button" onclick="window.prefillStudySessionFromPlan('${nextBlock.id}')" class="study-primary-action shrink-0 bg-cyan-700 hover:bg-cyan-600 text-white px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5"><i data-lucide="clipboard-pen" class="w-3.5 h-3.5"></i> Registrar sessão</button></div></div>` : dayBlocks.length ? `<div class="bg-emerald-950/20 border border-emerald-900/40 rounded-xl p-4 text-sm text-emerald-300 flex items-center gap-2"><i data-lucide="check-circle-2" class="w-5 h-5"></i> Todos os blocos planejados para ${selectedDay.label} estão concluídos.</div>` : `<div class="study-empty"><button onclick="window.setStudyTab('planning')" class="study-primary-action bg-cyan-800 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest">Planejar estudo</button></div>`}
                             ${dayBlocks.length ? `<div class="w-full bg-slate-800 rounded-full h-1.5 mt-4"><div class="bg-cyan-500 h-1.5 rounded-full transition-all" style="width:${progressPct}%"></div></div><div class="flex justify-between gap-3 mt-2 text-[10px] text-slate-500"><span>${completedMinutes}/${plannedMinutes} min do plano concluído</span><button onclick="window.setStudyTab('planning')" class="text-cyan-400 hover:text-cyan-300 font-bold">Ajustar planejamento</button></div>` : ''}
                         </div>
                         <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col gap-2">

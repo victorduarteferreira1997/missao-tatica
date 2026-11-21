@@ -101,3 +101,42 @@ body #focus-workspace #pomodoro-display {
   #focus-workspace .focus-header > button { width: 100%; }
   #weekly-workspace .week-day-summary { padding: .85rem; }
 }
+
+/* Study and reading use the established type and navigation roles. */
+body #study-module-title, body #library-heading {
+  font-size: var(--pilot-title); line-height: 1.2; font-weight: 600;
+  letter-spacing: -.035em;
+}
+#study-module-dialog > header, #library-module-dialog > header { padding: 1.25rem; }
+#study-modal-scroll, #library-scroll { padding: 1.25rem; }
+#study-module-dialog .study-area-nav { gap: 0; border-bottom: 1px solid var(--pilot-line); }
+#study-module-dialog .study-area-nav button, #library-module-dialog .library-reading-nav button {
+  background: transparent; border: 0; border-bottom: 3px solid transparent;
+  border-radius: 0; color: var(--pilot-muted); padding: .65rem .75rem;
+}
+#study-module-dialog .study-area-nav button[aria-pressed="true"],
+#library-module-dialog .library-reading-nav button[aria-pressed="true"] {
+  border-bottom-color: #afa8ff; color: #f7f8fe;
+}
+#library-module-dialog .library-reading-nav { border-bottom: 1px solid var(--pilot-line); }
+#study-module-dialog .study-subnav { background: transparent; border: 0; padding: .5rem 0 0; }
+#study-module-dialog .study-subnav button[aria-pressed="true"] {
+  background: #24213f; border-color: #68618f; color: #e1dcff;
+}
+#study-module-dialog .study-primary-action,
+#library-new-book, #library-save-book, #library-module-dialog .library-primary-action {
+  background: var(--pilot-action); border-color: var(--pilot-action); color: #fff;
+}
+#study-module-dialog .study-empty { padding-top: .35rem; }
+#study-module-dialog #study-modal-scroll h3,
+#library-module-dialog #library-scroll h3 { line-height: 1.4; font-weight: 600; }
+#study-module-dialog .study-area-nav button:focus-visible,
+#library-module-dialog .library-reading-nav button:focus-visible {
+  outline: 2px solid #b9b1ff; outline-offset: 2px;
+}
+#library-module-dialog [data-library-book] { background: #10182a; border-color: #34405a; }
+@media(max-width:639px) {
+  #study-module-dialog > header, #library-module-dialog > header,
+  #study-modal-scroll, #library-scroll { padding: 1rem; }
+  #study-module-dialog .study-area-nav button { padding-inline: .35rem; }
+}
