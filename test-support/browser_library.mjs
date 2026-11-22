@@ -61,7 +61,7 @@ const login=async uid=>{activeAccount=uid;await page.evaluate(async uid=>window.
 const cloud=async()=>page.evaluate(uid=>JSON.parse(window.__rows[`users/${uid}/state/main`].data),owner);
 try{
  await page.goto(origin+'/app.html');await page.waitForFunction(()=>!!window.__auth);await login(owner);assert.equal(await page.evaluate(()=>window.saveStateNow(true)),true);const initial=await cloud();
- await page.getByText('Mais recursos',{exact:true}).click();await page.getByRole('button',{name:'Biblioteca',exact:true}).click();const dialog=page.locator('#library-module-dialog');assert.equal(await dialog.isVisible(),true);assert.match(await dialog.innerText(),/Sua estante começa aqui/);
+ await page.locator('#resource-menu-toggle').click();await page.getByRole('button',{name:'Biblioteca · Leituras',exact:true}).click();const dialog=page.locator('#library-module-dialog');assert.equal(await dialog.isVisible(),true);assert.match(await dialog.innerText(),/Sua estante começa aqui/);
  await page.locator('#library-new-book').click();await page.getByRole('button',{name:'Voltar à estante',exact:true}).click();assert.equal(await page.locator('#confirmation-dialog').count(),0);
  const create=async(title)=>{await page.locator('#library-new-book').click();await page.locator('#lib-title').fill(title);await page.locator('#lib-authors').fill('Autor fictício');};
  await create('Livro de teste');await page.locator('#lib-category').fill('Filosofia');await page.locator('#lib-edition-0-pageCount').fill('400');

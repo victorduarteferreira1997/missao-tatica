@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.99-recovery-settings">
+    <meta name="app-build" content="v1.9.100-reward-integrity">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -200,7 +200,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.99';
+        const APP_VERSION = 'v1.9.100';
         const updateAppView = createViewUpdater(document);
         window.renderMissionRowIsland=(id,html)=>updateAppView.island(id,html);
         const firebaseConfig = {
@@ -2823,6 +2823,10 @@
         window.toggleTask = function(taskId, event) {
             const task = state.tasks.find(t => t.id == taskId);
             if (!task) return;
+            // Registros antigos/importados podem não ter custos numéricos completos.
+            const finiteCost = value => Number.isFinite(Number(value)) ? Number(value) : 0;
+            const taskXp = Math.max(0, finiteCost(task.xp));
+            const taskEnergyCost = finiteCost(task.energyCost);
 
             if (task.activityType === 'meeting' && !task.completed && (task.meetingOutcome === 'not_held' || task.googleCalendarSourceStatus === 'cancelled')) return;
             if (!task.completed && window.assertTaskDependencies?.(task) === false) return;
@@ -2830,9 +2834,9 @@
 
             if (task.completed) {
                 task.completed = false; task.skipped = false;
-                const deductedXp = task.rewardedXp || 0;
-                const deductedCoins = task.rewardedCoins || 0;
-                const energyToRestore = typeof task.rewardedEnergyCost === 'number' ? task.rewardedEnergyCost : task.energyCost;
+                const deductedXp = Math.max(0, finiteCost(task.rewardedXp));
+                const deductedCoins = Math.max(0, finiteCost(task.rewardedCoins));
+                const energyToRestore = finiteCost(task.rewardedEnergyCost ?? taskEnergyCost);
                 const affectedCombo = typeof task.rewardedAffectsCombo === 'boolean' ? task.rewardedAffectsCombo : (deductedXp > 0 || deductedCoins > 0);
 
                 const xpReverted = deductedXp > 0 ? window.revertCampaignXp(deductedXp, task.rewardedCampaign || 1) : 0;
@@ -2865,7 +2869,7 @@
                     task.rewardedAffectsCombo = false;
                     window.spawnFloatingText(event, 'Logística concluída', 'text-slate-300');
                 } else if (nature === 'recharge') {
-                    const rechargeAmount = Math.max(0, Math.abs(task.energyCost || 0));
+                    const rechargeAmount = Math.abs(taskEnergyCost);
                     task.rewardedXp = 0;
                     task.rewardedCoins = 0;
                     task.rewardedEnergyCost = -rechargeAmount;
@@ -2876,15 +2880,15 @@
                     const badgesBefore = window.getCampaignBadgeEvents().map(e => e.id);
                     const bonusBefore = [...window.normalizePrestige().bonusClaimedBadgeIds];
                     const multiplier = window.getComboMultiplier();
-                    const finalXp = Math.round(task.xp * multiplier);
+                    const finalXp = Math.round(taskXp * multiplier);
                     const baseCoins = window.getTaskCoinReward(task);
                     const earnedCoins = window.awardTacticalCoins(baseCoins, 'missao-concluida', { taskId: task.id, title: task.text, priority: task.priority, recurring: Boolean(task.isRecurring), showCapToast: true }); 
                     task.rewardedXp = finalXp;
                     task.rewardedCoins = earnedCoins;
-                    task.rewardedEnergyCost = task.energyCost;
+                    task.rewardedEnergyCost = taskEnergyCost;
                     task.rewardedAffectsCombo = true;
                     state.xp += finalXp;
-                    window.changeEnergy(-task.energyCost);
+                    window.changeEnergy(-taskEnergyCost);
                     state.combo += 1;
                     window.checkGameTriggers();
                     task.rewardedBadgeIds = window.getCampaignBadgeEvents().map(e => e.id).filter(id => !badgesBefore.includes(id));
