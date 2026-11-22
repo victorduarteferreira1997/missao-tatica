@@ -5,7 +5,8 @@ import {readFile} from 'node:fs/promises';
 import {createServer} from 'node:http';
 import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
-import {resolve,extname} from 'node:path';
+import {resolve} from 'node:path';
+import {browserFixtureContentType} from './browser_content_type.mjs';
 import {boot,plain} from './app_boot.mjs';
 import {AI_OWNER_UID as owner} from '../ai/contract.v1.js';
 import {v2ProposalRequest} from '../ai/v2/proposals.js';
@@ -26,7 +27,7 @@ const cssPath=process.env.MISSAO_QA_CSS_PATH;
 const css=cssPath?await readFile(cssPath,'utf8'):'.hidden{display:none}';
 const server=createServer(async(req,res)=>{
  try{const path=resolve(root,'.'+decodeURIComponent(new URL(req.url,'http://localhost').pathname));if(!path.startsWith(root+'/'))throw Error('bad path');let data=await readFile(path);if(path.endsWith('/app.html'))data=Buffer.from(data.toString().replace(/<base href="[^"]+">/,'<base href="/">'));
- res.setHeader('Content-Type',extname(path)==='.html'?'text/html':extname(path)==='.js'?'text/javascript':'application/octet-stream');res.end(data);}catch{res.statusCode=404;res.end();}
+ res.setHeader('Content-Type',browserFixtureContentType(path));res.end(data);}catch{res.statusCode=404;res.end();}
 });
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({headless:true});
@@ -69,17 +70,19 @@ try{
  await page.evaluate(()=>window.setMainView('week'));
  const clienteAguardando=page.locator('[data-radar-week-id="clienteAguardando"]');assert.equal(await clienteAguardando.count(),1);assert.match(await clienteAguardando.textContent(),/Aguardando/);assert.match(await clienteAguardando.textContent(),/21\/10\/2026/);
  assert.equal(await page.locator('[data-radar-week-id="sem-acao"]').count(),1);assert.equal(await page.locator('[data-radar-week-id="backlog"]').count(),1);
- await clienteAguardando.locator('summary').click();await clienteAguardando.getByRole('button',{name:'Criar missão',exact:true}).click();
- assert.equal(await page.locator('#ct-radar').inputValue(),'clienteAguardando');await page.locator('#ct-text').fill('Validar três ajustes e reassinar RIPD');await page.locator('#ct-day').selectOption('wednesday');
+ await clienteAguardando.getByRole('button',{name:'Abrir demanda',exact:true}).click();
+ const waitingCard=page.locator('[data-radar-demand-id="clienteAguardando"]');await waitingCard.locator('details[data-radar-actions] > summary').click();await waitingCard.locator('details[data-radar-actions]').getByRole('button',{name:'Criar missão',exact:true}).click();
+ assert.equal(await page.locator('#ct-radar').inputValue(),'clienteAguardando');await page.locator('#ct-text').fill('Validar três ajustes e reassinar RIPD');await page.locator('#ct-date').fill('2026-10-21');await page.locator('#ct-options > summary').click();
  await page.locator('#create-task-dialog details[data-create-section="subtasks"] summary').click();await page.getByRole('button',{name:'Organizar subtarefas',exact:true}).last().click();
  await page.getByRole('button',{name:'Inserir no início',exact:true}).click();await page.locator('#subtask-draft-0').fill('Validar ajustes');await page.locator('[data-subtask-index="0"]').getByRole('checkbox').check();
  await page.locator('[data-subtask-index="0"]').getByRole('button',{name:'Inserir abaixo',exact:true}).click();await page.locator('#subtask-draft-1').fill('Reassinar');await page.getByRole('button',{name:'Salvar subtarefas',exact:true}).click();
  await page.locator('#ct-subtasks').fill('Validar ajustes revisados\nReassinar');
  await page.locator('#create-task-dialog button[type="submit"]').click();assert.equal(await page.evaluate(()=>window.saveStateNow(true)),true);
  let saved=await cloud();const created=saved.tasks.find(t=>t.text==='Validar três ajustes e reassinar RIPD');assert.ok(created);assert.equal(created.radarDemandId,'clienteAguardando');assert.deepEqual(created.dependsOnTaskIds,[]);assert.equal(created.subtasks[0].completed,true);assert.equal(saved.operationalControl.demands.find(d=>d.id==='clienteAguardando').workflowStatus,'waiting');
- const suppliers=page.locator('[data-radar-week-id="fornecedores"]');await suppliers.locator('summary').click();await suppliers.getByRole('button',{name:'Vincular missão existente',exact:true}).click();
+ await page.getByRole('button',{name:'Semana',exact:true}).click();await page.locator('[data-radar-week-id="fornecedores"]').getByRole('button',{name:'Abrir demanda',exact:true}).click();
+ const suppliers=page.locator('[data-radar-demand-id="fornecedores"]');await suppliers.locator('details[data-radar-actions] > summary').click();await suppliers.locator('details[data-radar-actions]').getByRole('button',{name:'Vincular missão existente',exact:true}).click();
  for(const title of ['Fornecedor B análise','Fornecedor C análise']){await page.locator('#radar-link-dialog article').filter({hasText:title}).getByRole('button',{name:'Vincular missão',exact:true}).click();assert.equal(await page.locator('#radar-link-dialog').count(),1);}
- await page.locator('#radar-link-close').click();assert.equal(await page.evaluate(()=>window.saveStateNow(true)),true);saved=await cloud();assert.equal(saved.tasks.filter(t=>t.radarDemandId==='fornecedores').length,3);
+ await page.locator('#radar-link-close').click();assert.equal(await page.evaluate(()=>window.saveStateNow(true)),true);saved=await cloud();assert.equal(saved.tasks.filter(t=>t.radarDemandId==='fornecedores').length,3);await suppliers.locator('details[data-view-key="radar-missions-fornecedores"] > summary').click();
  await suppliers.getByRole('button',{name:'Remover vínculo',exact:true}).nth(1).click();await page.locator('#confirmation-cancel').click();assert.equal((await cloud()).tasks.find(t=>t.id===3).radarDemandId,'fornecedores');
  await suppliers.getByRole('button',{name:'Remover vínculo',exact:true}).nth(1).click();await page.locator('#confirmation-accept').click();assert.equal(await page.evaluate(()=>window.saveStateNow(true)),true);assert.equal((await cloud()).tasks.find(t=>t.id===3).radarDemandId,null);
  // Existing task edit keeps unrelated fields while the nested subtask editor works.
@@ -88,13 +91,13 @@ try{
  await page.locator('[data-subtask-index="2"] button[draggable]').dragTo(page.locator('[data-subtask-index="0"]'));
  assert.equal(await page.locator('#subtask-draft-0').inputValue(),'Reassinar');await page.getByRole('button',{name:'Mover subtarefa 1 para baixo',exact:true}).click();assert.equal(await page.locator('#subtask-draft-0').inputValue(),'Validar os três ajustes');
  if(cssPath)await page.screenshot({path:root+'/../radar-desktop-subtasks.png',fullPage:false});
- await page.getByRole('button',{name:'Salvar subtarefas',exact:true}).click();assert.equal(await page.locator('#et-text').inputValue(),'Rascunho não salvo do título');await page.evaluate(()=>window.closeEditTaskModal());assert.equal(await page.evaluate(()=>window.saveStateNow(true)),true);
+ await page.getByRole('button',{name:'Salvar subtarefas',exact:true}).click();assert.equal(await page.locator('#et-text').inputValue(),'Rascunho não salvo do título');await page.evaluate(()=>window.closeEditTaskModal());await page.locator('#confirmation-accept').click();assert.equal(await page.evaluate(()=>window.saveStateNow(true)),true);
  saved=await cloud();let updated=saved.tasks.find(t=>t.id===created.id);assert.deepEqual(updated.subtasks.map(s=>s.text),['Validar os três ajustes','Reassinar','Conferir versão']);assert.equal(updated.subtasks[0].id,created.subtasks[0].id);assert.equal(updated.subtasks[0].completed,true);assert.equal(updated.text,created.text);
  // Dependencies remain distinct from the RADAR relation and reject circular edits.
  await page.evaluate(()=>window.openEditTaskModal(2));await page.locator('#edit-task-dialog details[data-view-key="et-dependencies"] summary').click();await page.locator('#et-dependency-1').check();await page.locator('#edit-task-dialog button[type="submit"]').click();assert.equal(await page.evaluate(()=>window.saveStateNow(true)),true);
- await page.evaluate(()=>window.openEditTaskModal(1));await page.locator('#edit-task-dialog details[data-edit-section="relations"] > summary').click();await page.locator('#edit-task-dialog details[data-view-key="et-dependencies"] summary').click();await page.locator('#et-dependency-2').check();await page.locator('#edit-task-dialog button[type="submit"]').click();assert.match(await page.locator('#alert-dialog').textContent(),/ciclo/);await page.locator('#alert-close').click();await page.evaluate(()=>window.closeEditTaskModal());
- await page.evaluate(()=>window.toggleTask(2));assert.match(await page.locator('#alert-dialog').textContent(),/pré-requisitos/);await page.locator('#alert-close').click();await page.evaluate(()=>window.toggleTask(1));await page.evaluate(()=>window.toggleTask(2));assert.equal(await page.locator('#radar-next-dialog').count(),1);
- await page.getByRole('button',{name:'Colocar RADAR em Aguardando',exact:true}).click();assert.equal(await page.locator('#op-demand-status').inputValue(),'waiting');assert.equal((await cloud()).operationalControl.demands.find(d=>d.id==='fornecedores').workflowStatus,'active');await page.evaluate(()=>window.closeOperationalDemandModal());
+ await page.evaluate(()=>window.openEditTaskModal(1));await page.locator('#edit-task-dialog details[data-edit-section="relations"] > summary').click();await page.locator('#edit-task-dialog details[data-view-key="et-dependencies"] summary').click();await page.locator('#et-dependency-2').check();await page.locator('#edit-task-dialog button[type="submit"]').click();assert.match(await page.locator('#alert-dialog').textContent(),/ciclo/);await page.locator('#alert-close').click();await page.evaluate(()=>window.closeEditTaskModal());await page.locator('#confirmation-accept').click();
+ await page.evaluate(()=>window.toggleTask(2));assert.match(await page.locator('#alert-dialog').textContent(),/pré-requisitos/);await page.locator('#alert-close').click();await page.evaluate(()=>window.toggleTask(1));await page.evaluate(()=>window.toggleTask(2));assert.equal(await page.locator('#radar-next-dialog').count(),0);await page.getByRole('button',{name:'Dia',exact:true}).click();await page.getByRole('button',{name:'Atualizar RADAR',exact:true}).click();assert.equal(await page.locator('#radar-next-dialog').count(),1);
+ await page.getByRole('button',{name:'Colocar RADAR em Aguardando',exact:true}).click();assert.equal(await page.locator('#op-demand-status').inputValue(),'waiting');assert.equal((await cloud()).operationalControl.demands.find(d=>d.id==='fornecedores').workflowStatus,'active');await page.evaluate(()=>window.closeOperationalDemandModal());await page.locator('#confirmation-accept').click();
  // Proposal date is explicit both before and during review, and changes with weekday.
  await page.evaluate(()=>window.openAiV2Proposals());await page.getByRole('button',{name:'Revisar e cadastrar',exact:true}).click();assert.match(await page.locator('#ai-v2-proposals-dialog').textContent(),/Destino: Missões/);await page.locator('#ai-v2-review-day').selectOption('wednesday');assert.match(await page.locator('#ai-v2-review-date').textContent(),/Quarta-feira, 21\/10\/2026/);await page.getByRole('button',{name:'Voltar à fila',exact:true}).click();await page.locator('#ai-v2-proposals-close').click();
  // True reload, keeping only the mock cloud state; no mission or campaign duplication.

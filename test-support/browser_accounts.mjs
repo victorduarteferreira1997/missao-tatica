@@ -5,7 +5,8 @@ import {readFile} from 'node:fs/promises';
 import {createServer} from 'node:http';
 import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
-import {resolve,extname} from 'node:path';
+import {resolve} from 'node:path';
+import {browserFixtureContentType} from './browser_content_type.mjs';
 import {boot,plain} from './app_boot.mjs';
 import {AI_OWNER_UID as owner} from '../ai/contract.v1.js';
 import {v2ProposalRequest} from '../ai/v2/proposals.js';
@@ -15,7 +16,7 @@ const root=fileURLToPath(new URL('..',import.meta.url)).replace(/\/$/,''),sara='
 const fixture=plain(boot().state);fixture.ownerUid=owner;fixture.userProfile={displayName:'Proprietário fictício',gender:'neutro',configured:true};fixture.aiAppliedProposals={fixtureProof:1};fixture.tasks=[{id:1,text:'Missão exclusiva do proprietário',day:'monday',category:'life',completed:false,time:'30 min',subtasks:[]}];
 const server=createServer(async(req,res)=>{
  try{const path=resolve(root,'.'+decodeURIComponent(new URL(req.url,'http://localhost').pathname));if(!path.startsWith(root+'/'))throw Error('bad path');let data=await readFile(path);if(path.endsWith('/app.html'))data=Buffer.from(data.toString().replace(/<base href="[^"]+">/,'<base href="/">'));
- res.setHeader('Content-Type',extname(path)==='.html'?'text/html':extname(path)==='.js'?'text/javascript':'application/octet-stream');res.end(data);}catch{res.statusCode=404;res.end();}
+ res.setHeader('Content-Type',browserFixtureContentType(path));res.end(data);}catch{res.statusCode=404;res.end();}
 });
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({headless:true});
