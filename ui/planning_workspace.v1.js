@@ -67,7 +67,7 @@ export function installPlanningWorkspace(window,{document,calendarSync,getState,
 
     const calendarAttention=()=>{
         const c=calendarSync.view();
-        return Boolean(c.error || (c.enabled&&!c.connected) || calendarSync.getInbox().length);
+        return Boolean(c.error || c.connecting || (c.enabled&&!c.connected) || calendarSync.getInbox().length);
     };
     const calendarKey=()=>JSON.stringify([getState().currentPlanningWeekStart,calendarSync.view().error||'',Boolean(calendarSync.view().enabled&&!calendarSync.view().connected),calendarSync.getInbox().map(item=>item.id).sort()]);
     window.setPlanningCalendarOpen=(key,open)=>{
@@ -78,7 +78,7 @@ export function installPlanningWorkspace(window,{document,calendarSync,getState,
         if(placement==='attention'&&!attention || placement==='quiet'&&attention)return '';
         const c=calendarSync.view(),pending=calendarSync.getInbox().length,key=calendarKey();
         const open=getUiState().planningCalendarOpen?.[key]??attention;
-        const status=c.busy?'Sincronizando…':c.status||'Não conectada';
+        const status=c.connecting?c.status:c.busy?'Sincronizando…':c.status||'Não conectada';
         return `<section id="planning-calendar" class="planning-calendar${attention?' needs-attention':''}" aria-label="Google Agenda"><details data-state-key="${e(key)}" ontoggle="window.setPlanningCalendarOpen(this.dataset.stateKey,this.open)" ${open?'open':''}><summary><span><i data-lucide="calendar-sync" aria-hidden="true"></i><strong>Google Agenda</strong><span>${e(status)}</span>${pending?`<span class="planning-calendar-count">${pending} para classificar</span>`:''}</span></summary><div class="planning-calendar-body">${window.renderCalendarSyncPanel()}${window.renderCalendarInboxPanel()}</div></details></section>`;
     };
     window.refreshPlanningCalendar=()=>{
