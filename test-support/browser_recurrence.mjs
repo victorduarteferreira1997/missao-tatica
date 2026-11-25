@@ -73,6 +73,7 @@ try{
  const original=await cloud();
  const create=async(title,days,end='')=>{
   await page.getByRole('button',{name:'Nova missão',exact:true}).click();await page.locator('#ct-text').fill(title);
+  await page.locator('#create-task-dialog #ct-options > summary').click();
   await page.locator('#create-task-dialog details[data-create-section="recurrence"] > summary').click();
   for(const day of days)await page.locator('#ct-repeat-'+day).check();
   if(end){await page.locator('#ct-repeat-end-mode').selectOption('date');await page.locator('#ct-repeat-end-date').fill(end);}
@@ -103,7 +104,7 @@ try{
  // The member account can use the feature, using touch controls at phone width.
  await page.evaluate(({sara,template})=>{template.ownerUid=sara;template.tasks=[];template.planning.recurrenceRules={};template.planning.history=[];template.currentPlanningWeekStart='2026-10-19';template.planning.legacyWeek='2026-10-19';template.userProfile={configured:true,displayName:'Pessoa fictícia',gender:'feminino'};window.__rows[`users/${sara}/state/main`]={data:JSON.stringify(template),updatedAt:'2026-10-21T12:00:00Z',revision:1};},{sara,template:original});
  await login(sara);await page.setViewportSize({width:390,height:844});
- await page.getByRole('button',{name:'Nova missão',exact:true}).tap();await page.locator('#ct-text').fill('Rotina da conta independente');await page.locator('#create-task-dialog details[data-create-section="recurrence"] > summary').tap();await page.locator('#ct-repeat-friday').check();await page.locator('#ct-repeat-end-mode').selectOption('date');await page.locator('#ct-repeat-end-date').fill('2026-11-10');
+ await page.getByRole('button',{name:'Nova missão',exact:true}).tap();await page.locator('#ct-text').fill('Rotina da conta independente');await page.locator('#create-task-dialog #ct-options > summary').tap();await page.locator('#create-task-dialog details[data-create-section="recurrence"] > summary').tap();await page.locator('#ct-repeat-friday').check();await page.locator('#ct-repeat-end-mode').selectOption('date');await page.locator('#ct-repeat-end-date').fill('2026-11-10');
  if(cssPath){assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);await page.screenshot({path:root+'/../recurrence-mobile-create.png',fullPage:false});}
  await page.locator('#create-task-dialog button[type="submit"]').tap();assert.equal(await page.evaluate(()=>window.saveStateNow(true)),true);
  const member=await page.evaluate(uid=>JSON.parse(window.__rows[`users/${uid}/state/main`].data),sara);assert.equal(member.tasks.length,1);assert.equal(Object.values(member.planning.recurrenceRules)[0].endDate,'2026-11-10');assert.deepEqual(await cloud(),ownerAfter);
