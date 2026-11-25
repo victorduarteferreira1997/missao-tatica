@@ -23,7 +23,9 @@ O token continua somente em memória. Escopos, destinatários, permissões, iden
 
 Na interface isolada, com Firebase e Google simulados e rede externa bloqueada, foram conferidos: espera com ambos os botões desabilitados; fechamento com erro explícito e reconexão disponível; aprovação seguida de “Sincronizado” em Configurações e Semana. Isso não comprova sincronização com uma conta real. A suíte completa dos doze roteiros de navegador não foi executada.
 
-## Próxima homologação real
+Após publicar a correção, a homologação real foi concluída na mesma aba de origem: o aplicativo mostrou “Sincronizado”, a data/hora da última sincronização e a entrada de compromissos carregada. Não foi necessário repetir a confirmação do celular nessa tentativa. Isso confirma o funcionamento básico da integração; não estabelece a causa das tentativas anteriores sem retorno observado.
+
+## Procedimento para verificar a conexão real
 
 1. Abrir a versão publicada e iniciar a conexão uma vez.
 2. Concluir a confirmação do celular e as decisões de consentimento na janela do Google.

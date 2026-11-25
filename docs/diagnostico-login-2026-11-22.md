@@ -23,6 +23,8 @@ Na interface isolada com serviços simulados foram conferidos os botões desabil
 
 A versão melhora o diagnóstico e a recuperação da entrada. O login real e a integração com a Agenda continuam pendentes de homologação.
 
+Atualização em 25/11/2026: o login real foi posteriormente validado e a Agenda concluiu sua homologação básica na v1.9.102, na mesma aba que iniciou a autorização. Ver `diagnostico-agenda-2026-11-25.md` e `qa-fluxos-integrados-2026-11-25.md`. A pendência acima descreve o estado na data deste diagnóstico inicial.
+
 O Firebase documenta que signInWithRedirect depende de armazenamento entre o domínio da aplicação e o domínio auxiliar de autenticação; navegadores que restringem esse armazenamento exigem uma das arquiteturas compatíveis. O app está no GitHub Pages e usa um authDomain firebaseapp.com. Isso constitui uma hipótese para a falha observada, não um diagnóstico conclusivo. Trocar apenas authDomain para o domínio do GitHub Pages não fornece os endpoints auxiliares exigidos e não foi feito.
 
 Referências oficiais:
