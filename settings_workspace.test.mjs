@@ -52,6 +52,12 @@ test('falha de conexão deixa uma mensagem e permite nova tentativa',async()=>{
  const b=boot();b.window.calendarSync.view=()=>({enabled:true,connected:false,status:'Reconectar'});let calls=0;b.window.calendarSync.connect=async()=>{calls++;throw Error('Segredo técnico fictício');};
  b.window.openSettingsWorkspace();b.window.setSettingsTab('connections');await b.window.runSettingsCalendarAction('connect');assert.match(b.window.renderSettingsWorkspace(),/Não foi possível concluir/);assert.doesNotMatch(b.window.renderSettingsWorkspace(),/Segredo técnico/);await b.window.runSettingsCalendarAction('connect');assert.equal(calls,2);
 });
+test('autorização pendente aparece em Conexões sem afirmar sincronização e desabilita os controles',()=>{
+ const b=boot();b.window.calendarSync.view=()=>({enabled:true,connected:false,busy:true,connecting:true,status:'Aguardando autorização do Google',notice:'Volte para esta mesma aba.'});
+ b.window.openSettingsWorkspace();b.window.setSettingsTab('connections');const html=b.window.renderSettingsWorkspace();
+ assert.match(html,/Aguardando autorização do Google/);assert.match(html,/Volte para esta mesma aba/);assert.doesNotMatch(html,/Sincronizando…/);
+ assert.match(html,/<button id="settings-calendar-connect" type="button" disabled/);assert.match(html,/<button id="settings-calendar-pause" type="button" disabled/);
+});
 test('revisar limpeza pelas Configurações não seleciona nem apaga registros e retorna à mesma área',()=>{
  const b=boot();b.window.openSettingsWorkspace();b.window.setSettingsTab('backups');const before=plain(b.state);
  b.window.runSettingsAction('cleanup');assert.deepEqual(plain(b.ui.dataManager.selected),[]);assert.match(b.window.renderSettingsWorkspace(),/data-work-tab="backups"/);b.window.closeDataManager();assert.deepEqual(plain(b.state),before);assert.match(b.window.renderSettingsWorkspace(),/data-work-tab="backups"/);

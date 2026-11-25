@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Missão Tática da Semana</title>
-    <meta name="app-build" content="v1.9.101-auth-feedback">
+    <meta name="app-build" content="v1.9.102-agenda-feedback">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Ícone simplificado para abas, favoritos e atalhos -->
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon-v2.svg">
@@ -148,7 +148,7 @@
 
     <!-- Script Principal com Firebase em Módulo -->
     <script type="module">
-        import { createCalendarSync } from './calendar_sync.v3.js?v=1.9.73';
+        import { createCalendarSync } from './calendar_sync.v3.js?v=1.9.102';
         import { installPlanningTools } from './ui/planning_tools.v4.js?v=1.9.73';
         import { installRadarMissions } from './ui/radar_missions.v3.js';
         import { installRadarWorkspace } from './ui/radar_workspace.v1.js?v=1.9.95';
@@ -166,7 +166,7 @@
         import * as Recurrence from './recurrence.v1.js?v=1.9.66.1';
         import { installRecurrence } from './ui/recurrence.v1.js?v=1.9.66.1';
         import { planningPreview } from './planning_preview.v1.js?v=1.9.77';
-        import {installSettingsWorkspace} from './ui/settings_workspace.v1.js?v=1.9.93';
+        import {installSettingsWorkspace} from './ui/settings_workspace.v1.js?v=1.9.102';
         import {installMissionFeedback} from './ui/mission_feedback.v1.js?v=1.9.92';
         import { installTaskForms } from './ui/task_forms.v11.js?v=1.9.95';
         import * as Library from './library.v2.js?v=1.9.70';
@@ -178,7 +178,7 @@
         import {createLibraryImportStore} from './ai/v2/library_browser.js?v=1.9.71';
         import {applyLibraryImport} from './library_import.v1.js?v=1.9.71';
         import { installPlanningViews } from './ui/planning_views.v13.js?v=1.9.96';
-        import { installPlanningWorkspace } from './ui/planning_workspace.v1.js?v=1.9.91';
+        import { installPlanningWorkspace } from './ui/planning_workspace.v1.js?v=1.9.102';
         import { installAiInbox } from './ui/ai_inbox.v3.js';
         import { AI_CONFIG } from './ai/config.v1.js';
         import { AI_V2_CONFIG } from './ai/config.v2.js';
@@ -200,7 +200,7 @@
         // ==========================================
         // CONFIGURAÇÕES FIREBASE
         // ==========================================
-        const APP_VERSION = 'v1.9.101';
+        const APP_VERSION = 'v1.9.102';
         const updateAppView = createViewUpdater(document);
         window.renderMissionRowIsland=(id,html)=>updateAppView.island(id,html);
         const firebaseConfig = {
@@ -7247,7 +7247,7 @@
 
         window.renderCalendarSyncPanel = function() {
             const connection = calendarSync.view();
-            const label = connection.busy ? 'Sincronizando...' : connection.status;
+            const label = connection.connecting ? connection.status : connection.busy ? 'Sincronizando...' : connection.status;
             const statusColor = connection.status === 'Sincronizado' ? 'text-emerald-300' : connection.error ? 'text-rose-300' : 'text-amber-300';
             const lastSync = connection.lastSyncedAt
                 ? `Última sincronização: ${new Date(connection.lastSyncedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}.`
@@ -7258,12 +7258,13 @@
                         <h3 id="calendar-sync-title" class="text-sm font-semibold text-emerald-200 flex items-center gap-2"><i data-lucide="calendar-sync" class="w-4 h-4"></i> Google Agenda</h3>
                         <p class="text-xs mt-1 font-medium ${statusColor}">${window.escapeHtml(label)} <span class="text-slate-400 font-normal">· ${window.escapeHtml(lastSync)}</span></p>
                         ${connection.error ? `<p class="text-[11px] text-rose-300 mt-1">${window.escapeHtml(connection.error)}</p>` : ''}
+                        ${connection.notice ? `<p class="text-sm text-slate-300 mt-2 max-w-2xl" role="status">${window.escapeHtml(connection.notice)}</p>` : ''}
                     </div>
                     <div class="flex flex-wrap gap-2 shrink-0">
                         ${!connection.connected
-                            ? `<button type="button" onclick="window.calendarSync.connect()" class="min-h-9 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-2 text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">${connection.enabled ? 'Reconectar' : 'Conectar Google Agenda'}</button>`
+                            ? `<button type="button" onclick="window.calendarSync.connect()" ${connection.busy ? 'disabled' : ''} class="min-h-9 rounded-lg bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white px-3 py-2 text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">${connection.connecting ? 'Conectando…' : connection.enabled ? 'Reconectar' : 'Conectar Google Agenda'}</button>`
                             : `<button type="button" onclick="window.calendarSync.syncNow({force:true})" ${connection.busy ? 'disabled' : ''} class="min-h-9 rounded-lg bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white px-3 py-2 text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Sincronizar tudo</button>`}
-                        ${connection.enabled ? `<button type="button" onclick="window.calendarSync.pause()" class="min-h-9 rounded-lg border border-slate-700 bg-slate-950/50 text-slate-300 px-3 py-2 text-xs font-medium hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Pausar</button>` : ''}
+                        ${connection.enabled ? `<button type="button" onclick="window.calendarSync.pause()" ${connection.busy ? 'disabled' : ''} class="min-h-9 rounded-lg border border-slate-700 bg-slate-950/50 text-slate-300 px-3 py-2 text-xs font-medium hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">Pausar</button>` : ''}
                     </div>
                 </div>
                 <details class="mt-2 text-xs text-slate-400">

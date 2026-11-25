@@ -252,6 +252,7 @@ function createCalendarSession({ clientId, getState, saveState, getUser, onChang
     let activeUid = '';
     let timer = null;
     let running = false;
+    let connecting = false;
     let status = 'Desconectado';
     let error = '';
     let lastSyncedAt = '';
@@ -266,7 +267,9 @@ function createCalendarSession({ clientId, getState, saveState, getUser, onChang
     };
     const connected = () => Boolean(token && Date.now() < expiresAt);
     const emit = () => onChange();
-    const view = () => ({ status: config().enabled && !connected() && !running ? 'Reconectar' : status, error, enabled: Boolean(config().enabled), connected: connected(), busy: running, lastSyncedAt, calendarId: config().calendarId || '', inboundEnabled: enableInbound, pendingInbox: getInbox().filter(item => item.status === 'pending').length });
+    const view = () => ({ status: config().enabled && !connected() && !running && !connecting && !error ? 'Reconectar' : status, error, enabled: Boolean(config().enabled), connected: connected(), busy: running || connecting, connecting,
+        notice: connecting ? 'Conclua a autorização na janela do Google e volte para esta mesma aba. Não recarregue o aplicativo durante a conexão.' : config().enabled && !connected() ? 'A autorização da Agenda vale somente nesta aba. Ao recarregar ou abrir outra aba, conecte a Agenda novamente; o login do aplicativo continua separado.' : '',
+        lastSyncedAt, calendarId: config().calendarId || '', inboundEnabled: enableInbound, pendingInbox: getInbox().filter(item => item.status === 'pending').length });
 
     async function api(path, options = {}) {
         check();
@@ -604,28 +607,41 @@ function createCalendarSession({ clientId, getState, saveState, getUser, onChang
 
     function schedule() {
         if (!config().enabled) return;
+        if (connecting && !running) return;
         if (!connected()) { status = 'Reconectar'; emit(); return; }
         clearTimeout(timer);
         timer = setTimeout(() => { timer = null; syncNow(); }, 1400);
     }
 
     async function connect() {
+        if (connecting || running) return;
         const user = getUser();
         if (!user) return;
         if (!window.google?.accounts?.oauth2) { error = 'O Google ainda está carregando. Tente de novo em alguns segundos.'; emit(); return; }
-        error = ''; status = 'Conectando...'; emit();
+        connecting = true;
+        error = ''; status = 'Aguardando autorização do Google'; emit();
         try {
             const result = await new Promise((resolve, reject) => {
-                const client = window.google.accounts.oauth2.initTokenClient({
-                    client_id: clientId, scope: enableInbound ? `${BASE_SCOPE} ${EVENTS_SCOPE}` : BASE_SCOPE, login_hint: user.email,
-                    callback: response => response.error ? reject(new Error(response.error_description || response.error)) : resolve(response),
-                    error_callback: response => reject(new Error(response.type === 'popup_closed' ? 'Conexão cancelada.' : 'Não foi possível abrir a autorização do Google.'))
-                });
-                client.requestAccessToken({ prompt: '' });
+                const timeout = setTimeout(() => reject(new Error('O Google não retornou a autorização em 5 minutos. Feche a janela anterior e tente conectar novamente nesta aba.')), 300000);
+                const finish = (handler, value) => { clearTimeout(timeout); handler(value); };
+                try {
+                    const client = window.google.accounts.oauth2.initTokenClient({
+                        client_id: clientId, scope: enableInbound ? `${BASE_SCOPE} ${EVENTS_SCOPE}` : BASE_SCOPE, login_hint: user.email,
+                        callback: response => response?.error
+                            ? finish(reject, new Error(response.error === 'access_denied' ? 'A autorização da Agenda não foi concedida no Google.' : 'O Google não concluiu a autorização da Agenda. Tente novamente nesta aba.'))
+                            : finish(resolve, response),
+                        error_callback: response => finish(reject, new Error(response?.type === 'popup_closed' ? 'A janela do Google foi fechada antes da conclusão. Tente novamente nesta aba.' : response?.type === 'popup_failed_to_open' ? 'A janela do Google não abriu. Permita pop-ups para este site e tente novamente.' : 'Não foi possível abrir a autorização do Google.'))
+                    });
+                    client.requestAccessToken({ prompt: '' });
+                } catch { finish(reject, new Error('Não foi possível iniciar a autorização da Agenda. Tente novamente nesta aba.')); }
             });
             check();
+            if (typeof result?.access_token !== 'string' || !result.access_token || !Number.isFinite(Number(result.expires_in)) || Number(result.expires_in) <= 60) {
+                throw new Error('O Google retornou uma autorização inválida ou expirada. Tente conectar novamente nesta aba.');
+            }
             token = result.access_token;
             expiresAt = Date.now() + Math.max(0, Number(result.expires_in) - 60) * 1000;
+            status = 'Conferindo conta Google'; emit();
             await verifyIdentity(user.email);
             check();
             if (getUser()?.uid !== user.uid) throw new Error('A conta do aplicativo mudou. Conecte novamente.');
@@ -636,11 +652,12 @@ function createCalendarSession({ clientId, getState, saveState, getUser, onChang
             try { check(); } catch { return; }
             token = ''; expiresAt = 0;
             error = e.message || 'Não foi possível conectar.';
-            status = 'Desconectado'; emit();
-        }
+            status = 'Falha na conexão';
+        } finally { connecting = false; emit(); }
     }
 
     function pause() {
+        if (connecting || running) return;
         clearTimeout(timer);
         token = ''; expiresAt = 0;
         storeConfig({ enabled: false });

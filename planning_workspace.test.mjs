@@ -65,6 +65,14 @@ test('atualizar a Agenda reconstrói só o painel e mantém rascunho do editor',
     b.c.calendarOnChange();assert.equal(b.elements.app.innerHTML,original);
     assert.match(b.elements['planning-calendar'].outerHTML,/Sem conexão/);assert.deepEqual(plain(b.ui.operationalDemandDraft),draft);assert.equal(b.ui.showOperationalDemandModal,true);
 });
+test('primeira autorização abre a Agenda na Semana e mantém o estado de espera nos dois painéis',()=>{
+    const b=fixture();b.window.calendarSync.view=()=>({enabled:false,connected:false,busy:true,connecting:true,status:'Aguardando autorização do Google',notice:'Conclua no Google e volte para esta mesma aba.'});
+    b.window.setMainView('week');const html=b.elements.app.innerHTML;
+    assert.ok(html.indexOf('id="planning-calendar"')<html.indexOf('aria-label="Planejamento por dia"'));
+    assert.match(html,/<details data-state-key="[^"]+" ontoggle="[^"]+" open>/);
+    const panel=b.window.renderCalendarSyncPanel();assert.match(panel,/Aguardando autorização do Google/);assert.match(panel,/mesma aba/);
+    assert.match(panel,/<button type="button" onclick="window.calendarSync.connect\(\)" disabled/);assert.doesNotMatch(panel,/Sincronizando\.\.\./);
+});
 test('follow-ups têm uma linha por demanda, todas as datas e acesso ao RADAR sem repetir controles de cadastro',()=>{
     const b=fixture();b.state.operationalControl.demands=[{id:'aguarda',title:'Documento esperado',workflowStatus:'waiting',waitingFor:'Fornecedor',followUpAt:'2026-11-03',nextReviewAt:'2026-11-05',dueDate:'2026-11-06'},
         {id:'ativa',title:'Frente sem ação',workflowStatus:'active',nextAction:'Preparar entrega'}];
