@@ -9,7 +9,7 @@ export function installMissionChanges(window,{document,getUiState=()=>({}),getSt
  const receipt=row=>Object.hasOwn(getState().aiAppliedProposals||{},row.id);
  async function work(fn){if(busy||!owner())return;const gen=generation;busy=true;message='Aguarde…';render();try{await fn(gen);}catch(error){if(gen===generation)message=error.status===404?'Esta função ainda precisa ser ativada no servidor. Suas missões estão preservadas.':error.message+' Seus ajustes foram preservados.';}finally{if(gen===generation){busy=false;render();}}}
  const load=async(cursor,gen)=>{const result=await store.list({status,...(cursor?{cursor}:{})});if(gen===generation){items=result.items;nextCursor=result.nextCursor;message='';window.missionChangesReady=true;}};
- const dirty=()=>editor&&editor.original!==JSON.stringify(editor.fields);
+ const dirty=()=>editor&&!editor.applied&&editor.original!==JSON.stringify(editor.fields);
  window.resetMissionChanges=()=>{generation++;open=false;busy=false;items=[];nextCursor=null;editor=null;message='';snapshot=null;window.missionChangesReady=false;};
  window.isMissionChangesOpen=()=>open;
  window.openMissionChanges=async()=>{if(!owner()||!window.canSwitchAiV2Proposals?.())return;window.closeAiV2Proposals?.();open=true;editor=null;snapshot=null;status='pending';render();await work(gen=>load(null,gen));};

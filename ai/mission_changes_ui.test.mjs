@@ -27,3 +27,15 @@ test('drafts require explicit discard, and account changes invalidate pending wo
  const a=await fixture();await a.review();a.window.editMissionChange('title','Unsaved');a.window.closeMissionChanges();assert.equal(a.window.isMissionChangesOpen(),true);assert.match(a.modal().message,/Descartar/);a.modal().callback();assert.equal(a.window.isMissionChangesOpen(),false);
  const b=await fixture();await b.review();let release;b.hold(new Promise(resolve=>release=resolve));const pending=b.window.confirmMissionChange();await b.reservedStarted;b.switchUser();b.window.resetMissionChanges();release();await pending;assert.equal(b.calls.apply,0);assert.equal(b.window.renderMissionChanges(),'');
 });
+test('closing or returning to the queue after edited changes were saved never offers to discard them',async()=>{
+ for(const action of ['closeMissionChanges','backMissionChange']){
+  const a=await fixture();await a.review();a.window.editMissionChange('title','Final já salvo');await a.window.checkMissionChange();a.failAck();await a.window.confirmMissionChange();
+  const saved=structuredClone(a.state.tasks);assert.equal(saved[0].text,'Final já salvo');assert.match(a.window.renderMissionChanges(),/Alteração já salva/);
+  a.window[action]();assert.equal(a.modal(),null);assert.deepEqual(a.state.tasks,saved);
+  await a.review();await a.window.confirmMissionChange();assert.equal(a.calls.ack,2);assert.deepEqual(a.state.tasks,saved);assert.equal(a.window.isMissionChangesOpen(),true);
+ }
+});
+test('an edited review whose cloud save failed still requires explicit discard',async()=>{
+ const a=await fixture();await a.review();a.window.editMissionChange('title','Rascunho sem gravação');await a.window.checkMissionChange();a.saveFails();await a.window.confirmMissionChange();
+ a.window.backMissionChange();assert.match(a.modal().message,/Descartar/);assert.match(a.window.renderMissionChanges(),/Rascunho sem gravação/);assert.equal(a.state.tasks[0].text,'Original');assert.equal(a.calls.reserve,0);
+});

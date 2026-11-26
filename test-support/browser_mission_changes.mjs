@@ -22,6 +22,8 @@ fixture.operationalControl.demands=[{id:'radar',title:'Frente de teste',workflow
 const task=(id,text,extra={})=>({id,text,day:'monday',planningWeekStart:'2026-10-26',order:id,category:'work',time:'30 min',priority:'media',completed:false,missionNature:'neutral',xp:0,energyCost:0,subtasks:[],...extra});
 fixture.tasks=[task(1,'Primeira missão',{missionNature:'normal',xp:10,energyCost:5}),task(2,'Já concluída',{completed:true}),task(3,'Próxima missão',{subtasks:[{id:31,text:'Etapa preservada',completed:true}]}),task(4,'Outra categoria',{category:'life'}),task(5,'Reunião não realizada',{activityType:'meeting',meetingOutcome:'not_held'}),task(6,'Missão do RADAR',{day:'tuesday',radarDemandId:'radar'}),task(7,'Rotina de segunda',{isRecurring:true,recurrenceGroupId:'routine',recurrenceDays:['monday','friday']}),task(8,'Rotina de sexta',{day:'friday',isRecurring:true,recurrenceGroupId:'routine',recurrenceDays:['monday','friday']}),task(9,'Dependente',{day:'tuesday',dependsOnTaskIds:['6']})];
 fixture.combo=7;fixture.xp=320;fixture.coins=52;fixture.tasks[0].radarDemandId='radar';fixture.tasks.find(t=>t.id===9).day='monday';fixture.tasks.find(t=>t.id===9).dependsOnTaskIds=['1'];fixture.taskDeletionLog=[{id:'historical-log',reason:'cancelada',preserveCombo:false,comboBefore:4}];
+// Keep this mission explicitly pending while testing preservation of completed subtasks.
+fixture.tasks.find(t=>t.id===3).workflowStatus='planned';
 fixture.libraryData=Library.emptyLibrary();Library.saveLibraryBook(fixture,{title:'Já na estante',authors:'Autoria fictícia',editions:[{format:'physical',pageCount:100}],notes:'Preservar observação'});
 const cssPath=process.env.MISSAO_QA_CSS_PATH;
 const css=cssPath?await readFile(cssPath,'utf8'):'.hidden{display:none}';
